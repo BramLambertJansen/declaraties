@@ -17,6 +17,7 @@ import {
   Form,
   FormField,
   Input,
+  ListToolbar,
   Notice,
   PageHeader,
   QrCode,
@@ -107,6 +108,47 @@ function ConfirmDialogExample() {
           }, EXAMPLE_ACTION_MS);
         }}
       />
+    </div>
+  );
+}
+
+const EXAMPLE_ROLES = [
+  { value: '', label: 'Alle rollen' },
+  { value: 'user', label: 'Gebruiker' },
+  { value: 'admin', label: 'Beheerder' },
+];
+const EXAMPLE_SORTS = [
+  { value: 'nieuwste', label: 'Nieuwste eerst' },
+  { value: 'oudste', label: 'Oudste eerst' },
+  { value: 'naam-az', label: 'Naam A–Z' },
+  { value: 'naam-za', label: 'Naam Z–A' },
+];
+
+// Lokale state in plaats van search params: de catalogus heeft geen lijst en geen API. Op een echte pagina staat dit in useListSearch.
+function ListToolbarExample() {
+  const [query, setQuery] = useState('');
+  const [role, setRole] = useState('');
+  const [sort, setSort] = useState('nieuwste');
+  const roleLabel = role === '' ? 'alle' : (EXAMPLE_ROLES.find((option) => option.value === role)?.label ?? role);
+  const sortLabel = EXAMPLE_SORTS.find((option) => option.value === sort)?.label ?? sort;
+  return (
+    <div className="flex flex-col gap-4">
+      <ListToolbar
+        searchLabel="Zoeken"
+        searchHint="Zoek op naam of e-mailadres."
+        query={query}
+        onQueryChange={setQuery}
+        filters={[{ id: 'rol', label: 'Rol', value: role, options: EXAMPLE_ROLES, onChange: setRole }]}
+        sortLabel="Sorteren"
+        sort={sort}
+        sortOptions={EXAMPLE_SORTS}
+        onSortChange={setSort}
+        onClear={() => {
+          setQuery('');
+          setRole('');
+        }}
+      />
+      <p role="status">{`Zoeken: ${query === '' ? 'geen' : query}; rol: ${roleLabel}; sortering: ${sortLabel}`}</p>
     </div>
   );
 }
@@ -239,6 +281,10 @@ export function DesignSystemPage() {
 
       <Section title="ConfirmDialog">
         <ConfirmDialogExample />
+      </Section>
+
+      <Section title="ListToolbar">
+        <ListToolbarExample />
       </Section>
 
       <Section title="DropdownMenu">

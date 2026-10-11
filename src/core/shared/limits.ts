@@ -30,3 +30,6 @@ export function invalidRateLimits(limits: RateLimits): RateLimitCategory[] {
     return !Number.isInteger(max) || max < 1 || max > RATE_LIMIT_MAX[category];
   });
 }
+
+// Zoeken in lijstpagina's (spec lijstpagina).
+export const MAX_SEARCH_LENGTH = 100;

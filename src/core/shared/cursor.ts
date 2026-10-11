@@ -1,7 +1,8 @@
 import { z } from 'zod';
 import { DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE } from './limits.ts';
 
-// Cursor-contract (framework §5): `{ items, nextCursor }`, cursor in de URL. De cursor is base64url-JSON van de sorteersleutel;
+// Cursor-contract (framework §5): `{ items, nextCursor }`; de cursor staat alleen in de query van TanStack Query ("Meer laden"),
+// niet in de URL (spec lijstpagina, OV-1): zoeken, filters en sortering staan er wel in. De cursor is base64url-JSON van de sorteersleutel;
 // de server valideert hem met het schema van de route, dus een gemanipuleerde cursor geeft VALIDATION, geen SQL.
 export function pageSchema<Item extends z.ZodType>(item: Item) {
   return z.object({ items: z.array(item), nextCursor: z.string().nullable() }).strict();

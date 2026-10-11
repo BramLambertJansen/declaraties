@@ -1,15 +1,15 @@
-import { desc, sql } from 'drizzle-orm';
+import { type SQL, and, asc, desc, eq, sql } from 'drizzle-orm';
 import { z } from 'zod';
 import { AppError } from '#core/api/errors.ts';
 import { ROLES } from '#core/shared/can.ts';
 import { decodeCursor, encodeCursor } from '#core/shared/cursor.ts';
-import { accountsListContract, inviteContract, reinviteContract } from '#shared/contracts/accounts.ts';
+import { ACCOUNT_SORTS, accountsListContract, inviteContract, reinviteContract } from '#shared/contracts/accounts.ts';
 import { ACCOUNTS_PAGE_SIZE } from '#shared/limits.ts';
 import { appAccounts } from '../db/schema.ts';
 import { defineRoute } from '../kit.ts';
 
 // Accountbeheer (spec accountbeheer). app.accounts toont alleen iets aan een admin met MFA (view, pgTAP); can() eist
-// hetzelfde vooraf. Nieuwste eerst; de cursor is (aangemaakt, id) van de laatste rij.
+// hetzelfde vooraf. Zoeken, filteren en sorteren volgens spec lijstpagina; de cursor is [sort, sleutel, id] van de laatste rij.
 
 // Kolommen van een view zijn voor de catalogus altijd nullable: parse op de grens; een null is een bug (INTERNAL_ERROR).
 const accountRow = z.object({
@@ -19,22 +19,53 @@ const accountRow = z.object({
   rol: z.enum(ROLES),
   status: z.enum(['active', 'invited']),
   aangemaakt: z.string(),
+  naamKey: z.string(),
 });
 
-const cursorKey = z.tuple([z.string(), z.string()]);
+type Sort = (typeof ACCOUNT_SORTS)[number];
 
-function after(cursor: string | undefined): z.infer<typeof cursorKey> | null {
+// De cursor hoort bij één sortering: [sort, sleutel, id]. Een cursor van een andere sortering geeft VALIDATION.
+const cursorKey = (sort: Sort) => z.tuple([z.literal(sort), z.string(), z.string()]);
+
+function after(cursor: string | undefined, sort: Sort): readonly [string, string, string] | null {
   if (cursor === undefined) return null;
   // decodeCursor gooit een ZodError bij een gemanipuleerde cursor: dat is invoer van de client, dus VALIDATION.
   try {
-    return decodeCursor(cursor, cursorKey);
+    return decodeCursor(cursor, cursorKey(sort));
   } catch {
     throw new AppError('VALIDATION');
   }
 }
 
+// `%`, `_` en `\` zoeken letterlijk (ilike gebruikt `\` als escape).
+function containsPattern(q: string): string {
+  return `%${q.replace(/[\\%_]/g, (char) => `\\${char}`)}%`;
+}
+
+const STATUS_COLUMN = { actief: 'active', uitgenodigd: 'invited' } as const;
+
+const naamKey = sql<string>`lower(${appAccounts.name})`;
+const aangemaaktKey = sql<string>`to_json(${appAccounts.createdAt}) #>> '{}'`;
+
 export const accountsListRoute = defineRoute(accountsListContract, async ({ input, tx }) => {
-  const from = after(input.cursor);
+  const { sort, q, rol, status } = input;
+  const byName = sort === 'naam-az' || sort === 'naam-za';
+  const descending = sort === 'nieuwste' || sort === 'naam-za';
+  const from = after(input.cursor, sort);
+  const keyColumn = byName ? sql`lower(${appAccounts.name})` : sql`${appAccounts.createdAt}`;
+  const keyCast = byName ? sql`` : sql`::timestamptz`;
+  const conditions: SQL[] = [];
+  if (q !== undefined) {
+    const pattern = containsPattern(q);
+    conditions.push(sql`(${appAccounts.name} ilike ${pattern} or ${appAccounts.email} ilike ${pattern})`);
+  }
+  if (rol !== undefined) conditions.push(eq(appAccounts.role, rol));
+  if (status !== undefined) conditions.push(eq(appAccounts.status, STATUS_COLUMN[status]));
+  if (from !== null) {
+    const operator = descending ? sql`<` : sql`>`;
+    conditions.push(sql`(${keyColumn}, ${appAccounts.id}) ${operator} (${from[1]}${keyCast}, ${from[2]})`);
+  }
+  const order = descending ? desc : asc;
   const rows = await tx
     .select({
       id: appAccounts.id,
@@ -43,26 +74,29 @@ export const accountsListRoute = defineRoute(accountsListContract, async ({ inpu
       rol: appAccounts.role,
       status: appAccounts.status,
       // ISO 8601 met microseconden: dezelfde waarde gaat ongewijzigd terug in de cursor.
-      aangemaakt: sql<string>`to_json(${appAccounts.createdAt}) #>> '{}'`,
+      aangemaakt: aangemaaktKey,
+      naamKey,
     })
     .from(appAccounts)
-    .where(
-      from === null
-        ? undefined
-        : sql`(${appAccounts.createdAt}, ${appAccounts.id}) < (${from[0]}::timestamptz, ${from[1]})`,
-    )
-    .orderBy(desc(appAccounts.createdAt), desc(appAccounts.id))
+    .where(conditions.length === 0 ? undefined : and(...conditions))
+    .orderBy(order(byName ? naamKey : appAccounts.createdAt), order(appAccounts.id))
     .limit(ACCOUNTS_PAGE_SIZE + 1);
 
   const page = rows.slice(0, ACCOUNTS_PAGE_SIZE).map((row) => accountRow.parse(row));
   const last = page.at(-1);
   return {
     items: page.map((row) => ({
-      ...row,
+      id: row.id,
+      naam: row.naam,
+      email: row.email,
+      rol: row.rol,
+      aangemaakt: row.aangemaakt,
       status: row.status === 'active' ? ('actief' as const) : ('uitgenodigd' as const),
     })),
     nextCursor:
-      rows.length > ACCOUNTS_PAGE_SIZE && last !== undefined ? encodeCursor([last.aangemaakt, last.id]) : null,
+      rows.length > ACCOUNTS_PAGE_SIZE && last !== undefined
+        ? encodeCursor([sort, byName ? last.naamKey : last.aangemaakt, last.id])
+        : null,
   };
 });
 

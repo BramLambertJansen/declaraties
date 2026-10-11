@@ -13,6 +13,7 @@ export { DropdownMenu, type MenuItem } from '#core/web/ui/dropdown-menu.tsx';
 export { Field } from '#core/web/ui/field.tsx';
 export { Form, FormField, useZodForm } from '#core/web/ui/form.tsx';
 export { Input } from '#core/web/ui/input.tsx';
+export { ListToolbar } from '#core/web/ui/list-toolbar.tsx';
 export { NavLink } from '#core/web/ui/nav-link.tsx';
 export { Notice } from '#core/web/ui/notice.tsx';
 export { PageHeader } from '#core/web/ui/page-header.tsx';

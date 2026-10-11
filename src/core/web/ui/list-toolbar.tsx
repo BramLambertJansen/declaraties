@@ -1,0 +1,126 @@
+import { type ReactElement, useEffect, useId, useRef, useState } from 'react';
+import { MAX_SEARCH_LENGTH } from '#core/shared/limits.ts';
+import { Button } from './button.tsx';
+import { Field } from './field.tsx';
+import { Input } from './input.tsx';
+import { Select, type SelectOption } from './select.tsx';
+
+export interface ListToolbarFilter {
+  readonly id: string;
+  readonly label: string;
+  readonly value: string;
+  readonly options: readonly SelectOption[];
+  readonly onChange: (value: string) => void;
+}
+
+export interface ListToolbarProps {
+  readonly searchLabel: string;
+  readonly searchHint?: string | undefined;
+  readonly query: string;
+  readonly onQueryChange: (q: string) => void;
+  readonly filters?: readonly ListToolbarFilter[];
+  readonly sortLabel: string;
+  readonly sort: string;
+  readonly sortOptions: readonly SelectOption[];
+  readonly onSortChange: (sort: string) => void;
+  readonly onClear: () => void;
+}
+
+const DEBOUNCE_MS = 300;
+const CLEAR_LABEL = 'Filters wissen';
+
+// Het veld toont direct wat de gebruiker typt; de URL volgt na DEBOUNCE_MS stilte. Een nieuwe `query`-prop (wissen, Terug)
+// overschrijft het veld, maar niet zolang er een timer loopt of als de prop alleen de getrimde vorm van het veld is
+// (anders verdwijnt de spatie na "ada " weer).
+function useDebouncedQuery(query: string, onQueryChange: (q: string) => void) {
+  const [value, setValue] = useState(query);
+  const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  useEffect(() => {
+    if (timer.current === undefined && query !== value.trim()) setValue(query);
+  }, [query, value]);
+  useEffect(
+    () => () => {
+      clearTimeout(timer.current);
+    },
+    [],
+  );
+  const cancel = () => {
+    clearTimeout(timer.current);
+    timer.current = undefined;
+  };
+  const change = (next: string) => {
+    setValue(next);
+    cancel();
+    timer.current = setTimeout(() => {
+      timer.current = undefined;
+      onQueryChange(next);
+    }, DEBOUNCE_MS);
+  };
+  const reset = () => {
+    cancel();
+    setValue('');
+  };
+  return { value, change, reset };
+}
+
+// Layoutblok voor lijstpagina's (spec lijstpagina): zoekveld, filters, sorteren en "Filters wissen"; onder elkaar op 375 px.
+export function ListToolbar(props: ListToolbarProps): ReactElement {
+  const { value, change, reset } = useDebouncedQuery(props.query, props.onQueryChange);
+  const base = useId();
+  const searchId = `${base}-zoeken`;
+  const sortId = `${base}-sorteren`;
+  const searchRef = useRef<HTMLInputElement>(null);
+  const filters = props.filters ?? [];
+  const active = props.query !== '' || value.trim() !== '' || filters.some((filter) => filter.value !== '');
+  const clear = () => {
+    reset();
+    props.onClear();
+    searchRef.current?.focus();
+  };
+  return (
+    <div className="flex flex-col gap-4 md:flex-row md:flex-wrap md:items-end">
+      <div className="md:min-w-64 md:flex-1">
+        <Field id={searchId} label={props.searchLabel} description={props.searchHint}>
+          <Input
+            ref={searchRef}
+            id={searchId}
+            type="search"
+            maxLength={MAX_SEARCH_LENGTH}
+            value={value}
+            aria-describedby={props.searchHint === undefined ? undefined : `${searchId}-hulp`}
+            onChange={(event) => {
+              change(event.target.value);
+            }}
+          />
+        </Field>
+      </div>
+      {filters.map((filter) => (
+        <Field key={filter.id} id={`${base}-${filter.id}`} label={filter.label}>
+          <Select
+            id={`${base}-${filter.id}`}
+            value={filter.value}
+            options={filter.options}
+            onChange={(event) => {
+              filter.onChange(event.target.value);
+            }}
+          />
+        </Field>
+      ))}
+      <Field id={sortId} label={props.sortLabel}>
+        <Select
+          id={sortId}
+          value={props.sort}
+          options={props.sortOptions}
+          onChange={(event) => {
+            props.onSortChange(event.target.value);
+          }}
+        />
+      </Field>
+      {active ? (
+        <Button variant="secondary" onClick={clear}>
+          {CLEAR_LABEL}
+        </Button>
+      ) : null}
+    </div>
+  );
+}

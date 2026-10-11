@@ -149,3 +149,47 @@ test('AC-1: anoniem op /design-system gaat naar /login met redirect', async ({ p
   await expect(page).toHaveURL(/\/login\?redirect=/);
   await expect(page.getByRole('heading', { level: 1, name: 'Inloggen' })).toBeVisible();
 });
+
+test('lijsttoolbar: zoeken met debounce, filter en sortering, wissen houdt sortering en zet focus op zoeken', async ({
+  page,
+}) => {
+  const csp = collectCspViolations(page);
+  await signInAsAdmin(page);
+  await page.goto('/design-system');
+  const section = page.getByRole('region', { name: 'ListToolbar' });
+  const search = section.getByLabel('Zoeken');
+  const role = section.getByLabel('Rol');
+  const sort = section.getByLabel('Sorteren');
+  const clear = section.getByRole('button', { name: 'Filters wissen' });
+  const status = section.getByRole('status');
+
+  await expect(clear).toBeHidden();
+  await expect(section.getByText('Zoek op naam of e-mailadres.')).toBeVisible();
+
+  await search.click();
+  await page.keyboard.type('ada');
+  await expect(search).toBeFocused();
+  await expect(status).toHaveText('Zoeken: ada; rol: alle; sortering: Nieuwste eerst');
+  await expect(clear).toBeVisible();
+  await expect(search).toBeFocused();
+
+  await role.selectOption({ label: 'Beheerder' });
+  await sort.selectOption({ label: 'Naam A–Z' });
+  await expect(status).toHaveText('Zoeken: ada; rol: Beheerder; sortering: Naam A–Z');
+
+  await clear.click();
+  await expect(search).toHaveValue('');
+  await expect(role.locator('option:checked')).toHaveText('Alle rollen');
+  await expect(sort.locator('option:checked')).toHaveText('Naam A–Z');
+  await expect(status).toHaveText('Zoeken: geen; rol: alle; sortering: Naam A–Z');
+  await expect(search).toBeFocused();
+  await expect(clear).toBeHidden();
+
+  await page.keyboard.press('Tab');
+  await expect(role).toBeFocused();
+  await page.keyboard.press('Tab');
+  await expect(sort).toBeFocused();
+
+  await scanAxe(page);
+  expect(csp).toStrictEqual([]);
+});

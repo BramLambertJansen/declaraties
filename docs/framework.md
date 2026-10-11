@@ -148,7 +148,7 @@ dependency-cruiser); checks op de database lezen de catalogus van de lokale data
 |---|---|
 | Datums | `timestamptz` in de database, ISO-strings in het contract, één formatter (Intl, Europe/Amsterdam) |
 | Bedragen | Gehele centen, branded `Cents`, één formatter |
-| Paginering | Cursor-contract `{ items, nextCursor }` in `src/core/shared`, cursor in de URL |
+| Paginering | Cursor-contract `{ items, nextCursor }` in `src/core/shared`; "Meer laden" met de cursor alleen in de query (`useInfiniteQuery`), niet in de URL; zoeken, filters en sortering wel (spec lijstpagina, OV-1) |
 | Naamgeving | Bestanden kebab-case, componenten PascalCase, hooks `useX`, routes meervoud, tabellen/kolommen snake_case; UI Nederlands, code en commits Engels |
 
 ## 6. Data-toegang en security

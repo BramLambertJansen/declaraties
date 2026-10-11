@@ -57,6 +57,21 @@ export const copy = {
     invite: 'Account uitnodigen',
     empty: 'Nog geen accounts.',
     more: 'Meer laden',
+    // Spec lijstpagina: alle zichtbare tekst van zoeken, filteren en sorteren.
+    search: 'Zoeken',
+    searchHint: 'Zoek op naam of e-mailadres.',
+    allRoles: 'Alle rollen',
+    allStatuses: 'Alle statussen',
+    sort: 'Sorteren',
+    sorts: {
+      nieuwste: 'Nieuwste eerst',
+      oudste: 'Oudste eerst',
+      'naam-az': 'Naam A–Z',
+      'naam-za': 'Naam Z–A',
+    },
+    emptyFiltered: 'Geen accounts gevonden. Pas je zoekopdracht of filters aan.',
+    loading: 'Bezig met laden…',
+    shown: (count: number, more: boolean) => `${String(count)} accounts getoond.${more ? ' Er zijn er meer.' : ''}`,
   },
   inviteDialog: {
     title: 'Account uitnodigen',

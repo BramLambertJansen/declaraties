@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { ROLES } from '#core/shared/can.ts';
 import { pageSchema } from '#core/shared/cursor.ts';
+import { defineListSearch } from '#core/shared/list-search.ts';
 import { MAX_EMAIL_LENGTH, MAX_NAME_LENGTH } from '../limits.ts';
 import { defineContract } from './kit.ts';
 
@@ -8,13 +9,22 @@ import { defineContract } from './kit.ts';
 // De rollen komen uit core (ROLES); een nieuwe rol verschijnt hier vanzelf.
 export const ROLLEN = ROLES;
 
+export const STATUSSEN = ['actief', 'uitgenodigd'] as const;
+export const ACCOUNT_SORTS = ['nieuwste', 'oudste', 'naam-az', 'naam-za'] as const;
+
+// Zoeken, filteren en sorteren (spec lijstpagina): één schema voor de API (strict) en de webroute (validateSearch).
+export const accountsSearch = defineListSearch({
+  sorts: ACCOUNT_SORTS,
+  filters: { rol: ROLLEN, status: STATUSSEN },
+});
+
 export const accountItem = z
   .object({
     id: z.string(),
     naam: z.string(),
     email: z.string(),
     rol: z.enum(ROLLEN),
-    status: z.enum(['actief', 'uitgenodigd']),
+    status: z.enum(STATUSSEN),
     // ISO 8601 met tijdzone; tonen via format.dateTime.
     aangemaakt: z.string(),
   })
@@ -23,7 +33,7 @@ export const accountItem = z
 export const accountsListContract = defineContract({
   method: 'GET',
   path: '/accounts',
-  input: z.object({ cursor: z.string().max(500).optional() }).strict(),
+  input: accountsSearch.api,
   output: pageSchema(accountItem),
   permission: 'accounts:read',
 });

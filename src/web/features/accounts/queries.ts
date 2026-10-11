@@ -1,22 +1,27 @@
-import { useInfiniteQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { keepPreviousData, useInfiniteQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import type { z } from 'zod';
-import type { inviteInput } from '#shared/contracts/accounts.ts';
+import type { accountsSearch, inviteInput } from '#shared/contracts/accounts.ts';
 import { api } from '#web/lib/api.ts';
 
 // Accounts (spec accountbeheer): lijst per pagina met cursor; uitnodigen en opnieuw uitnodigen invalideren de lijst.
 export const accountKeys = {
   all: ['accounts'] as const,
-  list: () => [...accountKeys.all, 'list'] as const,
+  list: (search: AccountsSearch) => [...accountKeys.all, 'list', search] as const,
 };
+
+export type AccountsSearch = z.output<typeof accountsSearch.web>;
 
 const firstPage: string | null = null;
 
-export function useAccounts() {
+// Zoek- en filterwaarden zitten in de query key: elke wijziging begint bij de eerste pagina; de vorige rijen blijven staan tot het antwoord er is.
+export function useAccounts(search: AccountsSearch) {
   return useInfiniteQuery({
-    queryKey: accountKeys.list(),
-    queryFn: ({ pageParam }) => api.call('GET /accounts', pageParam === null ? {} : { cursor: pageParam }),
+    queryKey: accountKeys.list(search),
+    queryFn: ({ pageParam }) =>
+      api.call('GET /accounts', { ...search, ...(pageParam === null ? {} : { cursor: pageParam }) }),
     initialPageParam: firstPage,
     getNextPageParam: (page) => page.nextCursor,
+    placeholderData: keepPreviousData,
   });
 }
 
