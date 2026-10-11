@@ -3,14 +3,20 @@ import { bodyLimit } from 'hono/body-limit';
 import { requestId } from 'hono/request-id';
 import { secureHeaders } from 'hono/secure-headers';
 import { coreErrorCodes, type ErrorRegistry } from '../../shared/errors.ts';
-import { MAX_BODY_BYTES } from '../../shared/limits.ts';
+import {
+  invalidRateLimits,
+  MAX_BODY_BYTES,
+  RATE_LIMIT_MAX,
+  RATE_LIMIT_WINDOW_SECONDS,
+  type RateLimits,
+} from '../../shared/limits.ts';
 import { unsafeCast } from '../../shared/unsafe-cast.ts';
 import type { AuthGateway } from '../auth/auth.ts';
 import type { WithUser } from '../db/types.ts';
 import { AppError, statusFor } from '../errors.ts';
 import { z } from 'zod';
 import { ROLES, type Role } from '../../shared/can.ts';
-import type { Contract } from '../../shared/contract.ts';
+import { rateLimitCategory, type Contract } from '../../shared/contract.ts';
 import { requestLog, timeDatabase, type RequestLog } from '../obs/request-log.ts';
 import { isRouteDef, type RouteDef } from '../route/kit.ts';
 import { csrf } from './csrf.ts';
@@ -35,6 +41,9 @@ interface BaseConfig<Services> {
   readonly log?: RequestLog;
   // GET /api/ready (framework §3): zonder waarde bestaat de route niet; server.ts geeft createReadiness(pingDatabase) mee.
   readonly ready?: Readiness;
+  // Maximum per categorie per venster (spec rate-limit): standaard de harde grens uit core; de app geeft die uit
+  // src/shared/limits.ts mee, een integratietest een lagere. Boven de harde grens weigert createApp bij opstart.
+  readonly rateLimits?: RateLimits;
 }
 
 // Wat handlers via ctx.services krijgen (bijv. uitnodigen via Better Auth): verplicht zodra de app een Services-type kiest
@@ -46,13 +55,21 @@ export interface App {
   readonly fetch: (request: Request) => Promise<Response>;
 }
 
-async function readInput(c: Context, method: string): Promise<unknown> {
-  const params = c.req.param();
-  if (method === 'GET' || method === 'DELETE') return { ...c.req.query(), ...params };
-  const text = await c.req.text();
+// De ruwe input wordt gelezen vóór de telling (geen verbinding vast tijdens het lezen); parsen en valideren gebeurt pas
+// binnen withUser, na de telling, zodat ook een ongeldig verzoek meetelt (spec rate-limit).
+type RawInput =
+  { readonly kind: 'query'; readonly value: Record<string, string> } | { readonly kind: 'body'; readonly text: string };
+
+async function readRawInput(c: Context, method: string): Promise<RawInput> {
+  if (method === 'GET' || method === 'DELETE') return { kind: 'query', value: c.req.query() };
+  return { kind: 'body', text: await c.req.text() };
+}
+
+function parseInput(raw: RawInput, params: Record<string, string>): unknown {
+  if (raw.kind === 'query') return { ...raw.value, ...params };
   let body: unknown;
   try {
-    body = text === '' ? {} : JSON.parse(text);
+    body = raw.text === '' ? {} : JSON.parse(raw.text);
   } catch {
     throw new AppError('VALIDATION');
   }
@@ -63,8 +80,11 @@ async function readInput(c: Context, method: string): Promise<unknown> {
 function routeHandler<Services>(
   route: RouteDef<Contract, Services>,
   config: BaseConfig<Services> & { readonly services?: Services },
+  rateLimits: RateLimits,
 ) {
   const { contract } = route;
+  const category = rateLimitCategory(contract);
+  const rateLimit = { bucket: category, windowSeconds: RATE_LIMIT_WINDOW_SECONDS, max: rateLimits[category] };
   return async (c: Context) => {
     const { auth, withUser } = config;
     if (auth === undefined || withUser === undefined) throw new Error('createApp: routes vragen auth en withUser');
@@ -73,14 +93,15 @@ function routeHandler<Services>(
     if (session === null) throw new AppError('UNAUTHENTICATED');
     const facts = c.get('requestFacts');
     if (facts !== undefined) facts.userId = session.userId;
-    const parsed = contract.input.safeParse(await readInput(c, contract.method));
-    if (!parsed.success) throw new AppError('VALIDATION');
+    const raw = await readRawInput(c, contract.method);
     const actor = { userId: session.userId, sessionStrength: session.sessionStrength };
     const output = await timeDatabase(facts, () =>
       withUser(
         actor,
         async (tx, { role }) => {
-          // Geen rol in user_roles = geen toegang (framework §6: de rol komt per request uit de database).
+          // Eerst de input (VALIDATION vóór FORBIDDEN), dan de rol: geen rol in user_roles = geen toegang (framework §6).
+          const parsed = contract.input.safeParse(parseInput(raw, c.req.param()));
+          if (!parsed.success) throw new AppError('VALIDATION');
           if (role === null) throw new AppError('FORBIDDEN');
           const decision = route.check({ role, sessionStrength: session.sessionStrength });
           if (!decision.ok) throw new AppError(decision.code);
@@ -92,7 +113,7 @@ function routeHandler<Services>(
           // Een output die niet bij het contract past, is een bug: INTERNAL_ERROR, nooit de data.
           return contract.output.parse(result);
         },
-        { readOnly: contract.method === 'GET' },
+        { readOnly: contract.method === 'GET', rateLimit },
       ),
     );
     return c.json(output);
@@ -107,6 +128,13 @@ export function createApp(): App;
 export function createApp<Services = undefined>(config: AppConfig<Services>): App;
 export function createApp<Services>(config: BaseConfig<Services> & { readonly services?: Services } = {}): App {
   const routes = config.routes ?? [];
+  const rateLimits = config.rateLimits ?? RATE_LIMIT_MAX;
+  const invalid = invalidRateLimits(rateLimits);
+  if (invalid.length > 0) {
+    throw new Error(
+      `createApp: rate limit ${invalid.join(', ')} moet een geheel getal zijn van 1 t/m de harde grens uit core`,
+    );
+  }
   for (const route of routes) {
     if (!isRouteDef(route)) throw new Error('createApp: alleen routes uit defineRoute (ADR 0008)');
   }
@@ -129,7 +157,10 @@ export function createApp<Services>(config: BaseConfig<Services> & { readonly se
     .use(csrf(config.appOrigin))
     .use(bodyLimit({ maxSize: MAX_BODY_BYTES, onError: (c) => fail(c, 'PAYLOAD_TOO_LARGE') }))
     .onError((error, c) => {
-      if (error instanceof AppError && isPublic(error.code)) return fail(c, error.code);
+      if (error instanceof AppError && isPublic(error.code)) {
+        if (error.retryAfter !== undefined) c.header('Retry-After', String(error.retryAfter));
+        return fail(c, error.code);
+      }
       console.error(`[${c.get('requestId')}]`, error);
       return fail(c, 'INTERNAL_ERROR');
     })
@@ -153,6 +184,7 @@ export function createApp<Services>(config: BaseConfig<Services> & { readonly se
       return c.body(null, 204);
     });
   }
-  for (const route of routes) app.on(route.contract.method, route.contract.path, routeHandler(route, config));
+  for (const route of routes)
+    app.on(route.contract.method, route.contract.path, routeHandler(route, config, rateLimits));
   return { fetch: async (request) => app.fetch(request) };
 }

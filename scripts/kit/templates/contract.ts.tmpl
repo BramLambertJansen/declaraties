@@ -6,6 +6,8 @@ import { defineContract } from './kit.ts';
 // Resource __naam__ (spec docs/specs/__naam__.md), gemaakt door pnpm new:resource.
 // Lijst met cursor, aanmaken, wijzigen en verwijderen. De velden komen uit de spec: in het item en in de invoer van
 // aanmaken en wijzigen, met grenzen uit limits.ts.
+// Rate limit (spec rate-limit): zonder `rateLimit` geldt de standaard per methode (GET → 'lezen', anders 'schrijven');
+// een route die mail verstuurt of iets anders duurs doet, krijgt `rateLimit: 'duur'`.
 export const __naamCamel__Item = z
   .object({
     id: __Naam__Id,

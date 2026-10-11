@@ -46,6 +46,8 @@ export const inviteContract = defineContract({
   input: inviteInput,
   output: z.object({ id: z.string() }).strict(),
   permission: 'accounts:invite',
+  // Verstuurt mail (spec rate-limit).
+  rateLimit: 'duur',
 });
 
 export const reinviteContract = defineContract({
@@ -54,4 +56,6 @@ export const reinviteContract = defineContract({
   input: z.object({ id: z.string().min(1).max(200) }).strict(),
   output: z.null(),
   permission: 'accounts:invite',
+  // Verstuurt mail (spec rate-limit).
+  rateLimit: 'duur',
 });

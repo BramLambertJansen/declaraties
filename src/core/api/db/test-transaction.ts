@@ -4,7 +4,7 @@ import type { Pool, PoolClient } from 'pg';
 import type { AuthGateway, SessionInfo } from '../auth/auth.ts';
 import { translateDatabaseError } from '../errors.ts';
 import type { Actor, SessionStrength, WithUser } from './types.ts';
-import { checkActor, enterActor } from './with-user.ts';
+import { checkActor, consumeRateLimit, enterActor, rateLimited } from './with-user.ts';
 import { UserId } from '../../shared/ids.ts';
 
 // Testkit (framework §4, ADR 0012): één transactie per test die aan het eind terugdraait, een savepoint per withUser-aanroep.
@@ -25,7 +25,7 @@ export interface AsUserOptions {
 }
 
 export interface TestDb {
-  // Zelfde contract als withUser; `readOnly` telt hier niet (een savepoint kan niet read-only worden).
+  // Zelfde contract als withUser; `readOnly` telt hier niet (een savepoint kan niet read-only worden), `rateLimit` wel.
   readonly withUser: WithUser;
   // Een nieuwe gebruiker met deze rol (null: zonder rij in user_roles), alleen zichtbaar binnen deze test.
   readonly asUser: (role: 'user' | 'admin' | null, options?: AsUserOptions) => Promise<TestUser>;
@@ -40,14 +40,14 @@ async function leaveActor(client: PoolClient): Promise<void> {
 
 function testWithUser(client: PoolClient): WithUser {
   let savepoints = 0;
-  return async (actor, work) => {
-    checkActor(actor);
+  // Zoals withUser: een savepoint per stap; de telling (rateLimit) in een eigen savepoint vóór die van het werk, zodat
+  // een werk dat terugrolt toch meetelt (spec rate-limit).
+  const inSavepoint = async <T>(run: () => Promise<T>): Promise<T> => {
     savepoints += 1;
     const savepoint = `with_user_${String(savepoints)}`;
     await client.query(`savepoint ${savepoint}`);
     try {
-      const actorRole = await enterActor(client, actor);
-      const result = await work(drizzle({ client }), actorRole);
+      const result = await run();
       await client.query(`release savepoint ${savepoint}`);
       return result;
     } catch (error) {
@@ -56,6 +56,18 @@ function testWithUser(client: PoolClient): WithUser {
     } finally {
       await leaveActor(client);
     }
+  };
+  return async (actor, work, options = {}) => {
+    checkActor(actor);
+    const { rateLimit } = options;
+    if (rateLimit !== undefined) {
+      const retryAfter = await inSavepoint(async () => {
+        await enterActor(client, actor);
+        return consumeRateLimit(client, rateLimit);
+      });
+      if (retryAfter > 0) throw rateLimited(retryAfter);
+    }
+    return inSavepoint(async () => work(drizzle({ client }), await enterActor(client, actor)));
   };
 }
 

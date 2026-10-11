@@ -58,6 +58,46 @@ CREATE FUNCTION app.assign_role(p_user_id text, p_role text) RETURNS void
 ALTER FUNCTION app.assign_role(p_user_id text, p_role text) OWNER TO app_definer;
 
 --
+-- Name: consume_rate_limit(text, integer, integer); Type: FUNCTION; Schema: app; Owner: app_definer
+--
+
+CREATE FUNCTION app.consume_rate_limit(p_bucket text, p_window_seconds integer, p_max integer) RETURNS integer
+    LANGUAGE plpgsql SECURITY DEFINER
+    SET search_path TO ''
+    AS $$
+  declare
+    v_user text := app.current_user_id();
+    v_window interval;
+    v_start timestamptz;
+    v_hits integer;
+  begin
+    if v_user is null then
+      raise exception 'FORBIDDEN' using errcode = '42501';
+    end if;
+    if p_window_seconds is null or p_window_seconds <= 0 or p_max is null or p_max <= 0
+       or p_bucket is null or p_bucket = '' or pg_catalog.strpos(p_bucket, ':') > 0 then
+      raise exception 'ongeldige rate limit' using errcode = '22023';
+    end if;
+    v_window := pg_catalog.make_interval(secs => p_window_seconds);
+    insert into app.rate_limits (key, window_start, hits)
+      values (p_bucket || ':' || v_user, pg_catalog.now(), 1)
+      on conflict (key) do update
+        set window_start = case when rate_limits.window_start + v_window <= pg_catalog.now()
+                                then pg_catalog.now() else rate_limits.window_start end,
+            hits = case when rate_limits.window_start + v_window <= pg_catalog.now()
+                        then 1 else rate_limits.hits + 1 end
+      returning window_start, hits into v_start, v_hits;
+    if v_hits <= p_max then
+      return 0;
+    end if;
+    return greatest(1, pg_catalog.ceil(pg_catalog.date_part('epoch', v_start + v_window - pg_catalog.now()))::integer);
+  end
+  $$;
+
+
+ALTER FUNCTION app.consume_rate_limit(p_bucket text, p_window_seconds integer, p_max integer) OWNER TO app_definer;
+
+--
 -- Name: current_user_id(); Type: FUNCTION; Schema: app; Owner: app_migrator
 --
 
@@ -199,6 +239,22 @@ CREATE VIEW app.accounts WITH (security_barrier='true') AS
 ALTER VIEW app.accounts OWNER TO app_definer;
 
 --
+-- Name: rate_limits; Type: TABLE; Schema: app; Owner: app_migrator
+--
+
+CREATE UNLOGGED TABLE app.rate_limits (
+    key text NOT NULL,
+    window_start timestamp with time zone NOT NULL,
+    hits integer NOT NULL,
+    CONSTRAINT rate_limits_hits_check CHECK ((hits > 0))
+);
+
+ALTER TABLE ONLY app.rate_limits FORCE ROW LEVEL SECURITY;
+
+
+ALTER TABLE app.rate_limits OWNER TO app_migrator;
+
+--
 -- Name: rateLimit; Type: TABLE; Schema: better_auth; Owner: app_migrator
 --
 
@@ -275,6 +331,14 @@ CREATE TABLE public.schema_migrations (
 
 
 ALTER TABLE public.schema_migrations OWNER TO app_migrator;
+
+--
+-- Name: rate_limits rate_limits_pkey; Type: CONSTRAINT; Schema: app; Owner: app_migrator
+--
+
+ALTER TABLE ONLY app.rate_limits
+    ADD CONSTRAINT rate_limits_pkey PRIMARY KEY (key);
+
 
 --
 -- Name: account account_pkey; Type: CONSTRAINT; Schema: better_auth; Owner: app_migrator
@@ -439,6 +503,19 @@ ALTER TABLE ONLY public.user_roles
 
 
 --
+-- Name: rate_limits; Type: ROW SECURITY; Schema: app; Owner: app_migrator
+--
+
+ALTER TABLE app.rate_limits ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: rate_limits rate_limits_definer_all; Type: POLICY; Schema: app; Owner: app_migrator
+--
+
+CREATE POLICY rate_limits_definer_all ON app.rate_limits TO app_definer USING (true) WITH CHECK (true);
+
+
+--
 -- Name: user_roles; Type: ROW SECURITY; Schema: public; Owner: app_migrator
 --
 
@@ -497,6 +574,14 @@ GRANT USAGE ON SCHEMA public TO app_definer;
 REVOKE ALL ON FUNCTION app.assign_role(p_user_id text, p_role text) FROM PUBLIC;
 GRANT ALL ON FUNCTION app.assign_role(p_user_id text, p_role text) TO app_authenticated;
 GRANT ALL ON FUNCTION app.assign_role(p_user_id text, p_role text) TO app_migrator;
+
+
+--
+-- Name: FUNCTION consume_rate_limit(p_bucket text, p_window_seconds integer, p_max integer); Type: ACL; Schema: app; Owner: app_definer
+--
+
+REVOKE ALL ON FUNCTION app.consume_rate_limit(p_bucket text, p_window_seconds integer, p_max integer) FROM PUBLIC;
+GRANT ALL ON FUNCTION app.consume_rate_limit(p_bucket text, p_window_seconds integer, p_max integer) TO app_authenticated;
 
 
 --
@@ -601,6 +686,13 @@ GRANT SELECT,INSERT,UPDATE ON TABLE public.user_roles TO app_definer;
 --
 
 GRANT SELECT ON TABLE app.accounts TO app_authenticated;
+
+
+--
+-- Name: TABLE rate_limits; Type: ACL; Schema: app; Owner: app_migrator
+--
+
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE app.rate_limits TO app_definer;
 
 
 --

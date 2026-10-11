@@ -15,9 +15,19 @@ export interface Actor {
   readonly sessionStrength: SessionStrength;
 }
 
+// Rate limit (spec rate-limit): één telling per request in een eigen korte transactie vóór die van de route, zodat een
+// read-only GET ook telt en een route die faalt en terugrolt toch meetelt. De sleutel is bucket + de actor, nooit gekozen
+// door de aanroeper. Boven max: AppError RATE_LIMITED met retryAfter in seconden.
+export interface RateLimit {
+  readonly bucket: string;
+  readonly windowSeconds: number;
+  readonly max: number;
+}
+
 export interface WithUserOptions {
   // GET-routes: de transactie is read only (framework §6).
   readonly readOnly?: boolean;
+  readonly rateLimit?: RateLimit;
 }
 
 // Wat withUser binnen de transactie al weet: de rol uit user_roles (framework §6: per request uit de database), of null.

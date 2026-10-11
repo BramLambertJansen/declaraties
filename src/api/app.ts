@@ -3,7 +3,9 @@ import type { WithUser } from '#core/api/db/types.ts';
 import { createApp, type DevLogin } from '#core/api/http/create-app.ts';
 import type { Readiness } from '#core/api/http/readiness.ts';
 import type { RequestLog } from '#core/api/obs/request-log.ts';
+import type { RateLimits } from '#core/shared/limits.ts';
 import { errors } from '#shared/errors.ts';
+import { RATE_LIMITS } from '#shared/limits.ts';
 import { accountsListRoute, inviteRoute, reinviteRoute } from './routes/accounts.ts';
 import { meRoute } from './routes/me.ts';
 import type { AppServices } from './services.ts';
@@ -22,8 +24,10 @@ export interface BuildAppConfig {
   readonly log?: RequestLog;
   // GET /api/ready; server.ts geeft hem mee, tests laten hem weg.
   readonly ready?: Readiness;
+  // Alleen in integratietests: een lagere rate limit dan die van de app (spec rate-limit); server.ts laat hem weg.
+  readonly rateLimits?: RateLimits;
 }
 
 export function buildApp(config: BuildAppConfig) {
-  return createApp<AppServices>({ ...config, routes, errors });
+  return createApp<AppServices>({ ...config, routes, errors, rateLimits: config.rateLimits ?? RATE_LIMITS });
 }

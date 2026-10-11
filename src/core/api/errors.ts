@@ -2,13 +2,20 @@ import type { CoreErrorCode } from '../shared/errors.ts';
 
 // Een bekende fout met een code uit het register (framework §6): onError maakt er `{ code, requestId }` van, met de status
 // hieronder. Al het andere wordt INTERNAL_ERROR, zonder details naar buiten.
+// retryAfter (seconden) alleen bij RATE_LIMITED: onError zet dan de header Retry-After (spec rate-limit).
+export interface AppErrorOptions extends ErrorOptions {
+  readonly retryAfter?: number;
+}
+
 export class AppError extends Error {
   readonly code: string;
+  readonly retryAfter: number | undefined;
 
-  constructor(code: string, options?: ErrorOptions) {
+  constructor(code: string, options?: AppErrorOptions) {
     super(code, options);
     this.name = 'AppError';
     this.code = code;
+    this.retryAfter = options?.retryAfter;
   }
 }
 

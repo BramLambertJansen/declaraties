@@ -21,6 +21,8 @@ paths:
   de database (`cookieCache` uit); rollen uit `user_roles`, nooit uit de sessie. Alleen plugins two-factor en magic link;
   een andere plugin vraagt een ADR. Sessiebeleid en MFA: ADR 0003.
 - CSRF-middleware vóór alle routes; geen `cors()`. `bodyLimit` op de app; paginagrootte uit `limits.ts`.
+- Rate limit: elke route telt mee (standaard GET `lezen`, anders `schrijven`). Een route die mail verstuurt of duur rekent,
+  zet in het contract `rateLimit: 'duur'`. Grenzen alleen uit `limits.ts`, nooit per route een eigen getal.
 - `deploy/<host>/` bevat alleen een adapter die de Hono-app exporteert. Geen logica.
 - Tests per route: één per verboden rol (verwacht `FORBIDDEN`), één voor ongeldige input, de acceptatiecriteria.
 - Uniekheidsregel of geld: racetest met twee gelijktijdige requests; precies één slaagt.

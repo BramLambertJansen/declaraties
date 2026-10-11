@@ -173,7 +173,8 @@ Elke app heeft dit nodig, dus het hoort in de template. Elk punt eerst een spec.
       terugzetten als de focus verloren gaat. Vermoeden: pending-weergave of het laden van de chunk duurt langer dan
       `HEADING_WAIT_MS` (2 s), of het pad naar `resolvedLocation` loopt anders. Eerst reproduceren met een trace
       (`pnpm ui:check`), dan pas repareren
-- [ ] Rate limit voor app-routes in `defineRoute` (nu alleen in Better Auth), met grenzen uit `limits.ts` en foutcode `RATE_LIMITED`
+- [x] Rate limit voor app-routes in `defineRoute` (nu alleen in Better Auth), met grenzen uit `limits.ts` en foutcode `RATE_LIMITED`
+      (spec `rate-limit`; `app.consume_rate_limit`, `src/core/api/http/rate-limit.test.ts`, `test/api/rate-limit.int.test.ts`, `e2e/rate-limit.spec.ts`)
 - [x] Mail-layout in core: één basissjabloon (HTML en platte tekst, afzender, voettekst) met snapshot-test; uitnodiging gebruikt hem
       (`src/core/api/mail/layout.ts`, escaping en alleen http(s)-links getest)
 - [ ] Versie en build-SHA in `GET /api/health` en onderaan in de app

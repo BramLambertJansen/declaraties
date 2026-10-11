@@ -1,5 +1,6 @@
 import type { z } from 'zod';
 import type { Permissions } from './can.ts';
+import type { RateLimitCategory } from './limits.ts';
 
 // Route-contracten (framework §8 "Contract"; ADR 0008): methode, pad, input, output en permissie, zonder handler. Ze staan in
 // src/shared, zodat de web-client ze kan lezen zonder iets uit src/api te importeren; de API koppelt er met defineRoute een
@@ -18,6 +19,12 @@ export interface Contract<
   readonly input: I;
   readonly output: O;
   readonly permission: Permission;
+  // Categorie van de rate limit (spec rate-limit); zonder: GET → lezen, anders schrijven. Uitzetten kan niet.
+  readonly rateLimit?: RateLimitCategory;
+}
+
+export function rateLimitCategory(contract: Pick<Contract, 'method' | 'rateLimit'>): RateLimitCategory {
+  return contract.rateLimit ?? (contract.method === 'GET' ? 'lezen' : 'schrijven');
 }
 
 function isStrict(schema: z.ZodObject): boolean {

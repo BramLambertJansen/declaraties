@@ -1,10 +1,10 @@
 import { drizzle } from 'drizzle-orm/node-postgres';
 import type { Pool, PoolClient } from 'pg';
-import { translateDatabaseError } from '../errors.ts';
+import { AppError, translateDatabaseError } from '../errors.ts';
 
-import type { Actor, ActorRole, WithUser } from './types.ts';
+import type { Actor, ActorRole, RateLimit, WithUser } from './types.ts';
 
-export type { Actor, ActorRole, SessionStrength, Tx, WithUser, WithUserOptions } from './types.ts';
+export type { Actor, ActorRole, RateLimit, SessionStrength, Tx, WithUser, WithUserOptions } from './types.ts';
 
 const STRENGTHS: ReadonlySet<string> = new Set(['password', 'mfa']);
 
@@ -42,19 +42,47 @@ export async function enterActor(client: PoolClient, actor: Actor): Promise<Acto
   return { role: role === 'user' || role === 'admin' ? role : null };
 }
 
-// Eén transactie per request met rol app_authenticated, app.user_id en app.session_strength (framework §6).
-// Databasefouten worden vertaald naar AppError (src/core/api/errors.ts).
+// De telling zelf (spec rate-limit), binnen een open transactie of savepoint ná enterActor: 0 = toegestaan, anders het
+// aantal seconden tot het venster afloopt.
+export async function consumeRateLimit(client: PoolClient, limit: RateLimit): Promise<number> {
+  const { rows } = await client.query<{ retry_after: number }>(
+    'select app.consume_rate_limit($1, $2, $3) as retry_after',
+    [limit.bucket, limit.windowSeconds, limit.max],
+  );
+  return rows[0]?.retry_after ?? 0;
+}
+
+export function rateLimited(retryAfter: number): AppError {
+  return new AppError('RATE_LIMITED', { retryAfter });
+}
+
+async function transaction<T>(client: PoolClient, begin: string, run: () => Promise<T>): Promise<T> {
+  await client.query(begin);
+  const result = await run();
+  await client.query('commit');
+  return result;
+}
+
+// Eén transactie per request met rol app_authenticated, app.user_id en app.session_strength (framework §6); met
+// rateLimit eerst een eigen korte transactie voor de telling, op dezelfde verbinding (spec rate-limit, OV-2).
+// Databasefouten worden vertaald naar AppError (src/core/api/errors.ts); faalt de telling, dan faalt de request (fail closed).
 export function createWithUser(pool: Pool): WithUser {
   return async (actor, work, options = {}) => {
     checkActor(actor);
     const client = await pool.connect();
     let destroy = false;
     try {
-      await client.query(options.readOnly === true ? 'begin read only' : 'begin');
-      const actorRole = await enterActor(client, actor);
-      const result = await work(drizzle({ client }), actorRole);
-      await client.query('commit');
-      return result;
+      const { rateLimit } = options;
+      if (rateLimit !== undefined) {
+        const retryAfter = await transaction(client, 'begin', async () => {
+          await enterActor(client, actor);
+          return consumeRateLimit(client, rateLimit);
+        });
+        if (retryAfter > 0) throw rateLimited(retryAfter);
+      }
+      return await transaction(client, options.readOnly === true ? 'begin read only' : 'begin', async () =>
+        work(drizzle({ client }), await enterActor(client, actor)),
+      );
     } catch (error) {
       destroy = error instanceof LeakedConnectionError;
       await client.query('rollback').catch(() => {

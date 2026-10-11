@@ -12,6 +12,7 @@ insert into catalogus values
   ('app.session_strength()', 'client', 'geeft alleen de sessiesterkte van de eigen actor terug'),
   ('app.is_mfa_admin()', 'client', null),
   ('app.assign_role(text, text)', 'client', null),
+  ('app.consume_rate_limit(text, integer, integer)', 'client', 'actor uit app.current_user_id(); zonder actor 42501 (spec rate-limit)'),
   ('app.user_roles_keep_one_admin()', 'intern', 'triggerfunctie van public.user_roles');
 
 -- Functies van extensies tellen niet mee (pgTAP staat in schema tap).

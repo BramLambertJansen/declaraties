@@ -172,6 +172,7 @@ test('de migraties in db/migrations zijn groen, en zonder `owner to app_definer`
     'db/migrations/20261009194039_user_roles.sql:26: app.assign_role',
     'db/migrations/20261009194039_user_roles.sql:41: app.user_roles_keep_one_admin',
     'db/migrations/20261009195546_assign_role_actor.sql:4: app.assign_role',
+    'db/migrations/20261011120000_rate_limits.sql:24: app.consume_rate_limit',
   ]);
 });
 

@@ -1,5 +1,5 @@
 // GEGENEREERD door `pnpm db:generate` (scripts/db-introspect.mjs) uit de gemigreerde database. Niet bewerken.
-import { pgSchema, pgTable, text, timestamp } from 'drizzle-orm/pg-core';
+import { integer, pgSchema, pgTable, text, timestamp } from 'drizzle-orm/pg-core';
 import { sql } from 'drizzle-orm';
 import type { UserId } from '#core/shared/ids.ts';
 
@@ -15,6 +15,12 @@ export const appAccounts = appSchema
     createdAt: timestamp('created_at', { withTimezone: true, mode: 'string' }),
   })
   .existing();
+
+export const appRateLimits = appSchema.table('rate_limits', {
+  key: text('key').primaryKey(),
+  windowStart: timestamp('window_start', { withTimezone: true, mode: 'string' }).notNull(),
+  hits: integer('hits').notNull(),
+});
 
 export const userRoles = pgTable('user_roles', {
   userId: text('user_id').$type<UserId>().primaryKey(),
