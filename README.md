@@ -1,58 +1,97 @@
 # App-template
 
-Fundering voor elke nieuwe webapp, gebouwd door AI-agents binnen afgedwongen kaders.
+Fundering voor webapps die je met code-agents bouwt, met React, een Hono-API en Postgres. De template bevat inloggen met tweestapsverificatie, accountbeheer, een UI-kit en controles voor codekwaliteit en datatoegang.
 
-- **De wet:** [docs/framework.md](docs/framework.md) — regels, architectuur, werkstraat.
-- **Voortgang:** [docs/roadmap.md](docs/roadmap.md).
-- **Agents:** [CLAUDE.md](CLAUDE.md) → [AGENTS.md](AGENTS.md) + padregels in `.claude/rules/`.
+Gedeelde onderdelen staan in `src/core`; eigen schermen, routes en contracten komen in de app-laag. Zo kunnen apps later updates uit de template overnemen.
 
-**Status:** fundering in opbouw (fase 0/1). Nog geen app-code, checks of CI.
+Agents werken met vaste instructies, featurespecs, voorbeelden en controles. De eigenaar bepaalt wat er gebouwd wordt en beoordeelt wijzigingen. Deze werkwijze is onderdeel van de template.
 
-## Stack
+## Wat er staat
 
-Vite + React SPA (`src/web`), Hono-API (`src/api`), gedeelde contracten (`src/shared`), gewone Postgres (`db/`).
-Frameworkcode staat apart in `src/core/`, zodat template-updates niet botsen met app-code ([ADR 0008](docs/adr/0008-grens-core-en-app.md)).
-Geen hosting- of databaseprovider in de template: een app kiest die zelf per ADR ([ADR 0002](docs/adr/0002-provider-neutraal.md)).
-Auth draait in de API op de eigen Postgres ([ADR 0003](docs/adr/0003-auth-in-de-api.md)); database in [ADR 0004](docs/adr/0004-database-tooling.md);
-toolchain en bot-identiteit in [ADR 0005](docs/adr/0005-toolchain-en-identiteit.md).
+- React met Vite, TanStack Router en Query, React Hook Form en Tailwind.
+- Een Hono-API met gevalideerde routes, permissies en vaste foutresponses.
+- Better Auth met uitnodigingen, sessies en TOTP voor beheerders.
+- Postgres met migraties, rolgebaseerde toegang en row-level security.
+- Een componentcatalogus, formulieren en toegankelijke navigatie.
+- Een lokale database en mailserver, tests en GitHub Actions.
+- Een containerimage die de webapp en API op dezelfde origin serveert.
+
+De basis is nog in ontwikkeling. Uitgebreid accountbeheer, achtergrondtaken, auditlogging en privacyfuncties staan op de [roadmap](docs/roadmap.md). Een eerste app moet nog bewijzen dat starten en template-updates soepel verlopen. Hosting en een databaseprovider kies je per app.
+
+## Documentatie
+
+Begin bij de [leeswijzer](docs/README.md).
+
+| Document | Wanneer je het nodig hebt |
+|---|---|
+| [Framework](docs/framework.md) | Architectuur en ontwikkelafspraken |
+| [Roadmap](docs/roadmap.md) | Open werk, prioriteiten en acceptatiecriteria |
+| [Een feature bouwen](docs/gouden-pad.md) | Een uitbreiding van database tot scherm |
+| [Definition of Done](docs/dod.md) | Een wijziging controleren en opleveren |
+| [Agentinstructies](AGENTS.md) | Werken met een code-agent; Claude Code leest ook [CLAUDE.md](CLAUDE.md) |
 
 ## Lokaal draaien
 
-Vereist: Ubuntu 24.04 (native of WSL2), Docker Engine, [mise](https://mise.jdx.dev), gh, `bubblewrap` en `socat`
-(zonder die twee start Claude Code hier niet: de sandbox staat op `failIfUnavailable`).
+Voor de ondersteunde ontwikkelomgeving heb je Ubuntu 24.04 of WSL2, Docker Engine, [mise](https://mise.jdx.dev), GitHub CLI, `bubblewrap` en `socat` nodig. De laatste twee gebruikt de Claude Code-sandbox. De toolversies staan in `mise.toml` en `package.json`.
+
+Voer na het clonen eenmalig de installatie uit:
 
 ```sh
-scripts/bootstrap.sh   # eenmalig: mise install, pnpm install, git-hooks (lefthook), daarna scripts/doctor.sh
-pnpm dev               # Docker-check, .env.local, Postgres 17 + pgTAP en Mailpit, migraties, API :8787 + web http://localhost:5173 (de origin uit APP_ORIGIN)
-                       # mail lokaal bekijken: Mailpit op http://localhost:54324 (MAIL_UI_PORT)
+scripts/bootstrap.sh
 ```
 
-Draait er al een app op die poorten: tel 10 op bij `PG_PORT`, `MAIL_UI_PORT` en `SMTP_PORT` én bij de poort in de drie database-URL's en `SMTP_URL` in `.env.local`.
+Start daarna de lokale omgeving:
 
-Lokale accounts (gemaakt door `pnpm dev`, alleen lokaal; wachtwoord `lokaal-demo-wachtwoord`):
+```sh
+pnpm dev
+```
 
-| Account | Rol | TOTP |
-|---|---|---|
-| `admin@template.test` | admin | vast geheim; voeg toe aan je authenticator-app met `otpauth://totp/localhost:admin%40template.test?secret=NRXWWYLBNQWWIZLNN4WXI33UOAWXG3DFOV2GK3BNGAYDAMBQGAYA&issuer=localhost&digits=6&period=30` |
-| `gebruiker@template.test` | user | — |
+Dit start Postgres en Mailpit, past migraties toe en start de API en webapp. Standaard staat de webapp op `http://localhost:5173`, de API op poort 8787 en Mailpit op `http://localhost:54324`.
 
-Eerste admin in een echte omgeving, of buitengesloten: `pnpm admin:create --email …` ([runbook](docs/operations/eerste-admin.md)).
+Poorten staan in `.env.local`. Bij meerdere apps moet je ook de bijbehorende poorten in de database-URL's en `SMTP_URL` aanpassen.
 
-Checks: `pnpm gate:fast` (lint, typecheck, lagen, unit), `pnpm test:db` en `pnpm ui:check` (in de runner-container van
-[ADR 0009](docs/adr/0009-tests-buiten-de-sandbox.md)). Overzicht: `node scripts/kit/feiten.mjs`. Machine controleren: `scripts/doctor.sh`.
+### Lokale accounts
+
+`pnpm dev` maakt onderstaande demoaccounts. Het wachtwoord is `lokaal-demo-wachtwoord`.
+
+| Account | Rol |
+|---|---|
+| `admin@template.test` | Beheerder, met TOTP |
+| `gebruiker@template.test` | Gebruiker |
+
+Voeg de lokale beheerder toe aan je authenticator-app met deze URI:
+
+```text
+otpauth://totp/localhost:admin%40template.test?secret=NRXWWYLBNQWWIZLNN4WXI33UOAWXG3DFOV2GK3BNGAYDAMBQGAYA&issuer=localhost&digits=6&period=30
+```
+
+Deze accounts en waarden zijn alleen voor lokaal gebruik. Voor een eerste beheerder of accountherstel in een andere omgeving volg je het [beheerdersrunbook](docs/operations/eerste-admin.md).
+
+## Controles
+
+| Commando | Controleert |
+|---|---|
+| `pnpm gate:fast` | Formatteren, lint, types, architectuurregels en unittests |
+| `pnpm gate:slow` | Database- en integratietests, schermtests en schema-snapshot |
+| `pnpm build` | TypeScript en de productiebuild van de webapp |
+| `scripts/doctor.sh` | De lokale ontwikkelomgeving |
+| `node scripts/kit/feiten.mjs` | Beschikbare controles, registraties en documentstatussen |
+
+Database- en schermtests draaien in de runner-container. Zie [ADR 0009](docs/adr/0009-tests-buiten-de-sandbox.md) voor de inrichting en [de DoD](docs/dod.md) voor controles per wijziging. GitHub Actions voert controles uit; branchbescherming wordt apart ingesteld.
 
 ## Nieuwe app starten
 
-Laat Claude Code het doen met [docs/nieuwe-app.md](docs/nieuwe-app.md): machine, repo, koppeling, instellingen, lokale stack en databasebewijs.
+Volg het [setup-playbook](docs/nieuwe-app.md) om een app aan te maken, te hernoemen en aan de templategeschiedenis te koppelen. Dat playbook is geschreven voor Claude Code. Je kunt het zo klaarzetten:
 
 ```sh
-mkdir -p ~/setup && curl -fsSL https://raw.githubusercontent.com/BramLambertJansen/template/main/docs/nieuwe-app.md -o ~/setup/nieuwe-app.md
-cd ~/setup && claude        # zeg: Volg nieuwe-app.md
+mkdir -p ~/setup
+curl -fsSL https://raw.githubusercontent.com/BramLambertJansen/template/main/docs/nieuwe-app.md -o ~/setup/nieuwe-app.md
+cd ~/setup
+claude
 ```
 
-De afspraken erachter ([ADR 0006](docs/adr/0006-app-uit-template.md)):
+Geef Claude Code de opdracht: `Volg nieuwe-app.md`.
 
-1. Deze repo staat op **Settings → Template repository**; een app ontstaat met **Use this template**.
-2. Direct daarna eenmalig een merge-commit die de geschiedenis koppelt (`-s ours`); updates later met `git merge template/main`
-   op een branch, via een PR, gemerged met **Create a merge commit** — nooit squash.
-3. App-eigen ADR's nummeren vanaf `0100`. De hosting-ADR volgt bij de eerste release (roadmap fase 3), niet bij de start.
+De eigenaar moet **Settings → Template repository** inschakelen voordat **Use this template** beschikbaar is. Een nieuwe app krijgt daarna eenmalig een merge-commit die de geschiedenis koppelt. Latere updates gaan met `git merge template/main` op een branch en via een PR. Merge zulke updates met **Create a merge commit**, zodat de koppeling behouden blijft; zie [ADR 0006](docs/adr/0006-app-uit-template.md).
+
+App-eigen architectuurbesluiten nummeren vanaf `0100`. De keuze voor hosting en een beheerde database volgt bij de eerste release.

@@ -478,3 +478,40 @@ Een bestaand script of ADR bewijst niet dat de bijbehorende capability compleet 
   **Klaar als:** pakket is weglaatbaar en voegt zonder activatie geen tabellen, dependencies of externe dienst toe;
   SaaS-tests bewijzen tenant-isolatie over API én database; PWA-tests bewijzen updates en uitloggen zonder achterblijvende
   privé-cache. Feature flags, onderhoudsmodus en unsaved-form-waarschuwingen blijven op aanleiding zoals eerder besloten.
+
+### ST-14 — P1: documentatie en bouwresten opruimen
+
+- [ ] **Doel:** een repo waarmee mensen en agents apps kunnen bouwen zonder eerst het bouwproces van het framework te reconstrueren.
+  De teksten moeten helder, natuurlijk Nederlands zijn. Bouwen met agents blijft het uitgangspunt van de template.
+  **Behoud van agentinformatie:** verwijder niets dat agents helpt de template of het framework correct te gebruiken.
+  Behoud instructies, skills, hooks, voorbeelden, specs, ontwerpcontext, bekende valkuilen, herstelstappen, overdracht en bewijs.
+  Dat informatie over agents of het bouwproces gaat, maakt haar niet overbodig. Bij twijfel blijft ze staan.
+  **Eerste stap:** README, changelog en leeswijzer zijn herschreven; de volledige opschoonronde staat nog open.
+  **Inventarisatie:** loop alle bijgehouden bestanden na: documentatie, codecommentaar, gebruikers- en mailteksten,
+  scripts, agentinstructies en GitHub-templates. Noteer per kandidaat wie hem leest, waar hij wordt gebruikt en of hij
+  blijft, wordt herschreven, wordt samengevoegd of verdwijnt. Controleer imports, links, generators en checks die erop rekenen.
+  Beoordeel ook gebruik als agentcontext: afzonderlijk geladen padregels, sessieherstel, voorbeelden en preventie van eerdere fouten.
+  Begin bij oude plannen, reviewverslagen, voortgangsbestanden, herstelnotities en toelichting op mislukte bouwpogingen.
+  **Redactie:** schrijf over de huidige werking. Verwijder gesprekstaal, zelfbeoordelingen, opgeblazen formuleringen,
+  lege herhaling en verouderde statusclaims. Behoud herhaling waar afzonderlijk geladen agentcontext die nodig heeft.
+  Zet besliste open vragen om in besluiten, met behoud van datum, herkomst, alternatieven en relevante afwegingen.
+  Gebruik roadmaptaken voor open werk, ADR's voor keuzes en de changelog voor wijzigingen die een app raken.
+  Houd de menselijke leesroute kort: README → leeswijzer → gebruik of ontwikkeling.
+  **Opruimen:** een bouwverslag mag alleen verdwijnen als het geen nut meer heeft voor mensen of agents.
+  Verplaats unieke, bruikbare informatie eerst naar een passende, vindbare plek en controleer de verwijzingen ernaartoe.
+  Leg per verwijdervoorstel vast waarom geen instructie, ontwerpcontext of leerpunt verloren gaat.
+  Git of een oude PR alleen is geen vervanging voor informatie die een agent tijdens het werken nodig heeft.
+  Bewijs voor een open taak blijft bereikbaar totdat die taak is afgerond.
+  Verwijder geen tests, fixtures, migraties, gates, veiligheidsregels of goedkeuringshistorie als vermeend bouwafval.
+  Raakt opruimen zo'n onderdeel, leg de wijziging apart aan de eigenaar voor. Herschrijf geen Git-geschiedenis.
+  **GitHub:** vul een korte beschrijving en passende topics in; controleer de template-instelling en de uitleg voor nieuwe apps.
+  Voorgestelde beschrijving: "Template om webapps met code-agents te bouwen. React, Hono en Postgres, met agentinstructies, UI-componenten en ontwikkelcontroles."
+  De controle op 2026-10-11 vond geen beschrijving of topics en een uitgeschakelde template-instelling.
+  **Afhankelijkheden:** eigenaarreview van de opruiminventaris; geldende besluiten en bewijscriteria; app-init die README/changelog gebruikt.
+  **Klaar als:** elk bestand in de inventaris heeft een onderbouwde bestemming; overbodige bouwresten zijn verwijderd
+  en verwijzingen aangepast; documentatie klopt met code en beschikbare commando's; een menselijke lezer kan de app starten
+  en de bouwafspraken vinden zonder reviewlogs te lezen. Documentatiecontrole en toepasselijke gates zijn groen;
+  app-init blijft werken; een zoekronde vindt geen achtergebleven verwijzingen naar verwijderde bestanden.
+  De inventaris toont waar alle bruikbare agentinformatie behouden is. Loop de agentprocedure voor een nieuwe app en
+  een feature na: instructies, voorbeelden, beslissingen en herstelcontext zijn nog bereikbaar vanuit hun normale startpunten.
+  De eigenaar leest de instappagina's en een steekproef van de overige teksten. Een woordfilter alleen bewijst geen goede redactie.
