@@ -1,5 +1,5 @@
 ---
-status: goedgekeurd # voorstel | goedgekeurd | gebouwd | vervallen — alleen de eigenaar zet goedgekeurd
+status: gebouwd # gebouwd in PR #51
 namespace: design-system
 ---
 
