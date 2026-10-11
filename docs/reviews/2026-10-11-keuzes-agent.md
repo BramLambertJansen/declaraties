@@ -22,6 +22,14 @@ Elke PR had een onafhankelijke read-only reviewer (subagent); fixes uit de revie
 | 14 | Achtergrondtaken | Runner in het API-proces met advisory locks, eigen rol `app_jobs`, mail-outbox | Queue-bibliotheek; cron van de host | ADR 0020 |
 | 15 | Audit log | In core, append-only, alleen ID's, in dezelfde transactie; lezen alleen admin met MFA | Op aanleiding; generieke triggers | ADR 0021 |
 | 16 | AVG | Export door de gebruiker, verwijderen door admin met MFA, bewaarcatalogus per tabel, register-sjabloon | Alleen documentatie | ADR 0022 |
+| 17 | Specs | `eigen-account`, `accountbeheer-uitbreiding`, `rate-limit`, `lijstpagina` goedgekeurd met de aanbeveling per open vraag, na verwerking van een securityreview | Laten wachten op de eigenaar | #77 |
+| 18 | Specs, detail | Blokkeren telt in `authGateway.getSession` (ook bij een race); een geblokkeerd account ziet de gewone inlogfout (geen wachtwoord-orakel); resetlink 1 uur | Aparte melding "geblokkeerd"; resetlink 7 dagen | #77 |
+| 19 | Specs, detail | MFA-sterkte én `createdAt` blijven na een wachtwoordwijziging; `revokeOtherSessions` altijd waar; bevestiging e-mail via eigen POST-route | Better Auth-standaard | #77 |
+| 20 | Rate limit | Venster 60 s; lezen 300, schrijven 60, duur 10; `unlogged`-tabel; telling vóór inputvalidatie | Better Auth-limiet ook voor app-routes | #77 |
+| 21 | ADR-correcties | Verwijderen in één transactie door `app_definer` (geen deadlock); outbox zonder token, `auth_service` blijft in `better_auth`; `withJob()` en `purgeExpired()` als nieuwe exports | Zoals eerst voorgesteld | #80 |
+| 22 | Audit log | Minimum bewaartermijn 1 jaar (een app kan verlengen, niet verkorten zonder review); `app.retention` krijgt kolom `purger` (`app`/`auth`) | Termijn vrij per app | #80 |
+| 23 | Request-ID | Altijd door de server gemaakt; een `X-Request-Id` van de client wordt genegeerd | Hono-standaard (overnemen) | #83 |
+| 24 | axe | Geen uitzonderingen in `scanAxe`, lintregels tegen omzeilingen; de scan zelf (tags) bewaakt `e2e/**` als gate-pad | Uitzonderingen in de ratchet | #82 |
 
 Nog niet besloten (vraagt de eigenaar): contactadres voor `security.txt`, eigenaar in `LICENSE`, versie en build-SHA zichtbaar maken,
 verplichte checks in de ruleset (`image`, `secrets`, `codeql`).
