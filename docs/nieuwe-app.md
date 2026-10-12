@@ -338,53 +338,27 @@ gh repo edit "$R" --enable-merge-commit --enable-squash-merge --enable-rebase-me
 # Actions: workflows alleen lezen, mogen geen PR's goedkeuren, acties op volledige SHA.
 gh api -X PUT "repos/$R/actions/permissions/workflow" -f default_workflow_permissions=read -F can_approve_pull_request_reviews=false
 gh api -X PUT "repos/$R/actions/permissions" -F enabled=true -f allowed_actions=all -F sha_pinning_required=true
-
-# Ruleset op main: dezelfde regels als op de template (PR-plicht, geen force push of delete, opgeloste gesprekken,
-# merge en squash) en de verplichte checks uit .github/workflows/ (job-namen zoals ze op een PR staan; 15368 = GitHub Actions).
-gh api -X POST "repos/$R/rulesets" --input - <<'JSON'
-{
-  "name": "main",
-  "target": "branch",
-  "enforcement": "active",
-  "conditions": { "ref_name": { "include": ["~DEFAULT_BRANCH"], "exclude": [] } },
-  "rules": [
-    { "type": "deletion" },
-    { "type": "non_fast_forward" },
-    { "type": "pull_request", "parameters": {
-        "required_approving_review_count": 0,
-        "dismiss_stale_reviews_on_push": true,
-        "require_code_owner_review": false,
-        "require_last_push_approval": false,
-        "required_review_thread_resolution": true,
-        "allowed_merge_methods": ["merge", "squash"]
-    } },
-    { "type": "required_status_checks", "parameters": {
-        "strict_required_status_checks_policy": false,
-        "required_status_checks": [
-          { "context": "gate:fast", "integration_id": 15368 },
-          { "context": "gate:slow", "integration_id": 15368 },
-          { "context": "secrets", "integration_id": 15368 },
-          { "context": "image", "integration_id": 15368 },
-          { "context": "check:new-resource", "integration_id": 15368 },
-          { "context": "codeql (actions)", "integration_id": 15368 },
-          { "context": "codeql (javascript-typescript)", "integration_id": 15368 },
-          { "context": "osv-scanner", "integration_id": 15368 }
-        ]
-    } }
-  ]
-}
-JSON
 ```
 
-Private repo zonder GitHub Advanced Security: CodeQL draait daar niet (`.github/workflows/codeql.yml`), en een verplichte `codeql (…)`
-blokkeert dan elke PR. Laat de twee `codeql`-regels dan weg en zet in de overdracht dat de app per ADR kiest: GHAS, public, of `codeql.yml` uit.
+**Ruleset op `main` (overdracht).** `scripts/github-ruleset.sh` zet de ruleset `main` volgens framework §10: geen delete of force push,
+PR-plicht, opgeloste reviewgesprekken, merge en squash, en de verplichte checks uit `.github/workflows/` (`gate:fast`, `gate:slow`,
+`secrets`, `image`, `check:new-resource`, `codeql (actions)`, `codeql (javascript-typescript)`, `osv-scanner`, alle van GitHub Actions). Dat is `main-dicht` van de template plus opgeloste gesprekken en `codeql (javascript-typescript)`.
+`test/scripts/github-ruleset.test.ts` houdt de lijst gelijk aan de workflows. Opnieuw draaien werkt de bestaande ruleset bij.
+Het script schrijft naar GitHub met de login van de eigenaar; jij draait het niet.
+
+> 1. `cd ~/code/<slug> && scripts/github-ruleset.sh <owner>/<slug>`
+>    Private repo zonder GitHub Advanced Security: voeg `--zonder-codeql` toe (CodeQL draait daar niet, `.github/workflows/codeql.yml`,
+>    en een verplichte `codeql (…)` zou elke PR blokkeren).
+> 2. Typ *klaar*, of plak de uitvoer als er een ✗ staat.
+
+Met `--zonder-codeql`: zet in de overdracht dat de app per ADR kiest: GHAS, public, of `codeql.yml` uit.
 
 Waarom 0 goedkeuringen en geen code-owner-review: zolang de agent nog onder het account van de eigenaar pusht, is de eigenaar ook de PR-auteur,
 en GitHub laat je je eigen PR niet goedkeuren. Zodra de GitHub App voor de agent bestaat (roadmap ST-01, ADR 0005), gaan beide aan.
 De diff-guard (`guard.yml`) is tot dan geen verplichte check (ADR 0017). Zet dat in de overdracht.
 
 Weigert de API iets:
-- ruleset op een private repo zonder Pro/Team → stop, meld de keuze aan de eigenaar (Pro, organisatie met Team, of public). Wijzig zelf de zichtbaarheid niet.
+- ruleset op een private repo zonder Pro/Team → het script meldt het en stopt; meld de keuze aan de eigenaar (Pro, organisatie met Team, of public). Wijzig zelf de zichtbaarheid niet.
 - `sha_pinning_required` onbekend → meld: Settings → Actions → General → **Require actions to be pinned to a full-length commit SHA**.
 
 Controle: `gh api repos/$R/rulesets --jq '.[].name'` toont `main`; `gh repo view $R --json mergeCommitAllowed,squashMergeAllowed,rebaseMergeAllowed`.
@@ -500,7 +474,7 @@ Schrijf het voortgangsbestand af en stuur één bericht, ongeveer zo:
 > **Template-updates binnenhalen:** zie hieronder. Altijd **Create a merge commit**, nooit squash.
 >
 > **Later aanzetten:** goedkeuring en code-owner-review in de ruleset, en de diff-guard als verplichte check, zodra de agent via de GitHub App pusht.
-> <Alleen als de CodeQL-checks zijn weggelaten (Fase 6.2): kies per ADR GHAS, public of `codeql.yml` uit.>
+> <Alleen als de CodeQL-checks zijn weggelaten (Fase 6.2, `--zonder-codeql`): kies per ADR GHAS, public of `codeql.yml` uit.>
 >
 > **Bevindingen:** <notities uit het voortgangsbestand, of "geen">
 
