@@ -204,7 +204,8 @@ const CASES = /\b(?:test|it)(?:\.each\b[^(]*\([^)]*\))?\s*\(/g;
 
 // Testbestanden in testpaden; de rest daar is een hulpbestand (harness, fixture, setup, e2e/support).
 const TEST_FILES = ['**/*.test.*', '**/*.spec.*', 'db/tests/**'];
-// Fixtures bewijzen dat een check faalt en de setup draait vóór elke test: wijzigen is een gate (WS-02).
+// Fixtures bewijzen dat een check faalt en de setup draait vóór elke test: wijzigen is een gate (WS-02), ook voor een
+// bestand daaronder dat als testbestand heet.
 const LOCKED_HELPERS = ['test/rails/fixtures/**', 'test/setup/**'];
 
 /**
@@ -218,7 +219,8 @@ function existingTest({ rel, change, role }, ctx, decision) {
   const before = ctx.read(rel) ?? '';
   const count = (/** @type {string} */ text, /** @type {RegExp} */ pattern) => (text.match(pattern) ?? []).length;
   const helper = !TEST_FILES.some((glob) => globMatch(glob, rel));
-  if (helper && LOCKED_HELPERS.some((glob) => globMatch(glob, rel))) {
+  // Vóór de indeling als testbestand: ook een fixture die `*.test.*` heet, blijft vergrendeld (WS-02 follow-up).
+  if (LOCKED_HELPERS.some((glob) => globMatch(glob, rel))) {
     gate(decision, role, `${rel} is een fixture of setup: wijzigen of verwijderen alleen met akkoord van de eigenaar (WS-02)`);
   } else if (change.kind === 'delete') {
     gate(decision, role, `${rel} is een bestaande test: verwijderen alleen met akkoord van de eigenaar (AGENTS.md)`);

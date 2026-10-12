@@ -10,6 +10,8 @@ const FILES: Record<string, string> = {
   'test/rails/fixtures/secdef/goed.sql': 'create function f() returns void;\n',
   'test/setup/git-env.ts': 'export const env = {};\n',
   'test/setup/git-env.test.ts': "test('a', () => {});\ntest('b', () => {});\n",
+  'test/rails/fixtures/depcruise/src/api/testing.int.test.ts': "test('x', () => {});\n",
+  'test/rails/check-docs-schrijfrecht.test.ts': "test('a', () => {});\ntest('b', () => {});\n",
   'test/api/account-harness.ts': 'export const harness = 1;\n',
   'e2e/support/login.ts': 'export const login = 1;\n',
   'vitest.config.ts': 'export default {};\n',
@@ -118,13 +120,37 @@ describe('WS-02: overige hulpbestanden', () => {
     expect([decision.deny, decision.ask, decision.context]).toStrictEqual([[], [], []]);
   });
 
-  test('regressie: een gewoon bestaand testbestand wijzigen blijft een melding, geen deny', () => {
-    const decision = run(edit('test/setup/git-env.test.ts', ["test('a'", "test('aa'"], 'tester'));
+  test('regressie: een gewoon bestaand testbestand buiten fixtures/setup wijzigen blijft een melding, geen deny', () => {
+    const decision = run(edit('test/rails/check-docs-schrijfrecht.test.ts', ["test('a'", "test('aa'"], 'tester'));
 
     expect(decision.deny).toStrictEqual([]);
     expect(decision.ask).toStrictEqual([]);
     expect(decision.context.join('\n')).toContain('bestaande test');
     expect(decision.context.join('\n')).not.toContain('hulpbestand gewijzigd');
+  });
+});
+
+describe('WS-02 follow-up: een fixture met een testbestandnaam is ook vergrendeld', () => {
+  const locked = 'test/rails/fixtures/depcruise/src/api/testing.int.test.ts';
+  const change: [string, string] = ["test('x'", "test('y'"];
+  test.each([
+    { name: 'Edit door developer', payload: edit(locked, change, 'developer'), expected: 'deny' },
+    { name: 'Edit door tester', payload: edit(locked, change, 'tester'), expected: 'deny' },
+    { name: 'Edit door hoofdsessie', payload: edit(locked, change), expected: 'ask' },
+    { name: 'rm via Bash door tester', payload: bash(`rm ${locked}`, 'tester'), expected: 'deny' },
+    { name: 'rm via Bash door hoofdsessie', payload: bash(`rm ${locked}`), expected: 'ask' },
+    {
+      name: 'Edit op setup/git-env.test.ts door tester (setup is vergrendeld)',
+      payload: edit('test/setup/git-env.test.ts', ["test('a'", "test('aa'"], 'tester'),
+      expected: 'deny',
+    },
+    {
+      name: 'Write van een nieuw testbestand in fixtures is vrij',
+      payload: write('test/rails/fixtures/x/nieuw.test.ts', "test('n', () => {});\n", 'tester'),
+      expected: 'allow',
+    },
+  ])('$name → $expected', ({ payload, expected }) => {
+    expect(verdict(payload)).toBe(expected);
   });
 });
 

@@ -296,10 +296,11 @@ voor andere runtimes (Codex, cloudsessies) niet gelden. De eisen hierboven gelde
 tester: testpaden; reviewer: niets; docs (optioneel): `docs/reviews/`, `docs/operations/`, `docs/README.md`, `docs/gouden-pad.md`, `README.md`,
 `CHANGELOG.md`, geen gate-paden: roadmap-vinkjes en spec- of ADR-statussen stelt hij voor; developer en hoofdsessie: alles behalve gates en bestaande tests). De rolhek-hook leest hem lokaal,
 de diff-guard in CI leest dezelfde lijst, en `check-docs` vergelijkt CODEOWNERS en `ask` ermee. Een bestaand hulpbestand in een testpad (geen
-`*.test.*`/`*.spec.*`/`db/tests/`) wijzigen meldt het rolhek ("hulpbestand gewijzigd"), verwijderen is een gate; `test/rails/fixtures/` en
-`test/setup/` wijzigen ook (`.claude/hooks/lib/rolhek.mjs:206`). `check-docs` faalt als `schrijfrecht` van een rol overlapt met `gates`, behalve
-architect → `docs/adr/**` en `docs/specs/**`, tester → testpaden, en developer en hoofdsessie (het rolhek handelt gates voor hen af met ask/deny);
-een gate die zelf een testpad is telt niet mee (`scripts/kit/check-docs.mjs:251`).
+`*.test.*`/`*.spec.*`/`db/tests/`) wijzigen meldt het rolhek ("hulpbestand gewijzigd"), verwijderen is een gate; een bestaand bestand onder
+`test/rails/fixtures/` of `test/setup/` wijzigen ook, ook als het `*.test.*` heet (`existingTest` in `.claude/hooks/lib/rolhek.mjs`). `check-docs`
+faalt als `schrijfrecht` van een rol overlapt met `gates`, behalve architect → `docs/adr/**` en `docs/specs/**`, tester → testpaden, en developer
+en hoofdsessie (het rolhek handelt gates voor hen af met ask/deny); alleen de bestandsnaam-gates uit `testpaden` (`**/*.test.*`, `**/*.spec.*`)
+tellen niet mee, map-gates als `test/**` en `e2e/**` wel (`schrijfrechtViolations` in `scripts/kit/check-docs.mjs`).
 
 Hooks (exit 2 blokkeert; exit 1 en een timeout laten het toolgebruik door — fail-open. Elke hook is daarom kort en deterministisch,
 met een korte expliciete `timeout` en `set -euo pipefail` met `trap 'exit 2' ERR`; de harde grens blijven sandbox, CI en GitHub).

@@ -259,8 +259,10 @@ const SCHRIJFRECHT_VRIJ = {
 const SCHRIJFRECHT_ALLES = new Set(['developer', 'hoofdsessie']);
 
 /**
- * Check 5: een rol mag niet zonder ask/deny in een gate schrijven. Een gate die zelf een testpad is, telt niet: toevoegen is
- * daar vrij voor elke rol en een bestaand bestand bewaakt het rolhek (existingTest), ongeacht `schrijfrecht`.
+ * Check 5: een rol mag niet zonder ask/deny in een gate schrijven. Alleen de bestandsnaam-gates uit `testpaden`
+ * (beginnend met `**\/`, zoals `**\/*.test.*`) tellen niet: die overlappen met elke map, ook `docs/reviews/**`, en een
+ * bestaand testbestand bewaakt het rolhek (existingTest). Map-gates (`test/**`, `e2e/**`, `db/tests/**`) tellen wel: daar
+ * schrijft alleen de tester (SCHRIJFRECHT_VRIJ).
  * @param {string} text
  * @returns {Violation[]}
  */
@@ -271,7 +273,8 @@ function schrijfrechtViolations(text) {
     typeof raw === 'object' && raw !== null ? Object.entries(raw).find(([name]) => name === key)?.[1] : undefined;
   const strings = (/** @type {unknown} */ value) => (Array.isArray(value) ? value.map(String) : []);
   const testpaden = strings(entry('testpaden'));
-  const gates = strings(entry('gates')).filter((gate) => !testpaden.includes(gate));
+  const naamGates = testpaden.filter((glob) => glob.startsWith('**/'));
+  const gates = strings(entry('gates')).filter((gate) => !naamGates.includes(gate));
   const rollen = entry('schrijfrecht');
   if (typeof rollen !== 'object' || rollen === null) return [];
   return Object.entries(rollen)
