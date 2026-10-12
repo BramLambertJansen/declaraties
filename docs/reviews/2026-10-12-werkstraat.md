@@ -4,6 +4,9 @@ Voor de uitvoerende agent. Dit document is zelfstandig: alles wat in het gesprek
 gecontroleerd, staat hier. Gemeten op commit `1312b61` (`main`, 2026-10-12). Regelnummers gelden voor die commit; controleer
 ze met de feiten voordat je bouwt.
 
+**Bijgewerkt 2026-10-12** met de besluiten van de eigenaar (§3) en een controle tegen `b52b001` (§8). Fase A: dit plan en ADR 0025;
+fase B (WS-02..WS-06) pas na acceptatie van ADR 0025. Token-, App- en credentialwerk is geparkeerd (§9).
+
 Dit is geen goedgekeurde spec en geen ADR. Het geeft geen toestemming voor beschermde paden, nieuwe dependencies of
 statuswijzigingen. Werkwijze zoals altijd: `AGENTS.md`, framework §8, `docs/dod.md`. Elke rail-fix begint met een test die op de
 oude code faalt (framework §1.5).
@@ -22,29 +25,33 @@ oude code faalt (framework §1.5).
 - **E-3** De architect kiest in de spec het model van de developer: Sonnet als het werk goed is uitgewerkt, Opus alleen als het echt heel moeilijk is.
 - **E-4** Ontwikkelen blijft op Ubuntu 24.04 in WSL2 (framework §11). Geen platformwissel.
 
-## 3. Open vragen voor de eigenaar
+## 3. Vragen aan de eigenaar (beantwoord 2026-10-12)
 
-Bouw niets dat van een open vraag afhangt voordat de eigenaar antwoordt. De aanbeveling is wat dit plan aanneemt.
+Besluiten van de eigenaar op 2026-10-12, niet opnieuw vragen:
+- **W-1, W-2, W-4, W-5, W-6**: akkoord volgens de aanbeveling hieronder.
+- **W-7**: ADR 0025 vervangt ADR 0023 punt 7; ADR 0023 zelf blijft ongewijzigd. ADR 0025 zegt "Vervangt 0023 punt 7".
+- **W-3: uitgesteld.** De agent blijft pushen met de `gh`-login van de machine (de huidige stand, framework §8: "tot die App bestaat").
+  Geen token-, App-, timer-, sleutel- of credentialwerk; zie §9.
 
 | OV | Vraag | Aanbeveling | Hangt af |
 |---|---|---|---|
 | W-1 | Wanneer is een spec "echt heel moeilijk" (Opus)? | Alleen: (a) gelijktijdigheid of geld (racecondities, idempotentie, advisory locks); (b) datamigratie op bestaande rijen; (c) wijziging in de kern van auth, MFA of sessies, of in `src/core`; (d) `security definer`-functie of -view. Een gewone tabel met RLS-policies is Sonnet: pgTAP-invarianten, `check-policies` en `check:secdef` vangen de bekende fouten. | WS-05 |
 | W-2 | Volgt de tester het modelveld? | Ja: één veld `model` voor developer én tester. Bij Opus-werk zijn de tests het moeilijkste deel; met beide op Sonnet delen ze dezelfde blinde vlekken. Reviewer en architect blijven altijd Opus. | WS-05 |
-| W-3 | Met welke identiteit pusht de agent tot de GitHub App er is? | Een fine-grained token van de eigenaar, alleen voor deze repo: Contents en Pull requests read/write, Actions en Checks read, Metadata read; geen Workflows of Administration. Dan kan de agent geen workflows wijzigen, en een gelekt token kan niets buiten deze repo. Het blijft het account van de eigenaar, dus de diff-guard blijft `overgang` (ADR 0017); dat lost pas de App op (ST-01). | WS-00, WS-04 |
+| W-3 | Met welke identiteit pusht de agent tot de GitHub App er is? | **Uitgesteld (2026-10-12), niet bouwen; §9.** Oorspronkelijke aanbeveling: een fine-grained token van de eigenaar, alleen voor deze repo: Contents en Pull requests read/write, Actions en Checks read, Metadata read; geen Workflows of Administration. Dan kan de agent geen workflows wijzigen, en een gelekt token kan niets buiten deze repo. Het blijft het account van de eigenaar, dus de diff-guard blijft `overgang` (ADR 0017); dat lost pas de App op (ST-01). | WS-00, WS-04 |
 | W-4 | Op welk model draait de hoofdsessie? | Sonnet als standaard; `/model opus` alleen voor een moeilijk conflict. De hoofdsessie bouwt niet zelf (WS-05), maar draait het langst en is de grootste kostenpost (ADR 0023: context × beurten). Afdwingen kan niet; dit is een werkafspraak. | — |
 | W-5 | Moet de tester bij migraties en policies bewijzen dat zijn integratie- en pgTAP-tests rood zijn? `testerStop` controleert dat alleen voor unit-tests (`.claude/hooks/lib/werkstraat.mjs:115`). | Ja, met één `pnpm test:db`-run na de tester (`ask`; de eigenaar leest de nieuwe tests vóór de run, dat eist de DoD al), uitslag in de PR. Alleen bij een spec met een migratie. Via CI kan het niet: de pre-push-hook draait `gate:fast` en weigert rode unit-tests, en `--no-verify` is verboden. Alternatief: nee, en de reviewer controleert per policy de negatieve test op inhoud. | WS-04 |
-| W-6 | Het mandaat van 2026-10-10/11 (specs `goedgekeurd`, ADR's "geaccepteerd (agent, onder mandaat)") | Mandaat beëindigd verklaren tot `check-spec-approval` bestaat (roadmap stuk 6). Na deze PR's mag de agent meer; zelf goedkeuren mag hij dan niet meer. De vier specs en ADR 0018–0022 en 0024 zijn "ter herziening": de eigenaar loopt `docs/reviews/2026-10-11-keuzes-agent.md` door. | — |
+| W-6 | Het mandaat van 2026-10-10/11 (specs `goedgekeurd`, ADR's "geaccepteerd (agent, onder mandaat)") | Mandaat beëindigd verklaren tot `check-spec-approval` bestaat (roadmap stuk 6). Na deze PR's mag de agent meer; zelf goedkeuren mag hij dan niet meer. De specs onder mandaat (`accountbeheer-uitbreiding`, `eigen-account`, `lijstpagina` en het gebouwde `rate-limit`; `accountbeheer` niet, zie §8) en ADR 0018–0022 en 0024 zijn "ter herziening": de eigenaar loopt `docs/reviews/2026-10-11-keuzes-agent.md` door. | — |
 | W-7 | ADR 0023 punt 7 (`developer-kritiek` als tweede bouwagent) | Vervalt: WS-05 regelt hetzelfde met één developer en een modelkeuze per spec. ADR 0023 is nog `voorgesteld`; de eigenaar past punt 7 aan of laat ADR 0025 het vervangen. De overige punten van 0023 blijven los staan. | WS-01 |
 
 ## 4. Volgorde
 
 | Stap | Pakket | Wie | Beschermd | Hangt af van |
 |---|---|---|---|---|
-| 0 | WS-00 Eigenaar: ruleset, token, diagnose | eigenaar | n.v.t. | — |
+| 0 | WS-00 Eigenaar: ruleset (stap 1), diagnose (stap 3) | eigenaar, agent | n.v.t. | — |
 | 1 | WS-01 ADR 0025 (voorstel) | architect | ja (`docs/adr/`) | antwoorden W-1..W-7 |
 | 2 | WS-02 Railgaten: testpaden, configs, docs-rol | hoofdsessie + developer | ja | WS-01 geaccepteerd |
 | 3 | WS-03 Hooks in de juiste map; excludedCommands | hoofdsessie + developer | ja | WS-01 geaccepteerd |
-| 4 | WS-04 Oplevering: skill, rolhek, runner, migratiereferentie | hoofdsessie | ja | WS-02, WS-03 |
+| 4 | WS-04 Oplevering: skill, rolhek, runner, migratiereferentie (zonder punt 6) | hoofdsessie | ja | WS-02, WS-03 |
 | 5 | WS-05 Modelkeuze per spec | hoofdsessie | ja | WS-01 geaccepteerd |
 | 6 | WS-06 MCP-grens | hoofdsessie | ja | WS-01 geaccepteerd |
 
@@ -58,29 +65,46 @@ PR's en los ze op zoals WS-04 punt 1.7 beschrijft.
 Tot WS-04 gemergd is, doet de agent bij deze PR's zelf wat WS-04 beschrijft, voor zover het al mag: pushen naar een featurebranch
 en `gh pr create` laat het rolhek nu al toe (alleen `main`, force, merge, review, labels en statussen zijn dicht).
 
+**Aanbevolen uitvoeringsvolgorde (2026-10-12, na de controle in §8).** Binnen de afhankelijkheden hierboven: eerst wat concrete
+fouten of gaten dicht, daarna wat alleen bespaart.
+0. **Omgeving (eigenaar, vóór fase B).** Toolchain en hooks (`scripts/bootstrap.sh`, `pnpm install`), anders draaien `gate:fast`,
+   pre-commit en pre-push niet (§8 punt 8); een `gh`-login met pushrecht op deze repo (§8 punt 7); in de ruleset
+   `codeql (javascript-typescript)` erbij (WS-00). Zonder deze stap is doel 1 onhaalbaar, welk pakket ook af is.
+1. **WS-03 en WS-06.** Klein en concreet: `excludedCommands` noemt scripts die niet bestaan en mist er twee die de migratieskill
+   vraagt; MCP-tools met schrijfrechten (Supabase, Vercel) zijn in een sessie beschikbaar en het rolhek ziet ze niet.
+2. **WS-02.** Dicht een echt gat, maar meer paden vragen akkoord van de eigenaar: meer prompts en gate-PR's.
+3. **WS-04**, in twee PR's: (a) rolhek, runner en migratiereferentie; (b) skill en docs, beproefd op één echte PR.
+4. **WS-05** alleen met meting (`pnpm tokens` uit ADR 0023 bestaat nog niet, dus er is geen nulmeting), of bewust aanvaard als
+   ongemeten besparing. W-4 (hoofdsessie op Sonnet) is niet afdwingbaar.
+5. **Daarna ST-09** (proef-app), niet verder uitbreiden in de template: de roadmap zet de proef-app vóór verdere uitbreiding.
+
 ---
 
-## WS-00 — Eigenaar: GitHub dicht, token, diagnose (geen code)
+## WS-00 — Eigenaar: GitHub dicht en diagnose (geen code)
 
-**Waarom.** Framework §1.2 legt de harde grens in CI en op GitHub. Die grens staat nog niet aan (roadmap stuk 6, ST-01): geen
-ruleset, `guard.yml` niet verplicht. Als de agent zelf pusht, moet `main` eerst dicht.
+**Waarom.** Framework §1.2 legt de harde grens in CI en op GitHub. Die grens stond bij het schrijven van dit plan nog niet aan
+(roadmap stuk 6, ST-01): geen ruleset, `guard.yml` niet verplicht. Als de agent zelf pusht, moet `main` eerst dicht.
 
-**Werk (eigenaar, handwerk op github.com):**
-1. Ruleset op `main` (repo-niveau; repo is publiek en van een persoonlijk account, dus gratis): alleen via PR, geen force push,
-   geen delete; verplichte checks met de namen zoals ze op een PR verschijnen: `gate:fast`, `gate:slow`, `secrets`, `image`,
+**Werk:**
+1. **Ruleset op `main`** (eigenaar, handwerk, vóór de eerste push van de agent; niet de tussenversie uit `docs/nieuwe-app.md` 6.2,
+   die heeft geen verplichte checks): alleen via PR, geen force
+   push, geen delete; verplichte checks met de namen zoals ze op een PR verschijnen: `gate:fast`, `gate:slow`, `secrets`, `image`,
    `check:new-resource`, de CodeQL-jobs (`codeql (…)`) en osv-scanner (framework §10); merge-methoden merge en squash (ADR 0006).
-   Nog geen verplichte review: de auteur kan zichzelf niet goedkeuren (ADR 0006, ADR 0017 OV-2).
-2. Token volgens W-3, als `GH_TOKEN` in de omgeving waarin `claude` start (niet via `gh auth login`: dat overschrijft de eigen
-   login van de eigenaar, die `docs/nieuwe-app.md` 4.1 met `--scopes workflow` maakt). Maskeer het in de **gebruikers**instellingen
-   (`~/.claude/settings.json`, `sandbox.credentials`, modus `mask`, `injectHosts` github.com en api.github.com): volgens de Claude
-   Code-docs (sandboxing, "Mask credentials") mogen repo-instellingen de vervanging niet autoriseren. Controleer dat `git push`
-   via `gh auth setup-git` het token gebruikt.
-3. Diagnose van "ik moet zelf pushen": start `claude` in de repo (niet in `~`, zie ADR 0023), vraag een lege branch te pushen en
-   `gh pr create --draft` te draaien. Noteer wat er gebeurt: weigert het rolhek, een permissieregel, de sandbox (netwerk of
-   `~/.config/gh`), of vraagt de agent het alleen niet? Die uitkomst bepaalt of WS-04 ook iets aan credentials moet doen.
+   Nog geen verplichte review: de auteur kan zichzelf niet goedkeuren (ADR 0006, ADR 0017 OV-2). De agent zet dit niet zelf.
+2. ~~Token volgens W-3~~ — **geparkeerd** (W-3 uitgesteld, §9).
+3. **Diagnose van "ik moet zelf pushen"**, zonder PAT: de agent pusht de featurebranches van fase A met de huidige login en draait
+   `gh pr create`. Noteer exact wat gebeurt: weigert het rolhek, een permissieregel, de sandbox (netwerk of `~/.config/gh`), GitHub,
+   of vraagt de agent het alleen niet? De uitkomst staat in de PR's van fase A en in §8.
+
+**Gelezen op 2026-10-12** (`gh api repos/BramLambertJansen/template/rulesets`, alleen-lezend): ruleset `main-dicht`, `active`, op
+`~DEFAULT_BRANCH`, zonder bypass: `deletion`, `non_fast_forward`, `pull_request` (0 goedkeuringen, geen code-owner-review, merge en
+squash) en `required_status_checks` met `gate:fast`, `gate:slow`, `secrets`, `image`, `check:new-resource`, `codeql (actions)` en
+`osv-scanner`, alle zeven met `integration_id` 15368 (GitHub Actions). Afwijkingen van stap 1: `codeql (javascript-typescript)`
+(tweede job uit de matrix in `.github/workflows/codeql.yml:34`) ontbreekt; `required_review_thread_resolution` staat uit, terwijl
+`docs/nieuwe-app.md` 6.2 hem aanzet. Of de ruleset hiermee "staat", bevestigt de eigenaar; tot dan pusht de agent niet.
 
 **Klaar als:** `git push origin main` vanaf de agent wordt door GitHub geweigerd (uitvoer bewaard); een test-PR kan niet gemergd
-worden zolang een verplichte check rood is; de diagnose staat als notitie in de PR van WS-04.
+worden zolang een verplichte check rood is; de diagnose staat in de PR's van fase A.
 
 ---
 
@@ -100,6 +124,10 @@ worden zolang een verplichte check rood is; de diagnose staat als notitie in de 
 6. **Mergen ook voor de hoofdsessie in het rolhek dicht** (nu alleen een permissieregel): WS-04 punt 3.
 7. **Railgaten dichten** binnen ADR 0009 en 0011 (geen nieuw besluit, wel een framework-wijziging): WS-02, WS-03.
 8. **MCP-tools onder het rolhek**, met een allowlist voor leestools: WS-06.
+
+Daarnaast (besluiten 2026-10-12): **einde mandaat** (W-6): de agent keurt geen specs of ADR's meer goed; de specs en ADR's onder
+mandaat zijn "ter herziening". In ADR 0009 komt alleen de regel "Gewijzigd door 0025". Onder **"Niet beslist"** de geparkeerde
+onderwerpen uit §9, met verwijzing. Geen token of App in deze ADR.
 
 **Alternatieven om te noemen:** auto-merge na groen (verworpen: E-2); rebase met `--force-with-lease` (verworpen: punt 2);
 tweede bouwagent `developer-kritiek` (ADR 0023, verworpen: W-7); model per rol vast (verworpen: E-3).
@@ -210,7 +238,7 @@ tweede bouwagent `developer-kritiek` (ADR 0023, verworpen: W-7); model per rol v
 
 ## WS-04 — Oplevering: van groen lokaal tot klaar voor de merge
 
-**Aansluiting:** WS-01 punt 1, 2, 4, 5, 6; E-1, E-2; W-3, W-5. Dit is het pakket waar de eigenaar om vroeg.
+**Aansluiting:** WS-01 punt 1, 2, 4, 5, 6; E-1, E-2; W-5 (W-3 uitgesteld). Dit is het pakket waar de eigenaar om vroeg.
 Splitsen mag in twee PR's: (a) rolhek, runner en migratiereferentie (rails, eerst); (b) skill en docs.
 
 ### 1. Skill `.claude/skills/opleveren/SKILL.md`
@@ -298,14 +326,14 @@ zonder veiligheidswinst: CI's `check:migrations` is de grens.
 **Tests:** tijdelijke repo met `origin/main` (bare remote), een migratie alleen op de branch gecommit → Edit toegestaan;
 een migratie die op `origin/main` staat → `deny`; zonder remote → `deny` met context.
 
-### 6. Het token van de eigenaar onleesbaar voor de sandbox (na WS-00)
-Nu leest elk commando in de sandbox `~/.config/gh/hosts.yml`, met het token van de eigenaar inclusief `workflow`-scope; alleen
+### 6. ~~Het token van de eigenaar onleesbaar voor de sandbox~~ — geparkeerd (2026-10-12)
+**Niet bouwen** (W-3 uitgesteld; bevinding §9a). Oorspronkelijke tekst, ter informatie: nu leest elk commando in de sandbox `~/.config/gh/hosts.yml`, met het token van de eigenaar inclusief `workflow`-scope; alleen
 `~/.ssh` en `~/.aws` staan in `denyRead`. Zodra de agent met het token uit W-3 werkt (`GH_TOKEN`), komt `~/.config/gh` in
 `sandbox.filesystem.denyRead` (framework §8 noemde dat al als volgende stap). Controleer daarna dat `gh` en `git push` in de
 sandbox het gescopete token gebruiken (`gh auth status`) en dat `cat ~/.config/gh/hosts.yml` faalt.
 
 ### Klaar als
-- Tabeltests van punt 3, 4, 5 groen (eerst rood op de oude code); `pnpm gate:fast` groen.
+- Tabeltests van punt 3, 4, 5 groen (eerst rood op de oude code); `pnpm gate:fast` groen. Punt 6 valt buiten scope.
 - **Bewijs in een echte sessie**, vastgelegd in de PR: de agent pusht deze PR zelf, opent hem, wacht CI af, en lost één
   opzettelijk veroorzaakt probleem op (bijv. een lintfout die alleen CI ziet, of een conflict met een kleine wijziging op `main`
   door de eigenaar). Plus de diagnose uit WS-00.
@@ -383,12 +411,13 @@ laden: in het account van de eigenaar staan Supabase (`apply_migration`, `execut
 - **Een aparte CI-fixer-agent**: de developer met het spec-model doet het; minder rollen, minder context.
 - **Pollen op CI per beurt**: één achtergrond-watch.
 - **De tweede agent-distro of devcontainer** (framework §12, "Devcontainer of agent-sandbox"): zinvolle volgende stap voor
-  isolatie van het account, maar pas na de GitHub App. Het token uit W-3 dekt het grootste risico nu.
+  isolatie van het account, maar pas na de GitHub App. W-3 is uitgesteld; het restrisico staat in §9.
 - **ADR 0023 uitvoeren**: blijft een eigen traject; alleen punt 7 wordt door dit plan vervangen.
 
 ## 6. Wat niet geverifieerd is
 
-- De GitHub-instellingen zelf (de review-sessie had geen API-toegang): controleer met `gh api repos/bramlambertjansen/template/rulesets`.
+- ~~De GitHub-instellingen zelf~~: gelezen op 2026-10-12, zie WS-00. Of verplichte checks een PR echt blokkeren, is nog niet met
+  een rode PR bewezen.
 - Werkelijke duur van de hooks (framework §4 noemt 1–2 s na een edit, met type-aware ESLint per aanroep): meet het in WS-03.
 - Deny-regels `Read(!.env.example)` en `cat .env` (roadmap stuk 5, open).
 - Matching van `pnpm test:db *` op de kale vorm (WS-03), en de `model`-parameter (WS-05).
@@ -419,6 +448,7 @@ mist de uitvoerder geen context. Aangepast:
 9. **Herreview had geen grens.** Nu: alleen bij wijzigingen in `src/`, `db/` of tests na de reviewer-SHA, en alleen op die delta (WS-04.1.8).
 10. **Valse belofte bij de identiteit.** Een token van de eigenaar maakt de agent geen andere auteur: de diff-guard blijft `overgang`
     en de eigenaar kan de PR nog steeds niet zelf goedkeuren. Dat staat nu expliciet in W-3; alleen de App (ST-01) lost het op.
+    **2026-10-12: W-3 uitgesteld**; de agent pusht met de bestaande `gh`-login, met hetzelfde gevolg voor de diff-guard (§9).
 11. **Rood bewijzen via een draft-PR kon niet.** Het eerste concept liet de tester rode tests pushen. De pre-push-hook draait
     `gate:fast` en weigert rode unit-tests, en `--no-verify` is verboden. W-5 is nu één `ask`-run van `pnpm test:db`.
 12. **Volgorde klopte niet met het framework.** WS-02, WS-03 en WS-06 mochten eerst vóór de ADR, maar `framework.md` wijzigt alleen
@@ -427,7 +457,66 @@ mist de uitvoerder geen context. Aangepast:
     alleen fixtures en de testsetup gate; harnesses wijzigen geeft context, verwijderen is gate (WS-02.3).
 14. **Het token van de eigenaar bleef leesbaar.** Een gescopet token helpt niet zolang `~/.config/gh/hosts.yml` met de
     `workflow`-scope in de sandbox leesbaar is. Toegevoegd: WS-04 punt 6 en de maskering in WS-00.
+    **2026-10-12: beide geparkeerd** met W-3 (§9).
 
 Bekend restrisico na alle pakketten: de agent draait nog steeds als de Linux-gebruiker van de eigenaar (lid van de groep `docker`,
 dus root-equivalent buiten de sandbox). `deny` op `docker` en de sandbox houden de agent eruit, maar elke `ask`-run buiten de
-sandbox heeft die rechten. Lees nieuwe tests en configs voordat je zo'n run goedkeurt (DoD "Altijd").
+sandbox heeft die rechten. Lees nieuwe tests en configs voordat je zo'n run goedkeurt (DoD "Altijd"). Zolang W-3 is uitgesteld, komt
+daar het `gh`-token met `workflow`-scope bij dat in de sandbox leesbaar is (§9a).
+
+## 8. Controle tegen de huidige code (2026-10-12, `b52b001`)
+
+Tussen `1312b61` en `b52b001` wijzigde alleen dit document; de regelnummers uit het plan gelden dus nog. Nagelopen en juist:
+`.claude/hooks/lib/rolhek.mjs:197`, `:219`, `:433`, `:441`; `.claude/hooks/rolhek.mjs:47` (`committed` via `HEAD:<pad>`);
+`.claude/hooks/werkstraat.mjs:11`, `:57`; `.claude/hooks/lib/werkstraat.mjs:115`; `.claude/settings.json:109-110`, `:131`;
+`scripts/runner.sh:10`, `:24`; `scripts/kit/check-docs.mjs:20`; `scripts/kit/check-migrations.mjs:11`, `:55`; `docs/framework.md:281`,
+`:287`; `AGENTS.md:74`, `:77` (94 regels); `CLAUDE.md` 25 regels; `.claude/agents/reviewer.md:11`;
+`.claude/skills/security-review/SKILL.md:13`; `.claude/skills/migratie/SKILL.md:24`; `test/hooks/agents.test.ts:18`, `:53`;
+`docs/gouden-pad.md:47`; `denyRead` bevat alleen `~/.ssh` en `~/.aws` (`.claude/settings.json:115-118`).
+
+Afwijkingen:
+1. **W-6, specs onder mandaat.** `accountbeheer` is gewoon `goedgekeurd`, niet onder mandaat. Wel onder mandaat: `rate-limit`
+   (status `gebouwd`). Verbeterd in §3.
+2. **"Tot die App bestaat"** staat in framework §6 "Agentveiligheid" (`docs/framework.md:230`), niet in §8. §8 noemt alleen dat
+   `~/.config/gh` in `denyRead` "volgt zodra de agent met het App-token werkt".
+3. **`projectRoot`** staat in `.claude/hooks/rolhek.mjs:68` (de hook), niet in `lib/`; WS-03 punt 1 zegt terecht "haal naar `lib/`".
+4. **ADR 0009 versus de runner.** ADR 0009 zegt `git diff --quiet HEAD -- <lijst>`; `scripts/runner.sh:24` gebruikt
+   `git status --porcelain --untracked-files=all` (vangt ook nieuwe bestanden). Strenger dan de ADR; relevant voor WS-04 punt 4.
+5. **"ter herziening" staat niet in de statuswoordenlijst** van `check-docs` (`scripts/kit/check-docs.mjs:15-16`). De regex ankert
+   alleen het begin (`geaccepteerd\b`, `goedgekeurd\b`), dus "geaccepteerd (…; ter herziening)" en `goedgekeurd # … ter herziening`
+   slagen als toevoeging. Als zelfstandige status zou "ter herziening" falen.
+6. **Ruleset.** Zie WS-00: `main-dicht` bestaat al; `codeql (javascript-typescript)` ontbreekt en `required_review_thread_resolution`
+   staat uit.
+7. **Identiteit op deze machine.** `gh` is ingelogd als `Jan-Bramsen` (token `gho_…`, scopes `repo`, `workflow`, `gist`,
+   `read:org`, `read:packages`), niet als `bramlambertjansen` (`goedkeurders` in `.claude/gates.json`). Dat account heeft op
+   `BramLambertJansen/template` `push: false` (`gh api repos/BramLambertJansen/template --jq .permissions`). De git-identiteit is
+   `Jan-Bramsen@users.noreply.github.com`. `gh auth status` leest `~/.config/gh/hosts.yml` vanuit de sandbox zonder fout.
+8. **Toolchain ontbreekt op deze machine.** Geen `mise`, geen Node 26, geen `node_modules`, geen geïnstalleerde lefthook-hooks
+   (`.git/hooks` alleen samples). `pnpm gate:fast` en `node scripts/kit/feiten.mjs` draaien hier niet; ook pre-commit en pre-push
+   lopen dus niet. De toolchain installeert de eigenaar (`scripts/bootstrap.sh`, framework §8).
+
+## 9. Geparkeerd, nog uit te werken
+
+Besloten op 2026-10-12: niet bouwen, alleen vastleggen. Buiten scope: WS-00 stap 2 (gescopet token), de GitHub App (ADR 0005,
+ST-01), WS-04 punt 6 (`denyRead` op `~/.config/gh`), `scripts/check-github.mjs` en
+onbeheerd werken. Geverifieerde bevindingen:
+
+a. **Het `gh`-token is leesbaar voor elke agent op de machine.** `~/.config/gh` staat niet in `sandbox.filesystem.denyRead`
+   (`.claude/settings.json:115-118`). `docs/nieuwe-app.md` 4.1 logt in met `--scopes workflow`. Alle apps staan in `~/code/<slug>`
+   op één machine, dus een agent in één app bereikt het token voor alle repo's van dat account. Gezien op 2026-10-12: zie §8 punt 7.
+b. **Het playbook zet voor apps de tussenversie.** `docs/nieuwe-app.md` 6.2: 0 goedkeuringen, geen code-owner-review en (in het playbook) geen
+   verplichte checks. `check-github` (ST-01) bestaat nog niet, dus niets controleert of een app de ruleset heeft. Een app op een
+   privé-repo met een gratis account kan geen ruleset hebben (ADR 0006, Gevolgen).
+c. **Template-updates bereiken apps alleen via handmatige merge-PR's** (`docs/nieuwe-app.md`, Naslag); er is geen versiebewaking
+   (roadmap stuk 6, ST-12). Wijzigingen in `.github/workflows/` vragen een push van de eigenaar.
+d. **Bewijs voor de rails hoort in een proef-app** (roadmap stuk 6, ST-09), niet alleen in de template: "Een demo in deze repo
+   alleen telt niet".
+e. **GitHub-gedrag.** Bevestigd in de GitHub-docs: een installation-token verloopt na 1 uur; een PR-auteur kan zijn eigen PR niet
+   goedkeuren. Niet bevestigd: of een PAT of App met write-rechten door verplichte reviews wordt geblokkeerd. Test met een echte PR
+   voordat een beslissing hierop rust.
+f. **Opties voor later** (niet besloten):
+   - GitHub App met het token buiten de sandbox: een systemd user-timer ververst het, token in `~/.cache/template-agent/token`,
+     sleutel in `~/.config/template-agent/app.pem` in `denyRead`.
+   - Onbeheerd werken in fases per app: beheerd; deels onbeheerd op een container of aparte host; vrij onbeheerd. Per app criteria,
+     een noodrem (token intrekken), een limiet op kosten of beurten en een melding bij stop.
+   - `ask`-runs buiten de sandbox en het restrisico van de groep `docker` (framework §12, "Devcontainer of agent-sandbox"; §7 slot).
