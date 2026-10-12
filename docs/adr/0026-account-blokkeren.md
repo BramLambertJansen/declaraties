@@ -1,6 +1,6 @@
 # 0026 — Account blokkeren: `blocked_at` in `better_auth`, geschreven door `app_definer`
 
-Status: voorgesteld — door de agent (architect), voor het deel blokkeren van de spec
+Status: geaccepteerd (2026-10-12) — voorgesteld door de agent (architect), geaccepteerd door de eigenaar, voor het deel blokkeren van de spec
 [accountbeheer-uitbreiding](../specs/accountbeheer-uitbreiding.md) (OV-1, OV-5, OV-6, OV-7; AC-11 t/m AC-14 en AC-22 t/m AC-24).
 Wijzigt een uitzondering uit [ADR 0010](0010-schema-better-auth.md) en [ADR 0014](0014-dev-login-en-accounts-view.md); vult
 [ADR 0013](0013-uitnodigen-en-mfa-in-better-auth.md) aan. Nummer uit `node scripts/kit/feiten.mjs` (volgende vrije: 0026).
