@@ -1,6 +1,7 @@
 # 0009 — Tests buiten de sandbox
 
 Status: geaccepteerd (2026-10-09), optie (a) — voorgesteld door de agent, herzien na de review van 2026-10-09, geaccepteerd door de eigenaar.
+Gewijzigd door 0025 (punt 4: runner vergelijkt lokaal met origin/main).
 
 ## Context
 
