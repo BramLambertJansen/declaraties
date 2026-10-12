@@ -3,8 +3,8 @@ import { drizzle } from 'drizzle-orm/node-postgres';
 import type { Pool, PoolClient } from 'pg';
 import type { AuthGateway, SessionInfo } from '../auth/auth.ts';
 import { translateDatabaseError } from '../errors.ts';
-import type { Actor, SessionStrength, WithUser } from './types.ts';
-import { checkActor, consumeRateLimit, enterActor, rateLimited } from './with-user.ts';
+import type { Actor, ActorRole, SessionStrength, Tx, WithUserOptions } from './types.ts';
+import { checkActor, checkRequestId, consumeRateLimit, createWithUser, enterActor, rateLimited } from './with-user.ts';
 import { UserId } from '../../shared/ids.ts';
 
 // Testkit (framework §4, ADR 0012): één transactie per test die aan het eind terugdraait, een savepoint per withUser-aanroep.
@@ -24,9 +24,16 @@ export interface AsUserOptions {
   readonly name?: string;
 }
 
+// Zoals WithUser, maar de testkit genereert de requestId (ADR 0021, OV-A2) zodat een test hem niet hoeft te geven.
+export type TestWithUser = <T>(
+  actor: Actor,
+  work: (tx: Tx, actorRole: ActorRole) => Promise<T>,
+  options?: Partial<WithUserOptions>,
+) => Promise<T>;
+
 export interface TestDb {
   // Zelfde contract als withUser; `readOnly` telt hier niet (een savepoint kan niet read-only worden), `rateLimit` wel.
-  readonly withUser: WithUser;
+  readonly withUser: TestWithUser;
   // Een nieuwe gebruiker met deze rol (null: zonder rij in user_roles), alleen zichtbaar binnen deze test.
   readonly asUser: (role: 'user' | 'admin' | null, options?: AsUserOptions) => Promise<TestUser>;
   readonly rollback: () => Promise<void>;
@@ -35,10 +42,12 @@ export interface TestDb {
 // Na een release blijven SET LOCAL en set_config(…, true) tot het eind van de buitenste transactie: terugzetten.
 async function leaveActor(client: PoolClient): Promise<void> {
   await client.query('reset role');
-  await client.query("select set_config('app.user_id', '', true), set_config('app.session_strength', '', true)");
+  await client.query(
+    "select set_config('app.user_id', '', true), set_config('app.session_strength', '', true), set_config('app.request_id', '', true)",
+  );
 }
 
-function testWithUser(client: PoolClient): WithUser {
+function testWithUser(client: PoolClient): TestWithUser {
   let savepoints = 0;
   // Zoals withUser: een savepoint per stap; de telling (rateLimit) in een eigen savepoint vóór die van het werk, zodat
   // een werk dat terugrolt toch meetelt (spec rate-limit).
@@ -58,17 +67,24 @@ function testWithUser(client: PoolClient): WithUser {
     }
   };
   return async (actor, work, options = {}) => {
+    const { rateLimit, requestId = randomUUID() } = options;
     checkActor(actor);
-    const { rateLimit } = options;
+    checkRequestId(requestId);
     if (rateLimit !== undefined) {
       const retryAfter = await inSavepoint(async () => {
-        await enterActor(client, actor);
+        await enterActor(client, actor, requestId);
         return consumeRateLimit(client, rateLimit);
       });
       if (retryAfter > 0) throw rateLimited(retryAfter);
     }
-    return inSavepoint(async () => work(drizzle({ client }), await enterActor(client, actor)));
+    return inSavepoint(async () => work(drizzle({ client }), await enterActor(client, actor, requestId)));
   };
+}
+
+// De echte withUser op een eigen pool (voor lek- en racetests), met een gegenereerde requestId zodat een test hem niet hoeft te geven.
+export function createTestWithUser(pool: Pool): TestWithUser {
+  const withUser = createWithUser(pool);
+  return (actor, work, options) => withUser(actor, work, { ...options, requestId: options?.requestId ?? randomUUID() });
 }
 
 function gatewayFor(session: SessionInfo): AuthGateway {

@@ -382,7 +382,7 @@ Een bestaand script of ADR bewijst niet dat de bijbehorende capability compleet 
 
 - [ ] **Aansluiting:** auditbesluit, stuk 3f en [ADR 0021](adr/0021-audit-log.md).
   **Stand 2026-10-12:** gebouwd: rate limiting op app-routes (#87, spec `rate-limit`) en een requestId die de server zelf kiest (#83).
-  Open: audit log en `app.request_id()` (ADR 0020 en 0021).
+  Audit log (spec `audit-log`) deel A, B en C in één PR: migratie, `ctx.audit`, invite/reinvite; bewijs ontbreekt tot `pnpm test:db` groen is. Open: merge, `/admin/audit` (eigen spec) en de routes revoke/reset-link.
   **Werk audit:** servergegenereerde request-ID, audit-context in de transactie, append-only-tabel en vaste grants/policies;
   registreer app-acties met getypte, strict gevalideerde details. Gebruik de aparte core-auditwriter voor Better Auth-acties.
   Beschrijf de transactionele grens bij het aanmaken van een uitnodiging en de beheerdersrechten van de migrator eerlijk.

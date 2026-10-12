@@ -32,6 +32,7 @@ const cases: [file: string, rules: string[]][] = [
   ['src/core/api/db/pool.ts', []],
   ['src/web/x.ts', []],
   ['src/api/db-intern.ts', ['db-alleen-via-index']],
+  ['src/api/audit-toegestaan.ts', []],
   ['src/api/testing-in-code.ts', ['testing-alleen-in-tests']],
   ['src/api/testing.int.test.ts', []],
 ];

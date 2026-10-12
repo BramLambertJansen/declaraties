@@ -109,15 +109,19 @@ export const accountsListRoute = defineRoute(accountsListContract, async ({ inpu
   };
 });
 
-// De rol gaat in de transactie van de admin (app.assign_role eist een admin met MFA); pas daarna gaat de mail weg.
+// De rol en de auditregel gaan in de transactie van de admin (app.assign_role en app.audit_account_action eisen een admin met
+// MFA); pas daarna gaat de mail weg. Een fout in beforeMail laat inviteUser het account weer verwijderen (spec audit-log, OV-C2).
 export const inviteRoute = defineRoute(inviteContract, async ({ input, tx, services }) => {
   const { userId } = await services.invitations.invite({ name: input.naam, email: input.email }, async (id) => {
     await tx.execute(sql`select app.assign_role(${id}, ${input.rol})`);
+    await tx.execute(sql`select app.audit_account_action('core.account.invite', ${id})`);
   });
   return { id: userId };
 });
 
-export const reinviteRoute = defineRoute(reinviteContract, async ({ input, services }) => {
+// De regel staat vóór de service: NOT_FOUND of ALREADY_ACTIVE rolt de transactie terug, dus ook de regel.
+export const reinviteRoute = defineRoute(reinviteContract, async ({ input, tx, services }) => {
+  await tx.execute(sql`select app.audit_account_action('core.account.reinvite', ${input.id})`);
   await services.invitations.reinvite(input.id);
   return null;
 });

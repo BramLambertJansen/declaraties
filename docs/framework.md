@@ -204,6 +204,10 @@ Ankers: OWASP Top 10:2025, OWASP API Security Top 10, ASVS 5.0 niveau 1 (checkli
   of heeft een vastgelegde reden waarom niet. Een nieuwe functie zonder klasse faalt.
 - **Schema-snapshot**: `db/schema.snapshot.sql` via `pg_dump --schema-only -N tap --exclude-extension=pgtap` van de lokale database (het enige schemabestand; dbmate draait met `--no-dump-schema`); de agent leest dit, CI faalt bij verschil.
 - **Eén actor**: `defineRoute` geeft `ctx.actor`; een handler zoekt de gebruiker nooit zelf op.
+- **Audit log** (ADR 0021, spec `audit-log`): admin-acties laten in dezelfde transactie een regel achter in `app.audit_log`: append-only (guard-triggers,
+  policy-allowlist, invariant in `db/tests/invarianten.sql`), met actor, databaserol en `app.request_id()`. `withUser()` zet `app.request_id` uit de
+  server-gegenereerde `requestId` (`src/core/api/db/with-user.ts`); een client kan hem niet kiezen. Routes schrijven via `ctx.audit(actie, doelId, details)`
+  (acties in `src/shared/audit.ts`, details strict); core-accountacties via `app.audit_account_action` (`src/api/routes/accounts.ts`).
 - **Databasefouten op één plek**: `withUser()` vertaalt 23505 → `ALREADY_EXISTS`, 23503 → `NOT_FOUND`, 42501 → `FORBIDDEN`.
 - **Limieten één keer**: harde grenzen in `src/core/shared/limits.ts`, app-grenzen in `src/shared/limits.ts` (ADR 0008); een CHECK-constraint met dezelfde waarde krijgt een gelijkheidstest.
 - **Resourceverbruik (API4)**: `bodyLimit` op de Hono-app, maximale paginagrootte in `limits.ts`, database-timeouts (hierboven).

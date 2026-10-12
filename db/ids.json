@@ -1,5 +1,9 @@
 {
   "brands": {
-    "app.accounts.id": "UserId"
+    "app.accounts.id": "UserId",
+    "app.audit_log.id": null,
+    "app.audit_log.actor_id": "UserId",
+    "app.audit_log.target_id": null,
+    "app.audit_log.request_id": null
   }
 }

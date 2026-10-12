@@ -25,6 +25,8 @@ export interface RateLimit {
 }
 
 export interface WithUserOptions {
+  // De server-gegenereerde requestId (ADR 0021): komt als `app.request_id` in de transactie, voor de auditregels.
+  readonly requestId: string;
   // GET-routes: de transactie is read only (framework §6).
   readonly readOnly?: boolean;
   readonly rateLimit?: RateLimit;
@@ -38,5 +40,5 @@ export interface ActorRole {
 export type WithUser = <T>(
   actor: Actor,
   work: (tx: Tx, actorRole: ActorRole) => Promise<T>,
-  options?: WithUserOptions,
+  options: WithUserOptions,
 ) => Promise<T>;

@@ -12,6 +12,10 @@ export const SESSION_FRESH_SECONDS = 10 * 60;
 // Geldigheid van de twee links van een e-mailwijziging (spec eigen-account, OV-5): stateless JWT's, dus kort.
 export const EMAIL_CHANGE_TTL_SECONDS = 60 * 60;
 
+// Audit log (ADR 0021, spec audit-log): dezelfde waarden als de CHECK's op `app.audit_log` (pgTAP test dat ze gelijk zijn).
+export const MAX_AUDIT_DETAILS_BYTES = 2048;
+export const MAX_AUDIT_TARGET_ID_LENGTH = 128;
+
 // Paginering (framework §5): een app mag kleiner, nooit groter dan MAX_PAGE_SIZE.
 export const DEFAULT_PAGE_SIZE = 25;
 export const MAX_PAGE_SIZE = 100;

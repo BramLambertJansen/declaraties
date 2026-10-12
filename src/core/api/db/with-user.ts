@@ -16,6 +16,11 @@ export function checkActor(actor: { readonly userId: string; readonly sessionStr
   }
 }
 
+// Zonder requestId kan een auditregel niet aan de request-log gekoppeld worden (ADR 0021): weigeren vóór een verbinding.
+export function checkRequestId(requestId: string): void {
+  if (requestId === '') throw new Error('withUser: lege requestId');
+}
+
 class LeakedConnectionError extends Error {
   constructor() {
     super('withUser: verbinding begon niet als session_user; weggegooid');
@@ -23,16 +28,17 @@ class LeakedConnectionError extends Error {
 }
 
 // De actor-stap binnen een open transactie; ook gebruikt door de testkit (testing.ts), daar binnen een savepoint.
-export async function enterActor(client: PoolClient, actor: Actor): Promise<ActorRole> {
+export async function enterActor(client: PoolClient, actor: Actor, requestId: string): Promise<ActorRole> {
   // Een verbinding met een andere rol dan waarmee hij inlogde, lekt van een vorige gebruiker: weigeren en weggooien.
   const { rows } = await client.query<{ clean: boolean }>('select current_user = session_user as clean');
   if (rows[0]?.clean !== true) throw new LeakedConnectionError();
   await client.query('set local role app_authenticated');
   // is_local = true: de waarden verdwijnen bij commit of rollback, ook achter een pooler in transaction mode.
-  await client.query("select set_config('app.user_id', $1, true), set_config('app.session_strength', $2, true)", [
-    actor.userId,
-    actor.sessionStrength,
-  ]);
+  // app.request_id: de server-gegenereerde requestId voor de auditregels (ADR 0021); app.request_id() leest hem.
+  await client.query(
+    "select set_config('app.user_id', $1, true), set_config('app.session_strength', $2, true), set_config('app.request_id', $3, true)",
+    [actor.userId, actor.sessionStrength, requestId],
+  );
   // De rol hoort bij elke request (framework §6); de policy user_roles_select_own laat alleen de eigen rij zien.
   const { rows: roles } = await client.query<{ role: string }>(
     'select role from public.user_roles where user_id = $1',
@@ -67,21 +73,22 @@ async function transaction<T>(client: PoolClient, begin: string, run: () => Prom
 // rateLimit eerst een eigen korte transactie voor de telling, op dezelfde verbinding (spec rate-limit, OV-2).
 // Databasefouten worden vertaald naar AppError (src/core/api/errors.ts); faalt de telling, dan faalt de request (fail closed).
 export function createWithUser(pool: Pool): WithUser {
-  return async (actor, work, options = {}) => {
+  return async (actor, work, options) => {
+    const { rateLimit, requestId } = options;
     checkActor(actor);
+    checkRequestId(requestId);
     const client = await pool.connect();
     let destroy = false;
     try {
-      const { rateLimit } = options;
       if (rateLimit !== undefined) {
         const retryAfter = await transaction(client, 'begin', async () => {
-          await enterActor(client, actor);
+          await enterActor(client, actor, requestId);
           return consumeRateLimit(client, rateLimit);
         });
         if (retryAfter > 0) throw rateLimited(retryAfter);
       }
       return await transaction(client, options.readOnly === true ? 'begin read only' : 'begin', async () =>
-        work(drizzle({ client }), await enterActor(client, actor)),
+        work(drizzle({ client }), await enterActor(client, actor, requestId)),
       );
     } catch (error) {
       destroy = error instanceof LeakedConnectionError;

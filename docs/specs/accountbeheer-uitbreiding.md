@@ -155,8 +155,8 @@ Volgens de aanbeveling bij OV-1 (één nieuwe migratie; beschermde-padwijziginge
   nu elke 4xx om in `INVALID_CREDENTIALS`; dat blijft (OV-5), erbij komen herstelcode en `RESET_LINK_INVALID`. Mutaties invalideren `accounts`.
 - **Beschermde paden** (nieuwe ADR via `feiten.mjs`): ADR 0013 (backupcodes dicht, admin-plugin verworpen); ADR 0014 (allowlist; "geen sessies"
   blijft); framework §6 en ADR 0010 (`better_auth` dicht behalve `auth_service`, nu `update (blocked_at)` voor `app_definer`); `db/tests/invarianten.sql`.
-- **Audit log:** wie wie blokkeerde, uitnodigingen introk of een resetlink stuurde, hoort in een audit log. Daarover is nog geen besluit (ADR open);
-  tot dan logt alleen de request-log (`requestId`, gebruiker-ID). Na het besluit krijgt elke route hier een audit-regel.
+- **Audit log:** besloten in [ADR 0021](../adr/0021-audit-log.md), uitgewerkt in spec [audit-log](audit-log.md): blokkeren, deblokkeren, rol, invite en
+  reinvite schrijven een regel. Intrekken (`core.account.revoke`) en resetlink (`core.account.reset_link`) krijgen hun regel bij de bouw van die routes (audit-log OV-C1).
 
 ## Buiten scope
 

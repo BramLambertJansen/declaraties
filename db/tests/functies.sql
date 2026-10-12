@@ -14,7 +14,12 @@ insert into catalogus values
   ('app.assign_role(text, text)', 'client', null),
   ('app.set_account_blocked(text, boolean)', 'client', null),
   ('app.consume_rate_limit(text, integer, integer)', 'client', 'actor uit app.current_user_id(); zonder actor 42501 (spec rate-limit)'),
-  ('app.user_roles_keep_one_admin()', 'intern', 'triggerfunctie van public.user_roles');
+  ('app.user_roles_keep_one_admin()', 'intern', 'triggerfunctie van public.user_roles'),
+  -- Audit log (spec audit-log, AC-19).
+  ('app.request_id()', 'intern', 'alleen gelezen door security definer-functies van de audit log'),
+  ('app.audit_log_guard()', 'intern', 'triggerfunctie van app.audit_log'),
+  ('app.audit(text, text, text, jsonb)', 'client', null),
+  ('app.audit_account_action(text, text)', 'client', null);
 
 -- Functies van extensies tellen niet mee (pgTAP staat in schema tap).
 create temp view functies as

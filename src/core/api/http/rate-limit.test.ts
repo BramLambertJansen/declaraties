@@ -46,7 +46,7 @@ function recording(blocked?: number) {
   const seen: WithUserOptions[] = [];
   const base = fakeDeps(user);
   const tx = unsafeCast<Tx>({}, 'test: de routes in deze tests gebruiken tx niet');
-  const withUser: WithUser = async (_actor, work, options = {}) => {
+  const withUser: WithUser = async (_actor, work, options) => {
     seen.push(options);
     if (blocked !== undefined) throw new AppError('RATE_LIMITED', { retryAfter: blocked });
     return work(tx, { role: 'user' });

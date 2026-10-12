@@ -24,6 +24,9 @@ paths:
 - Rate limit: elke route telt mee (standaard GET `lezen`, anders `schrijven`). Een route die mail verstuurt of duur rekent,
   zet in het contract `rateLimit: 'duur'`. Grenzen alleen uit `limits.ts`, nooit per route een eigen getal.
 - `deploy/<host>/` bevat alleen een adapter die de Hono-app exporteert. Geen logica.
+- Audit (ADR 0021): een app registreert eigen acties in `src/shared/audit.ts` (`defineAuditActions`, sleutel `<onderwerp>.<actie>`, nooit `core.`)
+  en schrijft ze met `ctx.audit(actie, doelId, details)`; de regel rolt met de route terug. Core-accountacties schrijft de database
+  (`app.assign_role`, `app.set_account_blocked`) of `app.audit_account_action` (invite/reinvite, `src/api/routes/accounts.ts`). Nooit vrije tekst of e-mail in details.
 - Tests per route: één per verboden rol (verwacht `FORBIDDEN`), één voor ongeldige input, de acceptatiecriteria.
 - Uniekheidsregel of geld: racetest met twee gelijktijdige requests; precies één slaagt.
 

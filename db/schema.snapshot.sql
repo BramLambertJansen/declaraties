@@ -44,18 +44,95 @@ CREATE FUNCTION app.assign_role(p_user_id text, p_role text) RETURNS void
     LANGUAGE plpgsql SECURITY DEFINER
     SET search_path TO ''
     AS $$
+  declare
+    v_previous text;
   begin
     if not app.is_mfa_admin()
        and not (session_user = 'app_migrator' and app.current_user_id() is null) then
       raise exception 'FORBIDDEN' using errcode = '42501';
     end if;
+    select r.role into v_previous from public.user_roles r where r.user_id = p_user_id for update;
     insert into public.user_roles (user_id, role) values (p_user_id, p_role)
       on conflict (user_id) do update set role = excluded.role;
+    if v_previous is distinct from p_role then
+      insert into app.audit_log (actor_id, action, target_type, target_id, request_id, details)
+        values (
+          app.current_user_id(), 'core.role.assign', 'account', p_user_id, app.request_id(),
+          case when v_previous is null
+            then pg_catalog.jsonb_build_object('role', p_role)
+            else pg_catalog.jsonb_build_object('role', p_role, 'previous', v_previous)
+          end
+        );
+    end if;
   end
   $$;
 
 
 ALTER FUNCTION app.assign_role(p_user_id text, p_role text) OWNER TO app_definer;
+
+--
+-- Name: audit(text, text, text, jsonb); Type: FUNCTION; Schema: app; Owner: app_definer
+--
+
+CREATE FUNCTION app.audit(p_action text, p_target_type text, p_target_id text, p_details jsonb) RETURNS void
+    LANGUAGE plpgsql SECURITY DEFINER
+    SET search_path TO ''
+    AS $$
+  begin
+    if app.current_user_id() is null then
+      raise exception 'FORBIDDEN' using errcode = '42501';
+    end if;
+    if p_action like 'core.%' or p_target_type = 'account' then
+      raise exception 'voorbehouden actie of doeltype' using errcode = '22023';
+    end if;
+    insert into app.audit_log (actor_id, action, target_type, target_id, request_id, details)
+      values (app.current_user_id(), p_action, p_target_type, p_target_id, app.request_id(), p_details);
+  end
+  $$;
+
+
+ALTER FUNCTION app.audit(p_action text, p_target_type text, p_target_id text, p_details jsonb) OWNER TO app_definer;
+
+--
+-- Name: audit_account_action(text, text); Type: FUNCTION; Schema: app; Owner: app_definer
+--
+
+CREATE FUNCTION app.audit_account_action(p_action text, p_target_id text) RETURNS void
+    LANGUAGE plpgsql SECURITY DEFINER
+    SET search_path TO ''
+    AS $$
+  begin
+    if not app.is_mfa_admin() then
+      raise exception 'FORBIDDEN' using errcode = '42501';
+    end if;
+    if p_action is null or p_action not in (
+      'core.account.invite', 'core.account.reinvite', 'core.account.revoke', 'core.account.reset_link'
+    ) then
+      raise exception 'onbekende accountactie' using errcode = '22023';
+    end if;
+    insert into app.audit_log (actor_id, action, target_type, target_id, request_id, details)
+      values (app.current_user_id(), p_action, 'account', p_target_id, app.request_id(), '{}'::jsonb);
+  end
+  $$;
+
+
+ALTER FUNCTION app.audit_account_action(p_action text, p_target_id text) OWNER TO app_definer;
+
+--
+-- Name: audit_log_guard(); Type: FUNCTION; Schema: app; Owner: app_definer
+--
+
+CREATE FUNCTION app.audit_log_guard() RETURNS trigger
+    LANGUAGE plpgsql
+    SET search_path TO ''
+    AS $$
+  begin
+    raise exception 'audit log is append-only' using errcode = '42501';
+  end
+  $$;
+
+
+ALTER FUNCTION app.audit_log_guard() OWNER TO app_definer;
 
 --
 -- Name: consume_rate_limit(text, integer, integer); Type: FUNCTION; Schema: app; Owner: app_definer
@@ -124,6 +201,17 @@ CREATE FUNCTION app.is_mfa_admin() RETURNS boolean
 ALTER FUNCTION app.is_mfa_admin() OWNER TO app_definer;
 
 --
+-- Name: request_id(); Type: FUNCTION; Schema: app; Owner: app_migrator
+--
+
+CREATE FUNCTION app.request_id() RETURNS text
+    LANGUAGE sql STABLE
+    RETURN NULLIF(current_setting('app.request_id'::text, true), ''::text);
+
+
+ALTER FUNCTION app.request_id() OWNER TO app_migrator;
+
+--
 -- Name: session_strength(); Type: FUNCTION; Schema: app; Owner: app_migrator
 --
 
@@ -153,7 +241,11 @@ CREATE FUNCTION app.set_account_blocked(p_user_id text, p_blocked boolean) RETUR
       raise exception 'NOT_FOUND';
     end if;
     if not p_blocked then
-      update better_auth."user" set blocked_at = null where id = p_user_id;
+      if v_blocked_at is not null then
+        update better_auth."user" set blocked_at = null where id = p_user_id;
+        insert into app.audit_log (actor_id, action, target_type, target_id, request_id, details)
+          values (app.current_user_id(), 'core.account.unblock', 'account', p_user_id, app.request_id(), '{}'::jsonb);
+      end if;
       return;
     end if;
     if p_user_id = app.current_user_id() then
@@ -181,6 +273,8 @@ CREATE FUNCTION app.set_account_blocked(p_user_id text, p_blocked boolean) RETUR
     ) then
       raise exception 'LAST_ADMIN' using detail = 'De laatste admin kan niet weg.';
     end if;
+    insert into app.audit_log (actor_id, action, target_type, target_id, request_id, details)
+      values (app.current_user_id(), 'core.account.block', 'account', p_user_id, app.request_id(), '{}'::jsonb);
   end
   $$;
 
@@ -303,6 +397,45 @@ CREATE VIEW app.accounts WITH (security_barrier='true') AS
 ALTER VIEW app.accounts OWNER TO app_definer;
 
 --
+-- Name: audit_log; Type: TABLE; Schema: app; Owner: app_migrator
+--
+
+CREATE TABLE app.audit_log (
+    id bigint NOT NULL,
+    at timestamp with time zone DEFAULT now() NOT NULL,
+    actor_id text,
+    db_role text DEFAULT SESSION_USER NOT NULL,
+    action text NOT NULL,
+    target_type text,
+    target_id text,
+    request_id text,
+    details jsonb DEFAULT '{}'::jsonb NOT NULL,
+    CONSTRAINT audit_log_action_check CHECK ((action ~ '^[a-z]+(\.[a-z_]+)+$'::text)),
+    CONSTRAINT audit_log_details_check CHECK (((jsonb_typeof(details) = 'object'::text) AND (octet_length((details)::text) <= 2048))),
+    CONSTRAINT audit_log_target_id_check CHECK ((target_id ~ '^[A-Za-z0-9_.:-]{1,128}$'::text)),
+    CONSTRAINT audit_log_target_type_check CHECK ((target_type ~ '^[a-z_]+$'::text))
+);
+
+ALTER TABLE ONLY app.audit_log FORCE ROW LEVEL SECURITY;
+
+
+ALTER TABLE app.audit_log OWNER TO app_migrator;
+
+--
+-- Name: audit_log_id_seq; Type: SEQUENCE; Schema: app; Owner: app_migrator
+--
+
+ALTER TABLE app.audit_log ALTER COLUMN id ADD GENERATED ALWAYS AS IDENTITY (
+    SEQUENCE NAME app.audit_log_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1
+);
+
+
+--
 -- Name: rate_limits; Type: TABLE; Schema: app; Owner: app_migrator
 --
 
@@ -395,6 +528,14 @@ CREATE TABLE public.schema_migrations (
 
 
 ALTER TABLE public.schema_migrations OWNER TO app_migrator;
+
+--
+-- Name: audit_log audit_log_pkey; Type: CONSTRAINT; Schema: app; Owner: app_migrator
+--
+
+ALTER TABLE ONLY app.audit_log
+    ADD CONSTRAINT audit_log_pkey PRIMARY KEY (id);
+
 
 --
 -- Name: rate_limits rate_limits_pkey; Type: CONSTRAINT; Schema: app; Owner: app_migrator
@@ -493,6 +634,20 @@ ALTER TABLE ONLY public.user_roles
 
 
 --
+-- Name: audit_log_actor_idx; Type: INDEX; Schema: app; Owner: app_migrator
+--
+
+CREATE INDEX audit_log_actor_idx ON app.audit_log USING btree (actor_id, at);
+
+
+--
+-- Name: audit_log_target_idx; Type: INDEX; Schema: app; Owner: app_migrator
+--
+
+CREATE INDEX audit_log_target_idx ON app.audit_log USING btree (target_type, target_id, at);
+
+
+--
 -- Name: account_userId_idx; Type: INDEX; Schema: better_auth; Owner: app_migrator
 --
 
@@ -525,6 +680,27 @@ CREATE INDEX "twoFactor_userId_idx" ON better_auth."twoFactor" USING btree ("use
 --
 
 CREATE INDEX verification_identifier_idx ON better_auth.verification USING btree (identifier);
+
+
+--
+-- Name: audit_log audit_log_no_delete; Type: TRIGGER; Schema: app; Owner: app_migrator
+--
+
+CREATE TRIGGER audit_log_no_delete BEFORE DELETE ON app.audit_log FOR EACH STATEMENT EXECUTE FUNCTION app.audit_log_guard();
+
+
+--
+-- Name: audit_log audit_log_no_truncate; Type: TRIGGER; Schema: app; Owner: app_migrator
+--
+
+CREATE TRIGGER audit_log_no_truncate BEFORE TRUNCATE ON app.audit_log FOR EACH STATEMENT EXECUTE FUNCTION app.audit_log_guard();
+
+
+--
+-- Name: audit_log audit_log_no_update; Type: TRIGGER; Schema: app; Owner: app_migrator
+--
+
+CREATE TRIGGER audit_log_no_update BEFORE UPDATE ON app.audit_log FOR EACH STATEMENT EXECUTE FUNCTION app.audit_log_guard();
 
 
 --
@@ -564,6 +740,33 @@ ALTER TABLE ONLY better_auth."twoFactor"
 
 ALTER TABLE ONLY public.user_roles
     ADD CONSTRAINT user_roles_user_id_fkey FOREIGN KEY (user_id) REFERENCES better_auth."user"(id) ON DELETE CASCADE;
+
+
+--
+-- Name: audit_log; Type: ROW SECURITY; Schema: app; Owner: app_migrator
+--
+
+ALTER TABLE app.audit_log ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: audit_log audit_log_definer_insert; Type: POLICY; Schema: app; Owner: app_migrator
+--
+
+CREATE POLICY audit_log_definer_insert ON app.audit_log FOR INSERT TO app_definer WITH CHECK (true);
+
+
+--
+-- Name: audit_log audit_log_definer_select; Type: POLICY; Schema: app; Owner: app_migrator
+--
+
+CREATE POLICY audit_log_definer_select ON app.audit_log FOR SELECT TO app_definer USING (true);
+
+
+--
+-- Name: audit_log audit_log_select_admin; Type: POLICY; Schema: app; Owner: app_migrator
+--
+
+CREATE POLICY audit_log_select_admin ON app.audit_log FOR SELECT TO app_authenticated USING (( SELECT app.is_mfa_admin() AS is_mfa_admin));
 
 
 --
@@ -641,6 +844,29 @@ GRANT ALL ON FUNCTION app.assign_role(p_user_id text, p_role text) TO app_migrat
 
 
 --
+-- Name: FUNCTION audit(p_action text, p_target_type text, p_target_id text, p_details jsonb); Type: ACL; Schema: app; Owner: app_definer
+--
+
+REVOKE ALL ON FUNCTION app.audit(p_action text, p_target_type text, p_target_id text, p_details jsonb) FROM PUBLIC;
+GRANT ALL ON FUNCTION app.audit(p_action text, p_target_type text, p_target_id text, p_details jsonb) TO app_authenticated;
+
+
+--
+-- Name: FUNCTION audit_account_action(p_action text, p_target_id text); Type: ACL; Schema: app; Owner: app_definer
+--
+
+REVOKE ALL ON FUNCTION app.audit_account_action(p_action text, p_target_id text) FROM PUBLIC;
+GRANT ALL ON FUNCTION app.audit_account_action(p_action text, p_target_id text) TO app_authenticated;
+
+
+--
+-- Name: FUNCTION audit_log_guard(); Type: ACL; Schema: app; Owner: app_definer
+--
+
+REVOKE ALL ON FUNCTION app.audit_log_guard() FROM PUBLIC;
+
+
+--
 -- Name: FUNCTION consume_rate_limit(p_bucket text, p_window_seconds integer, p_max integer); Type: ACL; Schema: app; Owner: app_definer
 --
 
@@ -663,6 +889,14 @@ GRANT ALL ON FUNCTION app.current_user_id() TO app_definer;
 
 REVOKE ALL ON FUNCTION app.is_mfa_admin() FROM PUBLIC;
 GRANT ALL ON FUNCTION app.is_mfa_admin() TO app_authenticated;
+
+
+--
+-- Name: FUNCTION request_id(); Type: ACL; Schema: app; Owner: app_migrator
+--
+
+REVOKE ALL ON FUNCTION app.request_id() FROM PUBLIC;
+GRANT ALL ON FUNCTION app.request_id() TO app_definer;
 
 
 --
@@ -765,6 +999,56 @@ GRANT SELECT,INSERT,UPDATE ON TABLE public.user_roles TO app_definer;
 --
 
 GRANT SELECT ON TABLE app.accounts TO app_authenticated;
+
+
+--
+-- Name: TABLE audit_log; Type: ACL; Schema: app; Owner: app_migrator
+--
+
+GRANT SELECT ON TABLE app.audit_log TO app_definer;
+GRANT SELECT ON TABLE app.audit_log TO app_authenticated;
+
+
+--
+-- Name: COLUMN audit_log.actor_id; Type: ACL; Schema: app; Owner: app_migrator
+--
+
+GRANT INSERT(actor_id) ON TABLE app.audit_log TO app_definer;
+
+
+--
+-- Name: COLUMN audit_log.action; Type: ACL; Schema: app; Owner: app_migrator
+--
+
+GRANT INSERT(action) ON TABLE app.audit_log TO app_definer;
+
+
+--
+-- Name: COLUMN audit_log.target_type; Type: ACL; Schema: app; Owner: app_migrator
+--
+
+GRANT INSERT(target_type) ON TABLE app.audit_log TO app_definer;
+
+
+--
+-- Name: COLUMN audit_log.target_id; Type: ACL; Schema: app; Owner: app_migrator
+--
+
+GRANT INSERT(target_id) ON TABLE app.audit_log TO app_definer;
+
+
+--
+-- Name: COLUMN audit_log.request_id; Type: ACL; Schema: app; Owner: app_migrator
+--
+
+GRANT INSERT(request_id) ON TABLE app.audit_log TO app_definer;
+
+
+--
+-- Name: COLUMN audit_log.details; Type: ACL; Schema: app; Owner: app_migrator
+--
+
+GRANT INSERT(details) ON TABLE app.audit_log TO app_definer;
 
 
 --

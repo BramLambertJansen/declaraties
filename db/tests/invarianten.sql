@@ -3,7 +3,7 @@
 -- de query hem vangt. Alles in één transactie die terugdraait.
 begin;
 set search_path = tap, public;
-select plan(16);
+select plan(26);
 
 -- Elke tabel in public en app: RLS aan én geforceerd (uitzondering: public.schema_migrations van dbmate).
 create function pg_temp.zonder_rls() returns setof text language sql stable as $$
@@ -129,6 +129,45 @@ create function pg_temp.eigenaartabellen() returns setof text language sql stabl
   order by regel collate "C"
 $$;
 
+-- app.audit_log (spec audit-log AC-5, ADR 0021 punt 6): precies de drie policies van deel B, alleen select (en insert op
+-- kolommen voor app_definer) en de drie guard-triggers aan. De tabel zelf valt al onder de algemene invarianten hierboven.
+create function pg_temp.audit_log_afwijkingen() returns setof text language sql stable as $$
+  with t as (select to_regclass('app.audit_log') as oid)
+  select 'app.audit_log ontbreekt' from t where t.oid is null
+  union all
+  select 'extra policy: ' || p.polname from pg_catalog.pg_policy p join t on p.polrelid = t.oid
+  where p.polname not in ('audit_log_definer_insert', 'audit_log_select_admin', 'audit_log_definer_select')
+  union all
+  select 'ontbrekende policy: ' || v.naam from t
+  cross join (values ('audit_log_definer_insert'), ('audit_log_select_admin'), ('audit_log_definer_select')) v (naam)
+  where t.oid is not null
+    and not exists (select 1 from pg_catalog.pg_policy p where p.polrelid = t.oid and p.polname = v.naam)
+  union all
+  select format('extra grant: %s %s', coalesce(g.rolname, 'PUBLIC'), a.privilege_type)
+  from t join pg_catalog.pg_class c on c.oid = t.oid
+  cross join lateral pg_catalog.aclexplode(coalesce(c.relacl, pg_catalog.acldefault('r', c.relowner))) a
+  left join pg_catalog.pg_roles g on g.oid = a.grantee
+  where a.grantee <> c.relowner
+    and (coalesce(g.rolname, 'PUBLIC')::text, a.privilege_type::text)
+        not in (('app_authenticated', 'SELECT'), ('app_definer', 'SELECT'))
+  union all
+  select format('extra kolomgrant: %s %s op %s', g.rolname, a.privilege_type, att.attname)
+  from t join pg_catalog.pg_attribute att on att.attrelid = t.oid
+  cross join lateral pg_catalog.aclexplode(att.attacl) a
+  left join pg_catalog.pg_roles g on g.oid = a.grantee
+  where att.attacl is not null
+    and not coalesce(g.rolname = 'app_definer' and a.privilege_type = 'INSERT'
+                     and att.attname in ('actor_id', 'action', 'target_type', 'target_id', 'request_id', 'details'), false)
+  union all
+  select format('guard-trigger %s staat niet aan', v.naam) from t
+  cross join (values ('audit_log_no_update'), ('audit_log_no_delete'), ('audit_log_no_truncate')) v (naam)
+  where t.oid is not null
+    and not exists (
+      select 1 from pg_catalog.pg_trigger g where g.tgrelid = t.oid and g.tgname = v.naam and g.tgenabled = 'O'
+    )
+  order by 1
+$$;
+
 select is(array(select pg_temp.zonder_rls()), '{}'::text[], 'elke tabel in public en app heeft RLS aan en geforceerd');
 select is(array(select pg_temp.verboden_rechten()), '{}'::text[], 'geen API-rol heeft TRUNCATE, REFERENCES of TRIGGER');
 select is(array(select pg_temp.better_auth_open()), '{}'::text[], 'better_auth: alleen auth_service heeft rechten, plus de kolom-allowlist van app_definer');
@@ -234,6 +273,18 @@ create policy invariant_owner_probe_delete_own on public.invariant_owner_probe
   for delete to app_authenticated using (owner_id = (select app.current_user_id()));
 create index invariant_owner_probe_owner_id_idx on public.invariant_owner_probe (owner_id);
 select is(array(select pg_temp.eigenaartabellen()), '{}'::text[], 'controle: het tabelpatroon van pnpm new:resource wordt doorgelaten');
+
+-- Controle app.audit_log: een extra policy, een extra grant en een uitgeschakelde guard-trigger worden gevangen.
+select is(array(select pg_temp.audit_log_afwijkingen()), '{}'::text[], 'app.audit_log: exact drie policies, alleen de toegestane grants en de guard-triggers aan (AC-5)');
+select lives_ok($$create policy audit_log_probe on app.audit_log for select to app_authenticated using (true)$$, 'voorbereiding: een extra policy op app.audit_log');
+select is(array(select pg_temp.audit_log_afwijkingen()), array['extra policy: audit_log_probe'], 'controle: een extra policy op app.audit_log wordt gevangen');
+select lives_ok($$drop policy audit_log_probe on app.audit_log$$, 'voorbereiding: de extra policy weer weg');
+select lives_ok($$grant update on app.audit_log to app_definer$$, 'voorbereiding: een extra grant op app.audit_log');
+select is(array(select pg_temp.audit_log_afwijkingen()), array['extra grant: app_definer UPDATE'], 'controle: een extra grant (update aan app_definer) op app.audit_log wordt gevangen');
+select lives_ok($$revoke update on app.audit_log from app_definer$$, 'voorbereiding: de extra grant weer weg');
+select lives_ok($$alter table app.audit_log disable trigger audit_log_no_update$$, 'voorbereiding: de guard-trigger uitzetten');
+select is(array(select pg_temp.audit_log_afwijkingen()), array['guard-trigger audit_log_no_update staat niet aan'], 'controle: een uitgeschakelde guard-trigger wordt gevangen');
+select lives_ok($$alter table app.audit_log enable trigger audit_log_no_update$$, 'voorbereiding: de guard-trigger weer aan');
 
 select * from finish();
 rollback;

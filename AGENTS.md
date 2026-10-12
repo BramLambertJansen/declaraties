@@ -31,7 +31,7 @@ vangen het later toch, en dan is het werk verloren. Uitzonderingen staan limitat
 - `src/web` haalt data alleen via `src/web/lib/api.ts`; geen databasedriver, ORM of provider-SDK.
 - `src/web` importeert niets uit `src/api`, ook geen types: request en response staan als contract in `src/shared/contracts`.
   `shared` (beide zones) importeert niets uit `web` of `api`.
-- Alleen `src/core/api/db` maakt databaseverbindingen (en `src/core/api/auth` voor Better Auth). `src/core/api/db` exporteert alleen `withUser()`, `pingDatabase()` (readiness), `closeDatabase()` (bij het stoppen) en `testing.ts` voor tests.
+- Alleen `src/core/api/db` maakt databaseverbindingen (en `src/core/api/auth` voor Better Auth). `src/core/api/db` exporteert alleen `withUser()`, `pingDatabase()` (readiness), `closeDatabase()` (bij het stoppen), `createAuditFn()` uit `audit.ts` (alleen `app.audit` in de `tx`, geen pool; de database dwingt de regels af) en `testing.ts` voor tests.
 - `process.env` alleen in `src/core/api/env.ts`, `import.meta.env` alleen in `src/core/web/lib/env.ts`. Alleen publieke waarden krijgen `VITE_`.
 - `MIGRATOR_DATABASE_URL` alleen in `scripts/`, nooit in `src/`.
 

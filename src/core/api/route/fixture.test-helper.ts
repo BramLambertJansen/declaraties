@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { defineAuditActions } from '../../shared/audit.ts';
 import { definePermissions, type Role, type SessionStrength } from '../../shared/can.ts';
 import { createContracts } from '../../shared/contract.ts';
 import { defineErrorCodes } from '../../shared/errors.ts';
@@ -16,7 +17,7 @@ export const permissions = definePermissions({
 });
 export const errors = defineErrorCodes(['NOTE_LOCKED']);
 export const { defineContract } = createContracts(permissions);
-export const { defineRoute } = createRouteKit({ permissions });
+export const { defineRoute } = createRouteKit({ permissions, audit: defineAuditActions({}) });
 
 export interface FakeUser {
   readonly role: Role | null;
@@ -44,7 +45,7 @@ export function fakeDeps(user: FakeUser | null) {
   };
   const tx = unsafeCast<Tx>({}, 'test: de routes in deze tests gebruiken tx niet');
   const withUser: WithUser = async (_actor, work, options) => {
-    calls.push({ readOnly: options?.readOnly ?? false });
+    calls.push({ readOnly: options.readOnly ?? false });
     return work(tx, { role: user?.role ?? null });
   };
   return { auth, withUser, calls };
