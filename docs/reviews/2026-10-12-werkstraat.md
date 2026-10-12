@@ -495,6 +495,24 @@ Afwijkingen:
    (`.git/hooks` alleen samples). `pnpm gate:fast` en `node scripts/kit/feiten.mjs` draaien hier niet; ook pre-commit en pre-push
    lopen dus niet. De toolchain installeert de eigenaar (`scripts/bootstrap.sh`, framework §8).
 
+Gezien bij het opleveren van fase A (#96–#99), input voor de oplever-skill (WS-04):
+
+9. **Git faalt op bestanden die de sandbox afschermt.** `.claude/settings.json` staat in `denyWithinAllow`; `.env.example` valt
+   onder `denyRead` (`.env.*`) en is in de sandbox een leeg apparaatbestand. Gevolgen: `git switch` en `git merge --ff-only` kunnen
+   `.claude/settings.json` niet bijwerken en breken af; `git merge` met een gewijzigde werkmap probeert een autostash en faalt op
+   `.env.example` ("unsupported file type"); `git push -u` kan de upstream niet in `.git/config` schrijven (de push zelf lukt).
+   `git diff` zonder pad faalt om dezelfde reden; met een pad (`-- docs/`) werkt het. Werkwijze die werkte: conflict oplossen in een
+   tijdelijke worktree in `$TMPDIR` (`git worktree add --detach`, `git merge --no-autostash origin/main`,
+   `git push origin HEAD:<branch>`), daarna `git worktree remove`; pushen zonder `-u`.
+10. **De job `secrets` scant alle branches.** `.github/workflows/ci.yml` checkt uit met `fetch-depth: 0` en Betterleaks leest de
+    geschiedenis van alle refs. Eén vondst op één branch maakt elke open PR rood, ook na een herstelcommit: de commit blijft in de
+    geschiedenis, en force-push is verboden. Gezien bij #97: een valse melding (`generic-password` op "`gh`-login" met een verwijzing
+    erachter). Herstel: een nieuwe branch met schone commits, de oude PR sluiten en de oude branch verwijderen (#99), daarna de
+    `secrets`-job van de andere PR's opnieuw draaien. Een uitzondering in `scripts/kit/betterleaks.toml` is geen herstel: dat
+    verzwakt de check. Lokaal vangt de pre-commit-hook dit, mits de toolchain er is (punt 8).
+11. **CI-logs lezen in de sandbox.** `gh run view <id> --log-failed` heeft een schrijfbare cache nodig (`XDG_CACHE_HOME` in
+    `$TMPDIR`; `~/.cache` is alleen-lezen) en netwerktoegang tot `results-receiver.actions.githubusercontent.com`.
+
 ## 9. Geparkeerd, nog uit te werken
 
 Besloten op 2026-10-12: niet bouwen, alleen vastleggen. Buiten scope: WS-00 stap 2 (gescopet token), de GitHub App (ADR 0005,
