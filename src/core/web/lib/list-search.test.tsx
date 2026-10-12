@@ -8,7 +8,7 @@ import {
 import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, test } from 'vitest';
 import { Button } from '../ui/button.tsx';
-import { useListSearch } from './list-search.ts';
+import { uniqueById, useListSearch } from './list-search.ts';
 
 afterEach(cleanup);
 
@@ -188,4 +188,23 @@ describe('useListSearch: review PR 1', () => {
       });
     },
   );
+});
+
+describe('uniqueById', () => {
+  test('houdt het eerste voorkomen en de volgorde', () => {
+    const rows = [
+      { id: 'a', n: 1 },
+      { id: 'b', n: 2 },
+      { id: 'a', n: 3 },
+    ];
+
+    expect(uniqueById(rows)).toEqual([
+      { id: 'a', n: 1 },
+      { id: 'b', n: 2 },
+    ]);
+  });
+
+  test('geeft een lege lijst terug voor lege invoer', () => {
+    expect(uniqueById([])).toEqual([]);
+  });
 });

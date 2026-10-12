@@ -51,3 +51,9 @@ export function useListSearch(): ListSearchState {
     },
   };
 }
+
+// Eerste voorkomen wint: keyset-paginering kan een rij op een volgende pagina terugbrengen (spec lijstpagina).
+export function uniqueById<Row extends { readonly id: string }>(items: readonly Row[]): Row[] {
+  const seen = new Set<string>();
+  return items.filter((item) => !seen.has(item.id) && seen.add(item.id));
+}

@@ -1,6 +1,6 @@
 import { useSearch } from '@tanstack/react-router';
 import { format } from '#core/web/lib/format.ts';
-import { useListSearch } from '#core/web/lib/list-search.ts';
+import { uniqueById, useListSearch } from '#core/web/lib/list-search.ts';
 import { __naamCamel__Search } from '#shared/contracts/__naam__.ts';
 import { copy } from '#web/copy/ui.ts';
 import {
@@ -25,14 +25,6 @@ const sortOptions: readonly SelectOption[] = [
   { value: 'nieuwste', label: copy.__naamCamel__.sorts.nieuwste },
   { value: 'oudste', label: copy.__naamCamel__.sorts.oudste },
 ];
-
-type Item = { readonly id: string; readonly aangemaakt: string };
-
-// Eerste voorkomen wint: keyset-paginering kan een rij op een volgende pagina terugbrengen (spec lijstpagina).
-function uniqueById<Row extends Item>(items: readonly Row[]): Row[] {
-  const seen = new Set<string>();
-  return items.filter((item) => !seen.has(item.id) && seen.add(item.id));
-}
 
 export function __Naam__Page() {
   const list = useListSearch();

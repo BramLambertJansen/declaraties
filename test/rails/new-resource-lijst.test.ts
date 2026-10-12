@@ -99,8 +99,7 @@ describe('pagina (lijstpagina/AC-8)', () => {
   test("ontdubbelt de samengevoegde pagina's op id, eerste voorkomen wint", () => {
     const pagina = inhoud('src/web/features/notities/notities-page.tsx');
 
-    expect(pagina).toMatch(/new Set/);
-    expect(pagina).toMatch(/seen\.(has|add)\(\s*item\.id\s*\)/);
+    expect(pagina).toMatch(/uniqueById\(data\.pages\.flatMap/);
   });
 });
 
@@ -259,14 +258,15 @@ function eigenschappen(letterlijk: ts.ObjectLiteralExpression): string[] {
 }
 
 describe('vorm van de gegenereerde pagina en queries (lijstpagina/AC-8)', () => {
-  test('uniqueById is een functie met een Set en wordt op de samengevoegde pagina-items aangeroepen', () => {
+  test('uniqueById komt uit core en wordt op de samengevoegde pagina-items aangeroepen', () => {
     const bron = boom('src/web/features/notities/notities-page.tsx');
-    const functie = vind(bron, ts.isFunctionDeclaration).find((f) => f.name?.text === 'uniqueById');
+    const geimporteerd = vind(bron, ts.isImportDeclaration).some(
+      (i) => i.moduleSpecifier.getText().includes('#core/web/lib/list-search.ts') && i.getText().includes('uniqueById'),
+    );
     const aanroepen = vind(bron, ts.isCallExpression).filter((c) => c.expression.getText() === 'uniqueById');
 
-    expect(functie).toBeDefined();
-    expect(vind(functie ?? bron, ts.isNewExpression).map((n) => n.expression.getText())).toContain('Set');
-    expect(aanroepen.length).toBeGreaterThan(0);
+    expect(geimporteerd).toBe(true);
+    expect(vind(bron, ts.isFunctionDeclaration).some((f) => f.name?.text === 'uniqueById')).toBe(false);
     expect(aanroepen.some((c) => c.getText().includes('flatMap'))).toBe(true);
   });
 

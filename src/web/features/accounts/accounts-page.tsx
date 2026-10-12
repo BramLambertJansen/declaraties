@@ -2,7 +2,7 @@ import { useSearch } from '@tanstack/react-router';
 import { useState } from 'react';
 import type { z } from 'zod';
 import { ACCOUNT_SORTS, ROLLEN, accountsSearch, STATUSSEN, type accountItem } from '#shared/contracts/accounts.ts';
-import { useListSearch } from '#core/web/lib/list-search.ts';
+import { uniqueById, useListSearch } from '#core/web/lib/list-search.ts';
 import { copy } from '#web/copy/ui.ts';
 import {
   AsyncView,
@@ -37,12 +37,6 @@ const sortOptions: readonly SelectOption[] = ACCOUNT_SORTS.map((sort) => ({
   value: sort,
   label: copy.accounts.sorts[sort],
 }));
-
-// Eerste voorkomen wint: keyset-paginering kan een rij op een volgende pagina terugbrengen (spec lijstpagina).
-function uniqueById(items: readonly Account[]): Account[] {
-  const seen = new Set<string>();
-  return items.filter((item) => !seen.has(item.id) && seen.add(item.id));
-}
 
 function AccountsTable({
   items,
