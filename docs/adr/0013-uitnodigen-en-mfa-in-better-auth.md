@@ -65,3 +65,4 @@ schema `better_auth` (ADR 0010), eigen verbinding als `auth_service`.
 - TOTP-codes zijn in Better Auth 1.7.7 herbruikbaar binnen het venster (±1 periode, geen replay-bescherming). Afgedekt door de
   rate limit per IP en de lockout na 5 fouten; eigen replay-bescherming is een mogelijke uitbreiding.
 - Een "wachtwoord vergeten"-functie later is één pad uit `disabledPaths` halen plus een scherm; de token-geldigheid moet dan apart (nu 7 dagen voor alles).
+- ADR 0026: blokkeren werkt zonder admin-plugin, via `blocked_at` en `app.set_account_blocked`; de verwerping van de plugin blijft staan.

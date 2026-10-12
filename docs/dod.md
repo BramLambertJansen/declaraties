@@ -32,7 +32,7 @@ De reviewer bepaalt eerst welke fase uit `docs/roadmap.md` bij het werk hoort: d
 ## Features (fase 1 stuk 3 "gebruikersbeheer" en elke feature in fase 2)
 
 - [ ] Elk acceptatiecriterium uit de goedgekeurde spec is gedekt door een inhoudelijke test; meld ontbrekende criteria afzonderlijk.
-- [ ] Bij schermwerk: als `ui:check` in `package.json` bestaat, voer `pnpm ui:check <route>` uit (375 en 1280 px + axe) en noteer de uitslag. Zo niet, vermeld dat de check nog niet beschikbaar is; claim geen UI-check als geslaagd.
+- [ ] Bij schermwerk: als `ui:check` in `package.json` bestaat, voer `pnpm ui:check` uit (375 en 1280 px + axe) en noteer de uitslag. Zo niet, vermeld dat de check nog niet beschikbaar is; claim geen UI-check als geslaagd.
 - [ ] De feature volgt het gouden pad (`docs/gouden-pad.md`); een resource met een eigenaar per rij begint met `pnpm new:resource <naam>` (eerst het spec-skelet, na `goedgekeurd` de code). Past de generator niet (bijv. een view of security definer-functies), meld dat in de PR.
 
 ## Fase 3 — Release

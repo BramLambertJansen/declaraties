@@ -20,4 +20,4 @@ De baseline-migratie is nog nergens gedraaid; dit is het moment om het te verand
 
 - Framework, padregels, AGENTS.md, roadmap en `nieuwe-app.md` noemen `better_auth`.
 - De invariant "schema dicht voor iedereen behalve `auth_service`" geldt voor `better_auth`. Uitzondering sinds ADR 0014: `app_definer` leest
-  een vaste lijst kolommen voor de view `app.accounts`.
+  een vaste lijst kolommen voor de view `app.accounts`, waarvan `blocked_at` ook schrijfbaar is (ADR 0026, alleen via `app.set_account_blocked`).

@@ -23,7 +23,7 @@ paths:
 - Responsive met breakpoints en container queries. Wat echt per formaat verschilt: één gedeelde hook, niet per component.
 - Alle zichtbare tekst in `src/web/copy`, Nederlands, volgens de woordenlijst ("Annuleren", niet "Annuleer").
 - Datums en bedragen alleen via `lib/format.ts`.
-- Schermwerk is pas klaar na `pnpm ui:check <route>` (375 en 1280 px + axe) zodra dat script bestaat.
+- Schermwerk is pas klaar na `pnpm ui:check` (375 en 1280 px + axe).
 - Aanraakdoelen ≥ 44 px en zichtbare focusring zitten in de recepten; nooit uitschakelen.
 
 ## Besloten, nog niet gebouwd

@@ -182,7 +182,7 @@ Ankers: OWASP Top 10:2025, OWASP API Security Top 10, ASVS 5.0 niveau 1 (checkli
 - **Grants**: PUBLIC krijgt niets (`alter default privileges for role app_migrator revoke execute on functions / usage on types from public`,
   `revoke all on database/schema public from public`); elke tabel expliciete grants in de migratie; een pgTAP-invariant eist dat geen
   API-rol TRUNCATE, REFERENCES of TRIGGER heeft en dat elke tabel in `public` en `app` RLS aan én geforceerd heeft
-  (uitzondering: `public.schema_migrations`); schema `better_auth` heeft geen grants behalve aan `auth_service`, plus de kolom-allowlist van `app_definer` voor de view `app.accounts` (ADR 0014).
+  (uitzondering: `public.schema_migrations`); schema `better_auth` heeft geen grants behalve aan `auth_service`, plus de kolom-allowlist van `app_definer` voor de view `app.accounts` (ADR 0014) en `update (blocked_at)` voor `app.set_account_blocked` (ADR 0026).
 - **FORCE RLS werkt alleen voor niet-superusers**: daarom is `app_migrator` eigenaar en geen superuser, lokaal én in productie.
   Datamigraties die alle rijen moeten zien, lopen via een gereviewde `security definer`-functie van `app_definer`; omdat FORCE RLS
   ook voor `app_definer` geldt, krijgt de tabel daarvoor een eigen policy `to app_definer` met pgTAP-test.
@@ -444,21 +444,21 @@ een regel blijft alleen als hij aantoonbaar helpt.
 src/core/     van de template (ADR 0008); een app wijzigt dit niet
   api/        route/ (createRouteKit, defineRoute) db/ (pool, withUser, foutvertaling) auth/ (Better Auth)
               http/ (createApp: CSRF, bodyLimit, secureHeaders, onError) obs/ env.ts (basisschema, enige process.env)
-  web/        ui/ (basiskit, AsyncView, Form) styles/ (tokens) lib/ (api-client.ts, auth.ts, env.ts, format.ts, report-error.ts) copy/ (basisteksten)
+  web/        ui/ (basiskit, AsyncView, Form) styles/ (tokens) lib/ (api-client.ts, auth.ts, env.ts, format.ts; report-error.ts volgt in fase 2) copy/ (basisteksten)
   shared/     can.ts (engine) errors.ts (basiscodes) limits.ts (harde grenzen) ids.ts assert unsafeCast Cents cursor
 src/web/      routes/ features/ ui/ (eigen componenten + barrel) styles/theme.css lib/ (api.ts, env.ts) copy/ dev/
-src/api/      app.ts kit.ts server.ts env.ts routes/ domain/ db/ (gegenereerd: schema, ids.ts)
+src/api/      app.ts kit.ts server.ts env.ts (zodra de app eigen variabelen heeft) routes/ domain/ db/ (gegenereerd: schema, ids.ts)
 src/shared/   schema's, permissions.ts, errors.ts, limits.ts, ids.ts (app-uitbreidingen)
 deploy/<host>/ adapter per gekozen host (per app)
 db/           docker/ (Postgres+pgTAP) init/ (rollen, alleen lokaal) migrations/ (dbmate) tests/ (pgTAP) schema.snapshot.sql
 e2e/          Playwright-tests tegen de echte lokale stack
 scripts/seed  testgebruikers per rol via de auth-API (wachtwoordhashes, vast lokaal TOTP-geheim voor admin)
-scripts/      dev bootstrap doctor test-db ui-check db-types check-*
-scripts/kit/  gates.mjs (gate-register) feiten.mjs ratchet.mjs diff-guard.mjs goedkeuring.mjs (ADR 0011)
+scripts/      dev bootstrap doctor runner (db, ui, gen) db-generate check-*
+scripts/kit/  gates.mjs (gate-register) feiten.mjs ratchet.mjs diff-guard.mjs check-*.mjs (ADR 0011)
 .kit/         baseline.json (ratchet)
 designs/      optioneel: prototype-exports
 docs/         framework.md roadmap.md dod.md nieuwe-app.md gouden-pad.md specs/ adr/ operations/ reviews/
-.claude/      settings.json gates.json agents/ skills/ rules/ hooks/ (rolhek, groen-voor-klaar)
+.claude/      settings.json gates.json agents/ skills/ rules/ hooks/ (rolhek, werkstraat)
 .github/      workflows/ settings/ CODEOWNERS pull_request_template.md
 compose.yaml  mise.toml  AGENTS.md  CLAUDE.md  CHANGELOG.md
 ```
@@ -478,7 +478,6 @@ Fase 0 en 1 horen in de template; het gouden pad en de generator ontstaan in fas
 
 | Uitbreiding | Toevoegen wanneer |
 |---|---|
-| Audit log | Wijzigingen moeten herleidbaar zijn naar een gebruiker |
 | Bestanden (signed URL's) of realtime | De app heeft ze nodig, met een eigen ADR |
 | Idempotente mutaties (ADR 0011): request-UUID die de client vóór het netwerkverzoek vastlegt en bij herhalen hergebruikt; bonnetabel met payload-hash (zelfde UUID, andere inhoud → `REQUEST_ID_CONFLICT`); `pg_advisory_xact_lock` per UUID; opvragen of annuleren (tombstone) van een onbekende uitkomst | Mutaties met geld of voorraad |
 | Screenshot-regressie en axe in CI | Een visuele of toegankelijkheidsfout glipte door |

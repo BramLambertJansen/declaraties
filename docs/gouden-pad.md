@@ -16,7 +16,7 @@ draait hem; `--dry-run` toont het plan zonder te schrijven, en bestaat een doel 
      [de security-review](reviews/2026-10-10-tabelpatroon.md); een naam met `-` wordt `_` in SQL), `src/api/routes/<naam>.ts`,
      `src/web/features/<naam>/queries.ts`, `src/web/features/<naam>/<naam>-page.tsx`, `src/web/routes/_app/<naam>.tsx`
      (en `src/web/routeTree.gen.ts` opnieuw);
-   - gewijzigd: `src/shared/contracts/index.ts`, `src/shared/ids.ts` en `db/ids.json` (brand `<Naam>Id`), `src/shared/limits.ts`
+   - gewijzigd: `src/shared/contracts/index.ts`, `src/shared/ids.ts` (aangemaakt als hij ontbreekt) en `db/ids.json` (brand `<Naam>Id`), `src/shared/limits.ts`
      (paginagrootte), `src/web/copy/ui.ts` (teksten, te vervangen door die uit de spec), `src/web/lib/nav.ts` (menu-item);
    - gate-bestanden, als afgedrukte wijziging die de hoofdsessie met Edit zet: `src/shared/permissions.ts`,
      `src/shared/permissions.test.ts`, `src/api/app.ts` en `src/web/routes.test.tsx` (menu per rol). Noem de twee

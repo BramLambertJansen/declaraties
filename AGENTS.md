@@ -84,7 +84,7 @@ vangen het later toch, en dan is het werk verloren. Uitzonderingen staan limitat
 - UI-tekst Nederlands; code, commits en branchnamen Engels. Naamgeving: `docs/framework.md` §5.
 - Volg `docs/dod.md` fasebewust: voer bestaande, toepasselijke checks uit, lever alleen op met een geslaagde uitslag (of expliciet akkoord van de eigenaar) en vermeld exact wat nog niet beschikbaar is; verzin geen commando's of uitslagen.
 - Volg de platformneutrale werkstraat in `docs/framework.md` §8. Agentrollen zijn onafhankelijk waar de runtime dat ondersteunt; ontbreekt een onafhankelijke reviewer, vraag de eigenaar om die review en claim niet dat je eigen werk onafhankelijk is gecontroleerd.
-- Begin met de feiten: `node scripts/kit/feiten.mjs` (zodra het bestaat) in plaats van wat in proza staat.
+- Begin met de feiten: `node scripts/kit/feiten.mjs` in plaats van wat in proza staat.
 - Runtime-specifieke instructies gelden alleen voor die runtime. De hooks in `.claude/` werken niet in andere runtimes (Codex, sommige
   cloudsessies); daar zijn CI, de diff-guard en GitHub de enige grens. Claim nooit dat een instelling klopt die je niet kunt lezen.
 

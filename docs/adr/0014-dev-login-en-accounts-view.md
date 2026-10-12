@@ -41,3 +41,4 @@ De spec accountbeheer vraagt twee dingen die buiten de bestaande regels vallen:
 - Framework §3 en §6, ADR 0010 en `.claude/rules/` noemen de uitzonderingen. Een nieuwe kolom uit `better_auth` lezen vraagt een ADR en
   een regel in de allowlist.
 - De seed-accounts en het vaste TOTP-geheim zijn nu ook de toegang van de dev-login; ze bestaan alleen lokaal (seed weigert elders).
+- ADR 0026: de allowlist krijgt `"user".blocked_at` (select en update); "geen sessies" blijft staan.
