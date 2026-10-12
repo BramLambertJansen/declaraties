@@ -4,10 +4,8 @@
     "deny": [
       "Read(.env)",
       "Read(.env.*)",
-      "Read(!.env.example)",
       "Edit(.env)",
       "Edit(.env.*)",
-      "Edit(!.env.example)",
       "Read(./**/*secret*)",
       "Read(~/.ssh/**)",
       "Read(~/.aws/**)",

@@ -25,3 +25,5 @@ Hier staan wijzigingen die van belang zijn bij het gebruiken of bijwerken van de
 ### Bij een update
 
 De template heeft nog geen releaseversies. Controleer bij een update de gewijzigde migraties, architectuurbesluiten en instellingen. Een volledige upgradecontrole staat op de roadmap.
+
+- **`.claude/settings.json`: dode deny-regels `Read(!.env.example)` en `Edit(!.env.example)` weg.** Claude Code las de `!` als letterlijke padnaam, niet als uitzondering. Wat verandert voor een app: niets in gedrag; `.env.example` was en blijft voor agents onleesbaar via `.env.*` (permissieregel én sandbox). Wat de eigenaar moet doen: niets. Conflicten: alleen als de app deze regels in `.claude/settings.json` zelf aanpaste.
