@@ -237,7 +237,7 @@ function copyUi(root, n) {
   return voegIn(
     bestand(lees(root, pad), pad),
     { anker: '\n} as const;' },
-    `\n  // ${n.naam} (pnpm new:resource): vervang door de teksten uit de spec, letterlijk.\n  ${n.naamCamel}: { title: '${n.naam}', empty: 'Nog niets.', created: 'Aangemaakt' },`,
+    `\n  // ${n.naam} (pnpm new:resource): vervang door de teksten uit de spec, letterlijk.\n  ${n.naamCamel}: {\n    title: '${n.naam}',\n    empty: 'Nog niets.',\n    created: 'Aangemaakt',\n    more: 'Meer laden',\n    loading: 'Bezig met laden…',\n    shown: (count: number, more: boolean) => \`\${String(count)} ${n.naam} getoond.\${more ? ' Er zijn er meer.' : ''}\`,\n    search: 'Zoeken',\n    sort: 'Sorteren',\n    sorts: { nieuwste: 'Nieuwste eerst', oudste: 'Oudste eerst' },\n    emptyFiltered: 'Niets gevonden. Pas je zoekopdracht aan.',\n  },`,
   );
 }
 

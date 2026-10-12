@@ -1,23 +1,32 @@
-import { useInfiniteQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { keepPreviousData, useInfiniteQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import type { z } from 'zod';
-import type { __naamCamel__CreateInput, __naamCamel__UpdateInput } from '#shared/contracts/__naam__.ts';
+import type {
+  __naamCamel__CreateInput,
+  __naamCamel__Search,
+  __naamCamel__UpdateInput,
+} from '#shared/contracts/__naam__.ts';
 import { api } from '#web/lib/api.ts';
 
 // Resource __naam__ (spec docs/specs/__naam__.md), gemaakt door pnpm new:resource.
-// Lijst per pagina met cursor; aanmaken, wijzigen en verwijderen invalideren de lijst.
+// Lijst per pagina met cursor (alleen hier, niet in de URL), zoeken en sorteren uit de search params; aanmaken, wijzigen en verwijderen invalideren de lijst.
 export const __naamCamel__Keys = {
   all: ['__naam__'] as const,
-  list: () => [...__naamCamel__Keys.all, 'list'] as const,
+  list: (search: __Naam__Search) => [...__naamCamel__Keys.all, 'list', search] as const,
 };
+
+export type __Naam__Search = z.output<typeof __naamCamel__Search.web>;
 
 const firstPage: string | null = null;
 
-export function use__Naam__() {
+// Zoek- en sorteerwaarden zitten in de query key: elke wijziging begint bij de eerste pagina; de vorige rijen blijven staan tot het antwoord er is.
+export function use__Naam__(search: __Naam__Search) {
   return useInfiniteQuery({
-    queryKey: __naamCamel__Keys.list(),
-    queryFn: ({ pageParam }) => api.call('GET /__naam__', pageParam === null ? {} : { cursor: pageParam }),
+    queryKey: __naamCamel__Keys.list(search),
+    queryFn: ({ pageParam }) =>
+      api.call('GET /__naam__', { ...search, ...(pageParam === null ? {} : { cursor: pageParam }) }),
     initialPageParam: firstPage,
     getNextPageParam: (page) => page.nextCursor,
+    placeholderData: keepPreviousData,
   });
 }
 

@@ -11,7 +11,7 @@ Hier staan wijzigingen die van belang zijn bij het gebruiken of bijwerken van de
 - Postgres-migraties, row-level security en tests voor datatoegang.
 - Een UI-kit met componentcatalogus, formulieren, bevestigingsdialogen en toegankelijke navigatie.
 - Een lokale omgeving met Postgres en Mailpit, installatie- en diagnosecommando's en demoaccounts.
-- Een resourcegenerator die eerst een featurespec maakt en na goedkeuring een implementatieskelet. De handlers moeten nog worden ingevuld.
+- Een resourcegenerator die eerst een featurespec maakt en na goedkeuring een implementatieskelet. De handlers moeten nog worden ingevuld. De gegenereerde lijst heeft zoeken en sorteren in de URL.
 - Een setup-playbook en hernoemscript voor nieuwe apps. Template-updates gebruiken merge-commits om de geschiedenis te behouden.
 - Requestlogging, health- en readinessroutes, gecontroleerd stoppen en een containerimage voor de webapp en API.
 - Controles voor codekwaliteit, architectuur, migraties, database- en schermgedrag, kwetsbaarheden en secrets, lokaal en in GitHub Actions.

@@ -1,13 +1,18 @@
 import { z } from 'zod';
 import { pageSchema } from '#core/shared/cursor.ts';
+import { defineListSearch } from '#core/shared/list-search.ts';
 import { __Naam__Id } from '../ids.ts';
 import { defineContract } from './kit.ts';
 
 // Resource __naam__ (spec docs/specs/__naam__.md), gemaakt door pnpm new:resource.
-// Lijst met cursor, aanmaken, wijzigen en verwijderen. De velden komen uit de spec: in het item en in de invoer van
+// Lijst met zoeken, sorteren en cursor (spec lijstpagina), aanmaken, wijzigen en verwijderen. De velden komen uit de spec: in het item en in de invoer van
 // aanmaken en wijzigen, met grenzen uit limits.ts.
 // Rate limit (spec rate-limit): zonder `rateLimit` geldt de standaard per methode (GET → 'lezen', anders 'schrijven');
 // een route die mail verstuurt of iets anders duurs doet, krijgt `rateLimit: 'duur'`.
+// Zoeken en sorteren in de search params: één schema voor de API (strict) en de webroute (validateSearch). Filters per
+// resource komen uit de spec: voeg ze toe aan `filters`, met de kolommen in de handler.
+export const __naamCamel__Search = defineListSearch({ sorts: ['nieuwste', 'oudste'], filters: {} });
+
 export const __naamCamel__Item = z
   .object({
     id: __Naam__Id,
@@ -19,7 +24,7 @@ export const __naamCamel__Item = z
 export const __naamCamel__ListContract = defineContract({
   method: 'GET',
   path: '/__naam__',
-  input: z.object({ cursor: z.string().max(500).optional() }).strict(),
+  input: __naamCamel__Search.api,
   output: pageSchema(__naamCamel__Item),
   permission: '__naam__:read',
 });

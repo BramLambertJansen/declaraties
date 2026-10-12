@@ -38,9 +38,10 @@ draait hem; `--dry-run` toont het plan zonder te schrijven, en bestaat een doel 
    via `ctx.services`: `src/api/services.ts`.
 7. **Integratietests** (verboden rol, admin zonder MFA, ongeldige input, ACs): `test/api/accounts.int.test.ts` met de testkit
    (`beginTestDb`, `asUser`).
-8. **Queries** (key-factory, hooks, mutaties die invalideren): `src/web/features/accounts/queries.ts`.
+8. **Queries** (key-factory met de search in de key, hooks, `placeholderData`, mutaties die invalideren): `src/web/features/accounts/queries.ts`.
 9. **Scherm** met kitcomponenten uit `src/web/ui` en teksten uit `src/web/copy/ui.ts`: `src/web/features/accounts/accounts-page.tsx`,
-   `invite-dialog.tsx`.
+   `invite-dialog.tsx`. Een lijst met zoeken en sorteren in de search params (`defineListSearch`, `useListSearch`, `ListToolbar`;
+   spec [lijstpagina](specs/lijstpagina.md)); `new:resource` maakt die uit de sjablonen, met de sorteringen nieuwste en oudste.
 10. **Route** met guard: `src/web/routes/_app/admin/accounts.tsx`; menu-item per rol in `src/web/lib/nav.ts`.
 11. **E2E** per AC met axe op 375 en 1280 px: `e2e/accounts.spec.ts`.
 

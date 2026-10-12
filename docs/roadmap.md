@@ -166,6 +166,7 @@ Elke app heeft dit nodig, dus het hoort in de template. Elk punt eerst een spec.
 
 **3f. Basis die elke app nodig heeft** (lijst eigenaar 2026-10-10). Nieuwe route, permissie of migratie: eerst een spec.
 - [ ] Lijstpagina-patroon: zoeken, filteren en sorteren in de search params, op het cursor-contract en `Table`; `new:resource` gebruikt het
+      (spec `lijstpagina`; AC-8: `test/rails/new-resource-lijst.test.ts`, sjablonen in `scripts/kit/templates/`, voorbeeld `src/web/features/accounts`). Accounts is klaar; alleen AC-8 wacht op de uitslag van `check:new-resource` in CI
 - [x] `ConfirmDialog` in de kit voor destructieve acties (focus op Annuleren, `busy` blokkeert sluiten), op `/design-system` en in
       `check:catalogus` (`src/core/web/ui/confirm-dialog.test.tsx`, `e2e/design-system.spec.ts`)
 - [x] Schil toegankelijk: paginatitel per scherm (`useDocumentTitle` via de h1, app-naam uit `src/web/index.html`), skip-link naar de inhoud,

@@ -18,6 +18,8 @@ de migratie, de queries, het scherm, de route en het menu-item; de tests schrijf
   `(select app.is_mfa_admin())`, nooit `using (true)` (review tabelpatroon, B2).
 - **Verwijderd account:** wat gebeurt er met de rijen als het account weg is? Standaard gaan ze mee (`on delete cascade`);
   geldt er een bewaarplicht, dan iets anders (review tabelpatroon, B3).
+- **Zoeken en filters:** op welke velden zoekt `q`, en welke filters (enum uit het contract) krijgt de lijst? De standaard is alleen
+  zoeken en de sorteringen `nieuwste` en `oudste`.
 - **Teksten:** paginatitel, menu-item, lege lijst, kolommen, knoppen en meldingen, letterlijk.
 
 ## Doel
@@ -51,9 +53,14 @@ uit "Open vragen". Index op `owner_id`. RLS aan en geforceerd.
 Een rij van een ander bestaat voor de gebruiker niet: `NOT_FOUND`, niet `FORBIDDEN`. De lijst heeft een vaste paginagrootte
 (`__NAAM___PAGE_SIZE`, hooguit `MAX_PAGE_SIZE`) en een cursor.
 
+Zoeken en sorteren (spec lijstpagina): `GET` neemt `/api/__naam__?q=&sort=&cursor=` (`q` zoekt, `sort` is `nieuwste` of `oudste`).
+De cursor is aan de sortering gebonden: een cursor van een andere sortering, een vreemde cursor of een ongeldige `sort` geeft `VALIDATION`.
+In `q` worden `%`, `_` en `\` ge-escaped, zodat ze letterlijk worden gezocht. Velden en filters: zie "Open vragen", vraag "Zoeken en filters".
+
 ## Hergebruik en UX
 
-- Bestaande componenten: `PageHeader`, `AsyncView`, `Table` (`node scripts/kit/feiten.mjs componenten`).
+- Bestaande componenten: `PageHeader`, `AsyncView`, `Table`, `ListToolbar` en `useListSearch` voor zoeken en sorteren in de
+  search params (`node scripts/kit/feiten.mjs componenten`).
 - Staten per scherm: laden, leeg, fout, bezig, gelukt, verouderd
 - Alle zichtbare tekst letterlijk: zie "Open vragen".
 - Focusvolgorde en toetsenbord:
@@ -70,6 +77,7 @@ Een rij van een ander bestaat voor de gebruiker niet: `NOT_FOUND`, niet `FORBIDD
 
 ## Raakt ook
 
+- `src/shared/contracts/__naam__.ts` (`defineListSearch`), de lijstquery in `src/api/routes/__naam__.ts` en `ListToolbar` in het scherm.
 - Menu-item per rol in `src/web/lib/nav.ts` en de menutest in `src/web/routes.test.tsx`.
 
 ## Buiten scope

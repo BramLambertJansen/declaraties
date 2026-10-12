@@ -1,8 +1,11 @@
 import { createFileRoute } from '@tanstack/react-router';
+import { __naamCamel__Search } from '#shared/contracts/__naam__.ts';
 import { __Naam__Page } from '#web/features/__naam__/__naam__-page.tsx';
 import { guard } from '#web/lib/session.ts';
 
 export const Route = createFileRoute('/_app/__naam__')({
+  // Ongeldige waarden worden de standaardwaarde, geen foutpagina (spec lijstpagina); de API valideert opnieuw.
+  validateSearch: __naamCamel__Search.web,
   beforeLoad: guard('__naam__:read'),
   component: __Naam__Page,
 });

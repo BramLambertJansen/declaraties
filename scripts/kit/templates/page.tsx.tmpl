@@ -1,7 +1,12 @@
+import { useSearch } from '@tanstack/react-router';
 import { format } from '#core/web/lib/format.ts';
+import { useListSearch } from '#core/web/lib/list-search.ts';
+import { __naamCamel__Search } from '#shared/contracts/__naam__.ts';
 import { copy } from '#web/copy/ui.ts';
 import {
   AsyncView,
+  Button,
+  ListToolbar,
   PageHeader,
   Table,
   TableBody,
@@ -9,39 +14,88 @@ import {
   TableHead,
   TableHeader,
   TableRow,
+  type SelectOption,
 } from '#web/ui/index.ts';
 import { use__Naam__ } from './queries.ts';
 
 // Resource __naam__ (spec docs/specs/__naam__.md), gemaakt door pnpm new:resource.
-// De lijst via AsyncView (laden, leeg, fout); kolommen, acties en "Meer laden" volgen uit de spec.
+// De lijst met zoeken en sorteren in de search params (spec lijstpagina), via AsyncView (laden, leeg, fout);
+// kolommen, filters, acties en "Meer laden" volgen uit de spec.
+const sortOptions: readonly SelectOption[] = [
+  { value: 'nieuwste', label: copy.__naamCamel__.sorts.nieuwste },
+  { value: 'oudste', label: copy.__naamCamel__.sorts.oudste },
+];
+
+type Item = { readonly id: string; readonly aangemaakt: string };
+
+// Eerste voorkomen wint: keyset-paginering kan een rij op een volgende pagina terugbrengen (spec lijstpagina).
+function uniqueById<Row extends Item>(items: readonly Row[]): Row[] {
+  const seen = new Set<string>();
+  return items.filter((item) => !seen.has(item.id) && seen.add(item.id));
+}
+
 export function __Naam__Page() {
-  const list = use__Naam__();
+  const list = useListSearch();
+  // De router laat ongeldige sleutels uit de URL staan: opnieuw schonen vóór gebruik.
+  const route = __naamCamel__Search.web.parse(useSearch({ from: '/_app/__naam__' }));
+  const query = use__Naam__(route);
+  // Voegt de app filters toe, breid dan deze voorwaarde uit, zoals `filtered` in src/web/features/accounts/accounts-page.tsx.
+  const filtered = route.q !== undefined;
   return (
     <div className="flex flex-col gap-6">
       <PageHeader title={copy.__naamCamel__.title} />
+      <ListToolbar
+        searchLabel={copy.__naamCamel__.search}
+        query={route.q ?? ''}
+        onQueryChange={list.setQuery}
+        sortLabel={copy.__naamCamel__.sort}
+        sort={route.sort ?? __naamCamel__Search.defaultSort}
+        sortOptions={sortOptions}
+        onSortChange={list.setSort}
+        onClear={list.clear}
+      />
       <AsyncView
-        query={list}
+        query={query}
         isEmpty={(data) => data.pages.every((page) => page.items.length === 0)}
-        emptyText={copy.__naamCamel__.empty}
+        emptyText={filtered ? copy.__naamCamel__.emptyFiltered : copy.__naamCamel__.empty}
       >
-        {(data) => (
-          <Table label={copy.__naamCamel__.title}>
-            <TableHeader>
-              <TableRow>
-                <TableHead>{copy.__naamCamel__.created}</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {data.pages
-                .flatMap((page) => page.items)
-                .map((item) => (
-                  <TableRow key={item.id}>
-                    <TableCell>{format.dateTime(item.aangemaakt)}</TableCell>
+        {(data) => {
+          const rows = uniqueById(data.pages.flatMap((page) => page.items));
+          return (
+            <div className="flex min-w-0 flex-col gap-4">
+              <p aria-live="polite" className="text-sm text-muted-foreground">
+                {query.isPlaceholderData
+                  ? copy.__naamCamel__.loading
+                  : copy.__naamCamel__.shown(rows.length, query.hasNextPage)}
+              </p>
+              <Table label={copy.__naamCamel__.title} aria-busy={query.isPlaceholderData}>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>{copy.__naamCamel__.created}</TableHead>
                   </TableRow>
-                ))}
-            </TableBody>
-          </Table>
-        )}
+                </TableHeader>
+                <TableBody>
+                  {rows.map((item) => (
+                    <TableRow key={item.id}>
+                      <TableCell>{format.dateTime(item.aangemaakt)}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+              {query.hasNextPage ? (
+                <div>
+                  <Button
+                    variant="outline"
+                    disabled={query.isFetchingNextPage}
+                    onClick={() => void query.fetchNextPage()}
+                  >
+                    {copy.__naamCamel__.more}
+                  </Button>
+                </div>
+              ) : null}
+            </div>
+          );
+        }}
       </AsyncView>
     </div>
   );
