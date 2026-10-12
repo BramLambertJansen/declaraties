@@ -11,6 +11,8 @@ import { defineRoute } from '../kit.ts';
 // Werkstraat-stap 2 (framework §8): elke route geeft 501 tot de developer hem bouwt; de tester schrijft de tests eerst.
 // De tabel public.__tabel__ komt na pnpm db:generate in src/api/db/schema.ts. Lijsten hooguit __NAAM___PAGE_SIZE rijen
 // (limits.ts).
+// De lijst (spec lijstpagina): sorteer op (aangemaakt, id), houd de cursor per sortering, en escape `%`, `_` en `\` in `q`
+// voordat je zoekt met ilike.
 function notImplemented(): never {
   throw new AppError('NOT_IMPLEMENTED');
 }

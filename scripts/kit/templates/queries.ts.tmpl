@@ -11,15 +11,15 @@ import { api } from '#web/lib/api.ts';
 // Lijst per pagina met cursor (alleen hier, niet in de URL), zoeken en sorteren uit de search params; aanmaken, wijzigen en verwijderen invalideren de lijst.
 export const __naamCamel__Keys = {
   all: ['__naam__'] as const,
-  list: (search: __Naam__Search) => [...__naamCamel__Keys.all, 'list', search] as const,
+  list: (search: __Naam__ListSearch) => [...__naamCamel__Keys.all, 'list', search] as const,
 };
 
-export type __Naam__Search = z.output<typeof __naamCamel__Search.web>;
+export type __Naam__ListSearch = z.output<typeof __naamCamel__Search.web>;
 
 const firstPage: string | null = null;
 
 // Zoek- en sorteerwaarden zitten in de query key: elke wijziging begint bij de eerste pagina; de vorige rijen blijven staan tot het antwoord er is.
-export function use__Naam__(search: __Naam__Search) {
+export function use__Naam__(search: __Naam__ListSearch) {
   return useInfiniteQuery({
     queryKey: __naamCamel__Keys.list(search),
     queryFn: ({ pageParam }) =>

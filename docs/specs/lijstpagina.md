@@ -1,5 +1,5 @@
 ---
-status: goedgekeurd # door de agent onder mandaat van de eigenaar (2026-10-11), open vragen volgens de aanbeveling; ter herziening
+status: gebouwd
 namespace: lijstpagina
 ---
 
