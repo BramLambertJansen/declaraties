@@ -67,6 +67,16 @@ otpauth://totp/localhost:admin%40template.test?secret=NRXWWYLBNQWWIZLNN4WXI33UOA
 
 Deze accounts en waarden zijn alleen voor lokaal gebruik. Voor een eerste beheerder of accountherstel in een andere omgeving volg je het [beheerdersrunbook](docs/operations/eerste-admin.md).
 
+## Cloud
+
+Opdrachten geven vanaf telefoon of browser (claude.ai/code, Code-tab in de app) gaat via een cloudsessie: een verse clone in een VM van Anthropic. Eenmalig per repo:
+
+1. Maak op claude.ai/code een omgeving met netwerktoegang **Trusted** (de standaard). `mise.run` staat niet op die allowlist; het script haalt mise daarom van github.com.
+2. Zet als setup-script `bash scripts/cloud-setup.sh`. Het installeert mise, de toolchain uit `mise.toml`, de dependencies en de git-hooks, zonder geheimen. Klaar binnen ongeveer vijf minuten betekent dat de omgeving wordt gecachet.
+3. Start elke sessie met **één repo**. Alleen dan gelden de hooks en permissieregels uit `.claude/settings.json`.
+
+Een cloudsessie heeft geen lokale stack: `pnpm gate:slow` en `pnpm test:db` draaien in CI. De GitHub-proxy beperkt niet naar welke branch gepusht wordt, dus de ruleset op `main` is daar de grens. Wat in een echte sessie wel en niet werkt (sandbox, hooks, `ask` vanaf de telefoon), staat in de cloudreview onder `docs/reviews/`. Tot die er is, is het pad naar het setup-script vanuit de omgeving niet bewezen.
+
 ## Controles
 
 | Commando | Controleert |
