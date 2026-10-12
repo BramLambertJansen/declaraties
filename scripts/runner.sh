@@ -5,8 +5,10 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
-# Wat de host vóór de container uitvoert of leest, moet gelijk zijn aan HEAD (ADR 0009). Alleen de eigenaar
-# mag dat met --sta-wijzigingen-toe overslaan, na het lezen van de wijziging.
+# Wat de host vóór de container uitvoert of leest, moet gelijk zijn aan wat al op main staat (ADR 0009, 0025 punt 4):
+# lokaal aan de merge-base met origin/main, zodat ook een gecommitte wijziging niet ongelezen op de host draait; in CI
+# (ondiepe checkout zonder origin/main, wegwerp-runner) aan HEAD. Alleen de eigenaar mag dat met --sta-wijzigingen-toe
+# overslaan, na het lezen van de wijziging.
 HOST_FILES=(scripts package.json pnpm-workspace.yaml .npmrc .pnpmfile.cjs mise.toml compose.yaml compose.*.yaml
   compose.override.yaml db/test.env db/docker)
 
@@ -20,14 +22,28 @@ case "$suite" in
   *) echo "Gebruik: scripts/runner.sh db|ui|gen [--sta-wijzigingen-toe]" >&2; exit 2 ;;
 esac
 
-if [[ "${2:-}" != "--sta-wijzigingen-toe" ]]; then
+check_host_files() {
+  local changed base
   changed="$(git status --porcelain --untracked-files=all -- "${HOST_FILES[@]}")"
   if [[ -n "$changed" ]]; then
     printf '✗ Bestanden die de host uitvoert, wijken af van HEAD:\n%s\n' "$changed" >&2
     printf '  → commit ze eerst, of (alleen de eigenaar, na lezen) voeg --sta-wijzigingen-toe toe.\n' >&2
     exit 1
   fi
-fi
+  [[ "${CI:-}" == "true" ]] && return 0
+  if ! base="$(git merge-base origin/main HEAD 2>/dev/null)"; then
+    printf '✗ origin/main is niet te lezen, dus de host-bestanden zijn niet te vergelijken: draai git fetch origin.\n' >&2
+    exit 1
+  fi
+  changed="$(git diff --name-status "$base" -- "${HOST_FILES[@]}")"
+  if [[ -n "$changed" ]]; then
+    printf '✗ Bestanden die de host uitvoert, wijken af van origin/main (merge-base):\n%s\n' "$changed" >&2
+    printf '  → de eigenaar leest de wijziging en draait daarna met --sta-wijzigingen-toe.\n' >&2
+    exit 1
+  fi
+}
+
+if [[ "${2:-}" != "--sta-wijzigingen-toe" ]]; then check_host_files; fi
 
 # Geen invloed van de shell op compose: vaste bestanden, eigen projectnaam, nooit .env of .env.local.
 while IFS= read -r name; do unset "$name"; done < <(compgen -e | grep '^COMPOSE_' || true)

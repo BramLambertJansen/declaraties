@@ -41,6 +41,7 @@ caches (`.vite`, `.vitest`) in tmpfs, één uitvoermap die de host nooit uitvoer
 op de host draait: de bestanden die de host vóór de container uitvoert (`scripts/**`, `package.json`, `pnpm-workspace.yaml`, `.npmrc`,
 `.pnpmfile.cjs`, `mise.toml`, `compose*.yaml`, `db/test.env`) zijn beschermd, en het script weigert te starten als een van die bestanden
 afwijkt van `HEAD` (`git diff --quiet HEAD -- <lijst>`), tenzij de eigenaar dat met een vlag expliciet toestaat.
+Gewijzigd door 0025 (punt 4): lokaal vergelijkt het script met de merge-base met `origin/main` (onleesbaar → weigeren), in CI met `HEAD` (`check_host_files` in `scripts/runner.sh`).
 Een test bewijst de isolatie: vanuit de runner falen een verbinding naar internet en naar de host, inloggen als `postgres` en schrijven in de repo.
 
 ## Gevolgen

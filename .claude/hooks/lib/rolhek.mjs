@@ -8,7 +8,8 @@ import { gitSubcommand, parseCommands, splitCommand, writeTargets } from './shel
  * @typedef {{ gates: string[], testpaden: string[], jsonGates: Record<string, string[]>, gegenereerd: string[],
  *   migraties: string[], schrijfrecht: Record<string, string[]>, mcpLezen: string[] }} Config
  * @typedef {{ root: string, cwd: string, config: Config, read: (rel: string) => string | null,
- *   committed: (rel: string) => boolean, isDir: (rel: string) => boolean, branch: string }} Ctx
+ *   committed: (rel: string) => boolean | 'zonder-origin', isDir: (rel: string) => boolean, branch: string }} Ctx
+ * `committed`: staat in de merge-base met origin/main; 'zonder-origin' = origin/main onleesbaar en wel in HEAD (terugval).
  * @typedef {{ deny: string[], ask: string[], context: string[] }} Decision
  * @typedef {{ kind: 'write' | 'delete', after: string | null }} Change
  */
@@ -176,8 +177,10 @@ function decideFile({ rel, change, role }, ctx, decision) {
     decision.deny.push(`${rel} is gegenereerd: draai het script dat hem maakt (pnpm db:generate, de router-plugin)`);
     return;
   }
-  if (matches(config.migraties) && ctx.committed(rel)) {
-    decision.deny.push(`${rel} is een gecommitte migratie: wijzig hem nooit, maak een nieuwe (AGENTS.md)`);
+  const committed = matches(config.migraties) ? ctx.committed(rel) : false;
+  if (committed !== false) {
+    const hint = committed === 'zonder-origin' ? ' (origin/main onleesbaar, daarom vergeleken met HEAD: draai git fetch origin)' : '';
+    decision.deny.push(`${rel} is een gecommitte migratie: wijzig hem nooit, maak een nieuwe (AGENTS.md)${hint}`);
     return;
   }
   if (approvesSpec(rel, change, ctx)) {
@@ -374,7 +377,7 @@ function forbidden({ assignments, argv }, { role, ctx }, decision) {
   const lefthook = [...assignments, ...(program === 'export' ? args : [])].find((word) => /^LEFTHOOK(?:_\w+)?=/.test(word));
   if (lefthook !== undefined) decision.deny.push(`${lefthook}: git-hooks overslaan is verboden (AGENTS.md)`);
   if (program === 'git') decision.deny.push(...gitForbidden(args, { role, branch: ctx.branch }));
-  if (program === 'gh') decision.deny.push(...ghForbidden(args, role));
+  if (program === 'gh') decision.deny.push(...ghForbidden(args));
   if (role !== 'hoofdsessie' && isNewResource(program, args))
     decision.deny.push('pnpm new:resource: alleen de hoofdsessie (ADR 0016, OV-4); wat hij schrijft, ziet het rolhek niet');
 }
@@ -393,6 +396,7 @@ export function gitForbidden(args, { role, branch }) {
   if (subcommand === 'commit' && commitSkipsHooks(rest)) found.push('git commit -n slaat de hooks over: verboden');
   if (subcommand === 'config' && setsHooksPath(rest)) found.push('core.hooksPath zetten is verboden');
   if (subcommand === 'push' && pushesMain(rest, branch)) found.push('push naar main is verboden; open een PR');
+  if (subcommand === 'push' && forcePushes(rest)) found.push('force-push is verboden, ook voor de hoofdsessie (WS-04)');
   if (role === 'hoofdsessie') return found;
   if (subcommand === 'push' || subcommand === 'merge' || subcommand === 'rebase')
     found.push(`subagent: git ${subcommand} doet de hoofdsessie`);
@@ -450,14 +454,38 @@ function pushesMain(rest, branch) {
   return refspecs.some((spec) => /(?:^|:)\+?(?:refs\/heads\/)?main$/.test(spec) || (spec === 'HEAD' && branch === 'main'));
 }
 
+// Git accepteert elke unieke prefix van een long option: alles vanaf `--forc` is --force, --force-with-lease[=…] of
+// --force-if-includes. `--fo`/`--for` zijn ambigu met --follow-tags en weigert git zelf; --follow-tags moet door.
+const FORCE_OPTIONS = /^--forc/;
+const PUSH_OPTIONS_WITH_VALUE = new Set(['--push-option', '--repo', '--receive-pack', '--exec']);
+
+/**
+ * `--force`, `--force-with-lease[=…]`, `--force-if-includes`, `-f` (ook in een cluster als `-uf`) of een refspec met `+`.
+ * @param {readonly string[]} rest
+ */
+function forcePushes(rest) {
+  for (let index = 0; index < rest.length; index += 1) {
+    const arg = rest[index] ?? '';
+    if (FORCE_OPTIONS.test(arg) || arg.startsWith('+')) return true;
+    if (PUSH_OPTIONS_WITH_VALUE.has(arg)) index += 1;
+    else if (/^-[^-]/.test(arg)) {
+      // `-o <optie>`: wat na `o` in het cluster staat, is de waarde, geen vlag; `-uo` neemt het volgende argument.
+      const [flags = ''] = arg.slice(1).split('o');
+      if (flags.includes('f')) return true;
+      if (arg.endsWith('o')) index += 1;
+    }
+  }
+  return false;
+}
+
 const SELF_REVIEW_API = /\/(?:labels|reviews|statuses|check-runs|check-suites)\b|\/requested_reviewers\b/;
 
 /**
+ * Voor elke rol, ook de hoofdsessie: zelfreview, het gate-label en mergen (WS-04).
  * @param {readonly string[]} args
- * @param {string} role
  * @returns {string[]}
  */
-export function ghForbidden(args, role) {
+export function ghForbidden(args) {
   const [group = '', action = ''] = args;
   /** @type {string[]} */
   const found = [];
@@ -465,8 +493,22 @@ export function ghForbidden(args, role) {
   if (args.some((arg, index) => arg.includes('gate-wijziging') && /label/.test(`${args[index - 1] ?? ''}${arg}`)))
     found.push('het label gate-wijziging zet alleen de eigenaar (AGENTS.md)');
   if (group === 'api' && apiWritesSelfReview(args.slice(1))) found.push('gh api: labels, reviews en statussen zet alleen de eigenaar');
-  if (role !== 'hoofdsessie' && group === 'pr' && action === 'merge') found.push('subagent: mergen is verboden');
+  if ((group === 'pr' && action === 'merge') || (group === 'api' && apiMerges(args.slice(1))))
+    found.push('mergen (ook auto-merge) doet alleen de eigenaar, voor elke rol (WS-04)');
   return found;
+}
+
+const MERGE_API = /\/(?:auto-)?merges?\/?(?:[?#]|$)/;
+const MERGE_MUTATION = /\b(?:mergePullRequest|enablePullRequestAutoMerge|mergeBranch)\b/;
+
+/**
+ * `gh api` naar …/merge of …/auto-merge (elke methode) of een GraphQL-mutatie die mergt.
+ * @param {readonly string[]} args
+ */
+function apiMerges(args) {
+  const endpoint = apiEndpoint(args);
+  if (endpoint === 'graphql') return args.some((arg) => MERGE_MUTATION.test(arg));
+  return MERGE_API.test(endpoint);
 }
 
 /** @param {readonly string[]} args */

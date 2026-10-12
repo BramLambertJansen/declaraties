@@ -45,10 +45,37 @@ function context(root, cwd) {
         return null;
       }
     },
-    committed: (/** @type {string} */ rel) => safe(() => git(root, ['cat-file', '-e', `HEAD:${rel}`]) === ''),
+    committed: committedIn(root),
     isDir: (/** @type {string} */ rel) => safe(() => statSync(path.join(root, rel)).isDirectory()),
     branch: gitBranch(root),
   };
+}
+
+/**
+ * Een migratie is gecommit als hij in de merge-base met origin/main staat, zoals check:migrations kijkt (WS-04 punt 5).
+ * Is origin/main onleesbaar, dan terugval op HEAD (strenger) en 'zonder-origin', zodat de weigering "git fetch origin" noemt.
+ * @param {string} root
+ * @returns {(rel: string) => boolean | 'zonder-origin'}
+ */
+function committedIn(root) {
+  /** @type {string | null | undefined} */
+  let base;
+  const exists = (/** @type {string} */ tree, /** @type {string} */ rel) =>
+    safe(() => git(root, ['cat-file', '-e', `${tree}:${rel}`]) === '');
+  return (rel) => {
+    if (base === undefined) base = mergeBase(root);
+    if (base !== null) return exists(base, rel);
+    return exists('HEAD', rel) ? 'zonder-origin' : false;
+  };
+}
+
+/** @param {string} root */
+function mergeBase(root) {
+  try {
+    return git(root, ['merge-base', 'origin/main', 'HEAD']) || null;
+  } catch {
+    return null;
+  }
 }
 
 /** @param {string} root */

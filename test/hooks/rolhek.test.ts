@@ -191,18 +191,19 @@ describe('Bash: altijd verboden', () => {
 });
 
 describe('Bash: alleen de hoofdsessie', () => {
-  test.each([
+  test.each<{ name: string; command: string; expected?: string[] }>([
     { name: 'push', command: 'git push -u origin feat/x' },
     { name: 'merge', command: 'git merge origin/main' },
     { name: 'rebase', command: 'git rebase main' },
     { name: 'reset --hard', command: 'git reset --hard HEAD~1' },
-    { name: 'gh pr merge', command: 'gh pr merge 12 --squash' },
+    // WS-04 punt 3: merge is voor elke rol dicht, dus ook voor de hoofdsessie.
+    { name: 'gh pr merge', command: 'gh pr merge 12 --squash', expected: ['deny', 'deny'] },
     // ADR 0016 (OV-4): de generator schrijft gate-bestanden niet, maar wel paden die het rolhek in een script niet ziet.
     { name: 'new:resource', command: 'pnpm new:resource invoices --rollen user' },
     { name: 'new:resource via run', command: 'pnpm run new:resource invoices' },
     { name: 'new:resource via node', command: 'node scripts/kit/new-resource.mjs invoices' },
-  ])('subagent: $name verboden', ({ command }) => {
-    expect([verdict(bash(command)), verdict(bash(command, 'developer'))]).toStrictEqual(['allow', 'deny']);
+  ])('subagent: $name verboden', ({ command, expected }) => {
+    expect([verdict(bash(command)), verdict(bash(command, 'developer'))]).toStrictEqual(expected ?? ['allow', 'deny']);
   });
 });
 
@@ -279,5 +280,92 @@ describe('MCP-tools (WS-06)', () => {
 
   test('een gewone tool of een naam zonder mcp__-prefix wordt niet geraakt', () => {
     expect([verdict(mcp('Read', 'tester')), verdict(mcp('xmcp__a__b', 'tester'))]).toStrictEqual(['allow', 'allow']);
+  });
+});
+
+// WS-04 punt 3: mergen en force-push zijn voor elke rol dicht, ook voor de hoofdsessie (geen agent_type). De oude regel
+// hield alleen een subagent tegen; voor de hoofdsessie was een permissieregel de enige grens.
+describe('WS-04: merge en force-push voor elke rol verboden', () => {
+  const merges = [
+    { name: 'gh pr merge', command: 'gh pr merge 12' },
+    { name: 'gh pr merge --auto --squash', command: 'gh pr merge --auto --squash' },
+    { name: 'gh pr merge met -R', command: 'gh pr merge 12 -R o/r --squash' },
+    { name: 'gh api …/merge met -X PUT', command: 'gh api -X PUT repos/o/r/pulls/1/merge' },
+    {
+      name: 'gh api …/merge met --method PUT',
+      command: 'gh api --method PUT repos/o/r/pulls/1/merge -f merge_method=squash',
+    },
+    { name: 'gh api …/auto-merge', command: 'gh api -X PUT repos/o/r/pulls/1/auto-merge' },
+    {
+      name: 'graphql mergePullRequest',
+      command:
+        'gh api graphql -f query=\'mutation { mergePullRequest(input: {pullRequestId: "x"}) { clientMutationId } }\'',
+    },
+    {
+      name: 'graphql enablePullRequestAutoMerge',
+      command:
+        'gh api graphql -f query=\'mutation { enablePullRequestAutoMerge(input: {pullRequestId: "x"}) { clientMutationId } }\'',
+    },
+  ];
+  const forcePushes = [
+    { name: '--force', command: 'git push --force origin feat/x' },
+    { name: '-f', command: 'git push -f origin feat/x' },
+    { name: '--force-with-lease', command: 'git push --force-with-lease origin feat/x' },
+    { name: '--force-with-lease=ref:sha', command: 'git push --force-with-lease=main:abc origin feat/x' },
+    { name: '--force-if-includes', command: 'git push --force-with-lease --force-if-includes origin feat/x' },
+    { name: 'refspec met +', command: 'git push origin +HEAD:feat' },
+    { name: 'cluster -fu', command: 'git push -fu origin feat' },
+    { name: 'cluster -uf', command: 'git push -uf origin feat' },
+  ];
+
+  test.each([...merges, ...forcePushes])('hoofdsessie: $name → deny', ({ command }) => {
+    expect(verdict(bash(command))).toBe('deny');
+  });
+
+  test.each([...merges, ...forcePushes])('developer: $name → deny', ({ command }) => {
+    expect(verdict(bash(command, 'developer'))).toBe('deny');
+  });
+
+  // Git accepteert afgekorte long options (--forc, --force-w, ...) als force-push.
+  const abbreviated = [
+    { name: 'afgekort --forc', command: 'git push --forc origin feat' },
+    { name: 'afgekort --force-w', command: 'git push --force-w origin feat' },
+    { name: 'afgekort --force-wi=ref:sha', command: 'git push --force-wi=main:abc origin feat' },
+    { name: 'afgekort --force-i', command: 'git push --force-i origin feat' },
+  ];
+
+  test.each(abbreviated)('hoofdsessie: $name → deny', ({ command }) => {
+    expect(verdict(bash(command))).toBe('deny');
+  });
+
+  test.each(abbreviated)('developer: $name → deny', ({ command }) => {
+    expect(verdict(bash(command, 'developer'))).toBe('deny');
+  });
+
+  test('regressie hoofdsessie mag: --follow-tags is geen force', () => {
+    expect(verdict(bash('git push --follow-tags origin feat'))).toBe('allow');
+  });
+
+  // Regressie: samengestelde vormen die de parser al ziet; moeten deny blijven.
+  test.each([
+    { name: 'add && push -f', command: 'git add . && git push -f origin feat' },
+    { name: 'subshell push --force', command: '(git push --force origin feat)' },
+    { name: 'env X=1 git push --force', command: 'env X=1 git push --force origin feat' },
+    { name: 'git -C sub push --force', command: 'git -C sub push --force origin feat' },
+    { name: 'command gh pr merge', command: 'command gh pr merge 1' },
+  ])('regressie hoofdsessie: $name → deny', ({ command }) => {
+    expect(verdict(bash(command))).toBe('deny');
+  });
+
+  // Regressie: slaagt ook op de oude code; deze vormen moeten voor de hoofdsessie door blijven.
+  test.each([
+    { name: 'git push origin HEAD:feat', command: 'git push origin HEAD:feat' },
+    { name: 'git push -u origin feat', command: 'git push -u origin feat' },
+    { name: 'gh pr create', command: 'gh pr create --title x --body y' },
+    { name: 'gh pr view', command: 'gh pr view 1' },
+    { name: 'gh pr checks', command: 'gh pr checks 1' },
+    { name: 'gh api GET op een pull', command: 'gh api repos/o/r/pulls/1' },
+  ])('regressie hoofdsessie mag: $name', ({ command }) => {
+    expect(verdict(bash(command))).toBe('allow');
   });
 });
