@@ -18,11 +18,13 @@ Stop als dit allemaal waar is, niet eerder:
 2. Er is een nieuwe GitHub-repo `<owner>/<slug>`, gemaakt met **Use this template**, gekloond naar `~/code/<slug>` — nooit op `/mnt/c`.
 3. `main` bevat een merge-commit die de geschiedenis van de template koppelt (`-s ours`), plus één commit die de app hernoemt.
    De eigenaar heeft die zelf gepusht.
-4. De repo heeft een ruleset op `main` en de merge-instellingen uit Fase 6 (of de eigenaar weet waarom dat niet kon).
-5. De lokale stack draait: Postgres 17 + pgTAP en Mailpit, op poorten die niet botsen met een andere app.
-6. De baseline-migratie is toegepast als `app_migrator`, en je hebt met `psql` bewezen wat Fase 8 noemt.
-7. VS Code staat open op `~/code/<slug>` (WSL), Claude Code start daar met de sandbox van de template, en de deny-regels werken.
-8. Je hebt de overdracht uit Fase 10 gestuurd.
+4. De repo heeft een ruleset op `main` met verplichte checks en de merge-instellingen uit Fase 6 (of de eigenaar weet waarom dat niet kon).
+5. De eigenaar heeft `scripts/bootstrap.sh` gedraaid: toolchain uit `mise.toml`, dependencies en git-hooks (pre-commit, pre-push) staan.
+6. De lokale stack draait via `pnpm dev`: Postgres 17 + pgTAP en Mailpit, op poorten die niet botsen met een andere app.
+   `scripts/doctor.sh` is groen.
+7. De migraties zijn toegepast als `app_migrator`, en je hebt met `psql` bewezen wat Fase 8 noemt.
+8. VS Code staat open op `~/code/<slug>` (WSL), Claude Code start daar met de sandbox van de template, en de deny-regels werken.
+9. Je hebt de overdracht uit Fase 10 gestuurd.
 
 ## Harde regels
 
@@ -35,7 +37,9 @@ Stop als dit allemaal waar is, niet eerder:
 - **`.env.local` alleen maken met `cp` uit `.env.example`** en daarna alleen poortnummers vervangen (Fase 7). Geen andere waarden, geen echte geheimen, nooit `.env.example` aanpassen.
 - **Geen destructieve commando's.** Nooit `docker compose down -v`, `docker system prune`, `rm -rf` buiten mappen die je in deze run zelf hebt gemaakt, `wsl --unregister`.
 - **`wsl --shutdown` alleen in Fase 3.3**, vóór er een stack draait. Draai je zelf in WSL, dan beëindigt het jouw sessie — dan is het een overdracht.
-- **Geen `pnpm install`, geen checks, geen tests.** Dit is setup, geen ontwikkeling. Uitzondering: het hernoemscript in fase 5.2 (alleen Node, via `mise exec`).
+- **Jij installeert geen toolchain en draait geen checks of tests.** `mise install`, `pnpm install`, `lefthook install` en
+  `scripts/doctor.sh` draait de eigenaar via `scripts/bootstrap.sh` (Fase 7.2; framework §8: de toolchain installeert de eigenaar, niet de agent).
+  Uitzondering: het hernoemscript in fase 5.2 (alleen Node, via `mise exec`).
 - **Eén vraag: de app-naam.** Al het andere ligt vast onder *Standaardwaarden*. Wijkt de gebruiker er in zijn eerste bericht van af, volg hem.
 - **Eén overdracht tegelijk.** Moet de gebruiker iets doen: stop, geef genummerde stappen, wacht.
 - **Faalt iets:** lees de fout, kijk in de tabel onderaan, zeg in één zin wat je nu probeert. Na twee mislukte pogingen voor hetzelfde: stoppen en melden.
@@ -96,8 +100,8 @@ Herschrijf het na elke fase:
 - [ ] 4 — GitHub: ingelogd, template gecontroleerd, repo gemaakt en gekloond
 - [ ] 5 — gekoppeld aan template en hernoemd (lokaal)
 - [ ] 6 — gepusht door eigenaar, ruleset en instellingen
-- [ ] 7 — lokale stack draait
-- [ ] 8 — baseline-migratie en databasebewijs
+- [ ] 7 — bootstrap door eigenaar, `pnpm dev` draait, doctor groen
+- [ ] 8 — migraties en databasebewijs
 - [ ] 9 — VS Code en Claude Code in de repo
 - [ ] 10 — overgedragen
 
@@ -335,7 +339,8 @@ gh repo edit "$R" --enable-merge-commit --enable-squash-merge --enable-rebase-me
 gh api -X PUT "repos/$R/actions/permissions/workflow" -f default_workflow_permissions=read -F can_approve_pull_request_reviews=false
 gh api -X PUT "repos/$R/actions/permissions" -F enabled=true -f allowed_actions=all -F sha_pinning_required=true
 
-# Ruleset op main.
+# Ruleset op main: dezelfde regels als op de template (PR-plicht, geen force push of delete, opgeloste gesprekken,
+# merge en squash) en de verplichte checks uit .github/workflows/ (job-namen zoals ze op een PR staan; 15368 = GitHub Actions).
 gh api -X POST "repos/$R/rulesets" --input - <<'JSON'
 {
   "name": "main",
@@ -352,35 +357,45 @@ gh api -X POST "repos/$R/rulesets" --input - <<'JSON'
         "require_last_push_approval": false,
         "required_review_thread_resolution": true,
         "allowed_merge_methods": ["merge", "squash"]
+    } },
+    { "type": "required_status_checks", "parameters": {
+        "strict_required_status_checks_policy": false,
+        "required_status_checks": [
+          { "context": "gate:fast", "integration_id": 15368 },
+          { "context": "gate:slow", "integration_id": 15368 },
+          { "context": "secrets", "integration_id": 15368 },
+          { "context": "image", "integration_id": 15368 },
+          { "context": "check:new-resource", "integration_id": 15368 },
+          { "context": "codeql (actions)", "integration_id": 15368 },
+          { "context": "codeql (javascript-typescript)", "integration_id": 15368 },
+          { "context": "osv-scanner", "integration_id": 15368 }
+        ]
     } }
   ]
 }
 JSON
 ```
 
+Private repo zonder GitHub Advanced Security: CodeQL draait daar niet (`.github/workflows/codeql.yml`), en een verplichte `codeql (…)`
+blokkeert dan elke PR. Laat de twee `codeql`-regels dan weg en zet in de overdracht dat de app per ADR kiest: GHAS, public, of `codeql.yml` uit.
+
 Waarom 0 goedkeuringen en geen code-owner-review: zolang de agent nog onder het account van de eigenaar pusht, is de eigenaar ook de PR-auteur,
-en GitHub laat je je eigen PR niet goedkeuren. Zodra de GitHub App voor de agent bestaat (roadmap fase 1, ADR 0005), gaan beide aan
-en komen de verplichte checks erbij. Zet dat in de overdracht.
+en GitHub laat je je eigen PR niet goedkeuren. Zodra de GitHub App voor de agent bestaat (roadmap ST-01, ADR 0005), gaan beide aan.
+De diff-guard (`guard.yml`) is tot dan geen verplichte check (ADR 0017). Zet dat in de overdracht.
 
 Weigert de API iets:
 - ruleset op een private repo zonder Pro/Team → stop, meld de keuze aan de eigenaar (Pro, organisatie met Team, of public). Wijzig zelf de zichtbaarheid niet.
 - `sha_pinning_required` onbekend → meld: Settings → Actions → General → **Require actions to be pinned to a full-length commit SHA**.
 
 Controle: `gh api repos/$R/rulesets --jq '.[].name'` toont `main`; `gh repo view $R --json mergeCommitAllowed,squashMergeAllowed,rebaseMergeAllowed`.
+Niets controleert daarna nog of de ruleset blijft staan: `check-github` bestaat nog niet (roadmap ST-01).
 
-## Fase 7 — Lokale stack
+## Fase 7 — Toolchain, git-hooks en lokale stack
 
-### 7.1 Toolchain
+Jij maakt `.env.local` (7.1); de eigenaar installeert de toolchain (7.2) en start de stack (7.3). Zonder 7.2 heeft de app geen
+pre-commit en pre-push, en is de afdwinging lokaal zwakker dan in de template.
 
-```bash
-cd ~/code/<slug>
-~/.local/bin/mise trust
-~/.local/bin/mise install            # Node 26.11.1 en pnpm 11 uit mise.toml
-~/.local/bin/mise exec -- node -v    # v26.11.1
-~/.local/bin/mise exec -- pnpm -v    # 11.28.2 (packageManager in package.json)
-```
-
-### 7.2 Poorten en `.env.local`
+### 7.1 Poorten en `.env.local`
 
 ```bash
 ss -ltnH | awk '{print $4}' | grep -E ':(54322|54324|54325)$' || echo vrij
@@ -394,47 +409,52 @@ cp -n .env.example .env.local
 sed -i -e 's/54322/<pg>/g' -e 's/54324/<mailui>/g' -e 's/54325/<smtp>/g' .env.local
 ```
 
-Bestond `.env.local` al: niet overschrijven, alleen de poorten controleren.
+Bestond `.env.local` al: niet overschrijven, alleen de poorten controleren. (`pnpm dev` maakt hem ook uit `.env.example` als hij
+ontbreekt, maar dan met de standaardpoorten; daarom maak jij hem eerst.)
+
+### 7.2 Toolchain en git-hooks (overdracht)
+
+`scripts/bootstrap.sh` doet `mise trust`, `mise install` (Node, pnpm, dbmate, Betterleaks, osv-scanner uit `mise.toml`),
+`pnpm install --frozen-lockfile`, `pnpm exec lefthook install` (pre-commit en pre-push uit `lefthook.yml`) en daarna `scripts/doctor.sh`.
+
+> De toolchain installeer jij, niet ik (framework §8):
+> 1. Open een nieuwe Ubuntu-terminal (dan is `mise activate` uit `~/.bashrc` geladen) en `cd ~/code/<slug>`.
+> 2. `scripts/bootstrap.sh`
+> 3. Doctor meldt aan het eind ✗ voor Postgres, Mailpit, API en Web: die stack draait nog niet, dat is verwacht.
+>    Elke andere ✗: plak de uitvoer hier.
+> 4. Typ *klaar*.
+
+Controle (jij): `test -x .git/hooks/pre-commit && grep -q lefthook .git/hooks/pre-commit && echo hooks-ok` en `ls -d node_modules`.
 
 ### 7.3 Stack starten (overdracht)
 
-De template laat de agent geen Docker gebruiken; de stack is van de eigenaar. Het compose-project heet naar de map, dus elke app heeft een eigen volume.
+De template laat de agent geen Docker gebruiken; de stack is van de eigenaar. `pnpm dev` (`scripts/dev.mjs`) start compose met
+`--env-file .env.local` (Postgres 17 + pgTAP, Mailpit), draait de migraties als `app_migrator` (`scripts/db-migrate.sh`), de seed
+(`scripts/seed.mjs`), en daarna Hono en Vite. Het compose-project heet naar de map, dus elke app heeft een eigen volume.
 
-> De stack start jij, want de regels van de template laten de agent geen Docker gebruiken:
-> 1. `cd ~/code/<slug>`
-> 2. `docker compose --env-file .env.local up -d --build --wait`
->    (eerste keer 1–3 minuten: het Postgres-image met pgTAP wordt gebouwd)
+> 1. `cd ~/code/<slug> && pnpm dev` en laat die terminal open
+>    (eerste keer 1–3 minuten: het Postgres-image met pgTAP wordt gebouwd).
+> 2. In een tweede terminal: `cd ~/code/<slug> && scripts/doctor.sh` — alles ✓.
 > 3. Typ *klaar*, of plak de laatste regels als het faalt.
-
-`--env-file .env.local` is nodig: compose leest standaard alleen `.env`, dus zonder deze vlag worden afwijkende poorten genegeerd.
 
 ### Controle (jij, zonder docker)
 
 ```bash
 timeout 2 bash -c 'exec 3<>/dev/tcp/127.0.0.1/<pg>' && echo pg-ok
-curl -fsS http://127.0.0.1:<mailui>/api/v1/info | jq -r .Version     # v1.31.4
+curl -fsS http://127.0.0.1:<mailui>/api/v1/info | jq -r .Version     # v1.31.4 (compose.yaml)
 psql "postgres://app_migrator:app_migrator@127.0.0.1:<pg>/app" -Atc "select current_user"   # app_migrator
 ```
 
-## Fase 8 — Baseline-migratie en databasebewijs
+## Fase 8 — Migraties en databasebewijs
 
-Dit zijn de eerste twee punten van fase 0 in `docs/roadmap.md`, nu op deze machine.
-
-```bash
-cd ~/code/<slug>
-~/.local/bin/mise exec -- pnpm dlx dbmate@2.36.0 --env-file .env.local --env MIGRATOR_DATABASE_URL --no-dump-schema up
-```
-
-Faalt `pnpm dlx` (registry, build-scripts): download de binary naast de repo, niet erin —
-`curl -fsSL -o ~/.local/bin/dbmate https://github.com/amacneil/dbmate/releases/download/v2.36.0/dbmate-linux-amd64 && chmod +x ~/.local/bin/dbmate`
-en draai hetzelfde commando met `dbmate` in plaats van `pnpm dlx dbmate@2.36.0` (versie uit ADR 0004). Voeg dbmate niet toe aan
-`package.json` of `mise.toml`; dat doet roadmap fase 1, stuk 1 (gepind in `mise.toml`).
+`pnpm dev` heeft de migraties al gedraaid. Moeten ze opnieuw zonder de rest van de stack, dan draait de eigenaar in zijn terminal
+`pnpm db:migrate` (`scripts/db-migrate.sh`, dbmate uit `mise.toml`; het script roept `mise` aan, dat in jouw niet-interactieve shell niet op `PATH` staat). Draai dbmate nooit los of met `pnpm dlx`: het script is het enige pad, met `MIGRATOR_DATABASE_URL` (ADR 0004).
 
 Bewijs met `psql` (`M=postgres://app_migrator:app_migrator@127.0.0.1:<pg>/app`, `A=postgres://api_user:api_user@127.0.0.1:<pg>/app`):
 
 | Bewering | Commando | Verwacht |
 |---|---|---|
-| Migratie toegepast | `psql "$M" -Atc "select version from schema_migrations"` | `20261009000000` |
+| Alle migraties toegepast | `psql "$M" -Atc "select count(*) from schema_migrations"` | gelijk aan `ls db/migrations/*.sql \| wc -l` |
 | Schema's bestaan | `psql "$M" -Atc "select string_agg(nspname, ',' order by nspname) from pg_namespace where nspname in ('app','better_auth','tap')"` | `app,better_auth,tap` |
 | Migrator is geen superuser (RLS geldt ook voor hem) | `psql "$M" -Atc "select rolsuper from pg_roles where rolname = current_user"` | `f` |
 | `api_user` ziet zonder rolwissel niets | `psql "$A" -Atc "select app.current_user_id()"` | `ERROR: permission denied for schema app` |
@@ -464,18 +484,23 @@ Alleen bij WSL: `ls -la ~/code/<slug>` moet `/home/...` zijn; staat VS Code op `
 Schrijf het voortgangsbestand af en stuur één bericht, ongeveer zo:
 
 > **<App-naam> staat klaar** in `~/code/<slug>` → github.com/<owner>/<slug>.
-> Draait: Postgres 17 + pgTAP op 127.0.0.1:<pg>, Mailpit op http://127.0.0.1:<mailui>. Baseline toegepast, rollen bewezen.
+> Draait: Postgres 17 + pgTAP op 127.0.0.1:<pg>, Mailpit op http://127.0.0.1:<mailui>. Migraties toegepast, rollen bewezen.
+> Afgedwongen zoals in de template: git-hooks (pre-commit: format, lint, secrets; pre-push: `pnpm gate:fast`), de hooks, sandbox en
+> permissies van Claude Code (`.claude/`), CI (`gate:fast`, `gate:slow`, `secrets`, `image`, `check:new-resource`, CodeQL, osv-scanner)
+> en de ruleset op `main` met die checks verplicht.
 >
-> **Wat er nog níet is** (template-fase 1): `pnpm dev`, `bootstrap.sh`/`doctor.sh`, checks (ESLint, tsconfig, dependency-cruiser), hooks,
-> subagents, skills, CI, GitHub App voor de agent. De werkstraat in `CLAUDE.md` is tekst, nog niet afgedwongen.
-> Bouw die in de **template**, niet in deze app — anders mis je ze bij de volgende app en conflicteren de updates.
+> **Wat er nog níet is:** de GitHub App voor de agent (roadmap ST-01, ADR 0005) — tot dan pusht de agent onder jouw account, met jouw
+> `gh`-login inclusief `workflow`, en is de diff-guard (`guard.yml`) geen verplichte check; `check-github`, dat controleert of de
+> ruleset blijft staan (ST-01); de proef-app als bewijs (ST-09). Bouw die in de **template**, niet in deze app — anders mis je ze bij
+> de volgende app en conflicteren de updates.
 >
-> **Dagelijks:** stack starten met `docker compose --env-file .env.local up -d --wait`, stoppen met `docker compose stop`.
+> **Dagelijks:** `pnpm dev` (stack, migraties, API en web); de containers stoppen met `docker compose stop`. `scripts/doctor.sh` bij twijfel.
 > Nooit `down -v` tenzij je de database kwijt wilt.
 >
 > **Template-updates binnenhalen:** zie hieronder. Altijd **Create a merge commit**, nooit squash.
 >
-> **Later aanzetten:** code-owner-review en verplichte checks in de ruleset zodra de agent via de GitHub App pusht.
+> **Later aanzetten:** goedkeuring en code-owner-review in de ruleset, en de diff-guard als verplichte check, zodra de agent via de GitHub App pusht.
+> <Alleen als de CodeQL-checks zijn weggelaten (Fase 6.2): kies per ADR GHAS, public of `codeql.yml` uit.>
 >
 > **Bevindingen:** <notities uit het voortgangsbestand, of "geen">
 
@@ -516,10 +541,12 @@ App-eigen ADR's: begin bij `0100` (`docs/adr/0100-…`). `0001`–`0099` zijn va
 | `refusing to merge unrelated histories` | `--allow-unrelated-histories` vergeten | Commando uit 5.1 exact gebruiken |
 | Template-update conflicteert op alles | Koppeling of eerdere update is gesquasht | Opnieuw koppelen met `-s ours` op een branch, mergen als merge-commit |
 | `Upgrade to GitHub Pro or make this repository public` | Rulesets op private repo vereisen Pro/Team | Melden, eigenaar kiest |
-| `port is already allocated` | Andere app of oude stack op die poort | Fase 7.2 met +10; nooit een andere stack stoppen zonder vragen |
-| Andere poort in `.env.local` maar stack gebruikt 54322 | `--env-file .env.local` vergeten | Stack opnieuw starten met de vlag |
-| `dependency failed to start: container … is unhealthy` | `db/init` faalt, of volume van een oudere poging | `docker compose logs postgres` laten plakken; oud volume alleen met toestemming weggooien |
+| `port is already allocated` | Andere app of oude stack op die poort | Fase 7.1 met +10; nooit een andere stack stoppen zonder vragen |
+| Andere poort in `.env.local` maar stack gebruikt 54322 | Stack met losse `docker compose` gestart, zonder `--env-file .env.local` | Stoppen en starten met `pnpm dev` (geeft de vlag mee) |
+| `dependency failed to start: container … is unhealthy` | `db/init` faalt, of volume van een oudere poging | `docker compose --env-file .env.local logs postgres` laten plakken; oud volume alleen met toestemming weggooien |
 | `role "app_migrator" does not exist` | Volume bestond al vóór `db/init` (init draait alleen op een leeg volume) | Eigenaar beslist: `docker compose down -v` en opnieuw — vernietigt die database |
-| dbmate `permission denied for database app` | Gedraaid als verkeerde rol | `--env MIGRATOR_DATABASE_URL` controleren |
+| dbmate `permission denied for database app` | Gedraaid als verkeerde rol | Alleen via `pnpm db:migrate` / `scripts/db-migrate.sh` (gebruikt `MIGRATOR_DATABASE_URL`) |
+| `doctor.sh`: ✗ git-hooks ontbreken | `scripts/bootstrap.sh` niet (helemaal) gedraaid | Eigenaar draait `scripts/bootstrap.sh` opnieuw (Fase 7.2) |
+| `mise: command not found` in een script | Niet-interactieve shell zonder `mise activate` | Eigenaar draait het in een nieuwe terminal; jij gebruikt `~/.local/bin/mise exec --` |
 | Claude Code: sandbox niet beschikbaar / `bwrap: … Permission denied` | `bubblewrap`/`socat` ontbreekt, of AppArmor beperkt user namespaces (`sysctl kernel.apparmor_restrict_unprivileged_userns` = 1) | Pakketten installeren; AppArmor-instelling niet zelf wijzigen, melden |
 | `gh: … missing required scope 'workflow'` | Ingelogd zonder scope | `gh auth refresh -s workflow` (overdracht) |
