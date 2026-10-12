@@ -94,7 +94,7 @@ Besluiten van de eigenaar (2026-10-10, doorgegeven via de coördinator): bij elk
 | OV-6 Bundelbudget | Lazy chunk; budget blijft 260 / 115 / 15 kB; nieuwe test: de catalogus zit niet in de entry-chunk. Overschrijdt de meting het budget, dan stopt de developer en vraagt de eigenaar | budget verhogen; lazy chunks buiten het totaal |
 | OV-7 Bundeltest | `test/ui/bundle.test.ts`: de asserties op 'Design system' en 'Dialoog openen' eruit, testnaam "bevat de rolwisselaar uit src/web/dev niet (spec accounts/AC-8)" | de test geheel vervangen |
 | OV-8 Plek | `src/web/features/design-system/`, eigen klassen vervangen door `PageHeader` en bestaande componenten; lukt dat niet, dan stopt de developer en stelt een variant voor | `src/web/ui/design-system/` |
-| OV-9 ADR | [ADR 0015](../adr/0015-design-system-in-de-app.md), status `voorgesteld` | alleen de spec |
+| OV-9 ADR | [ADR 0015](../adr/0015-design-system-in-de-app.md), status bij het besluit `voorgesteld`, inmiddels `geaccepteerd` | alleen de spec |
 
 **Gewijzigde bestaande tests** (elk met reden in de PR, label `gate-wijziging`, akkoord van de eigenaar):
 - `test/ui/bundle.test.ts` — reden: "spec design-system: de catalogus hoort nu in de productiebundel; het dev-only-bewijs blijft voor de rolwisselaar".

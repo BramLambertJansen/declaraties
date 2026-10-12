@@ -1,5 +1,5 @@
 ---
-status: goedgekeurd # voorstel | goedgekeurd | gebouwd | vervallen — alleen de eigenaar zet goedgekeurd
+status: gebouwd # voorstel | goedgekeurd | gebouwd | vervallen — alleen de eigenaar zet goedgekeurd
 namespace: accounts
 ---
 

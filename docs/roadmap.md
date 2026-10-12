@@ -24,6 +24,9 @@ Een ADR met status `voorgesteld` is geen besluit; afvinken gebeurt pas als de ei
 - [x] Railwerk: rolhek, geteste hooks, ratchet, gate-register, feiten, vijf rollen, diff-guard — ADR 0011
 - [x] Uitnodigen en MFA in Better Auth — ADR 0013
 - [x] Datapad: `withUser()` met `pg`, transactie per request, Drizzle als `tx` — ADR 0012
+- [x] Werkstraat tot de merge: reviewer vóór push en PR, stap Opleveren — ADR 0025 (WS-02, 03, 04a, 06 gebouwd; open: WS-04b skill `opleveren`,
+      WS-05 modelkeuze, zie `docs/reviews/2026-10-12-werkstraat.md`)
+- [x] Account blokkeren: `blocked_at` in `better_auth`, schrijfrecht voor `app_definer`, sessies direct ingetrokken — ADR 0026 (gebouwd in #117)
 - [ ] Achtergrondtaken: opruimen (verlopen sessies, uitnodigingen, rate-limit-rijen), mail via een outbox, eigen databaserol voor
       systeemjobs (framework §6); keuze tussen worker in het proces, queue in Postgres of cron van de host — ADR (bouwen: stuk 7)
       ADR 0020 geaccepteerd (agent, onder mandaat): runner in het API-proces, eigen rol `app_jobs`, outbox zonder token;
@@ -154,7 +157,9 @@ Vier deel-PR's, in deze volgorde.
 
 **3e. Rest van gebruikersbeheer** — de beschrijving hierboven belooft meer dan de spec `accountbeheer` bouwde (daar buiten scope).
 Elke app heeft dit nodig, dus het hoort in de template. Elk punt eerst een spec.
-- [ ] Admin blokkeert en deblokkeert een gebruiker; blokkeren trekt alle sessies direct in (de laatste-admin-regel geldt ook hier)
+- [x] Admin blokkeert en deblokkeert een gebruiker; blokkeren trekt alle sessies direct in (de laatste-admin-regel geldt ook hier)
+      (spec `accountbeheer-uitbreiding` AC-11..14 en 22..24, ADR 0026, #117: `db/tests/account_blocking.sql`,
+      `test/api/account-blocking.int.test.ts`, `e2e/account-blocking.spec.ts`, `src/core/api/auth/blocked.test.ts`)
 - [x] Gebruiker bekijkt en beëindigt de eigen sessies (spec `eigen-account`, deel 2; `test/api/eigen-account-deel2.int.test.ts`,
       `e2e/eigen-account-deel2.spec.ts`, `src/web/features/account/account-deel2.test.tsx`)
 - [ ] Backupcodes voor TOTP, zodat een admin die zijn telefoon kwijt is niet alleen via `admin:create` terugkomt
@@ -249,6 +254,7 @@ code uit `pnpm new:resource` haalt `gate:fast`; drie testopdrachten door de hele
 
 - [x] `CODEOWNERS`, PR-template (bestanden; nog niet actief)
 - [ ] Organisatie, GitHub App voor de agent, org-ruleset via custom property, Actions-instellingen
+      Deels gebouwd: `scripts/github-ruleset.sh` met `test/scripts/github-ruleset.test.ts` (#104) zet de ruleset van één repo; de org-ruleset via custom property en de GitHub App ontbreken
       (daarna in de ruleset: code-owner-review en 1 goedkeuring aan; private repo's vragen Pro/Team)
 - [ ] `.github/settings/` + `scripts/check-github.mjs` (ook `app_id` van verplichte checks, `enforce_admins`, conversation resolution), `check-spec-approval`
 - [ ] `docs/operations/rails-checklist.md`: instellingen buiten de repo, per stuk afgevinkt met bewijs
@@ -256,6 +262,7 @@ code uit `pnpm new:resource` haalt `gate:fast`; drie testopdrachten door de hele
 - [x] `pnpm app:init <slug> "<App-naam>"`: de handstappen uit `docs/nieuwe-app.md` (naam, README, titel) als script met test; de template-sectie verdwijnt
       (`scripts/kit/app-init.mjs`, `test/scripts/app-init.test.ts`)
 - [ ] Template-versie: tag per template-release, de app legt de versie vast, upgrade-notities bij breaking changes in `CHANGELOG.md` (ADR 0006)
+      Deels gebouwd: `CHANGELOG.md` met "Bij een update"-notities en `scripts/kit/app-init.mjs` die de template-SHA vastlegt; nog geen tags of versieschema
 - [x] `.vscode/extensions.json` en `.vscode/settings.json` (ESLint, Prettier, Tailwind), gelijk aan de gates
 - [ ] `LICENSE`: eigendom en geen open-source-licentie
 - [ ] Proef-app: een app via `docs/nieuwe-app.md`, daarna één echte template-update (`git merge template/main`) via een PR.
@@ -338,6 +345,8 @@ Een bestaand script of ADR bewijst niet dat de bijbehorende capability compleet 
 ### ST-02 — P0: accountbeheer en herstel volledig maken
 
 - [ ] **Aansluiting:** fase 1, stuk 3e; bestaande accountbeheer-specs.
+  **Stand 2026-10-12:** gebouwd: eigen sessies en e-mail wijzigen (#93), naam en wachtwoord (spec `eigen-account`, #93), blokkeren en
+  deblokkeren (#117). Open: backupcodes, uitnodiging intrekken, admin-resetlink.
   **Werk:** inventariseer per open 3e-item de huidige spec/PR en implementeer de ontbrekende flow:
   blokkeren/deblokkeren, eigen sessies intrekken, TOTP-backupcodes, naam/wachtwoord wijzigen, uitnodiging intrekken,
   admin-resetlink en e-mail wijzigen. Houd publieke wachtwoordvergeten-flow dicht volgens ADR 0013.
@@ -364,6 +373,8 @@ Een bestaand script of ADR bewijst niet dat de bijbehorende capability compleet 
 ### ST-04 — P0: audit en rate limiting op app-routes
 
 - [ ] **Aansluiting:** auditbesluit, stuk 3f en [ADR 0021](adr/0021-audit-log.md).
+  **Stand 2026-10-12:** gebouwd: rate limiting op app-routes (#87, spec `rate-limit`) en een requestId die de server zelf kiest (#83).
+  Open: audit log en `app.request_id()` (ADR 0020 en 0021).
   **Werk audit:** servergegenereerde request-ID, audit-context in de transactie, append-only-tabel en vaste grants/policies;
   registreer app-acties met getypte, strict gevalideerde details. Gebruik de aparte core-auditwriter voor Better Auth-acties.
   Beschrijf de transactionele grens bij het aanmaken van een uitnodiging en de beheerdersrechten van de migrator eerlijk.
@@ -393,6 +404,7 @@ Een bestaand script of ADR bewijst niet dat de bijbehorende capability compleet 
 ### ST-06 — P1: generator tot complete CRUD-flow uitbreiden
 
 - [ ] **Aansluiting:** fase 1, stuk 5, 3f en ADR 0016; de huidige generator levert bewust 501-handlers.
+  **Stand 2026-10-12:** gebouwd: zoeken en sorteren in de generatorlijst (#111, #113). De handlers blijven bewust 501.
   **Werk:** ontwerp na de proef-app een uitbreiding voor eenvoudige owner-scoped resources: migratie/RLS-tests,
   strict contracten, permissies, lijst/detail/aanmaken/wijzigen/verwijderen, query-hooks, formulieren en ConfirmDialog.
   Gebruik het gedeelde lijstpatroon; search params bevatten zoeken/filter/sorteren en volgen het cursor-contract.
@@ -407,6 +419,7 @@ Een bestaand script of ADR bewijst niet dat de bijbehorende capability compleet 
 ### ST-07 — P1: herbruikbare schermpatronen en design-system
 
 - [ ] **Aansluiting:** fase 1, stuk 3c/3f, ADR 0015 en componentcatalogus.
+  **Stand 2026-10-12:** gebouwd: lijstpagina-patroon (#92, #114; generator #111, #113). Open: toasts en focus na een routewissel naar een lazy route.
   **Werk:** rond lijstpatroon, mutatiefeedback/toasts en lazy-route-focus af. Leg herbruikbare recepten vast voor
   lijst/detail/formulier, empty/loading/error/forbidden, bevestigen en succes/foutfeedback.
   Inventariseer ontbrekende componentvarianten op basis van de proef-app; volg de bestaande tokens en registratielaag.
