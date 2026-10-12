@@ -36,6 +36,12 @@ export const gates = [
       "security definer in db/migrations: search_path '', namen met schema, eigenaar app_definer (AGENTS.md, framework §6)",
     snel: true,
   },
+  {
+    script: 'check:roadmap',
+    bewaakt:
+      'een nieuw of gewijzigd [x] in docs/roadmap.md en een spec die naar gebouwd gaat verwijzen naar bewijs (testpad, checknaam of PR-nummer) t.o.v. origin/main (framework §8)',
+    snel: true,
+  },
   { script: 'test:unit', bewaakt: 'unit-tests en de fixtures van de rails (test/rails)', snel: true },
   {
     script: 'test:db',

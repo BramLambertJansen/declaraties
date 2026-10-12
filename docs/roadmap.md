@@ -212,10 +212,9 @@ Elke regel uit `AGENTS.md` die een check kan zijn, wordt een check; een check te
       versies uniek, in `gate:fast`; CI haalt daarvoor de volledige geschiedenis op)
 - [x] `check-secdef` voor security definer-views (zoals `app.accounts`): barrier, actorfilter, namen met schema, eigenaar; fail-closed bij
       materialized views, opties of naam wijzigen via `alter`, views in dynamische SQL en set-operaties (`test/rails/fixtures/secdef-views/`)
-- [ ] Roadmap-vinkjes afdwingen: een check meldt een nieuw `[x]` in `docs/roadmap.md` zonder bewijs erachter (checkuitslag of test, eventueel met
-      PR-nummer) en een spec die naar `gebouwd` gaat zonder dat `docs/roadmap.md` mee wijzigt, behalve bij een spec zonder roadmap-item;
-      met fixtures. Of de check blokkeert of waarschuwt (zoals `check:docs-drift`) beslist de eigenaar
-      (regel nu in proza: `docs/framework.md` §8, `docs/dod.md`)
+- [x] Roadmap-vinkjes afdwingen: `check:roadmap` (blokkerend, in `gate:fast`; `scripts/kit/check-roadmap.mjs`) meldt een nieuw of gewijzigd `[x]` in
+      `docs/roadmap.md` zonder bewijs erachter (PR-nummer, testpad of checknaam) en een spec die naar `gebouwd` gaat zonder bewijs; met fixtures
+      (`test/rails/check-roadmap.test.ts`, `test/rails/fixtures/roadmap/`)
 - [ ] Diff-guard met label `gate-wijziging` + goedkeuring op exact de head-SHA, niet van de auteur (framework §10), met tests per geval
       Gebouwd, nog niet verplicht (ADR 0017): `scripts/kit/diff-guard.mjs` met tabeltests en `.github/workflows/guard.yml`; zolang de
       auteur zelf goedkeurder is, uitslag `overgang`. Verplicht bij de overstap op de GitHub App (stuk 6)

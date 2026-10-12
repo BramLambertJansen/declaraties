@@ -108,7 +108,7 @@ dependency-cruiser); checks op de database lezen de catalogus van de lokale data
 | Pre-push | `gate:fast` | < 60 s |
 | CI | `gate:fast` + build, daarna `gate:slow` | 3–5 / 8–15 min |
 
-- `gate:fast` = lint, typecheck, unit, dependency-cruiser, bundelbudget, `check-migrations`, `check-secdef` (statisch, op de migraties), `check-docs`.
+- `gate:fast` = lint, typecheck, unit, dependency-cruiser, bundelbudget, `check-migrations`, `check-secdef` (statisch, op de migraties), `check-roadmap` (een nieuw `[x]` in `docs/roadmap.md` of een spec naar `gebouwd` zonder bewijs), `check-docs`.
 - `gate:slow` = `test:db` met `check-policies` en de functiecatalogus (de runtime-kant van `check-secdef`, op `pg_proc`), squawk op migraties, schema-snapshot zonder verschil, kleine e2e-set — tegen een verse database.
 - Verplicht naast CI: CodeQL en osv-scanner.
 - **Gate-register**: `scripts/kit/gates.mjs` beschrijft per script wat het bewaakt en of het snel is (zonder database, dus in `gate:fast`);
@@ -285,7 +285,7 @@ volgende vrije migratie- en ADR-nummer), niet met wat in proza staat.
 mee, in dezelfde commit en PR (kort, met `bestand:regel`-verwijzingen, zonder code te kopiëren). Spec naar `gebouwd`, roadmap-vinkje en ADR-status
 horen daar ook bij, met de goedkeuring van de eigenaar waar het beschermde paden zijn: een item waarvan het bewijs beschikbaar is, wordt in
 diezelfde PR afgevinkt, en nooit zonder bewijs (`docs/dod.md`, Altijd). `check:docs-drift` waarschuwt in CI (geen blokkade) als `src/`
-wijzigt zonder `docs/` of `CHANGELOG.md`; er is geen docs-stap na de merge.
+wijzigt zonder `docs/` of `CHANGELOG.md`. `check:roadmap` (in `gate:fast`) blokkeert wel: een nieuw of gewijzigd `[x]` zonder testpad, checknaam of PR-nummer, en een spec die naar `gebouwd` gaat zonder bewijs (`scripts/kit/check-roadmap.mjs`). Er is geen docs-stap na de merge.
 
 Licht pad: geen migratie, route of permissie → plan, bouwen, review, opleveren.
 

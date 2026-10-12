@@ -33,6 +33,7 @@
     "check:migrations": "node scripts/kit/check-migrations.mjs",
     "check:docs-drift": "node scripts/kit/check-docs-drift.mjs",
     "check:secdef": "node scripts/kit/check-secdef.mjs",
+    "check:roadmap": "node scripts/kit/check-roadmap.mjs",
     "check:new-resource": "node scripts/kit/check-new-resource.mjs",
     "test:unit": "vitest run --project unit --project web",
     "test:db": "scripts/runner.sh db",
@@ -45,7 +46,7 @@
     "auth:schema": "node scripts/auth-schema.mjs",
     "new:resource": "node scripts/kit/new-resource.mjs",
     "app:init": "node scripts/kit/app-init.mjs",
-    "gate:fast": "pnpm format:check && pnpm lint && pnpm typecheck && pnpm ratchet && pnpm check:catalogus && pnpm check:migrations && pnpm check:secdef && pnpm test:unit",
+    "gate:fast": "pnpm format:check && pnpm lint && pnpm typecheck && pnpm ratchet && pnpm check:catalogus && pnpm check:migrations && pnpm check:secdef && pnpm check:roadmap && pnpm test:unit",
     "check:snapshot": "scripts/check-snapshot.sh",
     "gate:slow": "pnpm test:db && pnpm ui:check && pnpm check:snapshot"
   },

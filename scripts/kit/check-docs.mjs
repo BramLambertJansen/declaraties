@@ -14,7 +14,7 @@ import path from 'node:path';
 /** @typedef {{ key: string, message: string }} Violation */
 
 const ADR_STATUS = /^Status:\s*(voorgesteld|geaccepteerd|vervangen door \d{4}|vervallen)\b/m;
-const SPEC_STATUS = /^status:\s*(voorstel|goedgekeurd|gebouwd|vervallen)\b/m;
+export const SPEC_STATUS = /^status:\s*(voorstel|goedgekeurd|gebouwd|vervallen)\b/m;
 // Pakketbeheer-commando's van pnpm zelf, geen scripts uit package.json.
 const PNPM_COMMANDS = new Set(['add', 'install', 'i', 'update', 'up', 'remove', 'rm', 'exec', 'dlx', 'run', 'why']);
 // In CODEOWNERS, niet in `ask`: daar schrijft de agent (framework §10).
@@ -73,7 +73,7 @@ function identifierViolations(files, read) {
 }
 
 /** @param {string} text */
-function packageScripts(text) {
+export function packageScripts(text) {
   /** @type {unknown} */
   const pkg = JSON.parse(text);
   if (
@@ -88,20 +88,28 @@ function packageScripts(text) {
 }
 
 /** @param {string} id */
-function looksLikePath(id) {
+export function looksLikePath(id) {
   if (id.startsWith('/') || /[*<>{}…\s]/.test(id)) return false;
   return /^[\w.#-]*\/[\w.\-/]*$/.test(id) || /^[\w.-]+\.(md|ts|tsx|mjs|js|json|yaml|yml|sql|sh|css|toml)$/.test(id);
+}
+
+/**
+ * Het pad waarnaar een verwijzing wijst: aliasstap (`#core/…` naar `src/core/…`) en de afsluitende `/` weg.
+ * @param {string} id
+ */
+export function doelPad(id) {
+  return id
+    .replace(/^#(core|web|shared|api)\//, 'src/$1/')
+    .replace(/^#core\//, 'src/core/')
+    .replace(/\/$/, '');
 }
 
 /**
  * @param {string} id
  * @param {readonly string[]} files
  */
-function pathExists(id, files) {
-  const target = id
-    .replace(/^#(core|web|shared|api)\//, 'src/$1/')
-    .replace(/^#core\//, 'src/core/')
-    .replace(/\/$/, '');
+export function pathExists(id, files) {
+  const target = doelPad(id);
   return files.some(
     (file) =>
       file === target || file.endsWith(`/${target}`) || file.startsWith(`${target}/`) || file.includes(`/${target}/`),
