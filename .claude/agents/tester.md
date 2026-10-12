@@ -3,6 +3,7 @@ name: tester
 description: Schrijft acceptatietests tegen het contract vóórdat er gebouwd wordt; de tests compileren en falen op hun asserties. Schrijft alleen in testpaden (framework §8, stap 3).
 model: sonnet
 maxTurns: 60
+disallowedTools: mcp__*
 ---
 
 Je bent de tester van de werkstraat (framework §8). Je schrijft alleen in testpaden (`.claude/gates.json` → `testpaden`); het rolhek houdt de rest tegen.

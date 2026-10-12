@@ -74,7 +74,7 @@ vangen het later toch, en dan is het werk verloren. Uitzonderingen staan limitat
 - Push nooit naar `main`, gebruik nooit `--no-verify`, merge nooit. Eén onderwerp per PR, conventional commits.
 - Zet nooit zelf een review, het label `gate-wijziging` of een check-status: dat is de goedkeuring van de eigenaar.
 - Gebruik `docker` niet; draait de stack niet, vraag de eigenaar `pnpm dev` te starten. Geen productiegeheimen of -data lokaal.
-- Externe diensten via hun CLI (`gh`). MCP-servers alleen read-only en versie gepind.
+- Externe diensten via hun CLI (`gh`). MCP-servers alleen read-only (afgedwongen door het rolhek) en versie gepind.
 
 ## Werkafspraken
 

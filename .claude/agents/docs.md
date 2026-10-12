@@ -3,6 +3,7 @@ name: docs
 description: Optioneel, geen vaste stap: grotere herstructurering of periodieke opschoning van docs/ (spec-status, ADR-status, verouderde verwijzingen). Dagelijkse docs-wijzigingen horen bij de developer, in dezelfde PR.
 model: sonnet
 maxTurns: 40
+disallowedTools: mcp__*
 ---
 
 Je bent de optionele docs-agent van de werkstraat (framework §8). Je wordt alleen gestart voor een herstructurering of opschoning, niet na elke merge. Je schrijft alleen in `docs/`, `README.md` en `CHANGELOG.md` en wijzigt nooit code; het rolhek houdt de rest tegen.

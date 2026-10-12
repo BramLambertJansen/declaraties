@@ -220,3 +220,64 @@ test('globMatch: * binnen één map, ** over mappen heen', () => {
 test('loadConfig: een ontbrekende sleutel is een fout (de hook faalt dan dicht)', () => {
   expect(() => loadConfig('{"gates": []}')).toThrow('testpaden');
 });
+
+// WS-06: MCP-tools onder het rolhek. Aanname: de leeslijst staat als `config.mcpLezen` (uit .claude/gates.json via loadConfig).
+describe('MCP-tools (WS-06)', () => {
+  const READ_ONLY = 'mcp__claude_ai_Vercel__list_projects';
+  const mcp = (tool: string, agent?: string) => ({
+    tool_name: tool,
+    tool_input: {},
+    ...(agent === undefined ? {} : { agent_type: agent }),
+  });
+  const withReadList = (payload: unknown): Verdict => {
+    const base = ctx();
+    const decision = decide(payload, { ...base, config: Object.assign({}, config, { mcpLezen: [READ_ONLY] }) });
+    if (decision.deny.length > 0) return 'deny';
+    return decision.ask.length > 0 ? 'ask' : 'allow';
+  };
+
+  test('gates.json: mcpLezen is standaard een lege lijst', () => {
+    expect(Object.entries(config).find(([key]) => key === 'mcpLezen')?.[1]).toStrictEqual([]);
+  });
+
+  test.each([
+    { name: 'developer', payload: mcp('mcp__Supabase__execute_sql', 'developer'), expected: 'deny' },
+    { name: 'tester', payload: mcp('mcp__Supabase__execute_sql', 'tester'), expected: 'deny' },
+    { name: 'reviewer', payload: mcp('mcp__Supabase__execute_sql', 'reviewer'), expected: 'deny' },
+    { name: 'onbekende subagent', payload: mcp('mcp__Supabase__execute_sql', 'Explore'), expected: 'deny' },
+    { name: 'hoofdsessie → de eigenaar kiest', payload: mcp('mcp__Supabase__execute_sql'), expected: 'ask' },
+    {
+      name: 'claude.ai-connector, subagent',
+      payload: mcp('mcp__claude_ai_Supabase__apply_migration', 'developer'),
+      expected: 'deny',
+    },
+    {
+      name: 'plugin-server, hoofdsessie',
+      payload: mcp('mcp__plugin_design_figma__get_screenshot'),
+      expected: 'ask',
+    },
+  ])('niet in mcpLezen: $name', ({ payload, expected }) => {
+    expect(verdict(payload)).toBe(expected);
+    expect(withReadList(payload)).toBe(expected);
+  });
+
+  test.each([
+    { name: 'hoofdsessie', payload: mcp(READ_ONLY) },
+    { name: 'developer', payload: mcp(READ_ONLY, 'developer') },
+    { name: 'tester', payload: mcp(READ_ONLY, 'tester') },
+  ])('in mcpLezen: $name mag door', ({ payload }) => {
+    expect(withReadList(payload)).toBe('allow');
+  });
+
+  test.each([
+    { name: 'langere naam', tool: `${READ_ONLY}_and_delete` },
+    { name: 'korter', tool: 'mcp__claude_ai_Vercel__list_project' },
+    { name: 'andere tool, zelfde server', tool: 'mcp__claude_ai_Vercel__delete_project' },
+  ])('exacte match: $tool ($name) is niet vrijgegeven', ({ tool }) => {
+    expect([withReadList(mcp(tool)), withReadList(mcp(tool, 'developer'))]).toStrictEqual(['ask', 'deny']);
+  });
+
+  test('een gewone tool of een naam zonder mcp__-prefix wordt niet geraakt', () => {
+    expect([verdict(mcp('Read', 'tester')), verdict(mcp('xmcp__a__b', 'tester'))]).toStrictEqual(['allow', 'allow']);
+  });
+});

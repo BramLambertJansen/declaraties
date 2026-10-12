@@ -6,7 +6,7 @@ import { gitSubcommand, parseCommands, splitCommand, writeTargets } from './shel
 
 /**
  * @typedef {{ gates: string[], testpaden: string[], jsonGates: Record<string, string[]>, gegenereerd: string[],
- *   migraties: string[], schrijfrecht: Record<string, string[]> }} Config
+ *   migraties: string[], schrijfrecht: Record<string, string[]>, mcpLezen: string[] }} Config
  * @typedef {{ root: string, cwd: string, config: Config, read: (rel: string) => string | null,
  *   committed: (rel: string) => boolean, isDir: (rel: string) => boolean, branch: string }} Ctx
  * @typedef {{ deny: string[], ask: string[], context: string[] }} Decision
@@ -42,6 +42,7 @@ export function loadConfig(text) {
     testpaden: list('testpaden'),
     gegenereerd: list('gegenereerd'),
     migraties: list('migraties'),
+    mcpLezen: list('mcpLezen'),
     jsonGates: record('jsonGates'),
     schrijfrecht: record('schrijfrecht'),
   };
@@ -58,7 +59,8 @@ export function decide(payload, ctx) {
   const tool = field(payload, 'tool_name');
   const input = objectField(payload, 'tool_input');
   const role = roleOf(field(payload, 'agent_type'));
-  if (tool === 'Bash') decideBash({ command: field(input, 'command'), role }, ctx, decision);
+  if (tool.startsWith('mcp__')) decideMcp({ tool, role }, ctx, decision);
+  else if (tool === 'Bash') decideBash({ command: field(input, 'command'), role }, ctx, decision);
   else if (['Edit', 'Write', 'MultiEdit', 'NotebookEdit'].includes(tool)) decideEdit({ tool, input, role }, ctx, decision);
   return decision;
 }
@@ -101,6 +103,18 @@ function objectField(value, key) {
 function gate(decision, role, reason) {
   if (role === 'hoofdsessie') decision.ask.push(reason);
   else decision.deny.push(reason);
+}
+
+/**
+ * MCP-tools (WS-06): alleen exacte namen uit mcpLezen mogen door; anders vraagt de hoofdsessie de eigenaar en weigert een
+ * subagent (ook een onbekende), want een connector kan buiten de repo schrijven (framework §10).
+ * @param {{ tool: string, role: string }} call
+ * @param {Ctx} ctx
+ * @param {Decision} decision
+ */
+function decideMcp({ tool, role }, ctx, decision) {
+  if (ctx.config.mcpLezen.includes(tool)) return;
+  gate(decision, role, `${tool} staat niet in mcpLezen (.claude/gates.json): MCP alleen read-only (AGENTS.md)`);
 }
 
 // ---------- bestanden ----------

@@ -1,5 +1,5 @@
 {
-  "$comment": "Enige lijst met gate-paden (framework §8 en §10, ADR 0011). De rolhek-hook leest hem lokaal; CODEOWNERS en `ask` in .claude/settings.json spiegelen hem (test/hooks/gates-json.test.ts); de diff-guard in CI leest hem (roadmap stuk 4). Globs: `*` binnen één map, `**` over mappen heen.",
+  "$comment": "Enige lijst met gate-paden (framework §8 en §10, ADR 0011). De rolhek-hook leest hem lokaal; CODEOWNERS en `ask` in .claude/settings.json spiegelen hem (test/hooks/gates-json.test.ts); de diff-guard in CI leest hem (roadmap stuk 4). Globs: `*` binnen één map, `**` over mappen heen. `mcpLezen`: exacte namen van read-only MCP-tools die het rolhek doorlaat; elke andere `mcp__`-tool is ask (hoofdsessie) of deny (subagent).",
   "gates": [
     "AGENTS.md",
     "CLAUDE.md",
@@ -46,6 +46,7 @@
   "jsonGates": { "package.json": ["scripts"] },
   "gegenereerd": ["src/web/routeTree.gen.ts", "src/api/db/schema.ts", "db/schema.snapshot.sql"],
   "migraties": ["db/migrations/**"],
+  "mcpLezen": [],
   "goedkeurders": ["bramlambertjansen"],
   "schrijfrecht": {
     "architect": ["docs/specs/**", "docs/adr/**"],

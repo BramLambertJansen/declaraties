@@ -1,4 +1,4 @@
-// PreToolUse-hook "rolhek" (framework §8, ADR 0011), voor Edit/Write/MultiEdit/NotebookEdit/Bash van elke rol.
+// PreToolUse-hook "rolhek" (framework §8, ADR 0011), voor Edit/Write/MultiEdit/NotebookEdit/Bash en mcp__* van elke rol.
 // deny → exit 2 met de reden op stderr (Claude ziet hem); ask → de eigenaar kiest; anders door, eventueel met context.
 // Faalt dicht: een interne fout is exit 2 (een hook die crasht mag niets doorlaten). Wat tekstheuristiek niet vangt,
 // vangt de diff-guard in CI.

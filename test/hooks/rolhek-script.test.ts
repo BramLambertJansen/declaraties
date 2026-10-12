@@ -1,5 +1,5 @@
 import { spawnSync } from 'node:child_process';
-import { cpSync, mkdtempSync, readFileSync } from 'node:fs';
+import { cpSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { expect, test } from 'vitest';
@@ -76,6 +76,70 @@ test('kapotte invoer: faalt dicht (exit 2)', () => {
 test('.claude/settings.json registreert het rolhek voor Edit, Write en Bash', () => {
   const settings = readFileSync('.claude/settings.json', 'utf8');
 
-  expect(settings).toContain('"matcher": "Edit|Write|MultiEdit|NotebookEdit|Bash"');
+  expect(settings).toContain('"matcher": "Edit|Write|MultiEdit|NotebookEdit|Bash|mcp__.*"');
   expect(settings).toContain('.claude/hooks/rolhek.mjs');
+});
+
+// WS-06: MCP-tools onder het rolhek. Een subagent mag er niet bij (exit 2); de hoofdsessie vraagt de eigenaar (ask).
+const mcpCall = (tool: string, extra: Record<string, unknown> = {}) =>
+  JSON.stringify({ tool_name: tool, tool_input: {}, cwd: root, ...extra });
+
+test('MCP-tool door een subagent: exit 2 met de reden op stderr', () => {
+  const result = run(mcpCall('mcp__claude_ai_Supabase__apply_migration', { agent_type: 'developer' }));
+
+  expect([result.status, result.stderr.startsWith('rolhek: ')]).toStrictEqual([2, true]);
+  expect(result.stderr).not.toContain('interne fout');
+});
+
+test('MCP-tool door de hoofdsessie: permissionDecision ask', () => {
+  const result = run(mcpCall('mcp__claude_ai_Supabase__apply_migration'));
+
+  expect(result.status).toBe(0);
+  expect(result.stdout).toContain('permissionDecision');
+  expect(JSON.parse(result.stdout)).toMatchObject({
+    hookSpecificOutput: { hookEventName: 'PreToolUse', permissionDecision: 'ask' },
+  });
+});
+
+test('.claude/settings.json: de rolhek-matcher vangt mcp__.*', () => {
+  const settings: unknown = JSON.parse(readFileSync('.claude/settings.json', 'utf8'));
+  const hooks = JSON.stringify(settings);
+
+  expect(hooks).toMatch(/"matcher":"[^"]*\|mcp__\.\*"[^}]*rolhek\.mjs/);
+});
+
+test('.claude/gates.json: mcpLezen is een lijst van toolnamen (standaard leeg)', () => {
+  const gates: unknown = JSON.parse(readFileSync('.claude/gates.json', 'utf8'));
+
+  expect(gates).toMatchObject({ mcpLezen: [] });
+});
+
+// Fail-closed: zonder leesbare gates.json mag een MCP-tool nooit door.
+function inTempRepo(gatesText: string | null): string {
+  const dir = mkdtempSync(path.join(tmpdir(), 'rolhek-mcp-'));
+  spawnSync('git', ['init', '-q'], { cwd: dir });
+  if (gatesText !== null) {
+    mkdirSync(path.join(dir, '.claude'));
+    writeFileSync(path.join(dir, '.claude/gates.json'), gatesText);
+  }
+  return dir;
+}
+
+test.each([
+  { name: 'ontbrekende gates.json', text: null },
+  { name: 'onleesbare gates.json', text: '{kapot' },
+])('MCP-tool met $name: exit 2, ook voor de hoofdsessie', ({ text }) => {
+  const dir = inTempRepo(text);
+  const result = run(mcpCall('mcp__claude_ai_Supabase__execute_sql', { cwd: dir }));
+
+  expect(result.status).toBe(2);
+});
+
+test('MCP-tool in een worktree zonder mcpLezen-sleutel: nooit stilzwijgend door', () => {
+  const dir = inTempRepo(readFileSync('.claude/gates.json', 'utf8').replace(/"mcpLezen"\s*:\s*\[[^\]]*\]\s*,?/, ''));
+  const sub = run(mcpCall('mcp__claude_ai_Supabase__execute_sql', { cwd: dir, agent_type: 'developer' }));
+  const main = run(mcpCall('mcp__claude_ai_Supabase__execute_sql', { cwd: dir }));
+
+  expect(sub.status).toBe(2);
+  expect(main.status === 2 || main.stdout.includes('"permissionDecision":"ask"')).toBe(true);
 });

@@ -228,6 +228,8 @@ Ankers: OWASP Top 10:2025, OWASP API Security Top 10, ASVS 5.0 niveau 1 (checkli
   CodeQL en osv-scanner op elke PR en wekelijks op `main`.
 - **Agentveiligheid**: de agent werkt via een GitHub App zonder `workflows`-recht (ADR 0005); het token van de eigenaar staat niet in de agent-omgeving.
   Tot die App bestaat (roadmap fase 1, GitHub) werkt de agent wél met de `gh`-login van de eigenaar; de grens is dan alleen de ruleset en de review van de eigenaar; permissieregels zijn geen beveiligingsgrens, de sandbox en GitHub wel; MCP-servers alleen read-only en versie gepind;
+  het rolhek laat alleen MCP-tools uit `mcpLezen` (`.claude/gates.json:49`) door, anders hoofdsessie `ask` en subagent `deny`
+  (`.claude/hooks/lib/rolhek.mjs:115`); tweede laag: `disallowedTools: mcp__*` voor architect, tester en docs;
   geen nieuwe dependency zonder akkoord van de eigenaar.
 
 ## 7. Design system
@@ -307,6 +309,7 @@ SubagentStop staat in `.claude/settings.json` (matcher = agentnaam), niet in de 
 | SessionStart | spec, branch, laatste checkuitslag, status lokale stack (`doctor --quick`) als `additionalContext` |
 | PreToolUse rolhek (Edit/Write/Bash, alle rollen) | schrijfrecht per rol uit `.claude/gates.json` (ook voor Bash-schrijfdoelen: redirect, `sed -i`, `tee`, `cp`, `mv`, `rm`, `git checkout/restore`); simuleert Edit/Write op `jsonGates` en vergelijkt de sleutel; blokkeert gegenereerde bestanden, gecommitte migraties, verwijderen of skippen van bestaande tests; wijzigen van een bestaande test meldt hij als `additionalContext` |
 | PreToolUse rolhek (Bash, alle rollen) | blokkeert push naar `main`, `LEFTHOOK=0`, `--no-verify`/`-n`, `core.hooksPath` (leesvormen met `--get` mogen, per commandosegment), `gh pr review`, het label `gate-wijziging`, `gh api` naar labels, reviews, statuses of check-runs; voor subagents ook push, merge, rebase en `reset --hard`; reviewer alleen `pnpm check:*`/`test*`/`gate:*`, `git diff/log/show/status`, `gh pr view/diff/checks` |
+| PreToolUse rolhek (`mcp__.*`, alle rollen) | een MCP-tool die niet exact in `mcpLezen` (`.claude/gates.json`) staat: hoofdsessie `ask`, elke subagent (ook een onbekende) `deny`; standaard is de lijst leeg |
 
 Alle hooks werken in de root uit de payload: de git-root van `cwd` (een worktree), terugval `CLAUDE_PROJECT_DIR` (`.claude/hooks/lib/root.mjs`).
 Elke hook heeft een tabeltest (`test/hooks/*.test.ts`): echte stdin-payloads met de verwachte exitcode, inclusief omzeilingen (tweede commando na
