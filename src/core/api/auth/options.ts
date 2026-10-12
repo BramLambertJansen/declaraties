@@ -1,8 +1,11 @@
 import type { BetterAuthOptions } from 'better-auth';
-import { APIError, createAuthMiddleware } from 'better-auth/api';
 import { twoFactor } from 'better-auth/plugins/two-factor';
 import type { Pool } from 'pg';
+import type { SendMail } from '../mail/smtp.ts';
+import { createHooks } from './hooks.ts';
+import { createMailing, type Mailing } from './mailing.ts';
 import {
+  EMAIL_CHANGE_TTL_SECONDS,
   INVITATION_TTL_SECONDS,
   MAX_PASSWORD_LENGTH,
   MIN_PASSWORD_LENGTH,
@@ -25,6 +28,10 @@ export interface AuthConfig {
   readonly sendInvitation: (invitation: Invitation) => Promise<void>;
   // Zonder: geen enkele header vertrouwd (geen spoofbare x-forwarded-for); lokaal valt Better Auth terug op 127.0.0.1.
   readonly clientIpHeader?: string | undefined;
+  // De mails van een e-mailwijziging (spec eigen-account). Zonder staat changeEmail uit.
+  readonly sendMail?: SendMail | undefined;
+  // Naam in die mails; zonder de hostnaam van de origin (core kent de naam van de app niet).
+  readonly appName?: string | undefined;
 }
 
 const NO_TRUSTED_IP_HEADER = 'x-template-geen-ip-header';
@@ -43,6 +50,19 @@ export const DISABLED_PATHS: readonly string[] = [
   '/two-factor/verify-backup-code',
   '/two-factor/generate-backup-codes',
   '/two-factor/view-backup-codes',
+  // Spec eigen-account: naam, sessies en e-mailbevestiging via eigen routes (zod, limits.ts, geen tokens naar de browser).
+  '/update-user',
+  '/update-session',
+  '/list-sessions',
+  '/revoke-session',
+  '/revoke-sessions',
+  '/revoke-other-sessions',
+  // Account zelf verwijderen blijft buiten scope (spec eigen-account); verwijderen is een admin-actie (ADR 0022).
+  '/delete-user',
+  // Anoniem; zou elk account met emailVerified = false (elke uitnodiging) mailen zodra sendVerificationEmail bestaat.
+  '/send-verification-email',
+  // GET; bevestigen gaat via de eigen POST-route (framework §6: een GET-link bevestigt met een POST).
+  '/verify-email',
 ];
 
 // __Host-: alleen Secure, Path=/ en zonder Domain (ADR 0003). Better Auth zou zelf __Secure- ervoor zetten; daarom
@@ -52,37 +72,46 @@ const cookies = Object.fromEntries(
   HOST_COOKIES.map((name) => [name, { name: `__Host-auth.${name}`, attributes: { secure: true, path: '/' } }]),
 );
 
-// session_strength: 'password' bij inloggen; alleen deze hooks zetten 'mfa' (framework §6, ADR 0013).
-const before = createAuthMiddleware(async (ctx) => {
-  if (ctx.path === '/two-factor/verify-totp' && isTrustDeviceRequested(ctx.body)) {
-    throw new APIError('BAD_REQUEST', { message: 'trustDevice staat uit (ADR 0013)', code: 'TRUST_DEVICE_DISABLED' });
-  }
-  return Promise.resolve();
-});
-
-const after = createAuthMiddleware(async (ctx) => {
-  const session = ctx.context.newSession?.session;
-  if (session === undefined) return;
-  if (ctx.path === '/two-factor/verify-totp') {
-    await ctx.context.internalAdapter.updateSession(session.token, { sessionStrength: 'mfa' });
-  } else if (ctx.path === '/two-factor/disable') {
-    await ctx.context.internalAdapter.updateSession(session.token, { sessionStrength: 'password' });
-  }
-});
-
 interface AccountHookContext {
   readonly context: {
     readonly internalAdapter: { updateUser: (userId: string, data: { emailVerified: boolean }) => Promise<unknown> };
   };
 }
 
-function isTrustDeviceRequested(body: unknown): boolean {
-  return typeof body === 'object' && body !== null && 'trustDevice' in body && body.trustDevice !== false;
+// Stap 1 gaat naar het oude adres, stap 2 naar het nieuwe (user.email is dan het nieuwe adres); de links wijzen naar de SPA.
+function emailChangeOptions(mailing: Mailing | null) {
+  if (mailing === null) return {};
+  return {
+    user: {
+      changeEmail: {
+        enabled: true,
+        sendChangeEmailConfirmation: ({ user, newEmail, token }: ChangeConfirmation) =>
+          mailing.confirmOld(user, newEmail, token),
+      },
+    },
+    emailVerification: {
+      expiresIn: EMAIL_CHANGE_TTL_SECONDS,
+      sendVerificationEmail: ({ user, token }: { user: MailUser; token: string }) => mailing.verifyNew(user, token),
+    },
+  };
+}
+
+interface MailUser {
+  readonly name: string;
+  readonly email: string;
+}
+
+interface ChangeConfirmation {
+  readonly user: MailUser;
+  readonly newEmail: string;
+  readonly token: string;
 }
 
 // database: een pg-pool als auth_service (search_path better_auth, alleen DML op dat schema, ADR 0010).
 export function createAuthOptions(config: AuthConfig, database: Pool) {
+  const mailing = createMailing(config);
   return {
+    ...emailChangeOptions(mailing),
     baseURL: config.origin,
     basePath: AUTH_BASE_PATH,
     secret: config.secret,
@@ -122,7 +151,7 @@ export function createAuthOptions(config: AuthConfig, database: Pool) {
       cookies,
       ipAddress: { ipAddressHeaders: [config.clientIpHeader ?? NO_TRUSTED_IP_HEADER] },
     },
-    hooks: { before, after },
+    hooks: createHooks(mailing),
     databaseHooks: {
       // Een uitgenodigde gebruiker heeft geen credential-account; dat ontstaat pas als hij via de link zijn wachtwoord
       // instelt. Dat bewijst het e-mailadres (ADR 0013).

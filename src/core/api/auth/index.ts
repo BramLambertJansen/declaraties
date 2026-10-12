@@ -15,3 +15,15 @@ export {
   reinviteUser,
 } from './invitations.ts';
 export type { Invitation } from './options.ts';
+export {
+  confirmEmail,
+  CurrentSessionError,
+  EmailLinkInvalidError,
+  listOwnSessions,
+  renameUser,
+  revokeOtherSessions,
+  revokeOwnSession,
+  SessionNotFoundError,
+  type OwnSession,
+  type SessionOwner,
+} from './profile.ts';

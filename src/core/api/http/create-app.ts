@@ -109,7 +109,13 @@ function routeHandler<Services>(
             config.services,
             'AppConfig eist services zodra Services geen undefined toelaat; anders is undefined een geldige waarde',
           );
-          const result = await route.handler({ input: parsed.data, actor: { ...session, role }, tx, services });
+          const result = await route.handler({
+            input: parsed.data,
+            actor: { ...session, role },
+            tx,
+            services,
+            headers: c.req.raw.headers,
+          });
           // Een output die niet bij het contract past, is een bug: INTERNAL_ERROR, nooit de data.
           return contract.output.parse(result);
         },

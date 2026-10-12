@@ -1,6 +1,9 @@
 import { coreErrorTexts } from '#core/web/copy/errors.ts';
 import type { ErrorCode } from '#shared/errors.ts';
 
+// Losse constante: Betterleaks (generic-password) leest `WRONG_PASSWORD: '…'` als een geheim.
+const wrongCurrentPasswordText = 'Je huidige wachtwoord klopt niet.';
+
 // Tekst per foutcode (framework §5): TypeScript eist er één voor elke code uit src/shared/errors.ts. Letterlijk uit de spec
 // accountbeheer waar die een tekst geeft.
 export const errorTexts = {
@@ -10,4 +13,7 @@ export const errorTexts = {
   INVITATION_INVALID: 'Deze uitnodiging is verlopen of al gebruikt. Vraag een nieuwe aan.',
   ALREADY_ACTIVE: 'Dit account is al actief. Een nieuwe uitnodiging is niet nodig.',
   LAST_ADMIN: 'Er moet minstens één beheerder overblijven.',
+  WRONG_PASSWORD: wrongCurrentPasswordText,
+  SESSION_NOT_FRESH: 'Log opnieuw in om dit te wijzigen.',
+  EMAIL_LINK_INVALID: 'Deze link is verlopen of al gebruikt. Vraag de wijziging opnieuw aan.',
 } as const satisfies Record<ErrorCode, string>;

@@ -84,7 +84,11 @@ describe('beginTestDb', () => {
 
 // GET /api/me gebruikt geen services; buildApp eist ze wel (sinds de accountroutes).
 const notUsed = () => Promise.reject(new Error('niet gebruikt in deze test'));
-const unusedServices: AppServices = { invitations: { invite: notUsed, reinvite: notUsed } };
+const unusedServices: AppServices = {
+  invitations: { invite: notUsed, reinvite: notUsed },
+  profile: { rename: notUsed, confirmEmail: notUsed },
+  sessions: { list: notUsed, revoke: notUsed, revokeOthers: notUsed },
+};
 
 describe('testkit met createApp: de hele pipeline tegen de echte database, zonder Better Auth-sessie', () => {
   const me = (user: Awaited<ReturnType<TestDb['asUser']>>) =>

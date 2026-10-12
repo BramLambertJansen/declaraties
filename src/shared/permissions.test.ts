@@ -7,6 +7,7 @@ import { check, permissions } from './permissions.ts';
 const expected: Record<string, readonly Role[]> = {
   'app.use': ['user', 'admin'],
   'me:read': ['user', 'admin'],
+  'me:update': ['user', 'admin'],
   'accounts:read': ['admin'],
   'accounts:invite': ['admin'],
   'design-system:read': ['admin'],

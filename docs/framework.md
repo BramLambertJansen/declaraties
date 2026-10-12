@@ -159,8 +159,8 @@ Ankers: OWASP Top 10:2025, OWASP API Security Top 10, ASVS 5.0 niveau 1 (checkli
 - **Sessies** (ADR 0003): Better Auth in `src/core/api/auth`, sessie in de database (`cookieCache` uit), cookie `__Host-`, `httpOnly`,
   `Secure`, `SameSite=Lax`; geen token in `localStorage`. Absoluut 7 dagen, idle 12 uur, `freshAge` 10 min voor gevoelige acties;
   wachtwoord- of 2FA-wijziging trekt andere sessies in. Gebruikersbewerkbare velden nooit voor autorisatie.
-  `session_strength` is `password` of `mfa` (sessieveld met `input: false`, standaard `password`, alleen gezet in de after-hook op
-  2FA-verificatie); 2FA uitzetten zet de huidige sessie terug op `password`. `none` bestaat alleen in de database: geen actor.
+  `session_strength` is `password` of `mfa` (sessieveld met `input: false`, standaard `password`, gezet in de after-hook op
+  2FA-verificatie, en bij `/change-password` met `createdAt` overgenomen van de oude sessie, ADR 0024); 2FA uitzetten zet de huidige sessie terug op `password`. `none` bestaat alleen in de database: geen actor.
 - **CSRF** (ADR 0007): eigen middleware vóór alle routes; elk request behalve GET, HEAD en OPTIONS vereist mediatype `application/json` (hoofdletterongevoelig; parameters zoals `charset` zijn toegestaan; ook zonder body, dus de client stuurt de header altijd). Minstens een van `Sec-Fetch-Site` en `Origin` moet aanwezig zijn; elke aanwezige header moet respectievelijk `same-origin` of exact `APP_ORIGIN` zijn (`Origin: null`, `same-site`, `cross-site` en `none` worden geweigerd). Ontbreken beide, komt een van deze headers (of `Content-Type`) dubbel voor, of klopt een aanwezige header niet, dan weigert de middleware het request. Testmatrix: ADR 0007. Geen `cors()`.
   GET-links die een sessie maken (e-mailverificatie, magic link) openen een scherm dat de actie met een POST bevestigt (geen login-CSRF).
 - **Accounts**: e-mailverificatie verplicht, geen account-enumeratie bij aanmelden en reset, gelekte wachtwoorden geweigerd (staging/productie).

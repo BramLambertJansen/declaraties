@@ -30,6 +30,9 @@ Elke PR had een onafhankelijke read-only reviewer (subagent); fixes uit de revie
 | 22 | Audit log | Minimum bewaartermijn 1 jaar (een app kan verlengen, niet verkorten zonder review); `app.retention` krijgt kolom `purger` (`app`/`auth`) | Termijn vrij per app | #80 |
 | 23 | Request-ID | Altijd door de server gemaakt; een `X-Request-Id` van de client wordt genegeerd | Hono-standaard (overnemen) | #83 |
 | 24 | axe | Geen uitzonderingen in `scanAxe`, lintregels tegen omzeilingen; de scan zelf (tags) bewaakt `e2e/**` als gate-pad | Uitzonderingen in de ratchet | #82 |
+| 25 | Eigen account | ADR "eigen account in Better Auth" geaccepteerd onder mandaat, als 0024: 0023 was intussen door #88 bezet | Nummer 0023 houden en #88 hernummeren | ADR 0024, `eigen-account` deel 1 |
+| 26 | Eigen account | `PATCH /api/me` zonder eigen `rateLimit`: de standaard `schrijven` (geen mail, niet duur) | Categorie `duur` | `src/shared/contracts/me.ts` |
+| 27 | Secrets-scan | Code herschreven waar Betterleaks (`generic-password`) een foutcode-sleutel met tekst als wachtwoord las (Map in `auth.ts`, losse constante in `copy/errors.ts`) | Regel in de allowlist (beschermd pad, zwakt de check af) | `eigen-account` deel 1 |
 
 Nog niet besloten (vraagt de eigenaar): contactadres voor `security.txt`, eigenaar in `LICENSE`, versie en build-SHA zichtbaar maken,
 verplichte checks in de ruleset (`image`, `secrets`, `codeql`).

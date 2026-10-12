@@ -7,6 +7,7 @@ import { createWebApp } from '#core/api/http/web.ts';
 import { writeJsonLine } from '#core/api/obs/request-log.ts';
 import { createSmtpMailer } from '#core/api/mail/smtp.ts';
 import { createDevLogin, devAuthSteps } from '#core/api/dev/login-as.ts';
+import { APP_NAME } from '#shared/app.ts';
 import { buildApp } from './app.ts';
 import { invitationMail } from './mail/invitation.ts';
 import { createServices } from './services.ts';
@@ -24,6 +25,9 @@ const auth = createAuth({
   databaseUrl: config.authDatabaseUrl,
   clientIpHeader: config.clientIpHeader,
   sendInvitation: (invitation) => sendMail(invitationMail(invitation)),
+  // De mails van een e-mailwijziging (spec eigen-account).
+  sendMail,
+  appName: APP_NAME,
 });
 
 const gateway = authGateway(auth);

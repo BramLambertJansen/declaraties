@@ -219,6 +219,7 @@ test('database onbereikbaar tijdens de telling: INTERNAL_ERROR, nooit doorlaten 
   );
   const session = {
     userId: UserId.parse('u-fail-closed'),
+    sessionId: 'sessie-x',
     sessionStrength: 'password',
     name: 'X',
     email: 'x@test.local',

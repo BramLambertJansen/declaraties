@@ -2,6 +2,7 @@ import { betterAuth } from 'better-auth';
 import pg from 'pg';
 import { UserId } from '../../shared/ids.ts';
 import { SESSION_ABSOLUTE_SECONDS } from '../../shared/limits.ts';
+import { createMailing } from './mailing.ts';
 import { AUTH_BASE_PATH, type AuthConfig, createAuthOptions, DISABLED_PREFIXES } from './options.ts';
 
 export interface CreateAuthConfig extends AuthConfig {
@@ -28,13 +29,19 @@ export function createAuth(config: CreateAuthConfig) {
     console.warn(`auth-database: idle verbinding verbroken (${error.message})`);
   });
   // closePool: alleen bij het stoppen van het proces (src/api/server.ts), na de laatste request.
-  return Object.assign(betterAuth(createAuthOptions(config, pool)), { closePool: () => pool.end() });
+  // mailing: de mails van een e-mailwijziging, ook voor de service die na stap 2 het oude adres meldt (null zonder sendMail).
+  return Object.assign(betterAuth(createAuthOptions(config, pool)), {
+    closePool: () => pool.end(),
+    mailing: createMailing(config),
+  });
 }
 
 export type Auth = ReturnType<typeof createAuth>;
 
 export interface SessionInfo {
   readonly userId: UserId;
+  // Het ID van de sessie (niet het token): zo weet een route welke sessie "deze" is.
+  readonly sessionId: string;
   readonly sessionStrength: 'password' | 'mfa';
   readonly name: string;
   readonly email: string;
@@ -73,7 +80,13 @@ export function authGateway(auth: Auth, now: () => number = Date.now): AuthGatew
       const strength = session.sessionStrength;
       if (strength !== 'password' && strength !== 'mfa') return { session: null, setCookie };
       return {
-        session: { userId: UserId.parse(user.id), sessionStrength: strength, name: user.name, email: user.email },
+        session: {
+          userId: UserId.parse(user.id),
+          sessionId: session.id,
+          sessionStrength: strength,
+          name: user.name,
+          email: user.email,
+        },
         setCookie,
       };
     },

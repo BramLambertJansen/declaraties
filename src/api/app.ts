@@ -7,11 +7,28 @@ import type { RateLimits } from '#core/shared/limits.ts';
 import { errors } from '#shared/errors.ts';
 import { RATE_LIMITS } from '#shared/limits.ts';
 import { accountsListRoute, inviteRoute, reinviteRoute } from './routes/accounts.ts';
-import { meRoute } from './routes/me.ts';
+import {
+  confirmEmailRoute,
+  meRoute,
+  renameRoute,
+  revokeOtherSessionsRoute,
+  revokeSessionRoute,
+  sessionsListRoute,
+} from './routes/me.ts';
 import type { AppServices } from './services.ts';
 
 // Compositie-root van de app (ADR 0008): routes, foutcodes en wat server.ts aanlevert (auth, withUser, services, devLogin).
-export const routes = [meRoute, accountsListRoute, inviteRoute, reinviteRoute] as const;
+export const routes = [
+  meRoute,
+  renameRoute,
+  sessionsListRoute,
+  revokeSessionRoute,
+  revokeOtherSessionsRoute,
+  confirmEmailRoute,
+  accountsListRoute,
+  inviteRoute,
+  reinviteRoute,
+] as const;
 
 export interface BuildAppConfig {
   readonly appOrigin: string;

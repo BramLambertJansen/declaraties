@@ -34,6 +34,7 @@ export function fakeDeps(user: FakeUser | null) {
             ? null
             : {
                 userId: UserId.parse('u1'),
+                sessionId: 's1',
                 sessionStrength: user.sessionStrength,
                 name: 'Test',
                 email: 't@test.local',

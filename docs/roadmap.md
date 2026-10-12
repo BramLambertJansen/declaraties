@@ -155,12 +155,14 @@ Vier deel-PR's, in deze volgorde.
 **3e. Rest van gebruikersbeheer** — de beschrijving hierboven belooft meer dan de spec `accountbeheer` bouwde (daar buiten scope).
 Elke app heeft dit nodig, dus het hoort in de template. Elk punt eerst een spec.
 - [ ] Admin blokkeert en deblokkeert een gebruiker; blokkeren trekt alle sessies direct in (de laatste-admin-regel geldt ook hier)
-- [ ] Gebruiker bekijkt en beëindigt de eigen sessies
+- [x] Gebruiker bekijkt en beëindigt de eigen sessies (spec `eigen-account`, deel 2; `test/api/eigen-account-deel2.int.test.ts`,
+      `e2e/eigen-account-deel2.spec.ts`, `src/web/features/account/account-deel2.test.tsx`)
 - [ ] Backupcodes voor TOTP, zodat een admin die zijn telefoon kwijt is niet alleen via `admin:create` terugkomt
-- [ ] Gebruiker wijzigt het eigen wachtwoord en de eigen naam
+- [x] Gebruiker wijzigt het eigen wachtwoord en de eigen naam (spec `eigen-account`, ADR 0024; `test/api/eigen-account.int.test.ts`,
+      `e2e/eigen-account.spec.ts`, `src/web/account.test.tsx`)
 - [ ] Admin trekt een openstaande uitnodiging in (opnieuw versturen bestaat al: `reinviteRoute`)
 - [ ] Admin stuurt een gebruiker een resetlink ("wachtwoord vergeten" blijft dicht, ADR 0013; nu is `admin:create` de enige uitweg)
-- [ ] Gebruiker wijzigt het e-mailadres, met bevestiging naar het oude en het nieuwe adres
+- [x] Gebruiker wijzigt het e-mailadres, met bevestiging naar het oude en het nieuwe adres (spec `eigen-account`, deel 2, ADR 0024)
 
 **3f. Basis die elke app nodig heeft** (lijst eigenaar 2026-10-10). Nieuwe route, permissie of migratie: eerst een spec.
 - [ ] Lijstpagina-patroon: zoeken, filteren en sorteren in de search params, op het cursor-contract en `Table`; `new:resource` gebruikt het

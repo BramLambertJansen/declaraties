@@ -11,6 +11,8 @@ export const ROUTE: unique symbol = Symbol('defineRoute');
 
 export interface RouteActor {
   readonly userId: UserId;
+  // De sessie van dit verzoek (niet het token): voor routes die sessies tonen of beëindigen.
+  readonly sessionId: string;
   readonly role: Role;
   readonly sessionStrength: SessionStrength;
   readonly name: string;
@@ -23,6 +25,8 @@ export interface RouteContext<Input, Services = unknown> {
   readonly actor: RouteActor;
   readonly tx: Tx;
   readonly services: Services;
+  // De headers van het verzoek, voor een aanroep van Better Auth namens deze gebruiker (auth.api.* leest de sessie eruit).
+  readonly headers: Headers;
 }
 
 export interface RouteDef<C extends Contract = Contract, Services = unknown> {

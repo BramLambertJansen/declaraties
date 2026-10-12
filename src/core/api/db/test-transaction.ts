@@ -96,7 +96,7 @@ export async function beginTestDb(pool: Pool): Promise<TestDb> {
     if (role !== null) await client.query('select app.assign_role($1, $2)', [id, role]);
     const sessionStrength = options.sessionStrength ?? (role === 'admin' ? 'mfa' : 'password');
     const actor = { userId: id, sessionStrength };
-    return { actor, name, email, auth: gatewayFor({ ...actor, name, email }) };
+    return { actor, name, email, auth: gatewayFor({ ...actor, sessionId: `sessie-${id}`, name, email }) };
   };
   return {
     withUser: testWithUser(client),

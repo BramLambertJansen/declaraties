@@ -7,7 +7,8 @@ export interface MailContent {
   readonly greeting: string;
   readonly paragraphs: readonly string[];
   // De knop; in de tekstversie staat de link op een eigen regel, zodat een mailprogramma hem klikbaar maakt.
-  readonly action?: { readonly label: string; readonly url: string };
+  // labelInText: ook in de tekstversie het label van de knop, vóór de link (bevestigingsmails: "Wijziging bevestigen:").
+  readonly action?: { readonly label: string; readonly url: string; readonly labelInText?: boolean };
   // Na de knop, bijv. hoe lang de link werkt.
   readonly closing?: readonly string[];
 }
@@ -67,12 +68,16 @@ function button(label: string, url: string): string {
   ].join('');
 }
 
+function actionText(label: string, url: string, options: { readonly labelInText?: boolean }): string[] {
+  return options.labelInText === true ? [`${oneLine(label)}:`, url, ''] : [url, ''];
+}
+
 function renderText(content: MailContent, url: string | undefined): string {
   return [
     oneLine(content.greeting),
     '',
     ...content.paragraphs.flatMap((text) => [oneLine(text), '']),
-    ...(content.action === undefined || url === undefined ? [] : [url, '']),
+    ...(content.action === undefined || url === undefined ? [] : actionText(content.action.label, url, content.action)),
     ...(content.closing ?? []).flatMap((text) => [oneLine(text), '']),
     '-- ',
     content.appName,

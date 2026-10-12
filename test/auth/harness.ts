@@ -24,6 +24,9 @@ export function createTestApp() {
     databaseUrl: required('AUTH_DATABASE_URL'),
     clientIpHeader: required('CLIENT_IP_HEADER'),
     sendInvitation: (invitation) => sendMail(invitationMail(invitation)),
+    // Spec eigen-account: de algemene `sendMail` van AuthConfig (de vier mails van de e-mailwijziging). Als spread, zodat
+    // dit ook compileert voordat de developer de optie toevoegt; daarna is het gewoon de optie.
+    ...{ sendMail },
   });
   const pool = createPool(required('DATABASE_URL'));
   const withUser = createWithUser(pool);

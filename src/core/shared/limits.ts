@@ -9,6 +9,8 @@ export const SESSION_IDLE_SECONDS = 12 * 60 * 60;
 export const SESSION_REFRESH_SECONDS = 60 * 60;
 export const SESSION_ABSOLUTE_SECONDS = 7 * 24 * 60 * 60;
 export const SESSION_FRESH_SECONDS = 10 * 60;
+// Geldigheid van de twee links van een e-mailwijziging (spec eigen-account, OV-5): stateless JWT's, dus kort.
+export const EMAIL_CHANGE_TTL_SECONDS = 60 * 60;
 
 // Paginering (framework §5): een app mag kleiner, nooit groter dan MAX_PAGE_SIZE.
 export const DEFAULT_PAGE_SIZE = 25;
