@@ -6,8 +6,9 @@ Wat een gate kan afdwingen, staat hier niet. Groeit dit bestand of `AGENTS.md` o
 
 ## Werkstraat (verplicht)
 
-Architect (spec) → contract → tester → developer → reviewer → eigenaar merget (jij nooit) → docs. De volledige tekst, ook
-wanneer je een bestaande test mag wijzigen en het lichte pad, staat op één plek: `docs/framework.md` §8.
+Architect (spec) → contract → tester → developer → reviewer → eigenaar merget (jij nooit). Docs gaan mee in dezelfde PR als de code
+(`check:docs-drift` waarschuwt); een aparte docs-stap na de merge bestaat niet. De volledige tekst, ook wanneer je een
+bestaande test mag wijzigen en het lichte pad, staat op één plek: `docs/framework.md` §8.
 
 ## Stoppen en vragen
 

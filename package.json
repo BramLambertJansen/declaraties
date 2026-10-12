@@ -31,6 +31,7 @@
     "ratchet:update": "node scripts/kit/ratchet.mjs --update",
     "check:catalogus": "node scripts/kit/catalogus.mjs",
     "check:migrations": "node scripts/kit/check-migrations.mjs",
+    "check:docs-drift": "node scripts/kit/check-docs-drift.mjs",
     "check:secdef": "node scripts/kit/check-secdef.mjs",
     "check:new-resource": "node scripts/kit/check-new-resource.mjs",
     "test:unit": "vitest run --project unit --project web",

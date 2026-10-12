@@ -269,9 +269,14 @@ volgende vrije migratie- en ADR-nummer), niet met wat in proza staat.
    Lijkt een test van de tester fout zonder dat het gedrag verandert, dan stopt de hoofdsessie en legt het de eigenaar voor;
    na akkoord past de tester (niet de hoofdsessie) de test aan.
 5. **Reviewer-agent** met schone context controleert `docs/dod.md`: correctheid, duplicatie, spec-afwijking en testinhoud per criterium,
+   en of de doc-wijziging in de PR zit (raakt de diff gedrag, API of conventies; zo ja, ontbreekt de doc, dan is dat een bevinding),
    elke blokkerende bevinding met bestand:regel en een pad van invoer naar fout. Stijl is werk van de lint.
 6. **Eigenaar** reviewt en merget.
-7. **Docs-agent** na de merge: spec, ADR-status en `docs/` gelijk aan wat gebouwd is; regels die een gate nu afdwingt, gaan uit CLAUDE.md en de padregels.
+
+**Docs horen bij de wijziging**: de developer werkt bij elke wijziging die gedrag, API, configuratie of conventies raakt de relevante doc
+mee, in dezelfde commit en PR (kort, met `bestand:regel`-verwijzingen, zonder code te kopiëren). Spec naar `gebouwd`, roadmap-vinkje en ADR-status
+horen daar ook bij, met de goedkeuring van de eigenaar waar het beschermde paden zijn. `check:docs-drift` waarschuwt in CI (geen blokkade) als `src/`
+wijzigt zonder `docs/` of `CHANGELOG.md`; er is geen docs-stap na de merge.
 
 Licht pad: geen migratie, route of permissie → plan, bouwen, review.
 
@@ -279,14 +284,14 @@ CI zet gewijzigde bestaande tests als lijst in de PR.
 
 **Eisen aan de rollen, ongeacht runtime:** de tester kan alleen in testpaden schrijven; de reviewer is read-only (geen schrijfrechten; alleen leescommando's, `git diff/log/show/status`, `gh pr view/diff/checks` en de checks uit `docs/dod.md`) met een begrensd aantal beurten; beide starten met schone context en alleen de afgebakende opdracht. Een rol telt alleen als onafhankelijk, ook als ad-hoc subagent, wanneer de runtime die eisen afdwingt. Is dat niet zo, of ontbreekt de rol, voer dan geen onafhankelijke review voor die rol op: benoem de ontbrekende stap expliciet en laat de eigenaar die uitvoeren vóór samenvoegen. De hoofdsessie reviewt nooit haar eigen werk.
 
-**Claude Code-implementatie** (ADR 0011): vijf subagents — architect, developer, tester (sonnet), reviewer (opus, `tools: Read, Grep, Glob, Bash`), docs —
+**Claude Code-implementatie** (ADR 0011): vijf subagents — architect, developer, tester (sonnet), reviewer (opus, `tools: Read, Grep, Glob, Bash`), docs (optioneel, geen vaste stap) —
 elk met `model` en `maxTurns`; schrijfrecht per rol bepaalt de rolhek-hook, niet de tools-lijst. Hooks, permissies, sandboxinstellingen en
 agentconfiguratie zijn runtime-specifiek; documenteer en activeer ze alleen voor de runtime waarvoor ze zijn getest, en zeg in AGENTS.md dat ze
 voor andere runtimes (Codex, cloudsessies) niet gelden. De eisen hierboven gelden voor elke runtime.
 
 **Rolhek en gate-paden**: `.claude/gates.json` is de enige lijst met `gates` (paden die alleen via een gate-wijziging veranderen), `testpaden`,
 `jsonGates` (`package.json` → `scripts`: alleen die sleutel is een gate), `goedkeurders` en `schrijfrecht` per rol (architect: specs en ADR's;
-tester: testpaden; reviewer: niets; docs: `docs/`; developer en hoofdsessie: alles behalve gates en bestaande tests). De rolhek-hook leest hem lokaal,
+tester: testpaden; reviewer: niets; docs (optioneel): `docs/`; developer en hoofdsessie: alles behalve gates en bestaande tests). De rolhek-hook leest hem lokaal,
 de diff-guard in CI leest dezelfde lijst, en `check-docs` vergelijkt CODEOWNERS en `ask` ermee.
 
 Hooks (exit 2 blokkeert; exit 1 en een timeout laten het toolgebruik door — fail-open. Elke hook is daarom kort en deterministisch,
@@ -328,7 +333,7 @@ in `excludedCommands` als patroon met ` *`, zodat argumenten meekomen (zonder wi
 | `docs/operations/` | Release, rollback, back-up en herstel | Bij release of incident | 1–2 pagina's |
 
 Wat een type of check afdwingt, staat niet in proza. Wat soms nodig is, hoort in een skill of padregel, niet in een `@`-import.
-Groeit een altijd-geladen bestand over zijn budget, dan ontbreekt er een gate: maak de gate, haal de regel weg (de docs-rol doet dat na elke merge).
+Groeit een altijd-geladen bestand over zijn budget, dan ontbreekt er een gate: maak de gate, haal de regel weg (de eigenaar of de optionele docs-rol bij een opschoning).
 Elke padregel eindigt met "Besloten, nog niet gebouwd": wat besloten is maar nog niet bestaat, zodat de agent er niet op vooruit bouwt.
 Live feiten (gates, routes, componenten, nummers) komen uit `scripts/kit/feiten.mjs` via `!`-injectie in skills, niet uit proza.
 

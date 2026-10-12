@@ -13,6 +13,7 @@
 ## Checklist
 
 - [ ] `docs/dod.md` doorlopen
+- [ ] Raakt dit gedrag, API, configuratie of conventies? Dan zit de doc-wijziging in deze PR (of: n.v.t., reden)
 - [ ] Geen bestaande migratie gewijzigd; geen test verwijderd of geskipt zonder akkoord
 - [ ] Nieuwe of gewijzigde tests/configs gelezen door de eigenaar vóór een run buiten de sandbox (tot ADR 0009 gebouwd is)
 - [ ] Nieuwe `unsafeCast` heeft een reden
