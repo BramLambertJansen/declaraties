@@ -8,6 +8,8 @@ export const permissions = definePermissions({
   'me:update': { roles: ['user', 'admin'] },
   'accounts:read': { roles: ['admin'] },
   'accounts:invite': { roles: ['admin'] },
+  // Spec accountbeheer-uitbreiding (OV-2, ADR 0026): blokkeren en deblokkeren.
+  'accounts:manage': { roles: ['admin'] },
   // Spec design-system (OV-1): de catalogus, ook in productie; de guard verbergt hem, hij beschermt geen geheim.
   'design-system:read': { roles: ['admin'] },
 });

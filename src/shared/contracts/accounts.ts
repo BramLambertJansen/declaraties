@@ -9,7 +9,7 @@ import { defineContract } from './kit.ts';
 // De rollen komen uit core (ROLES); een nieuwe rol verschijnt hier vanzelf.
 export const ROLLEN = ROLES;
 
-export const STATUSSEN = ['actief', 'uitgenodigd'] as const;
+export const STATUSSEN = ['actief', 'uitgenodigd', 'geblokkeerd'] as const;
 export const ACCOUNT_SORTS = ['nieuwste', 'oudste', 'naam-az', 'naam-za'] as const;
 
 // Zoeken, filteren en sorteren (spec lijstpagina): één schema voor de API (strict) en de webroute (validateSearch).
@@ -68,4 +68,23 @@ export const reinviteContract = defineContract({
   permission: 'accounts:invite',
   // Verstuurt mail (spec rate-limit).
   rateLimit: 'duur',
+});
+
+const accountIdInput = z.object({ id: z.string().min(1).max(200) }).strict();
+
+// Blokkeren en deblokkeren (spec accountbeheer-uitbreiding, ADR 0026); idempotent.
+export const blockContract = defineContract({
+  method: 'POST',
+  path: '/accounts/:id/block',
+  input: accountIdInput,
+  output: z.null(),
+  permission: 'accounts:manage',
+});
+
+export const unblockContract = defineContract({
+  method: 'POST',
+  path: '/accounts/:id/unblock',
+  input: accountIdInput,
+  output: z.null(),
+  permission: 'accounts:manage',
 });

@@ -20,7 +20,9 @@ import {
   type SelectOption,
 } from '#web/ui/index.ts';
 import { InviteDialog } from './invite-dialog.tsx';
-import { useAccounts, useReinvite } from './queries.ts';
+import { useMe } from '#web/features/session/queries.ts';
+import { useAccounts, useReinvite, useUnblock } from './queries.ts';
+import { BlockDialog, itemsFor, RowMenu } from './row-actions.tsx';
 
 type Account = z.output<typeof accountItem>;
 type Message = { readonly tone: 'info' | 'error'; readonly text: string } | null;
@@ -48,54 +50,84 @@ function AccountsTable({
   onMessage: (message: Message) => void;
 }) {
   const reinvite = useReinvite();
+  const unblock = useUnblock();
+  // Zolang de eigen id onbekend is, bieden we geen menu aan: de eigen rij mag nooit even "Blokkeren" tonen.
+  const myId = useMe().data?.id;
+  const [blocking, setBlocking] = useState<Account | null>(null);
   const errorText = useErrorText();
+  const fail = (error: unknown) => {
+    onMessage({ tone: 'error', text: errorText(error) });
+  };
+  const unblockAccount = (account: Account) => {
+    onMessage(null);
+    unblock.mutateAsync(account.id).then(() => {
+      onMessage({ tone: 'info', text: copy.accounts.unblocked(account.naam) });
+    }, fail);
+  };
   const again = (account: Account) => {
-    reinvite.mutateAsync(account.id).then(
-      () => {
-        onMessage({ tone: 'info', text: copy.inviteDialog.sent(account.email) });
-      },
-      (error: unknown) => {
-        onMessage({ tone: 'error', text: errorText(error) });
-      },
-    );
+    reinvite.mutateAsync(account.id).then(() => {
+      onMessage({ tone: 'info', text: copy.inviteDialog.sent(account.email) });
+    }, fail);
+  };
+  const handlers = {
+    unblock: unblockAccount,
+    askBlock: (account: Account) => {
+      onMessage(null);
+      setBlocking(account);
+    },
   };
   return (
-    <Table label={copy.accounts.title} aria-busy={busy}>
-      <TableHeader>
-        <TableRow>
-          <TableHead>{copy.accounts.name}</TableHead>
-          <TableHead>{copy.accounts.email}</TableHead>
-          <TableHead>{copy.accounts.role}</TableHead>
-          <TableHead>{copy.accounts.status}</TableHead>
-          <TableHead>
-            <span className="sr-only">{copy.accounts.actions}</span>
-          </TableHead>
-        </TableRow>
-      </TableHeader>
-      <TableBody>
-        {items.map((account) => (
-          <TableRow key={account.id}>
-            <TableCell>{account.naam}</TableCell>
-            <TableCell>{account.email}</TableCell>
-            <TableCell>{copy.accounts.roles[account.rol]}</TableCell>
-            <TableCell>{copy.accounts.statuses[account.status]}</TableCell>
-            <TableCell>
-              {account.status === 'uitgenodigd' ? (
-                <Button
-                  variant="outline"
-                  disabled={reinvite.isPending}
-                  onClick={() => {
-                    again(account);
-                  }}
-                >
-                  {copy.accounts.reinvite}
-                </Button>
-              ) : null}
-            </TableCell>
+    <>
+      <Table label={copy.accounts.title} aria-busy={busy}>
+        <TableHeader>
+          <TableRow>
+            <TableHead>{copy.accounts.name}</TableHead>
+            <TableHead>{copy.accounts.email}</TableHead>
+            <TableHead>{copy.accounts.role}</TableHead>
+            <TableHead>{copy.accounts.status}</TableHead>
+            <TableHead>
+              <span className="sr-only">{copy.accounts.actions}</span>
+            </TableHead>
           </TableRow>
-        ))}
-      </TableBody>
-    </Table>
+        </TableHeader>
+        <TableBody>
+          {items.map((account) => (
+            <TableRow key={account.id}>
+              <TableCell>{account.naam}</TableCell>
+              <TableCell>{account.email}</TableCell>
+              <TableCell>{copy.accounts.roles[account.rol]}</TableCell>
+              <TableCell>{copy.accounts.statuses[account.status]}</TableCell>
+              <TableCell>
+                {account.status === 'uitgenodigd' ? (
+                  <Button
+                    variant="outline"
+                    disabled={reinvite.isPending}
+                    onClick={() => {
+                      again(account);
+                    }}
+                  >
+                    {copy.accounts.reinvite}
+                  </Button>
+                ) : null}
+                {account.status !== 'uitgenodigd' && myId !== undefined ? (
+                  <RowMenu account={account} items={itemsFor(account, account.id === myId, handlers)} />
+                ) : null}
+              </TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+      <BlockDialog
+        target={blocking}
+        onClose={() => {
+          setBlocking(null);
+        }}
+        onBlocked={(account) => {
+          setBlocking(null);
+          onMessage({ tone: 'info', text: copy.accounts.blocked(account.naam) });
+        }}
+      />
+    </>
   );
 }
 

@@ -6,7 +6,7 @@ import type { RequestLog } from '#core/api/obs/request-log.ts';
 import type { RateLimits } from '#core/shared/limits.ts';
 import { errors } from '#shared/errors.ts';
 import { RATE_LIMITS } from '#shared/limits.ts';
-import { accountsListRoute, inviteRoute, reinviteRoute } from './routes/accounts.ts';
+import { accountsListRoute, blockRoute, inviteRoute, reinviteRoute, unblockRoute } from './routes/accounts.ts';
 import {
   confirmEmailRoute,
   meRoute,
@@ -28,6 +28,8 @@ export const routes = [
   accountsListRoute,
   inviteRoute,
   reinviteRoute,
+  blockRoute,
+  unblockRoute,
 ] as const;
 
 export interface BuildAppConfig {

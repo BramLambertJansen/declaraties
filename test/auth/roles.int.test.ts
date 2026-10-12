@@ -20,6 +20,12 @@ async function admin(id: string): Promise<void> {
     id,
     `${id}@race.test`,
   ]);
+  // Telbare admin (ADR 0026, besluit 4): zonder credential-account telt een admin niet mee voor de laatste-admin-regel.
+  await auth.query(
+    `insert into account (id, "accountId", "providerId", "userId", password, "createdAt", "updatedAt")
+     values ($1, $2, 'credential', $2, 'hash', now(), now())`,
+    [`${id}-credential`, id],
+  );
   await migrator.query("select app.assign_role($1, 'admin')", [id]);
 }
 

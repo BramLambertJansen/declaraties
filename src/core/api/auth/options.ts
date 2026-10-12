@@ -1,4 +1,5 @@
 import type { BetterAuthOptions } from 'better-auth';
+import { APIError } from 'better-auth/api';
 import { twoFactor } from 'better-auth/plugins/two-factor';
 import type { Pool } from 'pg';
 import type { SendMail } from '../mail/smtp.ts';
@@ -72,17 +73,39 @@ const cookies = Object.fromEntries(
   HOST_COOKIES.map((name) => [name, { name: `__Host-auth.${name}`, attributes: { secure: true, path: '/' } }]),
 );
 
+interface SessionHookContext {
+  readonly context: {
+    readonly internalAdapter: { findUserById: (userId: string) => Promise<object | null> };
+  };
+}
+
+// ADR 0026: een geblokkeerd account krijgt geen nieuwe sessie via een endpoint (inloggen, TOTP, dev-login): een nette
+// 403 in plaats van een 500. Zonder context (scripts) laat de hook door; de garantie zit in authGateway.getSession.
+async function refuseBlockedUser(session: { readonly userId: string }, ctx: SessionHookContext | null | undefined) {
+  if (ctx === null || ctx === undefined) return;
+  const user = await ctx.context.internalAdapter.findUserById(session.userId);
+  if (user !== null && 'blockedAt' in user && user.blockedAt !== null && user.blockedAt !== undefined) {
+    throw new APIError('FORBIDDEN', { code: 'ACCOUNT_BLOCKED', message: 'Account is geblokkeerd' });
+  }
+}
+
 interface AccountHookContext {
   readonly context: {
     readonly internalAdapter: { updateUser: (userId: string, data: { emailVerified: boolean }) => Promise<unknown> };
   };
 }
 
+// ADR 0026: blockedAt = tijdstip van blokkeren. Alleen app.set_account_blocked schrijft de kolom; Better Auth leest hem mee.
+const USER_FIELDS = {
+  blockedAt: { type: 'date', required: false, input: false, fieldName: 'blocked_at' },
+} as const;
+
 // Stap 1 gaat naar het oude adres, stap 2 naar het nieuwe (user.email is dan het nieuwe adres); de links wijzen naar de SPA.
 function emailChangeOptions(mailing: Mailing | null) {
-  if (mailing === null) return {};
+  if (mailing === null) return { user: { additionalFields: USER_FIELDS } };
   return {
     user: {
+      additionalFields: USER_FIELDS,
       changeEmail: {
         enabled: true,
         sendChangeEmailConfirmation: ({ user, newEmail, token }: ChangeConfirmation) =>
@@ -153,6 +176,7 @@ export function createAuthOptions(config: AuthConfig, database: Pool) {
     },
     hooks: createHooks(mailing),
     databaseHooks: {
+      session: { create: { before: refuseBlockedUser } },
       // Een uitgenodigde gebruiker heeft geen credential-account; dat ontstaat pas als hij via de link zijn wachtwoord
       // instelt. Dat bewijst het e-mailadres (ADR 0013).
       account: {

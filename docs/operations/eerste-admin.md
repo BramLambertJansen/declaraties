@@ -7,7 +7,7 @@ wachtwoord in de code; lokaal zijn er de seed-accounts (README).
 
 - Een nieuwe omgeving (staging, productie) heeft nog geen admin.
 - Een admin is zijn wachtwoord of zijn TOTP-telefoon kwijt en er is geen andere admin die kan helpen.
-- De laatste admin is per ongeluk geblokkeerd geraakt (de database laat de laatste admin niet degraderen of verwijderen).
+- Alle admins zijn onbruikbaar geraakt (bijvoorbeeld geblokkeerd via de database, of zonder werkend wachtwoord). De app laat de laatste telbare admin niet blokkeren, degraderen of verwijderen (LAST_ADMIN); `admin:create` haalt een blokkade niet weg, dus deblokkeer zo'n account eerst via de accountlijst of de database (`blocked_at` leegmaken).
 
 ## Voorwaarden
 

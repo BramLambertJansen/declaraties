@@ -40,3 +40,20 @@ export function useReinvite() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: accountKeys.all }),
   });
 }
+
+// Blokkeren en deblokkeren (spec accountbeheer-uitbreiding, ADR 0026): de status komt uit de lijst, dus invalideren.
+export function useBlock() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => api.call('POST /accounts/:id/block', { id }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: accountKeys.all }),
+  });
+}
+
+export function useUnblock() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => api.call('POST /accounts/:id/unblock', { id }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: accountKeys.all }),
+  });
+}

@@ -8,6 +8,11 @@ describe('authErrorCode', () => {
     expect(authErrorCode('signIn', { status: 400, code: 'INVALID_EMAIL' })).toBe('INVALID_CREDENTIALS');
   });
 
+  test('inloggen: een geblokkeerd account (403 of 401, ACCOUNT_BLOCKED) lekt niet en geeft INVALID_CREDENTIALS', () => {
+    expect(authErrorCode('signIn', { status: 403, code: 'ACCOUNT_BLOCKED' })).toBe('INVALID_CREDENTIALS');
+    expect(authErrorCode('signIn', { status: 401, code: 'ACCOUNT_BLOCKED' })).toBe('INVALID_CREDENTIALS');
+  });
+
   test('te veel pogingen: RATE_LIMITED, bij elke stap', () => {
     for (const step of ['signIn', 'verifyTotp', 'setPassword'] as const) {
       expect(authErrorCode(step, { status: 429 })).toBe('RATE_LIMITED');

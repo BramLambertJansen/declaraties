@@ -9,6 +9,10 @@ test('de app-codes uit de spec accountbeheer staan in het register', () => {
     'ALREADY_ACTIVE',
     'LAST_ADMIN',
     'MFA_REQUIRED',
+    // Spec accountbeheer-uitbreiding, ADR 0026.
+    'OWN_ACCOUNT',
+    'ACCOUNT_INVITED',
+    'ACCOUNT_BLOCKED',
   ]) {
     expect(errors.is(code)).toBe(true);
   }

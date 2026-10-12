@@ -10,6 +10,7 @@ const expected: Record<string, readonly Role[]> = {
   'me:update': ['user', 'admin'],
   'accounts:read': ['admin'],
   'accounts:invite': ['admin'],
+  'accounts:manage': ['admin'],
   'design-system:read': ['admin'],
 };
 

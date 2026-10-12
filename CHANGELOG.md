@@ -15,6 +15,7 @@ Hier staan wijzigingen die van belang zijn bij het gebruiken of bijwerken van de
 - Een setup-playbook en hernoemscript voor nieuwe apps. Template-updates gebruiken merge-commits om de geschiedenis te behouden.
 - Requestlogging, health- en readinessroutes, gecontroleerd stoppen en een containerimage voor de webapp en API.
 - Controles voor codekwaliteit, architectuur, migraties, database- en schermgedrag, kwetsbaarheden en secrets, lokaal en in GitHub Actions.
+- Accounts blokkeren en deblokkeren (ADR 0026): een geblokkeerd account is direct overal uitgelogd en kan niet inloggen; de laatste telbare beheerder kan niet geblokkeerd worden.
 - Uitgewerkte roadmaptaken voor de verdere ontwikkeling van de starter.
 
 ### Documentatie

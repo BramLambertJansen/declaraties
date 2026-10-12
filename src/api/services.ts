@@ -43,6 +43,8 @@ export interface AppServices {
     readonly list: (who: SessionOwner) => Promise<OwnSession[]>;
     readonly revoke: (who: SessionOwner, id: string) => Promise<void>;
     readonly revokeOthers: (who: SessionOwner) => Promise<void>;
+    // Alle sessies van een account, na het blokkeren (ADR 0026); opruimen als auth_service, de garantie zit in getSession.
+    readonly revokeAll: (userId: string) => Promise<void>;
   };
 }
 
@@ -83,6 +85,9 @@ export function createServices(auth: Auth): AppServices {
       list: (who) => listOwnSessions(auth, who),
       revoke: (who, id) => translated(revokeOwnSession(auth, who, id)),
       revokeOthers: (who) => revokeOtherSessions(auth, who),
+      revokeAll: async (userId) => {
+        await (await auth.$context).internalAdapter.deleteUserSessions(userId);
+      },
     },
   };
 }

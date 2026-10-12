@@ -77,6 +77,11 @@ export function authGateway(auth: Auth, now: () => number = Date.now): AuthGatew
         await (await auth.$context).internalAdapter.deleteSession(session.token);
         return { session: null, setCookie };
       }
+      // ADR 0026: een geblokkeerd account heeft geen sessie, ook niet een die na het blokkeren ontstond (AC-22).
+      if ('blockedAt' in user && user.blockedAt !== null && user.blockedAt !== undefined) {
+        await (await auth.$context).internalAdapter.deleteUserSessions(user.id);
+        return { session: null, setCookie };
+      }
       const strength = session.sessionStrength;
       if (strength !== 'password' && strength !== 'mfa') return { session: null, setCookie };
       return {

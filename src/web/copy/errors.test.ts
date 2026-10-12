@@ -14,3 +14,12 @@ describe('errorTexts', () => {
     }
   });
 });
+
+// Spec accountbeheer-uitbreiding, foutteksten bij blokkeren (ADR 0026): letterlijk uit de spec.
+test('OWN_ACCOUNT, ACCOUNT_INVITED en ACCOUNT_BLOCKED hebben de teksten uit de spec', () => {
+  expect(errorTexts.OWN_ACCOUNT).toBe('Dit kan niet bij je eigen account.');
+  expect(errorTexts.ACCOUNT_INVITED).toBe(
+    'Dit account is nog niet actief. Nodig opnieuw uit of trek de uitnodiging in.',
+  );
+  expect(errorTexts.ACCOUNT_BLOCKED).toBe('Dit account is geblokkeerd. Deblokkeer het eerst.');
+});

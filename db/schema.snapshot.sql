@@ -135,6 +135,59 @@ CREATE FUNCTION app.session_strength() RETURNS text
 ALTER FUNCTION app.session_strength() OWNER TO app_migrator;
 
 --
+-- Name: set_account_blocked(text, boolean); Type: FUNCTION; Schema: app; Owner: app_definer
+--
+
+CREATE FUNCTION app.set_account_blocked(p_user_id text, p_blocked boolean) RETURNS void
+    LANGUAGE plpgsql SECURITY DEFINER
+    SET search_path TO ''
+    AS $$
+  declare
+    v_blocked_at timestamptz;
+  begin
+    if not app.is_mfa_admin() then
+      raise exception 'FORBIDDEN' using errcode = '42501';
+    end if;
+    select u.blocked_at into v_blocked_at from better_auth."user" u where u.id = p_user_id;
+    if not found then
+      raise exception 'NOT_FOUND';
+    end if;
+    if not p_blocked then
+      update better_auth."user" set blocked_at = null where id = p_user_id;
+      return;
+    end if;
+    if p_user_id = app.current_user_id() then
+      raise exception 'OWN_ACCOUNT';
+    end if;
+    if not exists (
+      select 1 from better_auth.account a where a."userId" = p_user_id and a."providerId" = 'credential'
+    ) then
+      raise exception 'ACCOUNT_INVITED';
+    end if;
+    if v_blocked_at is not null then
+      return;
+    end if;
+    perform pg_catalog.pg_advisory_xact_lock(pg_catalog.hashtext('public.user_roles:last_admin'));
+    update better_auth."user" set blocked_at = pg_catalog.now() where id = p_user_id and blocked_at is null;
+    if not exists (
+      select 1
+      from public.user_roles r
+      join better_auth."user" u on u.id = r.user_id
+      where r.role = 'admin'
+        and u.blocked_at is null
+        and exists (
+          select 1 from better_auth.account a where a."userId" = u.id and a."providerId" = 'credential'
+        )
+    ) then
+      raise exception 'LAST_ADMIN' using detail = 'De laatste admin kan niet weg.';
+    end if;
+  end
+  $$;
+
+
+ALTER FUNCTION app.set_account_blocked(p_user_id text, p_blocked boolean) OWNER TO app_definer;
+
+--
 -- Name: user_roles_keep_one_admin(); Type: FUNCTION; Schema: app; Owner: app_definer
 --
 
@@ -144,7 +197,16 @@ CREATE FUNCTION app.user_roles_keep_one_admin() RETURNS trigger
     AS $$
   begin
     perform pg_catalog.pg_advisory_xact_lock(pg_catalog.hashtext('public.user_roles:last_admin'));
-    if old.role = 'admin' and not exists (select 1 from public.user_roles r where r.role = 'admin') then
+    if old.role = 'admin' and (tg_op = 'DELETE' or new.role <> 'admin') and not exists (
+      select 1
+      from public.user_roles r
+      join better_auth."user" u on u.id = r.user_id
+      where r.role = 'admin'
+        and u.blocked_at is null
+        and exists (
+          select 1 from better_auth.account a where a."userId" = u.id and a."providerId" = 'credential'
+        )
+    ) then
       raise exception 'LAST_ADMIN' using errcode = 'P0001', detail = 'De laatste admin kan niet weg.';
     end if;
     return null;
@@ -193,7 +255,8 @@ CREATE TABLE better_auth."user" (
     image text,
     "createdAt" timestamp with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
     "updatedAt" timestamp with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
-    "twoFactorEnabled" boolean
+    "twoFactorEnabled" boolean,
+    blocked_at timestamp with time zone
 );
 
 
@@ -225,6 +288,7 @@ CREATE VIEW app.accounts WITH (security_barrier='true') AS
     u.email,
     r.role,
         CASE
+            WHEN (u.blocked_at IS NOT NULL) THEN 'blocked'::text
             WHEN (EXISTS ( SELECT 1
                FROM better_auth.account a
               WHERE ((a."userId" = u.id) AND (a."providerId" = 'credential'::text)))) THEN 'active'::text
@@ -611,6 +675,14 @@ GRANT ALL ON FUNCTION app.session_strength() TO app_definer;
 
 
 --
+-- Name: FUNCTION set_account_blocked(p_user_id text, p_blocked boolean); Type: ACL; Schema: app; Owner: app_definer
+--
+
+REVOKE ALL ON FUNCTION app.set_account_blocked(p_user_id text, p_blocked boolean) FROM PUBLIC;
+GRANT ALL ON FUNCTION app.set_account_blocked(p_user_id text, p_blocked boolean) TO app_authenticated;
+
+
+--
 -- Name: FUNCTION user_roles_keep_one_admin(); Type: ACL; Schema: app; Owner: app_definer
 --
 
@@ -671,6 +743,13 @@ GRANT SELECT(email) ON TABLE better_auth."user" TO app_definer;
 --
 
 GRANT SELECT("createdAt") ON TABLE better_auth."user" TO app_definer;
+
+
+--
+-- Name: COLUMN "user".blocked_at; Type: ACL; Schema: better_auth; Owner: app_migrator
+--
+
+GRANT SELECT(blocked_at),UPDATE(blocked_at) ON TABLE better_auth."user" TO app_definer;
 
 
 --

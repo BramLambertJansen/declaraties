@@ -3,7 +3,14 @@ import { z } from 'zod';
 import { AppError } from '#core/api/errors.ts';
 import { ROLES } from '#core/shared/can.ts';
 import { decodeCursor, encodeCursor } from '#core/shared/cursor.ts';
-import { ACCOUNT_SORTS, accountsListContract, inviteContract, reinviteContract } from '#shared/contracts/accounts.ts';
+import {
+  ACCOUNT_SORTS,
+  accountsListContract,
+  blockContract,
+  inviteContract,
+  reinviteContract,
+  unblockContract,
+} from '#shared/contracts/accounts.ts';
 import { ACCOUNTS_PAGE_SIZE } from '#shared/limits.ts';
 import { appAccounts } from '../db/schema.ts';
 import { defineRoute } from '../kit.ts';
@@ -17,7 +24,7 @@ const accountRow = z.object({
   naam: z.string(),
   email: z.string(),
   rol: z.enum(ROLES),
-  status: z.enum(['active', 'invited']),
+  status: z.enum(['active', 'invited', 'blocked']),
   aangemaakt: z.string(),
   naamKey: z.string(),
 });
@@ -42,7 +49,9 @@ function containsPattern(q: string): string {
   return `%${q.replace(/[\\%_]/g, (char) => `\\${char}`)}%`;
 }
 
-const STATUS_COLUMN = { actief: 'active', uitgenodigd: 'invited' } as const;
+const STATUS_COLUMN = { actief: 'active', uitgenodigd: 'invited', geblokkeerd: 'blocked' } as const;
+
+const STATUS_LABEL = { active: 'actief', invited: 'uitgenodigd', blocked: 'geblokkeerd' } as const;
 
 const naamKey = sql<string>`lower(${appAccounts.name})`;
 const aangemaaktKey = sql<string>`to_json(${appAccounts.createdAt}) #>> '{}'`;
@@ -91,7 +100,7 @@ export const accountsListRoute = defineRoute(accountsListContract, async ({ inpu
       email: row.email,
       rol: row.rol,
       aangemaakt: row.aangemaakt,
-      status: row.status === 'active' ? ('actief' as const) : ('uitgenodigd' as const),
+      status: STATUS_LABEL[row.status],
     })),
     nextCursor:
       rows.length > ACCOUNTS_PAGE_SIZE && last !== undefined
@@ -110,5 +119,20 @@ export const inviteRoute = defineRoute(inviteContract, async ({ input, tx, servi
 
 export const reinviteRoute = defineRoute(reinviteContract, async ({ input, services }) => {
   await services.invitations.reinvite(input.id);
+  return null;
+});
+
+// Blokkeren (ADR 0026, besluit 7): de functie in de transactie van de admin (NOT_FOUND, OWN_ACCOUNT, ACCOUNT_INVITED en
+// LAST_ADMIN komen als P0001 uit de database), daarna de sessies opruimen. Core geeft een handler geen hook na de commit,
+// dus dat opruimen draait vóór de commit (afwijking van besluit 7); faalt het, dan weigert getSession de sessies toch.
+// `/api/auth/*` loopt niet via getSession: daar blijft een geblokkeerde sessie bruikbaar tot het opruimen gelukt is.
+export const blockRoute = defineRoute(blockContract, async ({ input, tx, services }) => {
+  await tx.execute(sql`select app.set_account_blocked(${input.id}, true)`);
+  await services.sessions.revokeAll(input.id);
+  return null;
+});
+
+export const unblockRoute = defineRoute(unblockContract, async ({ input, tx }) => {
+  await tx.execute(sql`select app.set_account_blocked(${input.id}, false)`);
   return null;
 });
