@@ -19,7 +19,7 @@ bestaande test mag wijzigen en het lichte pad, staat op één plek: `docs/framew
 ## Zuinig met context
 
 - Onderzoek via een subagent die alleen een conclusie teruggeeft.
-- Lees `db/schema.snapshot.sql` in plaats van alle migraties (zodra die bestaat).
+- Lees `db/schema.snapshot.sql` in plaats van alle migraties.
 - Externe diensten via hun CLI (`gh`); MCP alleen read-only. Geen `docker`.
 
-Subagents, skills en hooks volgen in fase 1 (`docs/roadmap.md`, stuk 5; ADR 0011). Tot de gespecialiseerde agents bestaan, gebruik je voor de tester- en reviewerrol ad-hoc subagents met dezelfde afgebakende opdracht. Een ad-hoc subagent telt alleen als onafhankelijk als de eisen uit `docs/framework.md` §8 worden afgedwongen (schone context; tester alleen in testpaden; reviewer read-only). Anders leg je die stap voor aan de eigenaar; je reviewt nooit je eigen werk.
+Subagents (`.claude/agents/`), skills en hooks staan er (`docs/roadmap.md`, stuk 5; ADR 0011): gebruik voor de tester- en reviewerrol de bijbehorende agents. Ontbreekt een agent of werkt de hook niet, gebruik dan een ad-hoc subagent met dezelfde afgebakende opdracht. Een ad-hoc subagent telt alleen als onafhankelijk als de eisen uit `docs/framework.md` §8 worden afgedwongen (schone context; tester alleen in testpaden; reviewer read-only). Anders leg je die stap voor aan de eigenaar; je reviewt nooit je eigen werk.

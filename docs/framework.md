@@ -53,7 +53,7 @@ uitbreidingspunt gebruikt: ADR 0008.
 | Frontend + API hosting | `vite build` (statisch) + `src/api/server.ts`; containerimage die beide op één origin serveert (`Dockerfile`, ADR 0019) | Host + adapter in `deploy/<host>/` | Vercel, Cloudflare, Fly |
 | Auth | Better Auth in de API op de eigen Postgres (ADR 0003) | Alleen bij ADR: externe provider | — |
 | E-mail | Mailpit in Docker | SMTP-dienst | — |
-| Fouttracking | Eigen tabel via `reportClientError()` | Optionele dienst | Sentry |
+| Fouttracking | Eigen tabel via `reportClientError()` (fase 2, `docs/roadmap.md`) | Optionele dienst | Sentry |
 
 Regels voor elke keuze:
 - De database is altijd gewoon Postgres. Geen provider-specifieke functies (`auth.uid()`, Data API, Storage-policies)
@@ -212,8 +212,8 @@ Ankers: OWASP Top 10:2025, OWASP API Security Top 10, ASVS 5.0 niveau 1 (checkli
   CSP volledig uitgeschreven: `default-src 'self'`; `script-src 'self'` plus CAPTCHA-domein; `frame-src` CAPTCHA-domein; `connect-src 'self'`; `style-src 'self'` (geen nonce mogelijk bij een statische SPA; wat componenten inline zetten, wordt in e2e met CSP aan ontdekt en per ADR toegestaan); `img-src 'self' data:`; `frame-ancestors 'none'`; `base-uri 'self'`; `form-action 'self'`; `object-src 'none'`; e2e draait met CSP aan
   (verwacht: Radix Dialog zet een inline `<style>`, dat vraagt een ADR of een andere scroll-lock); HSTS, nosniff, Referrer-Policy;
   service worker cachet nooit `/api/*`; één `onError` die `{ code, requestId }` teruggeeft, nooit stacktraces of SQL;
-  `/design` bestaat alleen in dev-builds, `/design-system` staat achter `guard('design-system:read')` en toont alleen voorbeelddata (ADR 0015); de clientfouten-route is de enige data-route zonder login, met maximale grootte per melding, limiet per IP per minuut en geen onnodige vrije tekst.
-- **Logging**: per request `requestId`, gebruiker-ID, duur, databasetijd. Clientfouten via `reportClientError()` naar een eigen tabel; lint verbiedt kale `console.error` in `queries.ts` en de API-client.
+  `/design` bestaat alleen in dev-builds, `/design-system` staat achter `guard('design-system:read')` en toont alleen voorbeelddata (ADR 0015); de clientfouten-route (fase 2, nog niet gebouwd) is de enige data-route zonder login, met maximale grootte per melding, limiet per IP per minuut en geen onnodige vrije tekst.
+- **Logging**: per request `requestId`, gebruiker-ID, duur, databasetijd. Clientfouten via `reportClientError()` naar een eigen tabel (fase 2, nog niet gebouwd); lint verbiedt kale `console.error` in `queries.ts` en de API-client.
   Een clientfout bevat alleen velden van een allowlist (bron, soort, foutcode, pad zonder query, telling, build-SHA), geen PII of vrije tekst, en wordt per 5 minuten ontdubbeld.
 - **Secrets**: env-schema bij opstart; alleen publieke waarden krijgen `VITE_`. Geen productiegeheimen in de werkmap.
   `APP_ENV` (`local` | `test` | `staging` | `production`) is verplicht. Buiten `local`/`test` weigert het env-schema bij opstart:
@@ -228,8 +228,8 @@ Ankers: OWASP Top 10:2025, OWASP API Security Top 10, ASVS 5.0 niveau 1 (checkli
   CodeQL en osv-scanner op elke PR en wekelijks op `main`.
 - **Agentveiligheid**: de agent werkt via een GitHub App zonder `workflows`-recht (ADR 0005); het token van de eigenaar staat niet in de agent-omgeving.
   Tot die App bestaat (roadmap fase 1, GitHub) werkt de agent wél met de `gh`-login van de eigenaar; de grens is dan alleen de ruleset en de review van de eigenaar; permissieregels zijn geen beveiligingsgrens, de sandbox en GitHub wel; MCP-servers alleen read-only en versie gepind;
-  het rolhek laat alleen MCP-tools uit `mcpLezen` (`.claude/gates.json:49`) door, anders hoofdsessie `ask` en subagent `deny`
-  (`.claude/hooks/lib/rolhek.mjs:115`); tweede laag: `disallowedTools: mcp__*` voor architect, tester en docs;
+  het rolhek laat alleen MCP-tools uit `mcpLezen` (`.claude/gates.json`) door, anders hoofdsessie `ask` en subagent `deny`
+  (`decideMcp` in `.claude/hooks/lib/rolhek.mjs`); tweede laag: `disallowedTools: mcp__*` voor architect, tester en docs;
   geen nieuwe dependency zonder akkoord van de eigenaar.
 
 ## 7. Design system

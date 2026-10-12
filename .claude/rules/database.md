@@ -44,7 +44,7 @@ paths:
   van elke transactie `current_user = session_user`, zet de rol, `app.user_id` en `app.session_strength` (`password` of `mfa`; elke
   andere waarde weigert hij) en vertaalt fouten. Buiten `withUser()` geeft `app.session_strength()` `none`.
 
-## Besloten, nog niet gebouwd
+## Gebouwd
 
 Gebouwd: `withUser()` met Drizzle-`tx` en foutvertaling (ADR 0012); pgTAP-invarianten (`db/tests/invarianten.sql`: RLS
 geforceerd, geen TRUNCATE/REFERENCES/TRIGGER, `better_auth` dicht, niets voor PUBLIC) en de functiecatalogus
@@ -53,4 +53,4 @@ geforceerd, geen TRUNCATE/REFERENCES/TRIGGER, `better_auth` dicht, niets voor PU
 als `app_migrator` en wordt alleen in `test/` gemaakt).
 `pnpm db:generate` met `db/schema.snapshot.sql` en `src/api/db/schema.ts` (eigen generator in `scripts/db/`, geen drizzle-kit).
 `pnpm check:secdef` (statisch op de migraties, in `gate:fast`; de functiecatalogus is de runtime-kant in `gate:slow`).
-Nog niet: de snapshot-vergelijking in CI (`gate:slow`) en `check-policies` (roadmap fase 1). Bouw er niet op vooruit.
+`pnpm check:snapshot` (snapshot-vergelijking, in `gate:slow`) en `check-policies` (elke policy een pgTAP-assert op naam, in `pnpm test:db`).
