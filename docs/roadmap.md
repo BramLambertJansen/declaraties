@@ -212,7 +212,8 @@ Elke regel uit `AGENTS.md` die een check kan zijn, wordt een check; een check te
 - [ ] `gate:fast` definitief, `gate:slow` (squawk, snapshot `pg_dump -N tap --exclude-extension=pgtap` zonder verschil, `check-policies`, e2e)
       Deels gebouwd: `gate:slow` = `test:db` (met `check-policies`) + `ui:check` + `check:snapshot` (snapshot en Drizzle-schema zonder
       verschil) (#38); squawk vraagt een nieuwe tool
-- [ ] Scripts uit `excludedCommands` (`test:db`, `db:reset`, `db:types`, `ui:check`, `gate:slow`) bestaan in `package.json`, alle vijf in de runner van ADR 0009
+- [x] Scripts uit `excludedCommands` (`test:db`, `ui:check`, `gate:slow`, `db:generate`, `check:snapshot`) bestaan in `package.json`, alle vijf in de runner van ADR 0009
+      Bewezen door `test/rails/excluded-commands.test.ts` (WS-03)
 - [x] CI: `gate:slow`-job, gewijzigde tests als lijst, `guard.yml` (PR-code alleen als data, met de diff-guard), CodeQL, osv-scanner (PR + wekelijks;
       uitzonderingen met reden en `ignoreUntil`), Betterleaks (versie gepind in `mise.toml`), Renovate (gegroepeerd, blokkeert TS 7)
       Eerst, als eigen PR (volgorde punt 1): `gate:slow`-job met de Postgres-image uit `db/docker/`, osv-scanner en Renovate

@@ -10,7 +10,7 @@ Routes en permissies nu:
 
 !`node scripts/kit/feiten.mjs routes permissies`
 
-Loop de wijziging (`git diff main...HEAD`) af op:
+Loop de wijziging (`git diff origin/main...HEAD`) af op:
 1. Elke route via `defineRoute` met een permissie, input `.strict()`, en een test per verboden rol; een admin-actie eist MFA.
 2. Elke nieuwe tabel: RLS geforceerd, expliciete grants, een policy per toegangspad met pgTAP-test; geen `SET ROLE` of `set_config(…, false)`.
 3. `security definer`: `search_path = ''`, eigenaar `app_definer`, actorcontrole in de functie.

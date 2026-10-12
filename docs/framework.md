@@ -308,6 +308,7 @@ SubagentStop staat in `.claude/settings.json` (matcher = agentnaam), niet in de 
 | PreToolUse rolhek (Edit/Write/Bash, alle rollen) | schrijfrecht per rol uit `.claude/gates.json` (ook voor Bash-schrijfdoelen: redirect, `sed -i`, `tee`, `cp`, `mv`, `rm`, `git checkout/restore`); simuleert Edit/Write op `jsonGates` en vergelijkt de sleutel; blokkeert gegenereerde bestanden, gecommitte migraties, verwijderen of skippen van bestaande tests; wijzigen van een bestaande test meldt hij als `additionalContext` |
 | PreToolUse rolhek (Bash, alle rollen) | blokkeert push naar `main`, `LEFTHOOK=0`, `--no-verify`/`-n`, `core.hooksPath` (leesvormen met `--get` mogen, per commandosegment), `gh pr review`, het label `gate-wijziging`, `gh api` naar labels, reviews, statuses of check-runs; voor subagents ook push, merge, rebase en `reset --hard`; reviewer alleen `pnpm check:*`/`test*`/`gate:*`, `git diff/log/show/status`, `gh pr view/diff/checks` |
 
+Alle hooks werken in de root uit de payload: de git-root van `cwd` (een worktree), terugval `CLAUDE_PROJECT_DIR` (`.claude/hooks/lib/root.mjs`).
 Elke hook heeft een tabeltest (`test/hooks/*.test.ts`): echte stdin-payloads met de verwachte exitcode, inclusief omzeilingen (tweede commando na
 een leesuitzondering, aanhalingstekens rond redirect-doelen). Wat tekstheuristiek niet vangt (`bash -c`, `node -e`), vangt de diff-guard in CI.
 
@@ -413,8 +414,9 @@ een regel blijft alleen als hij aantoonbaar helpt.
   Poorten via `.env.local`, zodat meerdere apps naast elkaar draaien. Compose leest zonder `--env-file` alleen `.env`, en de poort
   staat ook in de URL's: een andere poort betekent `PG_PORT` én de drie database-URL's aanpassen, en `SMTP_PORT` én `SMTP_URL`.
   Vite- en Hono-poort worden in het skelet instelbaar (`WEB_PORT`, `API_PORT`), met `APP_ORIGIN` en `AUTH_BASE_URL` erop afgestemd.
-- De agent gebruikt `docker` niet (deny); de stack is van de eigenaar. Draait de stack niet (vanaf fase 1 meldt de SessionStart-hook dat via `doctor --quick`), dan vraagt de agent de eigenaar `pnpm dev` te starten. Sandbox met `failIfUnavailable: true`; alleen `pnpm test:db`, `pnpm db:reset`,
-  `pnpm db:types`, `pnpm ui:check` en `pnpm gate:slow` draaien buiten de sandbox (`excludedCommands`), elk na goedkeuring van de eigenaar.
+- De agent gebruikt `docker` niet (deny); de stack is van de eigenaar. Draait de stack niet (vanaf fase 1 meldt de SessionStart-hook dat via `doctor --quick`), dan vraagt de agent de eigenaar `pnpm dev` te starten. Sandbox met `failIfUnavailable: true`; alleen `pnpm test:db`, `pnpm ui:check`,
+  `pnpm gate:slow`, `pnpm db:generate` en `pnpm check:snapshot` draaien buiten de sandbox (`excludedCommands`), elk na goedkeuring van de eigenaar;
+  `test/rails/excluded-commands.test.ts` bewijst dat elk patroon een script is en elk Docker-script erin staat.
   CODEOWNERS op hun scripts is niet genoeg: ze laden door de agent geschreven tests en configs. Isolatie daarvan: ADR 0009.
 - Screenshot-baselines alleen in de gepinde Playwright-image.
 - Devcontainer (optioneel): Docker-in-Docker, nooit de host-socket doorgeven.

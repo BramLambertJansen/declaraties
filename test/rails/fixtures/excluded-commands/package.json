@@ -1,0 +1,10 @@
+{
+  "scripts": {
+    "gate:fast": "pnpm lint && pnpm test:unit",
+    "lint": "eslint .",
+    "test:unit": "vitest run",
+    "test:db": "scripts/runner.sh db",
+    "gate:slow": "pnpm test:db && pnpm check:snapshot",
+    "check:snapshot": "scripts/check-snapshot.sh"
+  }
+}

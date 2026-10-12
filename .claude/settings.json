@@ -52,10 +52,10 @@
       "Bash(pnpm uninstall *)",
       "Bash(pnpm un *)",
       "Bash(pnpm test:db *)",
-      "Bash(pnpm db:reset *)",
-      "Bash(pnpm db:types *)",
       "Bash(pnpm ui:check *)",
       "Bash(pnpm gate:slow *)",
+      "Bash(pnpm db:generate *)",
+      "Bash(pnpm check:snapshot *)",
       "Bash(pnpm new:resource *)",
       "Bash(pnpm run new:resource *)",
       "Bash(sed -i *)",
@@ -104,10 +104,10 @@
     "allowUnsandboxedCommands": false,
     "excludedCommands": [
       "pnpm test:db *",
-      "pnpm db:reset *",
-      "pnpm db:types *",
       "pnpm ui:check *",
-      "pnpm gate:slow *"
+      "pnpm gate:slow *",
+      "pnpm db:generate *",
+      "pnpm check:snapshot *"
     ],
     "filesystem": {
       "denyRead": [

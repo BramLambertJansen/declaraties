@@ -6,6 +6,7 @@ import { execFileSync } from 'node:child_process';
 import { readFileSync, statSync } from 'node:fs';
 import path from 'node:path';
 import { decide, loadConfig } from './lib/rolhek.mjs';
+import { payloadCwd, projectRoot } from './lib/root.mjs';
 
 /**
  * @param {string} root
@@ -59,29 +60,11 @@ function gitBranch(root) {
   }
 }
 
-/**
- * De root van de worktree waarin de sessie werkt, niet CLAUDE_PROJECT_DIR: in een worktree onder .claude/worktrees/ zou elk
- * pad anders onder de gate `.claude/**` vallen, en de gates.json van de branch zelf gelden niet (ADR 0016, gevolgen).
- * Alleen buiten git valt hij terug op CLAUDE_PROJECT_DIR.
- * @param {string} cwd
- */
-function projectRoot(cwd) {
-  try {
-    return git(cwd, ['rev-parse', '--show-toplevel']);
-  } catch (error) {
-    const projectDir = process.env['CLAUDE_PROJECT_DIR'];
-    if (projectDir === undefined) throw error;
-    return projectDir;
-  }
-}
-
 function main() {
   /** @type {unknown} */
   const payload = JSON.parse(readFileSync(0, 'utf8'));
-  const cwd =
-    typeof payload === 'object' && payload !== null && 'cwd' in payload && typeof payload.cwd === 'string'
-      ? payload.cwd
-      : process.cwd();
+  const cwd = payloadCwd(payload);
+  // Niet CLAUDE_PROJECT_DIR maar de git-root van cwd: zie lib/root.mjs.
   const root = projectRoot(cwd);
   const decision = decide(payload, context(root, cwd));
   if (decision.deny.length > 0) {
