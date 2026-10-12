@@ -202,8 +202,14 @@ function approvesSpec(rel, change, ctx) {
 const SKIP = /\.(?:skip|todo|fixme)\s*\(|\b(?:xit|xtest|xdescribe)\s*\(|\bskip\s*\(/g;
 const CASES = /\b(?:test|it)(?:\.each\b[^(]*\([^)]*\))?\s*\(/g;
 
+// Testbestanden in testpaden; de rest daar is een hulpbestand (harness, fixture, setup, e2e/support).
+const TEST_FILES = ['**/*.test.*', '**/*.spec.*', 'db/tests/**'];
+// Fixtures bewijzen dat een check faalt en de setup draait vóór elke test: wijzigen is een gate (WS-02).
+const LOCKED_HELPERS = ['test/rails/fixtures/**', 'test/setup/**'];
+
 /**
- * Bestaande test: verwijderen, skippen of gevallen weghalen vraagt akkoord van de eigenaar; wijzigen meldt het rolhek.
+ * Bestaande test of hulpbestand: verwijderen, skippen of gevallen weghalen vraagt akkoord van de eigenaar, net als een
+ * fixture of setup wijzigen; een andere wijziging meldt het rolhek.
  * @param {{ rel: string, change: Change, role: string }} target
  * @param {Ctx} ctx
  * @param {Decision} decision
@@ -211,12 +217,17 @@ const CASES = /\b(?:test|it)(?:\.each\b[^(]*\([^)]*\))?\s*\(/g;
 function existingTest({ rel, change, role }, ctx, decision) {
   const before = ctx.read(rel) ?? '';
   const count = (/** @type {string} */ text, /** @type {RegExp} */ pattern) => (text.match(pattern) ?? []).length;
-  if (change.kind === 'delete') {
+  const helper = !TEST_FILES.some((glob) => globMatch(glob, rel));
+  if (helper && LOCKED_HELPERS.some((glob) => globMatch(glob, rel))) {
+    gate(decision, role, `${rel} is een fixture of setup: wijzigen of verwijderen alleen met akkoord van de eigenaar (WS-02)`);
+  } else if (change.kind === 'delete') {
     gate(decision, role, `${rel} is een bestaande test: verwijderen alleen met akkoord van de eigenaar (AGENTS.md)`);
   } else if (change.after !== null && count(change.after, SKIP) > count(before, SKIP)) {
     gate(decision, role, `${rel}: een test skippen alleen met akkoord van de eigenaar (AGENTS.md)`);
   } else if (change.after !== null && count(change.after, CASES) < count(before, CASES)) {
     gate(decision, role, `${rel}: testgevallen weghalen alleen met akkoord van de eigenaar (AGENTS.md)`);
+  } else if (helper) {
+    decision.context.push(`${rel}: hulpbestand gewijzigd: noem het met reden in de PR (AGENTS.md, framework §8).`);
   } else {
     decision.context.push(`${rel} is een bestaande test: noem de wijziging met reden in de PR (AGENTS.md, framework §8).`);
   }

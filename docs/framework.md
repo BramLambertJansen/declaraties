@@ -293,8 +293,13 @@ voor andere runtimes (Codex, cloudsessies) niet gelden. De eisen hierboven gelde
 
 **Rolhek en gate-paden**: `.claude/gates.json` is de enige lijst met `gates` (paden die alleen via een gate-wijziging veranderen), `testpaden`,
 `jsonGates` (`package.json` → `scripts`: alleen die sleutel is een gate), `goedkeurders` en `schrijfrecht` per rol (architect: specs en ADR's;
-tester: testpaden; reviewer: niets; docs (optioneel): `docs/`; developer en hoofdsessie: alles behalve gates en bestaande tests). De rolhek-hook leest hem lokaal,
-de diff-guard in CI leest dezelfde lijst, en `check-docs` vergelijkt CODEOWNERS en `ask` ermee.
+tester: testpaden; reviewer: niets; docs (optioneel): `docs/reviews/`, `docs/operations/`, `docs/README.md`, `docs/gouden-pad.md`, `README.md`,
+`CHANGELOG.md`, geen gate-paden: roadmap-vinkjes en spec- of ADR-statussen stelt hij voor; developer en hoofdsessie: alles behalve gates en bestaande tests). De rolhek-hook leest hem lokaal,
+de diff-guard in CI leest dezelfde lijst, en `check-docs` vergelijkt CODEOWNERS en `ask` ermee. Een bestaand hulpbestand in een testpad (geen
+`*.test.*`/`*.spec.*`/`db/tests/`) wijzigen meldt het rolhek ("hulpbestand gewijzigd"), verwijderen is een gate; `test/rails/fixtures/` en
+`test/setup/` wijzigen ook (`.claude/hooks/lib/rolhek.mjs:206`). `check-docs` faalt als `schrijfrecht` van een rol overlapt met `gates`, behalve
+architect → `docs/adr/**` en `docs/specs/**`, tester → testpaden, en developer en hoofdsessie (het rolhek handelt gates voor hen af met ask/deny);
+een gate die zelf een testpad is telt niet mee (`scripts/kit/check-docs.mjs:251`).
 
 Hooks (exit 2 blokkeert; exit 1 en een timeout laten het toolgebruik door — fail-open. Elke hook is daarom kort en deterministisch,
 met een korte expliciete `timeout` en `set -euo pipefail` met `trap 'exit 2' ERR`; de harde grens blijven sandbox, CI en GitHub).
@@ -307,7 +312,7 @@ SubagentStop staat in `.claude/settings.json` (matcher = agentnaam), niet in de 
 | SubagentStop "groen vóór klaar" (developer) | blokkeert met `{"decision":"block"}` en de laatste 40 regels tot `gate:fast` groen is, ook bij een schone werkmap (een commit bewijst niet dat de pre-commit draaide) |
 | SubagentStop (tester, reviewer) | tester → lint en typecheck groen, en de nieuwe tests falen alleen op asserties (de acceptatietests zijn rood tot de developer klaar is); reviewer → rapport geschreven |
 | SessionStart | spec, branch, laatste checkuitslag, status lokale stack (`doctor --quick`) als `additionalContext` |
-| PreToolUse rolhek (Edit/Write/Bash, alle rollen) | schrijfrecht per rol uit `.claude/gates.json` (ook voor Bash-schrijfdoelen: redirect, `sed -i`, `tee`, `cp`, `mv`, `rm`, `git checkout/restore`); simuleert Edit/Write op `jsonGates` en vergelijkt de sleutel; blokkeert gegenereerde bestanden, gecommitte migraties, verwijderen of skippen van bestaande tests; wijzigen van een bestaande test meldt hij als `additionalContext` |
+| PreToolUse rolhek (Edit/Write/Bash, alle rollen) | schrijfrecht per rol uit `.claude/gates.json` (ook voor Bash-schrijfdoelen: redirect, `sed -i`, `tee`, `cp`, `mv`, `rm`, `git checkout/restore`); simuleert Edit/Write op `jsonGates` en vergelijkt de sleutel; blokkeert gegenereerde bestanden, gecommitte migraties, verwijderen of skippen van bestaande tests en hulpbestanden, wijzigen van fixtures en setup; wijzigen van een bestaande test of hulpbestand meldt hij als `additionalContext` |
 | PreToolUse rolhek (Bash, alle rollen) | blokkeert push naar `main`, `LEFTHOOK=0`, `--no-verify`/`-n`, `core.hooksPath` (leesvormen met `--get` mogen, per commandosegment), `gh pr review`, het label `gate-wijziging`, `gh api` naar labels, reviews, statuses of check-runs; voor subagents ook push, merge, rebase en `reset --hard`; reviewer alleen `pnpm check:*`/`test*`/`gate:*`, `git diff/log/show/status`, `gh pr view/diff/checks` |
 | PreToolUse rolhek (`mcp__.*`, alle rollen) | een MCP-tool die niet exact in `mcpLezen` (`.claude/gates.json`) staat: hoofdsessie `ask`, elke subagent (ook een onbekende) `deny`; standaard is de lijst leeg |
 
@@ -351,14 +356,15 @@ Live feiten (gates, routes, componenten, nummers) komen uit `scripts/kit/feiten.
   en geen code-owner-review, wel PR-plicht, geen force push en geen delete (ADR 0006). Rulesets op private repo's vragen GitHub Pro of Team.
 - Actions-instellingen: "Allow GitHub Actions to create and approve pull requests" uit; "Require actions to be pinned to a full-length commit SHA" aan.
 - **Beschermde paden** (bron: `.claude/gates.json`, ADR 0011; CODEOWNERS spiegelt hem volledig, `ask` in `.claude/settings.json` zonder de paden waarin de agent
-  hoort te schrijven: tests (`*.test.*`, `*.spec.*`, `db/tests/`, `e2e/`) en `docs/specs/`. Toevoegen mag daar; verwijderen of skippen
+  hoort te schrijven: tests (`*.test.*`, `*.spec.*`, `db/tests/`, `e2e/`, `test/`) en `docs/specs/`. Toevoegen mag daar; verwijderen of skippen
   van bestaande tests blokkeert de rolhek-hook, `goedgekeurd` bewaakt `check-spec-approval`. `check-docs` bewaakt beide spiegelingen):
   `AGENTS.md`, `CLAUDE.md`, `docs/framework.md`, `docs/dod.md`, `docs/roadmap.md`, `docs/adr/`, `docs/specs/`, `.github/`, `.claude/`, `scripts/`,
   `db/init/`, `db/docker/`, `db/tests/`, `compose*.yaml`, `package.json`, `pnpm-lock.yaml`, `pnpm-workspace.yaml`, `.npmrc`, `.pnpmfile.cjs`,
   `mise.toml`, `.env.example`, `eslint.config.*`, `eslint-suppressions.json`, `.kit/`, `osv-scanner.toml`, `.betterleaksignore`,
   `tsconfig*.json`, `.dependency-cruiser.*`, `lefthook.yml`, `renovate.json`, `.gitattributes`,
   `src/core/`, `src/api/app.ts`, `src/api/kit.ts`, `src/api/server.ts`, `src/api/env.ts`, `src/shared/permissions.ts`, `deploy/`,
-  alle `*.test.*`/`*.spec.*`, `e2e/`.
+  alle `*.test.*`/`*.spec.*`, `e2e/`, `test/`, en de configs die checks bepalen: `vitest.config.ts`, `playwright.config.ts`, `vite.config.ts`,
+  `.prettierrc.json`, `.prettierignore`, `Dockerfile`, `.dockerignore`, `db/test.env`, `docs/nieuwe-app.md`.
   `src/core/` is daarnaast core (ADR 0008): in een app wijzigt alleen een template-merge het, bewaakt door `check-core`.
 - Instellingen als code in `.github/settings/main-protection.json`; `scripts/check-github.mjs` controleert alleen-lezend dat ze actief zijn en faalt als de agent
   onder het account van de eigenaar werkt, als een verplichte check niet van GitHub Actions komt (`app_id`, anders is een status te vervalsen), als

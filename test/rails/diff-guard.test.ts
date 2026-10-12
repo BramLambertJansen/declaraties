@@ -51,7 +51,11 @@ describe('wat de guard raakt', () => {
       w: { status: 'M', pad: 'src/api/x.test.ts' },
       verwacht: [['src/api/x.test.ts'], ['src/api/x.test.ts']],
     },
-    { naam: 'verwijderde test onder test/', w: { status: 'D', pad: 'test/x.ts' }, verwacht: [[], ['test/x.ts']] },
+    {
+      naam: 'verwijderde test onder test/ (test/** is ook een gate)',
+      w: { status: 'D', pad: 'test/x.ts' },
+      verwacht: [['test/x.ts'], ['test/x.ts']],
+    },
     {
       naam: 'hernoemde test (beide paden)',
       w: { status: 'R', van: 'e2e/a.spec.ts', pad: 'e2e/b.spec.ts' },

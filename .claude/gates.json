@@ -40,7 +40,17 @@
     "deploy/**",
     "**/*.test.*",
     "**/*.spec.*",
-    "e2e/**"
+    "e2e/**",
+    "test/**",
+    "vitest.config.ts",
+    "playwright.config.ts",
+    "vite.config.ts",
+    ".prettierrc.json",
+    ".prettierignore",
+    "Dockerfile",
+    ".dockerignore",
+    "db/test.env",
+    "docs/nieuwe-app.md"
   ],
   "testpaden": ["**/*.test.*", "**/*.spec.*", "e2e/**", "db/tests/**", "test/**"],
   "jsonGates": { "package.json": ["scripts"] },
@@ -52,7 +62,14 @@
     "architect": ["docs/specs/**", "docs/adr/**"],
     "tester": ["**/*.test.*", "**/*.spec.*", "e2e/**", "db/tests/**", "test/**"],
     "reviewer": [],
-    "docs": ["docs/**", "README.md", "CHANGELOG.md"],
+    "docs": [
+      "docs/reviews/**",
+      "docs/operations/**",
+      "docs/README.md",
+      "docs/gouden-pad.md",
+      "README.md",
+      "CHANGELOG.md"
+    ],
     "developer": ["**"]
   }
 }

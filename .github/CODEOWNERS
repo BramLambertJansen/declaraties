@@ -42,3 +42,13 @@
 **/*.test.*               @bramlambertjansen
 **/*.spec.*               @bramlambertjansen
 /e2e/                     @bramlambertjansen
+/test/                    @bramlambertjansen
+/vitest.config.ts         @bramlambertjansen
+/playwright.config.ts     @bramlambertjansen
+/vite.config.ts           @bramlambertjansen
+/.prettierrc.json         @bramlambertjansen
+/.prettierignore          @bramlambertjansen
+/Dockerfile               @bramlambertjansen
+/.dockerignore            @bramlambertjansen
+/db/test.env              @bramlambertjansen
+/docs/nieuwe-app.md       @bramlambertjansen
