@@ -42,4 +42,5 @@ Gebouwd (stuk 3d, accountbeheer): de auth-client `src/core/web/lib/auth.ts` (via
 QrCode in de kit. Voorbeeld van een scherm door alle lagen: `docs/gouden-pad.md`.
 Gebouwd (stuk 4): `pnpm check:catalogus` (uitzonderingen met reden in `scripts/kit/catalogus.mjs`) en de woordenlijsttest
 `src/web/copy/woordenlijst.test.ts`.
-Nog niet: screenshot-baselines en `scanAxe`-uitzonderingen in de ratchet.
+`scanAxe` zonder uitzonderingen: twee lintregels (axe-import en axe-uitzondering in `eslint.config.js`) houden ze tegen.
+Nog niet: screenshot-baselines van de catalogus in de Playwright-image (roadmap, stuk 3c).

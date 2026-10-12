@@ -44,7 +44,7 @@ paths:
   van elke transactie `current_user = session_user`, zet de rol, `app.user_id` en `app.session_strength` (`password` of `mfa`; elke
   andere waarde weigert hij) en vertaalt fouten. Buiten `withUser()` geeft `app.session_strength()` `none`.
 
-## Gebouwd
+## Besloten, nog niet gebouwd
 
 Gebouwd: `withUser()` met Drizzle-`tx` en foutvertaling (ADR 0012); pgTAP-invarianten (`db/tests/invarianten.sql`: RLS
 geforceerd, geen TRUNCATE/REFERENCES/TRIGGER, `better_auth` dicht, niets voor PUBLIC) en de functiecatalogus

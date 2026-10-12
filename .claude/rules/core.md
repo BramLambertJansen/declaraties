@@ -6,7 +6,7 @@ paths:
 # Regels voor `src/core`
 
 - `src/core` is van de template (ADR 0008). In een app wijzig je het niet: updates komen alleen via `git merge template/main`,
-  en `check-core` laat een andere wijziging falen. In de template zelf mag het, met akkoord van de eigenaar (beschermd pad).
+  en `check-core` (nog niet gebouwd, zie onderaan) laat een andere wijziging falen. In de template zelf mag het, met akkoord van de eigenaar (beschermd pad).
 - Core importeert nooit uit `src/api`, `src/web` of `src/shared`. Wat core van de app nodig heeft, krijgt het als argument van een
   compositie-root (`src/api/app.ts`, `src/api/kit.ts`, `src/web/lib/api.ts`). Geen globale registratie, geen mutable singleton.
 - Elke uitbreidingsplek (permissies, foutcodes, limieten, env, componentvarianten) heeft in core een test die bewijst dat een app
