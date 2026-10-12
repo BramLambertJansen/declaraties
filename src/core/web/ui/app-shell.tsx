@@ -5,6 +5,7 @@ import { Button } from './button.tsx';
 import { Dialog } from './dialog.tsx';
 import type { MenuItem } from './dropdown-menu.tsx';
 import { Sidebar, type NavItem } from './sidebar.tsx';
+import { Toaster } from './toast.tsx';
 import { Topbar } from './topbar.tsx';
 
 interface AppShellProps {
@@ -146,6 +147,7 @@ export function AppShell({ nav, userName, menuItems, topbarActions, routeKey, ch
           <Sidebar items={nav} />
         </div>
       </Dialog>
+      <Toaster />
     </div>
   );
 }

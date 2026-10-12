@@ -29,6 +29,7 @@ import {
   TableHead,
   TableHeader,
   TableRow,
+  useToast,
   useZodForm,
 } from '#web/ui/index.ts';
 
@@ -196,6 +197,30 @@ function DialogExample() {
   );
 }
 
+function ToastExample() {
+  const toast = useToast();
+  return (
+    <div className="flex flex-wrap gap-3">
+      <Button
+        variant="outline"
+        onClick={() => {
+          toast.success('Wijziging opgeslagen.');
+        }}
+      >
+        Toon succes-toast
+      </Button>
+      <Button
+        variant="outline"
+        onClick={() => {
+          toast.error('Opslaan mislukt. Probeer het later opnieuw.');
+        }}
+      >
+        Toon fout-toast
+      </Button>
+    </div>
+  );
+}
+
 export function DesignSystemPage() {
   return (
     <div className="flex flex-col gap-10">
@@ -227,6 +252,10 @@ export function DesignSystemPage() {
         <PageHeader title="Accounts" documentTitle={false} actions={<Button>Account uitnodigen</Button>} />
         <Notice>Uitnodiging verstuurd naar anna@example.test.</Notice>
         <Notice tone="error">Er ging iets mis. Probeer het later opnieuw.</Notice>
+      </Section>
+
+      <Section title="Toast">
+        <ToastExample />
       </Section>
 
       <Section title="Table">

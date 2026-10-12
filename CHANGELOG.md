@@ -16,6 +16,7 @@ Hier staan wijzigingen die van belang zijn bij het gebruiken of bijwerken van de
 - Requestlogging, health- en readinessroutes, gecontroleerd stoppen en een containerimage voor de webapp en API.
 - Controles voor codekwaliteit, architectuur, migraties, database- en schermgedrag, kwetsbaarheden en secrets, lokaal en in GitHub Actions.
 - Accounts blokkeren en deblokkeren (ADR 0026): een geblokkeerd account is direct overal uitgelogd en kan niet inloggen; de laatste telbare beheerder kan niet geblokkeerd worden.
+- Toasts in de basiskit: `useToast().success/error` met een `Toaster` in de AppShell, beleefd voorgelezen bij succes en direct bij een fout. `ToastProvider` staat in `src/web/main.tsx`; zonder provider gooit `useToast`. Een toast verschijnt alleen waar een `Toaster` staat (de AppShell), dus niet op schermen in `CenteredCard`.
 - Uitgewerkte roadmaptaken voor de verdere ontwikkeling van de starter.
 
 ### Documentatie

@@ -146,8 +146,17 @@ Vier deel-PR's, in deze volgorde.
       `rails/axe-uitzondering`: geen `disableRules`/`exclude`/`include`/`options` daarin), fixtures in `test/rails/eslint.test.ts`
 - [x] `check:catalogus`: elk component op `/design-system` of als uitzondering met reden in `scripts/kit/catalogus.mjs` (groeien = gate-wijziging; een overbodige uitzondering faalt ook), in `gate:fast` (#33)
 - [ ] Screenshot-baselines van de catalogus in de Playwright-image (uit fase 2)
-- [ ] Toasts standaard in de basiskit (besluit eigenaar 2026-10-10): `Toaster` in de AppShell en een `toast()`-aanroep voor "gelukt" en "fout" na
-      een mutatie, met `aria-live`, op `/design-system` en in `check:catalogus`; zelf bouwen of een dependency vraagt een besluit van de eigenaar
+- [x] Toasts standaard in de basiskit (besluit eigenaar 2026-10-10, zelf gebouwd zonder dependency): `ToastProvider` in `main.tsx`, `Toaster` in de AppShell en
+      `useToast().success/error` met `aria-live`, op `/design-system` en in `check:catalogus` (`src/core/web/ui/toast.test.tsx`).
+      Bestaande `Notice`-meldingen na een mutatie zijn nog niet omgezet (aparte taak; let daar op toasts onder een open modale `Dialog`, die inert is, en op pauze bij hover/focus, WCAG 2.2.1)
+- [ ] Toasts: opvolging uit de review. Pauze bij hover en focus en geen automatisch verdwijnen van een fout (WCAG 2.2.1), en een besluit van de
+      eigenaar over de duur (nu 5 s en 8 s, een aanname)
+- [ ] Toasts: bereikbaar onder een open modale `Dialog` (inert: niet voorgelezen, sluitknop onbereikbaar), en een `Toaster` voor schermen in
+      `CenteredCard` (`/login`, `/uitnodiging`), waar een toast nu nooit verschijnt
+- [ ] Toasts: geen dubbele aankondiging (`role` binnen een `aria-live`-container, NVDA), en de toonklassen in een CVA-recept in plaats van
+      gekopieerd uit `Notice`, zodat de contrasttest ze dekt
+- [ ] Toasts: bestaande `Notice`-meldingen na een mutatie omzetten (`name-section.tsx`, `sessions-section.tsx`, `row-actions.tsx`), met
+      bijgewerkte tests; `.claude/rules/web.md` en `docs/gouden-pad.md` noemen dan Toast (beschermd pad: akkoord eigenaar)
 - [x] `/design-system` als echte pagina (besluit eigenaar 2026-10-10): onder `/_app` in de AppShell, met menu-item en `can()`-guard, ook in
       productie; vervangt "alleen in dev" hierboven en in framework §6 en §7. Eerst een spec (#44, ADR 0015, #51)
 

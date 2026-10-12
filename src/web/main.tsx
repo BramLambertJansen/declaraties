@@ -5,6 +5,7 @@ import { createRoot } from 'react-dom/client';
 import { createQueryClient } from '#core/web/lib/query.ts';
 import { applyStoredTheme } from '#core/web/lib/theme.ts';
 import { ErrorTextsProvider } from '#core/web/ui/error-texts.tsx';
+import { ToastProvider } from '#core/web/ui/toast.tsx';
 import { errorTexts } from '#web/copy/errors.ts';
 import { createAppRouter } from '#web/lib/router.ts';
 import { hadSession } from '#web/lib/session.ts';
@@ -31,7 +32,9 @@ createRoot(root).render(
   <StrictMode>
     <ErrorTextsProvider texts={errorTexts}>
       <QueryClientProvider client={queryClient}>
-        <RouterProvider router={router} />
+        <ToastProvider>
+          <RouterProvider router={router} />
+        </ToastProvider>
       </QueryClientProvider>
     </ErrorTextsProvider>
   </StrictMode>,

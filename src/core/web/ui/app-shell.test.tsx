@@ -2,6 +2,7 @@ import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, expect, test, vi } from 'vitest';
 import { AppShell } from './app-shell.tsx';
 import { PageHeader } from './page-header.tsx';
+import { ToastProvider, useToast } from './toast.tsx';
 
 // Schil toegankelijk (roadmap 3f): skip-link als eerste Tab-stop, paginatitel per scherm, focus naar de h1 na een routewissel.
 afterEach(() => {
@@ -137,4 +138,32 @@ test('een voorbeeld-PageHeader met documentTitle={false} laat de paginatitel sta
     </AppShell>,
   );
   expect(document.title).toBe('Design system');
+});
+
+// Toasts: de schil rendert de Toaster zelf; een toast die binnen de schil via useToast wordt aangeroepen is zichtbaar.
+function ToastButton() {
+  const toast = useToast();
+  return (
+    <button
+      type="button"
+      onClick={() => {
+        toast.success('Wijziging opgeslagen');
+      }}
+    >
+      Opslaan
+    </button>
+  );
+}
+
+test('een toast die binnen de schil via useToast wordt aangeroepen is zichtbaar', () => {
+  render(
+    <ToastProvider>
+      <AppShell nav={[]} userName="Ada Admin" menuItems={[]} routeKey="/">
+        <ToastButton />
+      </AppShell>
+    </ToastProvider>,
+  );
+  expect(screen.queryByRole('status')).toBeNull();
+  fireEvent.click(screen.getByRole('button', { name: 'Opslaan' }));
+  expect(screen.getByRole('status').textContent).toContain('Wijziging opgeslagen');
 });

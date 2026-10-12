@@ -16,6 +16,9 @@ export const UITZONDERINGEN = {
     'layoutblok voor een heel scherm met een eigen main en h1; binnen de AppShell zouden er twee zijn. Te zien op /login (besluit eigenaar 2026-10-10)',
   AsyncView: 'vraagt een echte query (useQuery alleen in queries.ts); in gebruik op /admin/accounts',
   ErrorTextsProvider: 'context zonder eigen weergave',
+  Toaster:
+    'staat in de AppShell om de catalogus heen; de toasts zijn te zien via de knoppen in de sectie Toast op /design-system',
+  ToastProvider: 'context zonder eigen weergave',
   NavLink: 'staat in de Sidebar van de AppShell om de catalogus heen',
   Sidebar: 'staat in de AppShell om de catalogus heen; los zou er een tweede navigatie "Hoofdmenu" zijn',
   ThemeToggle:

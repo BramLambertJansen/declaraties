@@ -23,6 +23,7 @@ test('een component zonder voorbeeld en zonder uitzondering faalt', () => {
   const root = repo(
     "export { Button, type ButtonProps } from '#core/web/ui/button.tsx';\nexport { Badge } from './badge.tsx';\n" +
       "export { AsyncView } from '#core/web/ui/async-view.tsx';\nexport { ErrorTextsProvider, useErrorText } from '#core/web/ui/error-texts.tsx';\n" +
+      "export { Toaster, ToastProvider, useToast } from '#core/web/ui/toast.tsx';\n" +
       "export { AppShell } from '#core/web/ui/app-shell.tsx';\nexport { ThemeToggle } from '#core/web/ui/theme-toggle.tsx';\nexport { CenteredCard } from '#core/web/ui/centered-card.tsx';\nexport { NavLink } from '#core/web/ui/nav-link.tsx';\nexport { Sidebar } from '#core/web/ui/sidebar.tsx';\nexport { Topbar } from '#core/web/ui/topbar.tsx';\n",
     '<Section title="Button"><Button>Opslaan</Button></Section>',
   );
@@ -32,6 +33,8 @@ test('een component zonder voorbeeld en zonder uitzondering faalt', () => {
     'Badge',
     'AsyncView',
     'ErrorTextsProvider',
+    'Toaster',
+    'ToastProvider',
     'AppShell',
     'ThemeToggle',
     'CenteredCard',
@@ -47,7 +50,8 @@ test('een component zonder voorbeeld en zonder uitzondering faalt', () => {
 test('een uitzondering voor een component dat nu wel in de catalogus staat (of niet meer bestaat), faalt', () => {
   const root = repo(
     "export { AppShell } from '#core/web/ui/app-shell.tsx';\nexport { ThemeToggle } from '#core/web/ui/theme-toggle.tsx';\nexport { CenteredCard } from '#core/web/ui/centered-card.tsx';\nexport { AsyncView } from '#core/web/ui/async-view.tsx';\nexport { NavLink } from '#core/web/ui/nav-link.tsx';\n" +
-      "export { Sidebar } from '#core/web/ui/sidebar.tsx';\nexport { Topbar } from '#core/web/ui/topbar.tsx';\n",
+      "export { Sidebar } from '#core/web/ui/sidebar.tsx';\nexport { Topbar } from '#core/web/ui/topbar.tsx';\n" +
+      "export { Toaster, ToastProvider, useToast } from '#core/web/ui/toast.tsx';\n",
     '<Section title="Laden"><AsyncView query={q}>{() => null}</AsyncView></Section>',
   );
 
