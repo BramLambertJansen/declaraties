@@ -1,0 +1,14 @@
+{
+  "version": 1,
+  "requiredChecks": [
+    "gate:fast",
+    "gate:slow",
+    "secrets",
+    "image",
+    "check:new-resource",
+    "codeql (javascript-typescript)",
+    "codeql (actions)",
+    "osv-scanner"
+  ],
+  "decisions": []
+}

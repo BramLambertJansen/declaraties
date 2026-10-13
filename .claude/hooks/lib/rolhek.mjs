@@ -3,14 +3,18 @@
 // met echte payloads kan bewijzen. De stdin/stdout-kant staat in .claude/hooks/rolhek.mjs.
 import path from 'node:path';
 import { gitSubcommand, parseCommands, splitCommand, writeTargets } from './shell.mjs';
+import { documentInfo } from './document-state.mjs';
+import { canRecordStatus, canWriteProtected } from './task-authority.mjs';
+import { automaticRunner } from './runner-authority.mjs';
 
 /**
  * @typedef {{ gates: string[], testpaden: string[], jsonGates: Record<string, string[]>, gegenereerd: string[],
  *   migraties: string[], schrijfrecht: Record<string, string[]>, mcpLezen: string[] }} Config
  * @typedef {{ root: string, cwd: string, config: Config, read: (rel: string) => string | null,
- *   committed: (rel: string) => boolean | 'zonder-origin', isDir: (rel: string) => boolean, branch: string }} Ctx
+ *   committed: (rel: string) => boolean | 'zonder-origin', isDir: (rel: string) => boolean, branch: string,
+ *   authority?: import('./task-authority.mjs').Authority | null, runnerTrusted?: boolean }} Ctx
  * `committed`: staat in de merge-base met origin/main; 'zonder-origin' = origin/main onleesbaar en wel in HEAD (terugval).
- * @typedef {{ deny: string[], ask: string[], context: string[] }} Decision
+ * @typedef {{ deny: string[], ask: string[], context: string[], allow?: boolean }} Decision
  * @typedef {{ kind: 'write' | 'delete', after: string | null }} Change
  */
 
@@ -60,9 +64,22 @@ export function decide(payload, ctx) {
   const tool = field(payload, 'tool_name');
   const input = objectField(payload, 'tool_input');
   const role = roleOf(field(payload, 'agent_type'));
-  if (tool.startsWith('mcp__')) decideMcp({ tool, role }, ctx, decision);
-  else if (tool === 'Bash') decideBash({ command: field(input, 'command'), role }, ctx, decision);
-  else if (['Edit', 'Write', 'MultiEdit', 'NotebookEdit'].includes(tool)) decideEdit({ tool, input, role }, ctx, decision);
+  // Een onbekende subagent houdt de bestaande developerbeperkingen, maar krijgt nooit een taakmandaat.
+  const namedRole = field(payload, 'agent_type');
+  const context = ['', 'developer', 'architect'].includes(namedRole) ? ctx : { ...ctx, authority: null };
+  if (tool.startsWith('mcp__')) decideMcp({ tool, role }, context, decision);
+  else if (tool === 'Bash') {
+    const command = field(input, 'command');
+    decideBash({ command, role }, context, decision);
+    if (command.includes('--sta-wijzigingen-toe')) decision.deny.push('De agent omzeilt de hostcontrole van de runner nooit; gebruik voor gewijzigd railwerk de CI-runner');
+    if (ctx.cwd === ctx.root && ctx.runnerTrusted === true && automaticRunner(command) && decision.ask.length + decision.deny.length === 0)
+      decision.allow = true;
+  }
+  else if (['Edit', 'Write', 'MultiEdit', 'NotebookEdit'].includes(tool)) {
+    decideEdit({ tool, input, role }, context, decision);
+    if (decision.context.some((reason) => reason.startsWith('Taakmandaat:')) && decision.ask.length + decision.deny.length === 0)
+      decision.allow = true;
+  }
   return decision;
 }
 
@@ -127,11 +144,19 @@ function decideMcp({ tool, role }, ctx, decision) {
  */
 function decideEdit({ tool, input, role }, ctx, decision) {
   const file = field(input, 'file_path') || field(input, 'notebook_path');
+  ctx = scopedContext(ctx, file);
   const rel = relative(ctx, file);
   if (rel === null) return;
   const before = ctx.read(rel);
   const after = tool === 'NotebookEdit' ? null : simulate(tool, input, before);
   decideFile({ rel, change: { kind: 'write', after }, role }, ctx, decision);
+}
+
+/** Een weggewerkte parentcomponent kan via een symlink naar een ander fysiek bestand wijzen.
+ * @param {Ctx} ctx @param {string} file */
+function scopedContext(ctx, file) {
+  const parent = /(?:^|[\\/])\.\.(?:[\\/]|$)/;
+  return parent.test(file) || parent.test(ctx.cwd) ? { ...ctx, authority: null } : ctx;
 }
 
 /**
@@ -183,12 +208,37 @@ function decideFile({ rel, change, role }, ctx, decision) {
     decision.deny.push(`${rel} is een gecommitte migratie: wijzig hem nooit, maak een nieuwe (AGENTS.md)${hint}`);
     return;
   }
+  if (recordedStatus({ rel, change, role }, ctx, decision)) return;
+  const nextDocument = documentInfo(rel, change.after ?? '');
+  if (ctx.authority != null && nextDocument !== null && !['voorstel', 'voorgesteld'].includes(nextDocument.status) &&
+    !canRecordStatus({ file: rel, text: change.after ?? '' }, ctx.authority)) {
+    decision.deny.push(`${rel}: inhoud of besluit heeft geen geldig bewijs uit main; heropen het voorstel voor een nieuwe beoordeling`);
+    return;
+  }
   if (approvesSpec(rel, change, ctx)) {
     decision.deny.push(`${rel}: status goedgekeurd zet alleen de eigenaar (AGENTS.md)`);
     return;
   }
   if (matches(config.testpaden) && ctx.read(rel) !== null) existingTest({ rel, change, role }, ctx, decision);
   decideByRole({ rel, change, role }, ctx, decision);
+}
+
+/**
+ * Een statuswijziging mag alleen de statusregel aanpassen en een bestaand besluit administreren.
+ * @param {{ rel: string, change: Change, role: string }} target
+ * @param {Ctx} ctx
+ * @param {Decision} decision
+ */
+function recordedStatus({ rel, change, role }, ctx, decision) {
+  if (ctx.authority == null || change.kind !== 'write' || change.after === null) return false;
+  const before = ctx.read(rel);
+  const old = documentInfo(rel, before ?? '');
+  const next = documentInfo(rel, change.after);
+  if (old === null || next === null || before === change.after || old.digest !== next.digest) return false;
+  if (!['hoofdsessie', 'developer', 'architect'].includes(role) || !canRecordStatus({ file: rel, text: change.after }, ctx.authority)) {
+    decision.deny.push(`${rel}: deze statusovergang heeft geen geldig besluit uit de vertrouwde basis; gebouwd via pnpm docs:status`);
+  } else decision.context.push(`Taakmandaat: ${rel}: status administratief vastgelegd op basis van het besluit uit main`);
+  return true;
 }
 
 /**
@@ -259,6 +309,10 @@ function decideByRole({ rel, change, role }, ctx, decision) {
   }
   // Tests (toevoegen is vrij) en specs (de agent schrijft ze; goedgekeurd bewaakt de check) zijn geen gate voor schrijven.
   const free = config.testpaden.some((glob) => globMatch(glob, rel)) || rel.startsWith('docs/specs/');
+  if (!free && ctx.authority != null && canWriteProtected({ file: rel, role }, ctx.authority)) {
+    decision.context.push(`Taakmandaat: ${rel}: exact bestand toegestaan door de goedgekeurde taak uit main`);
+    return;
+  }
   if (!free && config.gates.some((glob) => globMatch(glob, rel)))
     gate(decision, role, `${rel} is een beschermd pad (framework §10): wijzigen vraagt akkoord van de eigenaar`);
 }
@@ -333,6 +387,7 @@ function decideBash({ command, role }, ctx, decision) {
  * @param {Decision} decision
  */
 function bashTarget({ file, kind, role }, ctx, decision) {
+  ctx = scopedContext(ctx, file);
   const rel = relative(ctx, file);
   if (rel === null) return;
   // Naar een bestaande map (cp x src/core/): beslis voor een nieuw bestand daarin.
@@ -376,10 +431,16 @@ function forbidden({ assignments, argv }, { role, ctx }, decision) {
   const [program = '', ...args] = argv;
   const lefthook = [...assignments, ...(program === 'export' ? args : [])].find((word) => /^LEFTHOOK(?:_\w+)?=/.test(word));
   if (lefthook !== undefined) decision.deny.push(`${lefthook}: git-hooks overslaan is verboden (AGENTS.md)`);
+  if ([...assignments, ...(program === 'export' ? args : [])].some((word) => /^CI=/.test(word)))
+    decision.deny.push('De agent zet CI niet lokaal; dit kan de hostcontrole van de runner omzeilen');
   if (program === 'git') decision.deny.push(...gitForbidden(args, { role, branch: ctx.branch }));
   if (program === 'gh') decision.deny.push(...ghForbidden(args));
   if (role !== 'hoofdsessie' && isNewResource(program, args))
     decision.deny.push('pnpm new:resource: alleen de hoofdsessie (ADR 0016, OV-4); wat hij schrijft, ziet het rolhek niet');
+  if (role !== 'hoofdsessie' &&
+    ((program === 'pnpm' && args.includes('pr:label-gate')) ||
+      (program === 'node' && args.some((arg) => /(?:^|\/)scripts\/kit\/pr-gate-label\.mjs$/.test(arg)))))
+    decision.deny.push('Het administratieve gate-label zet alleen de hoofdsessie via pr:label-gate');
 }
 
 /**

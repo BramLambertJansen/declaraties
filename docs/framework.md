@@ -270,12 +270,13 @@ Elke rol begint met de feiten: `node scripts/kit/feiten.mjs` (gates, routes, per
 volgende vrije migratie- en ADR-nummer), niet met wat in proza staat.
 
 1. **Spec** (architect) in `docs/specs/` volgens `_template.md` — alleen bij migratie, nieuwe route of nieuwe permissie. De architect schrijft
-   alleen specs en ADR's (status `voorstel`) en stopt dan. Status `goedgekeurd` zet alleen de eigenaar; een goedgekeurde spec heeft een ingevulde
-   sectie "Hergebruik en UX" (`check-docs`).
+   alleen specs en ADR's als voorstel. De eigenaar beslist inhoudelijk; de agent mag de status met bewijs administreren via
+   `pnpm docs:status` (ADR 0027). Een goedgekeurde spec heeft een ingevulde sectie "Hergebruik en UX" (`check-docs`).
 2. **Contract**: zod-schema's en routes die `501` teruggeven wanneer de wijziging een API-contract toevoegt.
 3. **Tester-agent** schrijft acceptatietests tegen het contract; ze compileren en falen op hun asserties. Schrijft alleen in testpaden;
    per permissie en per policy ook de negatieve test.
-4. **Developer** (hoofdsessie of developer-agent) bouwt tot groen; schrijft niet in gate-paden. Mag tests toevoegen. Een bestaande test wijzigen mag alleen als de spec of opdracht het geteste
+4. **Developer** (hoofdsessie of developer-agent) bouwt tot groen; beschermde broncode alleen binnen een geldig exact taakmandaat
+   uit main (ADR 0027), overige gates blijven gesloten. Mag tests toevoegen. Een bestaande test wijzigen mag alleen als de spec of opdracht het geteste
    gedrag verandert; elke gewijzigde test staat met reden in de PR. Verwijderen of skippen alleen met akkoord van de eigenaar.
    Lijkt een test van de tester fout zonder dat het gedrag verandert, dan stopt de hoofdsessie en legt het de eigenaar voor;
    na akkoord past de tester (niet de hoofdsessie) de test aan.
@@ -286,13 +287,14 @@ volgende vrije migratie- en ADR-nummer), niet met wat in proza staat.
    de bevindingen zijn verwerkt voordat er opgeleverd wordt (ADR 0025). Wijzigt de code daarna nog (CI-fixes, conflicten),
    dan reviewt de reviewer die wijziging opnieuw (`git diff <reviewer-sha>..HEAD`).
 6. **Opleveren** (alleen de hoofdsessie, pas na stap 5): featurebranch pushen, PR openen, CI-lus, conflicten via `git merge origin/main`,
-   eindmelding. Mergen, goedkeuren, labels, check-statussen en statusovergangen blijven van de eigenaar; push naar `main` en force-push
-   blijven verboden (ADR 0025 punt 1). Het rolhek dwingt die grenzen al af (tabel hieronder, WS-04a); de skill `opleveren` volgt in WS-04b.
+   eindmelding. Inhoudelijke goedkeuring en merge blijven van de eigenaar; geen zelfreview, check-status, push naar `main` of force-push.
+   De hoofdsessie registreert bewezen statussen, zet het gate-label binnen de scope uit main en verzamelt werkelijk runner/CI-bewijs
+   (ADR 0027, [procedure](operations/agent-doorloop.md)). Rode of ontbrekende checks blokkeren oplevering.
 7. **Eigenaar** reviewt en merget.
 
 **Docs horen bij de wijziging**: de developer werkt bij elke wijziging die gedrag, API, configuratie of conventies raakt de relevante doc
 mee, in dezelfde commit en PR (kort, met `bestand:regel`-verwijzingen, zonder code te kopiëren). Spec naar `gebouwd`, roadmap-vinkje en ADR-status
-horen daar ook bij, met de goedkeuring van de eigenaar waar het beschermde paden zijn: een item waarvan het bewijs beschikbaar is, wordt in
+horen daar ook bij: ADR/spec-statussen via bewijsgebonden administratie (ADR 0027), roadmap-vinkjes met eigenaarakkoord. Een item waarvan het bewijs beschikbaar is, wordt in
 diezelfde PR afgevinkt, en nooit zonder bewijs (`docs/dod.md`, Altijd). `check:docs-drift` waarschuwt in CI (geen blokkade) als `src/`
 wijzigt zonder `docs/` of `CHANGELOG.md`. `check:roadmap` (in `gate:fast`) blokkeert wel: een nieuw of gewijzigd `[x]` zonder testpad, checknaam of PR-nummer, en een spec die naar `gebouwd` gaat zonder bewijs (`scripts/kit/check-roadmap.mjs`). Er is geen docs-stap na de merge.
 
@@ -315,7 +317,7 @@ de diff-guard in CI leest dezelfde lijst, en `check-docs` vergelijkt CODEOWNERS 
 `*.test.*`/`*.spec.*`/`db/tests/`) wijzigen meldt het rolhek ("hulpbestand gewijzigd"), verwijderen is een gate; een bestaand bestand onder
 `test/rails/fixtures/` of `test/setup/` wijzigen ook, ook als het `*.test.*` heet (`existingTest` in `.claude/hooks/lib/rolhek.mjs`). `check-docs`
 faalt als `schrijfrecht` van een rol overlapt met `gates`, behalve architect → `docs/adr/**` en `docs/specs/**`, tester → testpaden, en developer
-en hoofdsessie (het rolhek handelt gates voor hen af met ask/deny); alleen de bestandsnaam-gates uit `testpaden` (`**/*.test.*`, `**/*.spec.*`)
+en hoofdsessie (het rolhek handelt gates voor hen af met ask/deny, met taakgebonden broncode- en statusuitzonderingen uit ADR 0027); alleen de bestandsnaam-gates uit `testpaden` (`**/*.test.*`, `**/*.spec.*`)
 tellen niet mee, map-gates als `test/**` en `e2e/**` wel (`schrijfrechtViolations` in `scripts/kit/check-docs.mjs`).
 
 Hooks (exit 2 blokkeert; exit 1 en een timeout laten het toolgebruik door — fail-open. Elke hook is daarom kort en deterministisch,
@@ -339,12 +341,15 @@ een leesuitzondering, aanhalingstekens rond redirect-doelen). Wat tekstheuristie
 
 Permissieregels in `.claude/settings.json` zijn gemak, geen grens (Claude Code-docs): deny op `.env*` en `*secret*`, pushes naar `main`,
 force, `--no-verify`, `LEFTHOOK=0`, mergen, zelfreview (`gh pr review`, labels, statuses) en `docker`; `disableBypassPermissionsMode: "disable"`; `ask` op de beschermde paden (§10), op `pnpm add/install/update/remove`, op `sed -i`/`perl -pi`
-(Edit-regels dekken Bash-schrijfacties niet) en op elk commando uit `excludedCommands`, zodat de eigenaar elke run buiten de sandbox goedkeurt.
+(Edit-regels dekken Bash-schrijfacties niet) en op elk commando uit `excludedCommands`. Het rolhek kan alleen de drie vaste
+runnerchecks expliciet toestaan wanneer main `autoRunner` toestaat en de hostcode ongewijzigd is (ADR 0027).
 Permissieregels vangen alleen de gangbare vormen (bijv. `git commit -n` midden in de opties niet); de rolhek-hook dekt dat.
 De sandbox (`failIfUnavailable`, `allowUnsandboxedCommands: false`, `denyRead` op `~/.ssh` en `~/.aws`; `~/.config/gh` volgt zodra de agent met het App-token werkt) en GitHub zijn de grens.
 De sandbox draait niet op native Windows: met `failIfUnavailable` start Claude Code daar niet; werk in WSL2. Op Linux/WSL2 bereikt een
 commando in de sandbox `localhost` niet; commando's die de lokale stack nodig hebben (`pnpm test:db`, `pnpm gate:slow`, …) staan
-in `excludedCommands` als patroon met ` *`, zodat argumenten meekomen (zonder wildcard matcht het exact). Daarmee draaien ook door de agent geschreven tests buiten de sandbox; hoe dat gat dichtgaat, staat in ADR 0009. `scripts/runner.sh` (`check_host_files`) weigert te starten als de host-bestanden lokaal afwijken van de merge-base met `origin/main` (onleesbaar → weigeren: `git fetch origin`) of in CI van `HEAD`; alleen de eigenaar slaat dat over met `--sta-wijzigingen-toe` (ADR 0025 punt 4). De toolchain (mise: Node, pnpm, dbmate, Betterleaks) installeert de eigenaar via `scripts/bootstrap.sh`, niet de agent.
+in `excludedCommands` als patroon met ` *`, zodat argumenten meekomen (zonder wildcard matcht het exact). Daarmee draaien ook door de agent geschreven tests buiten de sandbox; hoe dat gat dichtgaat, staat in ADR 0009. `scripts/runner.sh` (`check_host_files`) weigert te starten als de host-bestanden lokaal afwijken van de merge-base met `origin/main` (onleesbaar → weigeren: `git fetch origin`) of in CI van `HEAD`; alleen de eigenaar kan na lezen `--sta-wijzigingen-toe` gebruiken (ADR 0025 punt 4). De agent gebruikt
+voor gewijzigd railwerk de wegwerp-CI, nooit een override, lokaal `CI=true` of directe Docker. De hoofdsessie wacht op werkelijke
+uitslagen met `pnpm pr:verify <nummer> --watch`; ontbrekend runnerbewijs wordt geen routineklus voor de eigenaar (ADR 0027). De toolchain (mise: Node, pnpm, dbmate, Betterleaks) installeert de eigenaar via `scripts/bootstrap.sh`, niet de agent.
 
 ## 9. Documentatie en tokenbudget
 
@@ -374,7 +379,7 @@ Live feiten (gates, routes, componenten, nummers) komen uit `scripts/kit/feiten.
 - Actions-instellingen: "Allow GitHub Actions to create and approve pull requests" uit; "Require actions to be pinned to a full-length commit SHA" aan.
 - **Beschermde paden** (bron: `.claude/gates.json`, ADR 0011; CODEOWNERS spiegelt hem volledig, `ask` in `.claude/settings.json` zonder de paden waarin de agent
   hoort te schrijven: tests (`*.test.*`, `*.spec.*`, `db/tests/`, `e2e/`, `test/`) en `docs/specs/`. Toevoegen mag daar; verwijderen of skippen
-  van bestaande tests blokkeert de rolhek-hook, `goedgekeurd` bewaakt `check-spec-approval`. `check-docs` bewaakt beide spiegelingen):
+  van bestaande tests blokkeert de rolhek-hook; status en inhoud worden vanuit main bewaakt door `check-document-status.mjs` (ADR 0027). `check-docs` bewaakt beide spiegelingen):
   `AGENTS.md`, `CLAUDE.md`, `docs/framework.md`, `docs/dod.md`, `docs/roadmap.md`, `docs/adr/`, `docs/specs/`, `.github/`, `.claude/`, `scripts/`,
   `db/init/`, `db/docker/`, `db/tests/`, `compose*.yaml`, `package.json`, `pnpm-lock.yaml`, `pnpm-workspace.yaml`, `.npmrc`, `.pnpmfile.cjs`,
   `mise.toml`, `.env.example`, `eslint.config.*`, `eslint-suppressions.json`, `.kit/`, `osv-scanner.toml`, `.betterleaksignore`,
@@ -390,15 +395,20 @@ Live feiten (gates, routes, componenten, nummers) komen uit `scripts/kit/feiten.
 - `check-docs`: elk pad, `pnpm`-script en identifier tussen backticks in `AGENTS.md`, `CLAUDE.md` en `.claude/**` bestaat; relatieve links in `docs/` kloppen;
   `.claude/gates.json`, CODEOWNERS en `ask` zijn gelijk (op de genoemde uitzonderingen na); het gate-register is gelijk aan `gate:fast`/`gate:slow`;
   spec- en ADR-statussen uit de vaste woordenlijst; een goedgekeurde spec heeft "Hergebruik en UX"; elk component heeft een rij in de catalogus.
-- **Spec goedkeuren**: een spec komt in een eigen PR met `status: voorstel`; de eigenaar zet `goedgekeurd` in die PR en keurt hem goed.
-  `check-spec-approval` controleert via de GitHub API dat de wijziging naar `goedgekeurd` in een PR zit met een goedkeuring van de eigenaar
-  (commit-auteurs zijn te vervalsen).
+- **Besluit en status** (ADR 0027): agent bereidt spec/ADR en besluitrecord voor met `pnpm docs:decision`; alleen het register
+  `.claude/decisions.json` op main geeft bevoegdheid. De eigenaar reviewt en merget het inhoudelijke besluit. Daarna registreert
+  `pnpm docs:status` de bewezen status zonder de inhoud te wijzigen. Het register bindt inhoudsdigest, repository, exacte branch,
+  status en exacte bronbestanden. `gebouwd` vereist de juiste PR en verplichte Actions-checks op de gevalideerde bron-SHA;
+  uitsluitend latere statusregels mogen daarvan afwijken. Ook intrekking en vervanging vragen bewijs. De CI-guard gebruikt
+  `scripts/kit/check-document-status.mjs` uit main; een werkversie of commit-auteur geeft zichzelf geen goedkeuring.
 - `guard.yml` (`pull_request_target`, draait altijd de versie van de default branch) voert de check-scripts van `main` uit. PR-code wordt
   alleen als git-data in een aparte map uitgecheckt en nooit uitgevoerd: geen `pnpm install`, geen configs of scripts uit de PR,
   `persist-credentials: false`, minimale `permissions`; controleert dat base-repo en -branch kloppen en beide SHA's volledig (40 tekens) zijn.
 - **Diff-guard** (in `guard.yml`, ADR 0011): raakt een PR een pad uit `gates` in `.claude/gates.json`, de sleutel `scripts` in `package.json`, of
   wijzigt hij een bestaande test (toevoegen is vrij), dan faalt de check tenzij de PR het label `gate-wijziging` heeft én de laatste beslissende
-  review van een goedkeurder (niet de auteur) APPROVED is op exact de head-SHA. Een label alleen is geen akkoord. Paden uit `git diff -z` (NUL-gesplitst).
+  review van een goedkeurder (niet de auteur) APPROVED is op exact de head-SHA. Een label alleen is geen akkoord. De hoofdsessie
+  mag het via `pnpm pr:label-gate` administratief zetten binnen `gateMarker` uit main (standaard uitsluitend documentatie).
+  Paden uit `git diff -z` (NUL-gesplitst).
 - Korte branches, één onderwerp, squash-merge, conventional commits. Uitzondering: de template-koppeling en template-updates
   landen als merge-commit; squash gooit de tweede ouder weg en dan conflicteert elke volgende update op alles (ADR 0006).
 - CI: runner `ubuntu-24.04`, toolchain via `jdx/mise-action` (geen Corepack); snelle job op elke push, trage job op PR's en `main`; concurrency annuleert oude runs; pad-filters en caches.

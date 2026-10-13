@@ -6,7 +6,7 @@ allowed-tools: Bash(node scripts/kit/feiten.mjs *)
 
 # Spec schrijven
 
-Wanneer: elke migratie, nieuwe route of nieuwe permissie (AGENTS.md). Bouwen pas bij status `goedgekeurd`, en die zet alleen de eigenaar.
+Wanneer: elke migratie, nieuwe route of nieuwe permissie (AGENTS.md). Bouwen pas bij status `goedgekeurd`, administratief vastgelegd met bewezen eigenaarbesluit uit main (ADR 0027).
 
 Feiten nu:
 
@@ -20,4 +20,4 @@ Stappen:
 3. "Hergebruik en UX": noem de bestaande componenten (`node scripts/kit/feiten.mjs componenten`); een nieuw component alleen met reden.
 4. Routes en foutcodes: hergebruik bestaande codes uit de feiten; een nieuwe code krijgt een tekst.
 5. Open beslissingen staan als vraag in de spec. Vul geen aanname in; vraag de eigenaar.
-6. Eigen PR met alleen de spec. Lever op met de open vragen.
+6. Eigen PR met spec en eventueel het voorbereide besluitrecord (hoofdsessie via `pnpm docs:decision`). Lever op met open vragen; geen werkbranchrecord als actief mandaat. Zie `docs/operations/agent-doorloop.md`.

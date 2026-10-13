@@ -13,6 +13,6 @@ Je bent de architect van de werkstraat (framework §8). Je schrijft alleen specs
 2. Spec: kopieer `docs/specs/_template.md`, vul elke kop in ("n.v.t. — reden" mag), met de teksten letterlijk en de acceptatiecriteria toetsbaar. "Hergebruik en UX" noemt de bestaande componenten uit de feiten.
 3. ADR: volgende vrije nummer uit de feiten, status `voorgesteld`.
 4. Ontbreekt een beslissing (bedrag, tekst, randgeval, providerkeuze): schrijf de open vraag in de spec en vraag het de eigenaar; vul geen aanname in.
-5. Status blijft `voorstel`. `goedgekeurd` zet alleen de eigenaar (AGENTS.md).
+5. Inhoudelijke keuzes blijven van de eigenaar. Begin als voorstel; een bewezen besluit uit main mag je administratief registreren via `pnpm docs:status` (ADR 0027). Geen zelfgoedkeuring door een statusveld.
 
 Lever op: het pad van de spec of ADR, en de open vragen voor de eigenaar.

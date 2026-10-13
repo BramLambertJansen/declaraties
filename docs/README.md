@@ -19,6 +19,8 @@ Deze template is bedoeld om webapps met code-agents te bouwen. De documentatie h
 
 Het framework bevat de geldende ontwikkelafspraken. Architectuurbesluiten staan in `adr/`; featurespecs staan in `specs/`. Een voorstel beschrijft voorgenomen werk en is nog geen toestemming om te bouwen. De status staat bovenaan elk document.
 
+[Agentdoorloop](operations/agent-doorloop.md) beschrijft hoe de agent bewezen besluiten en bouwstatussen registreert, afgebakend core-werk doet en runner/CI-resultaten verzamelt.
+
 Reviews in `reviews/` leggen bevindingen en de afhandeling daarvan vast. Ze kunnen agents helpen een ontwerpkeuze, veiligheidsrisico of eerdere fout te begrijpen. De actuele afspraak hoort in het framework, een besluit of een spec te staan. Staat daar iets anders dan in een oude review, controleer dan de wijzigingsgeschiedenis.
 
 ## Werken met agents

@@ -7,7 +7,7 @@ Template voor webapps, gebouwd door agents binnen afgedwongen kaders. De regels 
 
 Fundering in opbouw (fase 0/1). Wat niet in `package.json` of de repo staat, bestaat nog niet: verzin geen
 commando's, scripts of bestanden. Noem iets pas klaar met de uitvoer van de check die het bewijst.
-Een ADR met status `voorgesteld` is nog geen besluit: staat werk erop te wachten, vraag de eigenaar.
+Een voorstel is nog geen besluit. Statusadministratie volgt bewijs uit main (ADR 0027); ontbreekt akkoord, vraag de eigenaar.
 
 ## Stack
 
@@ -69,11 +69,11 @@ vangen het later toch, en dan is het werk verloren. Uitzonderingen staan limitat
 
 **Repo en grenzen** — zodat de kaders zelf niet ongemerkt verschuiven.
 - Bewerk geen gegenereerde bestanden en geen `.env*`; `.env.example` is beschermd (de demo-waarden zijn een securityregel).
-- Beschermde paden (`docs/framework.md` §10) wijzig je alleen na akkoord van de eigenaar.
-- Geen nieuwe dependency zonder akkoord. Zet een spec nooit op `goedgekeurd`; dat doet alleen de eigenaar.
+- Beschermde paden (`docs/framework.md` §10) vragen eigenaarakkoord; developer-broncode kan met exact taakmandaat (ADR 0027).
+- Geen nieuwe dependency zonder akkoord. Statussen via `pnpm docs:status`, uitsluitend met bewezen eigenaarbesluit of bouwbewijs.
 - Push nooit naar `main`, gebruik nooit `--no-verify`, merge nooit. Eén onderwerp per PR, conventional commits.
-- Zet nooit zelf een review, het label `gate-wijziging` of een check-status: dat is de goedkeuring van de eigenaar.
-- Gebruik `docker` niet; draait de stack niet, vraag de eigenaar `pnpm dev` te starten. Geen productiegeheimen of -data lokaal.
+- Geen zelfreview of check-status. Gate-label alleen door hoofdsessie via `pnpm pr:label-gate` binnen het mandaat uit main.
+- Geen `docker` of runneroverride. Runnerchecks zelf draaien of CI-bewijs ophalen (`pnpm pr:verify`); zie `docs/operations/agent-doorloop.md`.
 - Externe diensten via hun CLI (`gh`). MCP-servers alleen read-only (afgedwongen door het rolhek) en versie gepind.
 
 ## Werkafspraken

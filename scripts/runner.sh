@@ -27,7 +27,7 @@ check_host_files() {
   changed="$(git status --porcelain --untracked-files=all -- "${HOST_FILES[@]}")"
   if [[ -n "$changed" ]]; then
     printf '✗ Bestanden die de host uitvoert, wijken af van HEAD:\n%s\n' "$changed" >&2
-    printf '  → commit ze eerst, of (alleen de eigenaar, na lezen) voeg --sta-wijzigingen-toe toe.\n' >&2
+    printf '  → leg ze vast en gebruik de wegwerp-CI; de agent wacht op de echte gate:slow-uitslag.\n' >&2
     exit 1
   fi
   [[ "${CI:-}" == "true" ]] && return 0
@@ -38,7 +38,7 @@ check_host_files() {
   changed="$(git diff --name-status "$base" -- "${HOST_FILES[@]}")"
   if [[ -n "$changed" ]]; then
     printf '✗ Bestanden die de host uitvoert, wijken af van origin/main (merge-base):\n%s\n' "$changed" >&2
-    printf '  → de eigenaar leest de wijziging en draait daarna met --sta-wijzigingen-toe.\n' >&2
+    printf '  → gebruik de wegwerp-CI en verzamel de echte gate:slow-uitslag (ADR 0027); geen agentoverride.\n' >&2
     exit 1
   fi
 }

@@ -4,6 +4,8 @@ Status: geaccepteerd (2026-10-12) — voorgesteld door de architect, geaccepteer
 Vervangt 0023 punt 7.
 Wijzigt 0009 (punt 4 hieronder).
 
+Gewijzigd door [0027](0027-taakmandaat-voor-frameworkwerk.md): taakgebonden broncode, bewijsgebonden statusadministratie, documentatielabel en automatische veilige runner/CI-opvolging. De oorspronkelijke beperkingen hieronder gelden met die afgebakende uitzonderingen.
+
 ## Context
 
 De werkstraat (framework §8) stopt na de reviewer; pushen, de PR, de CI-lus en conflicten liggen bij de eigenaar, die alleen wil mergen.

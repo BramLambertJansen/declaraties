@@ -60,6 +60,8 @@ Verplaatst naar fase 1, stuk 2 (heeft Better Auth nodig): `session_strength` via
 
 ## Fase 1 — Fundament
 
+- [ ] ADR 0027: taakgebonden beschermde broncode, bewijsgebonden ADR/spec-statussen, documentatielabel en automatische runner/CI-opvolging. Spec: `docs/specs/taakmandaat-frameworkwerk.md`; invoering vereist groene bestaande checks en eigenaarreview, daarna actieve controle vanuit main.
+
 Zeven verticale stukken. Elk stuk is één branch; een groot stuk mag in deel-PR's (zoals 3a–3d), een spec in een eigen PR ervoor.
 Een stuk is klaar als elk punt onder **Klaar als** met een checkuitslag of testuitvoer in de PR staat.
 Core-onderdelen komen in `src/core/`, app-code en de referentie-feature in `src/{api,web,shared}` (ADR 0008).

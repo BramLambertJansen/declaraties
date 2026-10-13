@@ -45,4 +45,4 @@ draait hem; `--dry-run` toont het plan zonder te schrijven, en bestaat een doel 
 10. **Route** met guard: `src/web/routes/_app/admin/accounts.tsx`; menu-item per rol in `src/web/lib/nav.ts`.
 11. **E2E** per AC met axe op 375 en 1280 px: `e2e/accounts.spec.ts`.
 
-Bewijs per PR: `pnpm gate:fast`, `pnpm test:db` en `pnpm ui:check` (de laatste twee in de runner, door de eigenaar).
+Bewijs per PR: `pnpm gate:fast`, `pnpm test:db` en `pnpm ui:check`. De agent voert de veilige runner uit of verzamelt de werkelijke CI-uitslag op de juiste SHA; zie [agentdoorloop](operations/agent-doorloop.md).

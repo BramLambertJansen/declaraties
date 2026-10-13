@@ -57,6 +57,8 @@
   "gegenereerd": ["src/web/routeTree.gen.ts", "src/api/db/schema.ts", "db/schema.snapshot.sql"],
   "migraties": ["db/migrations/**"],
   "mcpLezen": [],
+  "autoRunner": true,
+  "gateMarker": "docs",
   "goedkeurders": ["bramlambertjansen"],
   "schrijfrecht": {
     "architect": ["docs/specs/**", "docs/adr/**"],

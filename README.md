@@ -89,6 +89,8 @@ Een cloudsessie heeft geen lokale stack: `pnpm gate:slow` en `pnpm test:db` draa
 
 Database- en schermtests draaien in de runner-container. Zie [ADR 0009](docs/adr/0009-tests-buiten-de-sandbox.md) voor de inrichting en [de DoD](docs/dod.md) voor controles per wijziging. GitHub Actions voert controles uit; branchbescherming wordt apart ingesteld.
 
+De [agentdoorloop](docs/operations/agent-doorloop.md) beschrijft taakgebonden core-ontwikkeling, statusadministratie op basis van eigenaarbesluiten en automatische runner/CI-opvolging. De agent verwerkt het bewijs; de eigenaar beslist inhoudelijk en merget.
+
 ## Nieuwe app starten
 
 Volg het [setup-playbook](docs/nieuwe-app.md) om een app aan te maken, te hernoemen en aan de templategeschiedenis te koppelen. Dat playbook is geschreven voor Claude Code. Je kunt het zo klaarzetten:
