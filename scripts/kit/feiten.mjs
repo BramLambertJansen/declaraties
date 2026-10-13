@@ -1,7 +1,7 @@
 // Live feiten (framework §8, ADR 0011): elke rol begint hiermee, niet met wat in proza staat.
 // Gebruik: node scripts/kit/feiten.mjs [gates|adr|specs|migraties|routes|permissies|foutcodes|componenten] [--json]
 import { readdirSync, readFileSync } from 'node:fs';
-import { componenten, UITZONDERINGEN } from './catalogus.mjs';
+import { componenten } from './catalogus.mjs';
 import { gates } from './gates.mjs';
 
 const TEMPLATE_ADR_MAX = 99;
@@ -87,10 +87,13 @@ const sections = {
   permissies,
   foutcodes,
   componenten: () =>
-    componenten().map(({ naam, bron }) => ({
+    componenten().map(({ naam, bron, publiek, varianten, importnamen }) => ({
       naam,
       bron,
-      catalogus: naam in UITZONDERINGEN ? `uitzondering: ${UITZONDERINGEN[naam] ?? ''}` : '/design-system',
+      publiek,
+      varianten,
+      importnamen,
+      catalogus: '/design-system',
     })),
 };
 

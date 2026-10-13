@@ -8,39 +8,47 @@ import { useErrorText } from './error-texts.tsx';
 
 // ErrorBoundary van elke route (framework §5, via defaultErrorComponent van de router). Toont alleen een tekst bij de
 // foutcode, nooit de fout zelf. Geen rechten: de vaste tekst uit de spec, zonder "opnieuw proberen".
-export function RouteError({ error }: ErrorComponentProps) {
+export function RouteError({ error, reset, preview = false }: ErrorComponentProps & { readonly preview?: boolean }) {
   const errorText = useErrorText();
   const router = useRouter();
   const forbidden = error instanceof ForbiddenError;
   // Zonder h1 (vaste spectekst), maar wel een eigen paginatitel: anders blijft die van het vorige scherm staan.
-  useDocumentTitle(forbidden ? uiTexts.forbiddenTitle : null);
+  useDocumentTitle(forbidden && !preview ? uiTexts.forbiddenTitle : null);
+  const Container = preview ? 'div' : 'main';
   if (forbidden) {
     return (
-      <main className="p-6">
+      <Container className="p-6">
         <p role="alert" className="text-foreground">
           {errorText({ code: 'FORBIDDEN' })}
         </p>
-      </main>
+      </Container>
     );
   }
   return (
-    <main className="flex flex-col items-start gap-3 p-6">
-      <PageTitle title={uiTexts.errorTitle} className="text-2xl font-semibold" />
+    <Container className="flex flex-col items-start gap-3 p-6">
+      <PageTitle title={uiTexts.errorTitle} preview={preview} className="text-2xl font-semibold" />
       <p role="alert" className="text-destructive">
         {errorText(error)}
       </p>
       {/* invalidate laadt de loaders opnieuw en wist de fout; reset() alleen zou de oude fout weer tonen. */}
-      <Button variant="outline" onClick={() => void router.invalidate()}>
+      <Button
+        variant="outline"
+        onClick={() => {
+          if (preview) reset();
+          else void router.invalidate();
+        }}
+      >
         {uiTexts.retry}
       </Button>
-    </main>
+    </Container>
   );
 }
 
-export function NotFound() {
+export function NotFound({ preview = false }: { readonly preview?: boolean; readonly isNotFound?: boolean }) {
+  const Container = preview ? 'div' : 'main';
   return (
-    <main className="p-6">
-      <PageTitle title={uiTexts.notFoundTitle} className="text-2xl font-semibold" />
-    </main>
+    <Container className="p-6">
+      <PageTitle title={uiTexts.notFoundTitle} preview={preview} className="text-2xl font-semibold" />
+    </Container>
   );
 }

@@ -12,7 +12,12 @@ interface PageHeaderProps {
 export function PageHeader({ title, actions, documentTitle = true }: PageHeaderProps) {
   return (
     <div className="flex flex-wrap items-center justify-between gap-4">
-      <PageTitle title={title} documentTitle={documentTitle} className="text-2xl font-semibold tracking-tight" />
+      <PageTitle
+        title={title}
+        documentTitle={documentTitle}
+        preview={!documentTitle}
+        className="text-2xl font-semibold tracking-tight"
+      />
       {actions === undefined ? null : <div className="flex flex-wrap gap-2">{actions}</div>}
     </div>
   );

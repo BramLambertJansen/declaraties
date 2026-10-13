@@ -144,7 +144,9 @@ Vier deel-PR's, in deze volgorde.
 - [x] Woordenlijsttest op `src/web/copy` en `src/core/web/copy` (`src/web/copy/woordenlijst.test.ts`, met zelftest) (#33)
 - [x] `scanAxe`-uitzonderingen: geen, en een lintregel houdt ze tegen (`rails/axe-import`: alleen `e2e/support/axe.ts` gebruikt axe;
       `rails/axe-uitzondering`: geen `disableRules`/`exclude`/`include`/`options` daarin), fixtures in `test/rails/eslint.test.ts`
-- [x] `check:catalogus`: elk component op `/design-system` of als uitzondering met reden in `scripts/kit/catalogus.mjs` (groeien = gate-wijziging; een overbodige uitzondering faalt ook), in `gate:fast` (#33)
+- [x] `check:catalogus`: AST-index van beide UI-mappen, publieke barrel-exports en bereikbare voorbeelden met eindige stringvarianten;
+      dezelfde index voor agents en `/design-system`, zonder uitzonderingen (ADR 0027, `test/rails/catalogus-coverage.test.ts`,
+      `src/web/features/design-system/component-index.test.tsx`; `gate:fast`: 1.186 tests groen, `docs/reviews/design-system-coverage.md`)
 - [ ] Screenshot-baselines van de catalogus in de Playwright-image (uit fase 2)
 - [x] Toasts standaard in de basiskit (besluit eigenaar 2026-10-10, zelf gebouwd zonder dependency): `ToastProvider` in `main.tsx`, `Toaster` in de AppShell en
       `useToast().success/error` met `aria-live`, op `/design-system` en in `check:catalogus` (`src/core/web/ui/toast.test.tsx`).

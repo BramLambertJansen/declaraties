@@ -1,75 +1,80 @@
-// check:catalogus (framework §7): elk component uit de kit (src/web/ui/index.ts) staat op /design-system, of heeft hieronder
-// een uitzondering met reden. De lijst laten groeien is een gate-wijziging (scripts/ is beschermd). Een uitzondering die niet
-// meer nodig is (het component staat nu in de catalogus of bestaat niet meer), faalt ook: de lijst krimpt alleen.
-// Ook de bron van `node scripts/kit/feiten.mjs componenten`.
-import { readFileSync } from 'node:fs';
+// Framework §7: ontdek UI uit broncode, indexeer voor hergebruik, eis bereikbare voorbeelden en alle eindige varianten.
+// Geen uitzonderingenlijst. Dezelfde AST-index voedt feiten.mjs en de zichtbare componentenindex (Vite-plugin).
 import { pathToFileURL } from 'node:url';
+import ts from 'typescript';
+import { coverage } from './catalogus-graph.ts';
+import { barrelExports, isUiFile, relativeFile, uiSource } from './catalogus-source.ts';
 
-const BARREL = 'src/web/ui/index.ts';
-const CATALOGUS = 'src/web/features/design-system/design-system-page.tsx';
-
-/** @type {Readonly<Record<string, string>>} */
-export const UITZONDERINGEN = {
-  AppShell:
-    'de catalogus staat zelf in de AppShell; een tweede zou een tweede main en navigatie "Hoofdmenu" geven (spec design-system, OV-5)',
-  CenteredCard:
-    'layoutblok voor een heel scherm met een eigen main en h1; binnen de AppShell zouden er twee zijn. Te zien op /login (besluit eigenaar 2026-10-10)',
-  AsyncView: 'vraagt een echte query (useQuery alleen in queries.ts); in gebruik op /admin/accounts',
-  ErrorTextsProvider: 'context zonder eigen weergave',
-  Toaster:
-    'staat in de AppShell om de catalogus heen; de toasts zijn te zien via de knoppen in de sectie Toast op /design-system',
-  ToastProvider: 'context zonder eigen weergave',
-  NavLink: 'staat in de Sidebar van de AppShell om de catalogus heen',
-  Sidebar: 'staat in de AppShell om de catalogus heen; los zou er een tweede navigatie "Hoofdmenu" zijn',
-  ThemeToggle:
-    'staat in de topbalk van de AppShell om de catalogus heen; een tweede zou een tweede knop "Donker thema" met eigen staat geven (besluit eigenaar 2026-10-10)',
-  Topbar: 'staat in de AppShell om de catalogus heen; los zou er een tweede knop "Profielmenu" zijn',
-};
-
-/**
- * Componenten (namen met een hoofdletter, geen types) die de kit exporteert, met hun bron.
- * @param {string} [root]
- * @returns {{ naam: string, bron: string }[]}
- */
-export function componenten(root = '.') {
-  const source = readFileSync(`${root}/${BARREL}`, 'utf8');
-  return [...source.matchAll(/export \{([^}]*)\} from '([^']+)'/g)].flatMap(([, names = '', from = '']) =>
-    names
-      .split(',')
-      .map((name) => name.trim())
-      .filter((name) => /^[A-Z]/.test(name))
-      .map((naam) => ({ naam, bron: from.replace(/^#core\//, 'src/core/').replace(/^\.\//, 'src/web/ui/') })),
-  );
+/** @param {string} [root] */
+export function componenten(root = '.', source = uiSource(root)) {
+  const exports = barrelExports(source);
+  return source.components.map(({ naam, bron, publiek, varianten, symbol }) => ({
+    naam,
+    bron,
+    publiek,
+    varianten,
+    importnamen: exports.get(symbol) ?? [],
+  }));
 }
 
-/**
- * @param {string} [root]
- * @returns {string[]}
- */
-export function catalogusFouten(root = '.') {
-  const page = readFileSync(`${root}/${CATALOGUS}`, 'utf8');
-  const titles = [...page.matchAll(/<Section title="([^"]+)"/g)].map(([, title = '']) => title);
-  /** @param {string} naam */
-  const shown = (naam) =>
-    new RegExp(`<${naam}[\\s>/]`).test(page) || titles.some((title) => new RegExp(`\\b${naam}\\b`).test(title));
-  const names = componenten(root).map(({ naam }) => naam);
-  return [
-    ...names
-      .filter((naam) => !shown(naam) && !(naam in UITZONDERINGEN))
-      .map((naam) => `${naam}: niet op /design-system (${CATALOGUS}) en geen uitzondering`),
-    ...Object.keys(UITZONDERINGEN)
-      .filter((naam) => !names.includes(naam) || shown(naam))
-      .map((naam) => `${naam}: uitzondering is niet meer nodig; haal hem weg uit scripts/kit/catalogus.mjs`),
-  ];
+/** @param {string} [root] @returns {string[]} */
+export function catalogusFouten(root = '.', source = uiSource(root)) {
+  const shown = coverage(source);
+  const exports = barrelExports(source);
+  const errors = source.components.flatMap((component) => {
+    const missing = [];
+    if (component.publiek && !exports.has(component.symbol))
+      missing.push(`${component.naam}: ontbreekt in src/web/ui/index.ts (${component.bron})`);
+    if (!shown.rendered.has(component.symbol))
+      missing.push(`${component.naam}: geen bereikbaar voorbeeld op /design-system (${component.bron})`);
+    for (const [property, values] of Object.entries(component.varianten)) {
+      for (const value of values) {
+        if (!shown.variants.get(component.symbol)?.get(property)?.has(value))
+          missing.push(`${component.naam}: voorbeeld voor ${property}="${value}" ontbreekt`);
+      }
+    }
+    return missing;
+  });
+  return [...source.errors, ...errors, ...hookErrors(source, shown)];
+}
+
+/** @param {import('./catalogus-source.ts').UiSource} source @param {import('./catalogus-graph.ts').Coverage} shown */
+function hookErrors(source, shown) {
+  const hooks = source.files
+    .filter((file) => isUiFile(relativeFile(source.root, file.fileName)))
+    .flatMap((file) => file.statements.filter(ts.isFunctionDeclaration))
+    .filter(
+      (node) =>
+        node.name !== undefined &&
+        /^use[A-Z]/.test(node.name.text) &&
+        node.modifiers?.some((modifier) => modifier.kind === ts.SyntaxKind.ExportKeyword),
+    );
+  return hooks.flatMap((node) => {
+    const signature = source.checker.getSignatureFromDeclaration(node);
+    if (signature === undefined) return [];
+    return signature
+      .getReturnType()
+      .getProperties()
+      .flatMap((method) => {
+        const own = method.declarations?.some((declaration) =>
+          isUiFile(relativeFile(source.root, declaration.getSourceFile().fileName)),
+        );
+        const callable = source.checker.getTypeOfSymbolAtLocation(method, node).getCallSignatures().length > 0;
+        return own && callable && !shown.called.has(method)
+          ? [`${node.name?.text ?? ''}: bereikbaar voorbeeld voor .${method.name}() ontbreekt`]
+          : [];
+      });
+  });
 }
 
 if (import.meta.url === pathToFileURL(process.argv[1] ?? '').href) {
-  const fouten = catalogusFouten();
+  const source = uiSource();
+  const fouten = catalogusFouten('.', source);
   if (fouten.length > 0) {
     console.error(`✗ check:catalogus\n${fouten.map((fout) => `  - ${fout}`).join('\n')}`);
     process.exit(1);
   }
   console.info(
-    `✓ check:catalogus: ${String(componenten().length)} componenten in de catalogus of met een uitzondering`,
+    `✓ check:catalogus: ${String(componenten('.', source).length)} UI-componenten met bereikbare voorbeelden en varianten`,
   );
 }

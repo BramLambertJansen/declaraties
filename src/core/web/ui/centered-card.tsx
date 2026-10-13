@@ -6,20 +6,28 @@ interface CenteredCardProps {
   readonly title: string;
   readonly description?: string;
   readonly children: ReactNode;
+  readonly preview?: boolean;
 }
 
 // Voor schermen zonder app-layout: inloggen, verificatiecode, uitnodiging (spec accountbeheer).
-export function CenteredCard({ title, description, children }: CenteredCardProps) {
+export function CenteredCard({ title, description, children, preview = false }: CenteredCardProps) {
+  const Container = preview ? 'div' : 'main';
   return (
-    <main className="flex min-h-dvh items-center justify-center bg-muted p-4">
+    <Container
+      className={
+        preview
+          ? 'flex items-center justify-center bg-muted p-4'
+          : 'flex min-h-dvh items-center justify-center bg-muted p-4'
+      }
+    >
       <Card className="w-full max-w-sm">
         <CardHeader>
           {/* De enige h1 van het scherm. */}
-          <PageTitle title={title} className="text-2xl leading-none font-semibold" />
+          <PageTitle title={title} preview={preview} className="text-2xl leading-none font-semibold" />
           {description === undefined ? null : <CardDescription>{description}</CardDescription>}
         </CardHeader>
         <CardContent>{children}</CardContent>
       </Card>
-    </main>
+    </Container>
   );
 }

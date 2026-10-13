@@ -21,7 +21,8 @@ export const gates = [
   },
   {
     script: 'check:catalogus',
-    bewaakt: 'elk component uit src/web/ui op /design-system of met een uitzondering met reden (framework §7)',
+    bewaakt:
+      'AST-index van alle UI-componenten, barrel-export en bereikbare catalogusvoorbeelden met alle eindige varianten; geen uitzonderingen (framework §7)',
     snel: true,
   },
   {

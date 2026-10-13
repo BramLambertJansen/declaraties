@@ -2,9 +2,9 @@ import { Bell } from 'lucide-react';
 import { useState } from 'react';
 import { z } from 'zod';
 import { copy } from '#web/copy/ui.ts';
+import { useListSearch } from '#core/web/lib/list-search.ts';
 import {
   Button,
-  buttonVariantMap,
   Card,
   CardContent,
   CardDescription,
@@ -32,16 +32,19 @@ import {
   useToast,
   useZodForm,
 } from '#web/ui/index.ts';
+import { ComponentIndex } from './component-index.tsx';
+import { AdditionalExamples } from './additional-examples.tsx';
+
+function RoutedComponentIndex() {
+  const { search, setQuery } = useListSearch();
+  return <ComponentIndex search={search['q'] ?? ''} onSearchChange={setQuery} />;
+}
 
 // Catalogus van de basiskit (framework §7, spec design-system), ook in productie achter guard('design-system:read'). Elke
 // component met elke variant; de e2e-test draait axe op 375 en 1280 px, in licht en donker. De teksten zijn voorbeelden, geen
 // app-teksten. Alleen voorbeelddata en geen API-aanroepen: de chunk is statisch en voor iedereen te downloaden (AC-10).
 // AppShell, CenteredCard en ThemeToggle staan er niet los in: de eerste twee zijn een heel scherm met een eigen main, de
 // themaschakelaar staat al in de topbalk (uitzonderingen in scripts/kit/catalogus.mjs).
-
-function isVariant(value: string): value is keyof typeof buttonVariantMap.variant {
-  return value in buttonVariantMap.variant;
-}
 
 const voorbeeld = z.object({
   naam: z.string().min(1, 'Vul een naam in.'),
@@ -225,16 +228,17 @@ export function DesignSystemPage() {
   return (
     <div className="flex flex-col gap-10">
       <PageHeader title={copy.designSystem.title} />
+      <RoutedComponentIndex />
 
       <Section title="Button">
         <div className="flex flex-wrap gap-3">
-          {Object.keys(buttonVariantMap.variant)
-            .filter(isVariant)
-            .map((variant) => (
-              <Button key={variant} variant={variant}>
-                {variant}
-              </Button>
-            ))}
+          <Button variant="primary" size="md">
+            primary
+          </Button>
+          <Button variant="secondary">secondary</Button>
+          <Button variant="outline">outline</Button>
+          <Button variant="ghost">ghost</Button>
+          <Button variant="destructive">destructive</Button>
           <Button disabled>Uitgeschakeld</Button>
           <Button size="icon" variant="outline" aria-label="Meldingen">
             <Bell aria-hidden="true" />
@@ -326,6 +330,7 @@ export function DesignSystemPage() {
           ]}
         />
       </Section>
+      <AdditionalExamples />
     </div>
   );
 }

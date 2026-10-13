@@ -40,7 +40,8 @@ Button-variant = nieuwe rij), `scanAxe` in `e2e/support/axe.ts`.
 Gebouwd (stuk 3d, accountbeheer): de auth-client `src/core/web/lib/auth.ts` (via `src/web/lib/auth.ts`), schermen in
 `src/web/features/*` met routes in `src/web/routes` (`_app` = ingelogde layout met guard), Table, Select, PageHeader, Notice en
 QrCode in de kit. Voorbeeld van een scherm door alle lagen: `docs/gouden-pad.md`.
-Gebouwd (stuk 4): `pnpm check:catalogus` (uitzonderingen met reden in `scripts/kit/catalogus.mjs`) en de woordenlijsttest
+Gebouwd (stuk 4): `pnpm check:catalogus` ontdekt UI uit beide UI-mappen en eist barrel-exports, bereikbare voorbeelden en eindige
+stringvarianten; geen uitzonderingen. Dezelfde bronindex staat in `feiten.mjs componenten` en op `/design-system` (ADR 0027). De woordenlijsttest
 `src/web/copy/woordenlijst.test.ts`.
 `scanAxe` zonder uitzonderingen: twee lintregels (axe-import en axe-uitzondering in `eslint.config.js`) houden ze tegen.
 Nog niet: screenshot-baselines van de catalogus in de Playwright-image (roadmap, stuk 3c).

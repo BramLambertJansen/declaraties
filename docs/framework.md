@@ -253,9 +253,14 @@ Ankers: OWASP Top 10:2025, OWASP API Security Top 10, ASVS 5.0 niveau 1 (checkli
   woordenlijsttest op `src/web/copy`; geen `matchMedia`/`userAgent`/`isMobile` in `src/web`; browserslist in `package.json`.
 - **Hergebruik**: de schermskill haalt via `scripts/kit/feiten.mjs componenten` de actuele componenten op; lintmeldingen over rauwe elementen
   verwijzen naar datzelfde commando. Past geen component, dan stopt de agent en stelt een variant voor.
-- **Catalogus en contrast** (vanaf het eerste component): `check:catalogus` eist dat elk component op `/design-system` staat of een
-  uitzondering met code en reden heeft (in de ratchet); screenshot-baselines van de catalogus in de gepinde Playwright-image; de
-  contrasttest bewijst ook dat een bekende foute kleur zou falen.
+- **Catalogus en contrast** (vanaf het eerste component): `check:catalogus` ontdekt componenten via de TypeScript-AST in beide UI-mappen,
+  onafhankelijk van barrel-exports. Elk publiek component moet via `src/web/ui/index.ts` herbruikbaar zijn. Elk component (ook intern) en
+  elke eindige stringvariant heeft een bereikbaar voorbeeld op `/design-system`; titels, imports, commentaar en ongebruikte voorbeelden
+  tellen niet. Er is geen uitzonderingenlijst. Samengestelde componenten en de bestaande app-layout tellen via hun renderpad.
+  Dezelfde bronindex voedt `feiten.mjs componenten` en de zoekbare componentenindex op `/design-system` (bron, hergebruik, varianten;
+  `scripts/kit/catalogus-source.ts`, `scripts/kit/catalogus-index.ts`). `preview` bij schermcomponenten voorkomt extra landmarks en
+  documenttitels binnen de catalogus; standaardgedrag blijft hetzelfde (ADR 0027). Screenshot-baselines in de gepinde Playwright-image;
+  de contrasttest bewijst ook dat een bekende foute kleur zou falen.
 - **Startkit**: Button, Input, Field, Card, Dialog. Groeit per app-behoefte. WCAG 2.2 AA (4,5:1 tekst, 3:1 UI), één focusring, `prefers-reduced-motion`, 44 px aanraakdoelen.
 - `/design-system` (catalogus, in de app voor admins, ADR 0015) en optioneel `/design` (prototypes uit `designs/`, alleen in dev).
 

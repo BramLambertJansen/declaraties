@@ -38,6 +38,7 @@ for (const width of [375, 1280]) {
       await expect(page.getByRole('main')).toHaveCount(1);
       await expect(page.getByRole('navigation', { name: 'Hoofdmenu' })).toHaveCount(width === 1280 ? 1 : 0);
       await expect(page.getByRole('button', { name: 'Profielmenu' })).toHaveCount(1);
+      await expect(page.getByRole('heading', { level: 1 })).toHaveCount(1);
 
       // Als tekst: de e2e-tsconfig kent geen DOM-types.
       const overflow = await page.evaluate<number>('document.documentElement.scrollWidth - window.innerWidth');
@@ -61,6 +62,34 @@ test('dialoog: focus erin, Esc sluit, focus terug op de knop', async ({ page }) 
   await expect(dialog).toBeHidden();
   await expect(opener).toBeFocused();
   expect(csp).toStrictEqual([]);
+});
+
+test('UI-index toont de echte bron en importnaam; beide toastvoorbeelden zijn bereikbaar en axe wordt op de meldingen uitgevoerd', async ({
+  page,
+}) => {
+  await signInAsAdmin(page);
+  await page.goto('/design-system');
+  const index = page.getByRole('region', { name: 'Componentenindex' });
+  await index.getByLabel('Component zoeken').fill('RouteError');
+  await expect(page).toHaveURL(/q=RouteError/);
+  await page.reload();
+  await expect(index.getByLabel('Component zoeken')).toHaveValue('RouteError');
+  await expect(index.getByRole('row', { name: /RouteError/ })).toContainText('src/core/web/ui/route-error.tsx');
+  await expect(index.getByRole('row', { name: /RouteError/ })).toContainText('Publiek: RouteError');
+  const errors = page.getByRole('region', { name: 'RouteError en NotFound' });
+  await errors.getByRole('button', { name: 'Opnieuw proberen' }).click();
+  await expect(errors.getByRole('status')).toHaveText('Opnieuw geprobeerd (voorbeeld).');
+  await page.getByRole('button', { name: 'Toon succes-toast' }).click();
+  const success = page.getByRole('status').filter({ hasText: 'Wijziging opgeslagen.' });
+  await expect(success).toBeVisible();
+  await scanAxe(page);
+  await success.getByRole('button', { name: 'Sluiten' }).click();
+  await expect(success).toHaveCount(0);
+  await page.getByRole('button', { name: 'Toon fout-toast' }).click();
+  await expect(
+    page.getByRole('alert').filter({ hasText: 'Opslaan mislukt. Probeer het later opnieuw.' }),
+  ).toBeVisible();
+  await scanAxe(page);
 });
 
 test('bevestigen: focus op Annuleren, Enter annuleert; tijdens Bezig… houdt ook een dubbele Esc hem open', async ({

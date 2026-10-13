@@ -9,13 +9,15 @@ interface PageTitleProps {
   readonly className?: string;
   // false: geen paginatitel zetten (een voorbeeld op /design-system naast de echte kop).
   readonly documentTitle?: boolean;
+  readonly preview?: boolean;
 }
 
-export function PageTitle({ title, className, documentTitle = true }: PageTitleProps) {
-  useDocumentTitle(documentTitle ? title : null);
+export function PageTitle({ title, className, documentTitle = true, preview = false }: PageTitleProps) {
+  useDocumentTitle(documentTitle && !preview ? title : null);
+  const Heading = preview ? 'h3' : 'h1';
   return (
-    <h1 tabIndex={-1} className={cn('focus:outline-none', className)}>
+    <Heading tabIndex={-1} className={cn('focus:outline-none', className)}>
       {title}
-    </h1>
+    </Heading>
   );
 }

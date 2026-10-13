@@ -5,6 +5,7 @@ import { tanstackRouter } from '@tanstack/router-plugin/vite';
 import react from '@vitejs/plugin-react';
 import pkg from './package.json' with { type: 'json' };
 import { securityHeaders } from './src/core/api/http/security-headers.ts';
+import { catalogusIndex } from './scripts/kit/catalogus-index.ts';
 
 // Vaste nonce alleen voor de dev-server: Vite en de React-preamble zetten inline tags. De build en `vite preview`
 // gebruiken exact de CSP uit framework §6, zonder nonce (src/core/api/http/security-headers.ts, ook voor de productieserver).
@@ -96,6 +97,7 @@ export default defineConfig(({ command, mode }) => {
     envDir: import.meta.dirname,
     // Bestandsroutes (framework §5): de plugin schrijft src/web/routeTree.gen.ts (gegenereerd, wel gecommit voor typecheck).
     plugins: [
+      catalogusIndex(import.meta.dirname),
       devOnlyModules(),
       ...(env['APP_ORIGIN'] === undefined ? [] : [sameOriginAsApp(env['APP_ORIGIN'])]),
       tanstackRouter({
