@@ -16,15 +16,17 @@ function makeDeps(root) {
   /**
    * @param {string} command
    * @param {readonly string[]} args
+   * @param {{ timeout?: number, env?: Record<string, string> }} [options]
    */
-  const run = (command, args) => {
+  const run = (command, args, options = {}) => {
     const result = spawnSync(command, args, {
       cwd: root,
       encoding: 'utf8',
-      env: process.env,
+      env: { ...process.env, ...options.env },
+      timeout: options.timeout,
       maxBuffer: 32 * 1024 * 1024,
     });
-    return { code: result.status ?? 1, output: `${result.stdout}${result.stderr}` };
+    return { code: result.status ?? 1, output: `${result.stdout ?? ''}${result.stderr ?? ''}` };
   };
   return {
     run,

@@ -10,7 +10,7 @@ import {
 } from '../../.claude/hooks/lib/werkstraat.mjs';
 
 // De werkstraat-hooks (framework §8): per hook de beslissing met echte payloads; de commando's zijn nagebootst en
-// vastgelegd, zodat de test ook bewijst wát er draait (nooit netwerk of database).
+// vastgelegd, zodat de test ook bewijst wát er draait (netwerk alleen voor de fetch van session-start, nooit een database).
 const ROOT = '/repo';
 
 function fakeDeps(options: { failing?: readonly string[]; changed?: readonly string[]; output?: string } = {}) {
@@ -179,4 +179,79 @@ test('hulpjes: git status en de laatste regels', () => {
       JSON.stringify({ testResults: [{ name: 'a.test.ts', assertionResults: [], message: 'Failed to load x' }] }),
     ),
   ).toStrictEqual(['a.test.ts: Failed to load x']);
+});
+
+// SessionStart haalt origin/main op en meldt een achterstand: een verouderde lokale basis gaf een verkeerde conclusie over
+// wat er al op main stond (docs/reviews/2026-10-13-wrijving.md). De fetch heeft een harde procestimeout en vraagt nooit om
+// credentials; een mislukte fetch blokkeert niets (fail-open).
+const FETCH = 'git fetch --quiet --no-tags origin +refs/heads/main:refs/remotes/origin/main';
+
+interface RunOptions {
+  readonly timeout?: number;
+  readonly env?: Record<string, string>;
+}
+
+function lagDeps(options: { fetchCode?: number; counts?: string; countsCode?: number }) {
+  const calls: string[] = [];
+  const fetchOptions: RunOptions[] = [];
+  return {
+    calls,
+    fetchOptions,
+    deps: {
+      run: (command: string, args: readonly string[], runOptions: RunOptions = {}) => {
+        const line = [command, ...args].join(' ');
+        calls.push(line);
+        if (line === FETCH) {
+          fetchOptions.push(runOptions);
+          return { code: options.fetchCode ?? 0, output: '' };
+        }
+        if (line.startsWith('git rev-list')) return { code: options.countsCode ?? 0, output: options.counts ?? '0\t0' };
+        return { code: 0, output: 'feat/x' };
+      },
+      changed: () => [],
+      read: () => null,
+    },
+  };
+}
+
+test('session-start: haalt origin/main op en meldt hoeveel commits de branch achterloopt', () => {
+  const { deps, calls } = lagDeps({ counts: '34\t1' });
+  const text = sessionStart(deps).stdout ?? '';
+
+  expect(calls).toContain(FETCH);
+  expect(text).toContain('34 commits achter op origin/main');
+});
+
+test('session-start: de fetch krijgt een harde timeout en vraagt niet om een wachtwoord en laat het SSH-commando van de gebruiker met rust', () => {
+  const { deps, fetchOptions } = lagDeps({});
+  sessionStart(deps);
+
+  expect(fetchOptions).toHaveLength(1);
+  expect(fetchOptions[0]?.timeout).toBe(5000);
+  expect(fetchOptions[0]?.env?.['GIT_TERMINAL_PROMPT']).toBe('0');
+  expect(fetchOptions[0]?.env?.['GIT_SSH_COMMAND']).toBeUndefined();
+});
+
+test('session-start: geen achterstand, geen melding', () => {
+  expect(sessionStart(lagDeps({ counts: '0\t3' }).deps).stdout ?? '').not.toContain('achter op origin/main');
+});
+
+test('session-start: een mislukte fetch meldt dat, en de hook gaat door', () => {
+  const text = sessionStart(lagDeps({ fetchCode: 1 }).deps).stdout ?? '';
+
+  expect(text).toContain('origin/main ophalen mislukt');
+  expect(text).toContain('Branch: feat/x');
+});
+
+test('session-start: een mislukte fetch én een achterstand geven beide meldingen', () => {
+  const text = sessionStart(lagDeps({ fetchCode: 1, counts: '5\t0' }).deps).stdout ?? '';
+
+  expect(text).toContain('origin/main ophalen mislukt');
+  expect(text).toContain('5 commits achter op origin/main');
+});
+
+test('session-start: zonder bekende origin/main geen melding (een app zonder remote)', () => {
+  const text = sessionStart(lagDeps({ fetchCode: 1, countsCode: 128, counts: 'fatal' }).deps).stdout ?? '';
+
+  expect(text).not.toContain('origin/main');
 });
