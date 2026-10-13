@@ -339,12 +339,12 @@ Alle hooks werken in de root uit de payload: de git-root van `cwd` (een worktree
 Elke hook heeft een tabeltest (`test/hooks/*.test.ts`): echte stdin-payloads met de verwachte exitcode, inclusief omzeilingen (tweede commando na
 een leesuitzondering, aanhalingstekens rond redirect-doelen). Wat tekstheuristiek niet vangt (`bash -c`, `node -e`), vangt de diff-guard in CI.
 
-Permissieregels in `.claude/settings.json` zijn gemak, geen grens (Claude Code-docs): deny op `.env*` en `*secret*`, pushes naar `main`,
+Permissieregels in `.claude/settings.json` zijn gemak, geen grens (Claude Code-docs): deny op `.env*` en `*secret*` (per getrackte map en in de root, niet over `node_modules`: daar maskeerde de sandbox bibliotheekbestanden; `test/rails/sandbox-settings.test.ts` eist dat elke getrackte map gedekt is), pushes naar `main`,
 force, `--no-verify`, `LEFTHOOK=0`, mergen, zelfreview (`gh pr review`, labels, statuses) en `docker`; `disableBypassPermissionsMode: "disable"`; `ask` op de beschermde paden (§10), op `pnpm add/install/update/remove`, op `sed -i`/`perl -pi`
 (Edit-regels dekken Bash-schrijfacties niet) en op elk commando uit `excludedCommands`. Het rolhek kan alleen de drie vaste
 runnerchecks expliciet toestaan wanneer main `autoRunner` toestaat en de hostcode ongewijzigd is (ADR 0027).
 Permissieregels vangen alleen de gangbare vormen (bijv. `git commit -n` midden in de opties niet); de rolhek-hook dekt dat.
-De sandbox (`failIfUnavailable`, `allowUnsandboxedCommands: false`, `denyRead` op `~/.ssh` en `~/.aws`; `~/.config/gh` volgt zodra de agent met het App-token werkt) en GitHub zijn de grens.
+De sandbox (`failIfUnavailable`, `allowUnsandboxedCommands: false`, `denyRead` op `~/.ssh` en `~/.aws`; `allowRead` alleen op `./.env.example`, zodat git het bestand kan lezen; `~/.config/gh` volgt zodra de agent met het App-token werkt) en GitHub zijn de grens.
 De sandbox draait niet op native Windows: met `failIfUnavailable` start Claude Code daar niet; werk in WSL2. Op Linux/WSL2 bereikt een
 commando in de sandbox `localhost` niet; commando's die de lokale stack nodig hebben (`pnpm test:db`, `pnpm gate:slow`, …) staan
 in `excludedCommands` als patroon met ` *`, zodat argumenten meekomen (zonder wildcard matcht het exact). Daarmee draaien ook door de agent geschreven tests buiten de sandbox; hoe dat gat dichtgaat, staat in ADR 0009. `scripts/runner.sh` (`check_host_files`) weigert te starten als de host-bestanden lokaal afwijken van de merge-base met `origin/main` (onleesbaar → weigeren: `git fetch origin`) of in CI van `HEAD`; alleen de eigenaar kan na lezen `--sta-wijzigingen-toe` gebruiken (ADR 0025 punt 4). De agent gebruikt

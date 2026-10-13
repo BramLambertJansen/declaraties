@@ -6,7 +6,19 @@
       "Read(.env.*)",
       "Edit(.env)",
       "Edit(.env.*)",
-      "Read(./**/*secret*)",
+      "Read(./*secret*)",
+      "Read(./.claude/**/*secret*)",
+      "Read(./.github/**/*secret*)",
+      "Read(./.kit/**/*secret*)",
+      "Read(./.vscode/**/*secret*)",
+      "Read(./db/**/*secret*)",
+      "Read(./deploy/**/*secret*)",
+      "Read(./designs/**/*secret*)",
+      "Read(./docs/**/*secret*)",
+      "Read(./e2e/**/*secret*)",
+      "Read(./scripts/**/*secret*)",
+      "Read(./src/**/*secret*)",
+      "Read(./test/**/*secret*)",
       "Read(~/.ssh/**)",
       "Read(~/.aws/**)",
       "Bash(git push origin main)",
@@ -122,7 +134,8 @@
       "denyRead": [
         "~/.ssh",
         "~/.aws"
-      ]
+      ],
+      "allowRead": ["./.env.example"]
     },
     "network": {
       "allowedDomains": [
