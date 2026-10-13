@@ -22,7 +22,6 @@ export { PageTitle } from '#core/web/ui/page-title.tsx';
 export { NotFound, RouteError } from '#core/web/ui/route-error.tsx';
 export { QrCode } from '#core/web/ui/qr-code.tsx';
 export { Section } from './section.tsx';
-export { components, type ComponentMetadata } from './component-metadata.ts';
 export { Select, type SelectOption } from '#core/web/ui/select.tsx';
 export { Sidebar, visibleNavItems, type NavItem } from '#core/web/ui/sidebar.tsx';
 export { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '#core/web/ui/table.tsx';

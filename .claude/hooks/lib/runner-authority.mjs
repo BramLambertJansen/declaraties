@@ -2,7 +2,8 @@
 import { gitText, safeRepositoryPath } from './authority-context.mjs';
 
 const HOST_FILES = ['scripts', 'package.json', 'pnpm-workspace.yaml', '.npmrc', '.pnpmfile.cjs', 'mise.toml',
-  'compose.yaml', 'compose.*.yaml', 'compose.override.yaml', 'db/test.env', 'db/docker'];
+  'compose.yaml', 'compose.*.yaml', 'compose.override.yaml', 'db/test.env', 'db/docker',
+  'vitest.config.ts', 'playwright.config.ts', 'vite.config.ts'];
 
 /** @param {string} command */
 export function automaticRunner(command) {

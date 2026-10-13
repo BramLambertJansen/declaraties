@@ -28,6 +28,9 @@ const HOST_FILES = [
   'compose.test.yaml',
   'db/test.env',
   'db/docker/Dockerfile',
+  'vitest.config.ts',
+  'playwright.config.ts',
+  'vite.config.ts',
 ];
 const CHANGES = ['unstaged', 'staged', 'committed'];
 

@@ -94,3 +94,14 @@ automatische runner of ruimere labelscope.
 Claude Code gebruikt de geteste hooks. Codex en andere runtimes draaien ze niet automatisch: volg dezelfde procedure
 en meld ontbrekende lokale rolgrenzen. Een subagent met dezelfde rechten als de hoofdsessie is geen afgedwongen
 onafhankelijke reviewer. De eigenaar verzorgt de ontbrekende review vóór samenvoegen. De agent merget nooit.
+
+## Bekende beperkingen
+
+- De automatische runner draait ook door de agent geschreven tests buiten de sandbox, zonder prompt (het gat uit ADR 0009).
+  De hostbestanden in `.claude/hooks/lib/runner-authority.mjs` en `scripts/runner.sh` zijn de enige controle vooraf: scripts,
+  packagebestanden, compose en de configs van vite, vitest en playwright. De testbestanden zelf horen daar niet bij; die vraagt
+  de agent juist te mogen toevoegen en draaien.
+- De hooks lezen de vertrouwde basis uit de lokale ref `origin/main` en doen geen netwerkwerk. Het rolhek weigert elke andere
+  manier om die ref of de remote `origin` te veranderen dan `git fetch origin` (`movesTrustedBase` in `.claude/hooks/lib/rolhek.mjs`).
+  Een commando buiten de hooks, of een andere runtime, valt daar niet onder; de CI-guard leest `main` bij GitHub en is de echte grens
+  (`scripts/kit/check-document-status.mjs`).

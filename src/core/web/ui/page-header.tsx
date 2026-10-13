@@ -7,15 +7,17 @@ interface PageHeaderProps {
   readonly actions?: ReactNode;
   // false: zet de paginatitel niet (alleen voor een voorbeeld naast de echte kop, zoals op /design-system).
   readonly documentTitle?: boolean;
+  // Voorbeeld naast de echte kop: h3 in plaats van h1 en geen paginatitel. Los van documentTitle.
+  readonly preview?: boolean;
 }
 
-export function PageHeader({ title, actions, documentTitle = true }: PageHeaderProps) {
+export function PageHeader({ title, actions, documentTitle = true, preview = false }: PageHeaderProps) {
   return (
     <div className="flex flex-wrap items-center justify-between gap-4">
       <PageTitle
         title={title}
         documentTitle={documentTitle}
-        preview={!documentTitle}
+        preview={preview}
         className="text-2xl font-semibold tracking-tight"
       />
       {actions === undefined ? null : <div className="flex flex-wrap gap-2">{actions}</div>}

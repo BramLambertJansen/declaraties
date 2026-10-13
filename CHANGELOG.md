@@ -8,6 +8,8 @@ Hier staan wijzigingen die van belang zijn bij het gebruiken of bijwerken van de
 
 - Taakgebonden frameworkontwikkeling en bewijsgebonden ADR/spec-statusadministratie (ADR 0027), met controle vanuit main. De agent verzorgt veilige runnerchecks, verzamelt CI-bewijs en kan documentatie-PR's administratief markeren; inhoudelijke besluiten en merge blijven van de eigenaar.
 
+- `check-docs` weigert twee ADR's met hetzelfde nummer. De ADR over de volledige UI-catalogus is hernummerd naar 0028 (ADR 0027 is het taakmandaat). `PageHeader` heeft een eigen `preview`-prop naast `documentTitle`.
+
 - Een React-webapp en Hono-API met een aparte core- en app-laag.
 - Inloggen, uitnodigingen en tweestapsverificatie met Better Auth. Beheerders kunnen accounts bekijken, rollen wijzigen en uitnodigingen opnieuw versturen.
 - Postgres-migraties, row-level security en tests voor datatoegang.

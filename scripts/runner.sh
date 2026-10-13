@@ -10,7 +10,7 @@ cd "$(dirname "$0")/.."
 # (ondiepe checkout zonder origin/main, wegwerp-runner) aan HEAD. Alleen de eigenaar mag dat met --sta-wijzigingen-toe
 # overslaan, na het lezen van de wijziging.
 HOST_FILES=(scripts package.json pnpm-workspace.yaml .npmrc .pnpmfile.cjs mise.toml compose.yaml compose.*.yaml
-  compose.override.yaml db/test.env db/docker)
+  compose.override.yaml db/test.env db/docker vitest.config.ts playwright.config.ts vite.config.ts)
 
 suite="${1:-}"
 case "$suite" in

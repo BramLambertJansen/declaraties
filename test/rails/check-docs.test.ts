@@ -79,3 +79,9 @@ test('CODEOWNERS en `ask` lopen uit elkaar (tests en specs staan alleen in CODEO
 
   expect(await keys(root)).toStrictEqual(['docs:spiegel:ask:scripts/**', 'docs:spiegel:codeowners:deploy/**']);
 });
+
+test('twee ADR-bestanden met hetzelfde nummer', async () => {
+  const root = repo({ 'docs/adr/0001-andere.md': '# 0001 — Andere\n\nStatus: voorgesteld\n' });
+
+  expect(await keys(root)).toStrictEqual(['docs:adr:0001:dubbel']);
+});

@@ -253,7 +253,7 @@ export function DesignSystemPage() {
       </Section>
 
       <Section title="PageHeader en Notice">
-        <PageHeader title="Accounts" documentTitle={false} actions={<Button>Account uitnodigen</Button>} />
+        <PageHeader title="Accounts" preview actions={<Button>Account uitnodigen</Button>} />
         <Notice>Uitnodiging verstuurd naar anna@example.test.</Notice>
         <Notice tone="error">Er ging iets mis. Probeer het later opnieuw.</Notice>
       </Section>

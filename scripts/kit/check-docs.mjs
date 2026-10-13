@@ -136,6 +136,26 @@ function linkViolations(root, files, read) {
 }
 
 /**
+ * Twee branches kiezen onafhankelijk hetzelfde volgende nummer; git merget dat zonder conflict (twee bestandsnamen).
+ * @param {readonly string[]} adrs
+ * @returns {Violation[]}
+ */
+function duplicateAdrNumbers(adrs) {
+  /** @type {Map<string, string[]>} */
+  const byNumber = new Map();
+  for (const file of adrs) {
+    const number = /^docs\/adr\/(\d{4})-/.exec(file)?.[1] ?? '';
+    byNumber.set(number, [...(byNumber.get(number) ?? []), file]);
+  }
+  return [...byNumber]
+    .filter(([, files]) => files.length > 1)
+    .map(([number, files]) => ({
+      key: `docs:adr:${number}:dubbel`,
+      message: `ADR-nummer ${number} komt in meer dan één bestand voor: ${files.join(', ')}`,
+    }));
+}
+
+/**
  * @param {readonly string[]} files
  * @param {(file: string) => string} read
  * @returns {Violation[]}
@@ -144,6 +164,7 @@ function statusViolations(files, read) {
   const adrs = files.filter((file) => /^docs\/adr\/\d{4}-[^/]+\.md$/.test(file));
   const specs = files.filter((file) => /^docs\/specs\/[^_/][^/]*\.md$/.test(file));
   return [
+    ...duplicateAdrNumbers(adrs),
     ...adrs
       .filter((file) => !ADR_STATUS.test(read(file)))
       .map((file) => ({

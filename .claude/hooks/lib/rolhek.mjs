@@ -456,6 +456,8 @@ export function gitForbidden(args, { role, branch }) {
   if (args.includes('--no-verify')) found.push('--no-verify is verboden (AGENTS.md)');
   if (subcommand === 'commit' && commitSkipsHooks(rest)) found.push('git commit -n slaat de hooks over: verboden');
   if (subcommand === 'config' && setsHooksPath(rest)) found.push('core.hooksPath zetten is verboden');
+  if (config.some((setting) => TRUSTED_CONFIG.test(setting)) || movesTrustedBase(subcommand, rest))
+    found.push('de vertrouwde basis (origin/main en remote origin) verander je alleen met git fetch (ADR 0027)');
   if (subcommand === 'push' && pushesMain(rest, branch)) found.push('push naar main is verboden; open een PR');
   if (subcommand === 'push' && forcePushes(rest)) found.push('force-push is verboden, ook voor de hoofdsessie (WS-04)');
   if (role === 'hoofdsessie') return found;
@@ -495,6 +497,41 @@ function clusterFlags(cluster) {
     if (COMMIT_VALUE_FLAGS.has(flag)) return { hooks: false, takesNext: index === cluster.length - 1 };
   }
   return { hooks: false, takesNext: false };
+}
+
+// De hooks lezen besluiten, autoRunner en gateMarker uit de lokale ref origin/main (ADR 0027). Een eigen commit of een andere
+// remote onder die naam zou bevoegdheid geven die nooit is toegekend; de CI-guard leest main bij GitHub en blijft de grens.
+const TRUSTED_CONFIG = /^(?:remote\.origin\.|url\.)/i;
+const TRUSTED_NAME = /^(?:refs\/(?:heads|tags)\/)?origin\/(?:main|HEAD)$/;
+const TRUSTED_DESTINATION = /:\+?(?:refs\/remotes\/)?origin\/(?:main|HEAD|\*)$/;
+const READ_ONLY_CONFIG = ['--get', '--get-all', '--get-regexp', '--list', '-l', '--show-origin'];
+const BRANCH_READ_FLAGS = /^(?:--set-upstream-to|-u|--contains|--no-contains|--merged|--no-merged|--points-at|--list|-l)(?:=|$)/;
+
+/**
+ * @param {string} subcommand
+ * @param {readonly string[]} rest
+ */
+function movesTrustedBase(subcommand, rest) {
+  const operands = rest.filter((arg) => !arg.startsWith('-'));
+  switch (subcommand) {
+    case 'update-ref':
+    case 'symbolic-ref':
+      return rest.some((arg) => /^refs\/remotes\/origin\//.test(arg));
+    case 'branch':
+    case 'tag':
+      return !rest.some((arg) => BRANCH_READ_FLAGS.test(arg)) && TRUSTED_NAME.test(operands[0] ?? '');
+    case 'checkout':
+    case 'switch':
+      return rest.some((arg, index) => ['-b', '-B', '-c', '-C'].includes(arg) && TRUSTED_NAME.test(rest[index + 1] ?? ''));
+    case 'fetch':
+      return operands[0] !== 'origin' && operands.slice(1).some((spec) => TRUSTED_DESTINATION.test(spec));
+    case 'remote':
+      return ['add', 'set-url', 'rename', 'remove', 'rm', 'set-head', 'set-branches'].includes(operands[0] ?? '');
+    case 'config':
+      return !rest.some((arg) => READ_ONLY_CONFIG.includes(arg)) && rest.some((arg) => TRUSTED_CONFIG.test(arg));
+    default:
+      return false;
+  }
 }
 
 /** @param {readonly string[]} rest */

@@ -1,15 +1,5 @@
-import {
-  Input,
-  Section,
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-  Field,
-  components,
-} from '#web/ui/index.ts';
+import { Input, Section, Table, TableBody, TableCell, TableHead, TableHeader, TableRow, Field } from '#web/ui/index.ts';
+import { components } from '#web/ui/component-metadata.ts';
 
 export function ComponentIndex({
   search,

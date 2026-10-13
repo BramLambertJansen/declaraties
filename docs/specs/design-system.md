@@ -106,7 +106,7 @@ Besluiten van de eigenaar (2026-10-10, doorgegeven via de coördinator): bij elk
 
 ## Acceptatiecriteria
 
-Aanvulling eigenaar 2026-10-13 ([ADR 0027](../adr/0027-volledige-ui-catalogus.md)): de uitzonderingen uit OV-5 en de oorspronkelijke
+Aanvulling eigenaar 2026-10-13 ([ADR 0028](../adr/0028-volledige-ui-catalogus.md)): de uitzonderingen uit OV-5 en de oorspronkelijke
 AC-9 vervallen. Broninventarisatie, hergebruik via de barrel en bereikbare voorbeelden gelden voor de hele UI-kit. Dezelfde bronindex
 staat zoekbaar op de pagina (zoekparameter `q`) en in de agentfeiten; `AsyncView` gebruikt uitsluitend lokale voorbeelddata. De
 schermvoorbeelden gebruiken `preview` om geen extra landmarks of documenttitels te maken. Guard, permissie, lazy chunk en bundelbudget blijven gelijk.
@@ -157,7 +157,7 @@ schermvoorbeelden gebruiken `preview` om geen extra landmarks of documenttitels 
 ## Buiten scope
 
 `/design` (prototypes uit `designs/`) blijft alleen in dev. Screenshot-baselines van de catalogus (roadmap stuk 3c, open). Nieuwe
-componenten of varianten buiten de aanvulling van ADR 0027. De dev-rolwisselaar. Een sidebar-item. Live-voorbeelden met echte data.
+componenten of varianten buiten de aanvulling van ADR 0028. De dev-rolwisselaar. Een sidebar-item. Live-voorbeelden met echte data.
 
 ## Testplan
 

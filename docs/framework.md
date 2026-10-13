@@ -259,7 +259,7 @@ Ankers: OWASP Top 10:2025, OWASP API Security Top 10, ASVS 5.0 niveau 1 (checkli
   tellen niet. Er is geen uitzonderingenlijst. Samengestelde componenten en de bestaande app-layout tellen via hun renderpad.
   Dezelfde bronindex voedt `feiten.mjs componenten` en de zoekbare componentenindex op `/design-system` (bron, hergebruik, varianten;
   `scripts/kit/catalogus-source.ts`, `scripts/kit/catalogus-index.ts`). `preview` bij schermcomponenten voorkomt extra landmarks en
-  documenttitels binnen de catalogus; standaardgedrag blijft hetzelfde (ADR 0027). Screenshot-baselines in de gepinde Playwright-image;
+  documenttitels binnen de catalogus; standaardgedrag blijft hetzelfde (ADR 0028). Screenshot-baselines in de gepinde Playwright-image;
   de contrasttest bewijst ook dat een bekende foute kleur zou falen.
 - **Startkit**: Button, Input, Field, Card, Dialog. Groeit per app-behoefte. WCAG 2.2 AA (4,5:1 tekst, 3:1 UI), één focusring, `prefers-reduced-motion`, 44 px aanraakdoelen.
 - `/design-system` (catalogus, in de app voor admins, ADR 0015) en optioneel `/design` (prototypes uit `designs/`, alleen in dev).

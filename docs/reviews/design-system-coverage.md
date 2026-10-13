@@ -1,6 +1,6 @@
 # UI-index en catalogusrail
 
-Fase 1, stuk 3c en 4: bestaande UI-kit, hergebruik en afdwinging. Opdracht eigenaar 2026-10-13; besluit in ADR 0027.
+Fase 1, stuk 3c en 4: bestaande UI-kit, hergebruik en afdwinging. Opdracht eigenaar 2026-10-13; besluit in ADR 0028.
 
 - Broninventarisatie: `scripts/kit/catalogus-source.ts`; dekking: `scripts/kit/catalogus-graph.ts` en `scripts/kit/catalogus.mjs`.
 - Dezelfde index voor agents (`scripts/kit/feiten.mjs`) en developers (`src/web/features/design-system/component-index.tsx`, via Vite).
