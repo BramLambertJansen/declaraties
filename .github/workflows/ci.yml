@@ -1,5 +1,5 @@
 # gate:fast en gate:slow op elke push naar main en elke PR (framework §10); check:new-resource als eigen job (ADR 0016, OV-7);
-# image bouwt en controleert de productie-image (ADR 0019); secrets draait Betterleaks over de geschiedenis. CodeQL in codeql.yml.
+# image bouwt en controleert de productie-image (ADR 0019); secrets draait Betterleaks (PR: eigen commits, anders alle gefetchte refs). CodeQL in codeql.yml.
 # osv-scanner in osv.yml, de diff-guard in guard.yml. Actions op volledige SHA; Renovate werkt ze bij.
 name: ci
 
@@ -61,8 +61,8 @@ jobs:
           retention-days: 7
           if-no-files-found: ignore
 
-  # Betterleaks over de hele geschiedenis (framework §6): wat lefthook lokaal tegenhoudt, kan via --no-verify of een andere
-  # machine toch binnenkomen. Altijd met scripts/kit/betterleaks.toml; inline allows tellen niet.
+  # Betterleaks (framework §6): wat lefthook lokaal tegenhoudt, kan via --no-verify of een andere machine toch binnenkomen.
+  # Op een PR de commits van die PR, anders alle gefetchte refs. Altijd met scripts/kit/betterleaks.toml; inline allows tellen niet.
   secrets:
     name: secrets
     runs-on: ubuntu-24.04
@@ -76,7 +76,16 @@ jobs:
         with:
           version: 2026.9.18
           install_args: betterleaks
-      - run: betterleaks git -c scripts/kit/betterleaks.toml --redact --no-banner --ignore-gitleaks-allow
+      # Op een PR alleen de commits van die PR, anders alle gefetchte refs: een melding op een andere branch maakt anders
+      # elke open PR rood (framework §6). Een geheim in een PR-commit blijft ook na een herstelcommit zichtbaar.
+      - run: |
+          if [ "$EVENT" = "pull_request" ]; then
+            betterleaks git -c scripts/kit/betterleaks.toml --log-opts "origin/main..HEAD" --redact --no-banner --ignore-gitleaks-allow
+          else
+            betterleaks git -c scripts/kit/betterleaks.toml --redact --no-banner --ignore-gitleaks-allow
+          fi
+        env:
+          EVENT: ${{ github.event_name }}
 
   # De productie-image (ADR 0019) bouwt en start: niet als root, liveness, readiness, SPA met CSP en netjes stoppen.
   image:

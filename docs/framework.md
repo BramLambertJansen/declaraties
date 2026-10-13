@@ -224,7 +224,7 @@ Ankers: OWASP Top 10:2025, OWASP API Security Top 10, ASVS 5.0 niveau 1 (checkli
   een `AUTH_SECRET` korter dan 32 bytes of met een demo-waarde erin; database-URL's met een demo-wachtwoord (URL geparsed, niet als
   hele string vergeleken); een `APP_ORIGIN` of `AUTH_BASE_URL` zonder `https`; `AUTH_BASE_URL` ≠ `APP_ORIGIN`. De demo-waarden staan
   als lijst in `src/core/api/env.ts` (niet uit `.env.example` gelezen); een test per regel bewijst het.
-  Secret scanning met push protection; Betterleaks (opvolger van gitleaks, dat in onderhoudsmodus staat; versie gepind in `mise.toml`, lokaal en in CI dezelfde binary) in pre-commit en in CI over de hele geschiedenis (job `secrets`).
+  Secret scanning met push protection; Betterleaks (opvolger van gitleaks, dat in onderhoudsmodus staat; versie gepind in `mise.toml`, lokaal en in CI dezelfde binary) in pre-commit en in CI (job `secrets`: op een PR de commits van die PR, anders alle gefetchte refs; een melding op een andere branch maakt dus de run op `main` rood, een PR niet).
 - **Supply chain**: Renovate gegroepeerd; pnpm-instellingen in `pnpm-workspace.yaml`: `minimumReleaseAge: 10080` (minuten = 7 dagen), `strictDepBuilds` met expliciete `allowBuilds`, `trustPolicy: no-downgrade`;
   versies in het framework zijn ondergrenzen bij schrijven, nooit de bewaking: osv-scanner faalt op bekende advisories;
   een uitzondering (osv, Betterleaks) heeft een reden en een einddatum (`ignoreUntil`), daarna wordt de check vanzelf weer rood;
