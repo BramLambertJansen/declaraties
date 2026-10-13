@@ -10,5 +10,14 @@
     "codeql (actions)",
     "osv-scanner"
   ],
-  "decisions": []
+  "decisions": [
+    {
+      "file": "docs/adr/0028-volledige-ui-catalogus.md",
+      "digest": "1d4c48ea75672c5f81d710f2d43f711388d2b6127a72b8c269f40c48417b29ab",
+      "repository": "BramLambertJansen/template",
+      "branch": "fix/post-merge-review",
+      "status": "geaccepteerd",
+      "paths": []
+    }
+  ]
 }
