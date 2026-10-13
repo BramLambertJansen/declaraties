@@ -5,6 +5,17 @@
     "bradlc.vscode-tailwindcss",
     "editorconfig.editorconfig",
     "vitest.explorer",
-    "ms-playwright.playwright"
+    "ms-playwright.playwright",
+    "anthropic.claude-code",
+    "github.vscode-pull-request-github",
+    "github.vscode-github-actions",
+    "usernamehw.errorlens",
+    "yoavbls.pretty-ts-errors",
+    "streetsidesoftware.code-spell-checker",
+    "streetsidesoftware.code-spell-checker-dutch",
+    "hverlo.vscode-mise",
+    "redhat.vscode-yaml",
+    "ms-ossdata.vscode-pgsql",
+    "davidanson.vscode-markdownlint"
   ]
 }
