@@ -40,6 +40,26 @@
         "docs/specs/taakmandaat-frameworkwerk.md",
         "docs/specs/roadmap-vinkjes.md"
       ]
+    },
+    {
+      "file": "docs/specs/ui-kit-basics.md",
+      "digest": "862f872b272620deaa6bd4558a8ee76b145d4229feaffab4e024577b5b63866a",
+      "repository": "BramLambertJansen/template",
+      "branch": "codex/ui-kit-basics",
+      "status": "goedgekeurd",
+      "paths": [
+        "src/core/web/ui/textarea.tsx",
+        "src/core/web/ui/checkbox.tsx",
+        "src/core/web/ui/radio-group.tsx",
+        "src/core/web/ui/status-badge.tsx",
+        "src/core/web/ui/empty-state.tsx",
+        "src/core/web/ui/form-checkbox-field.tsx",
+        "src/core/web/ui/form-radio-group-field.tsx",
+        "src/core/web/ui/form.tsx",
+        "src/core/web/ui/async-view.tsx",
+        "src/core/web/ui/button.tsx",
+        "src/core/web/ui/dropdown-menu.tsx"
+      ]
     }
   ]
 }
