@@ -18,6 +18,28 @@
       "branch": "fix/post-merge-review",
       "status": "geaccepteerd",
       "paths": []
+    },
+    {
+      "file": "docs/specs/taakmandaat-vervolg.md",
+      "digest": "3bcaf05f3a71a85577046396918c257829353c1fc8a38c342e65f7ca068fac2c",
+      "repository": "BramLambertJansen/template",
+      "branch": "feat/task-mandate-follow-up",
+      "status": "goedgekeurd",
+      "paths": [
+        "scripts/kit/check-document-status.mjs",
+        "scripts/kit/status-git.mjs",
+        "scripts/kit/document-status.mjs",
+        "scripts/kit/check-roadmap.mjs",
+        "scripts/kit/roadmap-item.mjs",
+        "scripts/kit/gates.mjs",
+        "scripts/runner.sh",
+        "docs/dod.md",
+        "docs/framework.md",
+        "docs/specs/_template.md",
+        "docs/adr/0027-taakmandaat-voor-frameworkwerk.md",
+        "docs/specs/taakmandaat-frameworkwerk.md",
+        "docs/specs/roadmap-vinkjes.md"
+      ]
     }
   ]
 }
