@@ -39,6 +39,8 @@ N.v.t. — bestaande componentcatalogus uitbreiden; geen API-route, permissie of
 
 ## Hergebruik en UX
 
+De bestaande UI-kit, het Form/RHF-pad en de beveiligde catalogus blijven de basis voor deze uitbreiding.
+
 ### Voorgestelde scope
 
 | Deel | Werk | Behoud |
