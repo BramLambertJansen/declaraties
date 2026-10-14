@@ -74,6 +74,20 @@
         "src/core/web/ui/list.tsx",
         "src/core/web/ui/description-list.tsx"
       ]
+    },
+    {
+      "file": "docs/specs/ui-data-display.md",
+      "digest": "8f53b0eeac6c6322749333071e123d087ca3df57a323af23d29f6c1d4ffced28",
+      "repository": "BramLambertJansen/template",
+      "branch": "codex/ui-data-display",
+      "status": "goedgekeurd",
+      "paths": [
+        "src/core/web/ui/data-table.tsx",
+        "src/core/web/ui/tabs.tsx",
+        "src/core/web/ui/gallery.tsx",
+        "src/core/web/ui/list-toolbar.tsx",
+        "src/core/web/ui/carousel.tsx"
+      ]
     }
   ]
 }
