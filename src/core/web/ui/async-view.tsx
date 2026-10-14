@@ -9,11 +9,18 @@ interface AsyncViewProps<Data> {
   // Wanneer de data als leeg telt (bijv. een lege lijst); dan staat emptyText er in plaats van children.
   readonly isEmpty?: (data: Data) => boolean;
   readonly emptyText?: string;
+  readonly emptyContent?: ReactNode;
   readonly children: (data: Data) => ReactNode;
 }
 
 // Laden, fout, leeg en data op één plek (framework §5): features lezen nooit zelf isLoading of isError.
-export function AsyncView<Data>({ query, isEmpty, emptyText = uiTexts.empty, children }: AsyncViewProps<Data>) {
+export function AsyncView<Data>({
+  query,
+  isEmpty,
+  emptyText = uiTexts.empty,
+  emptyContent,
+  children,
+}: AsyncViewProps<Data>) {
   const errorText = useErrorText();
   if (query.isPending) {
     return (
@@ -32,6 +39,7 @@ export function AsyncView<Data>({ query, isEmpty, emptyText = uiTexts.empty, chi
       </div>
     );
   }
-  if (isEmpty?.(query.data) === true) return <p className="text-sm text-muted-foreground">{emptyText}</p>;
+  if (isEmpty?.(query.data) === true)
+    return <>{emptyContent ?? <p className="text-sm text-muted-foreground">{emptyText}</p>}</>;
   return <>{children(query.data)}</>;
 }

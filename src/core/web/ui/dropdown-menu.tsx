@@ -8,6 +8,9 @@ import { cn } from './cn.ts';
 export interface MenuItem {
   readonly label: string;
   readonly onSelect: () => void;
+  readonly disabled?: boolean;
+  readonly busy?: boolean;
+  readonly busyLabel?: string;
 }
 
 interface DropdownMenuProps {
@@ -29,13 +32,20 @@ export function DropdownMenu({ trigger, items, align = 'end' }: DropdownMenuProp
           {items.map((item) => (
             <Menu.Item
               key={item.label}
-              onSelect={item.onSelect}
+              disabled={item.disabled ?? false}
+              aria-disabled={item.busy || item.disabled || undefined}
+              aria-busy={item.busy || undefined}
+              onSelect={(event) => {
+                if (item.busy || item.disabled) event.preventDefault();
+                else item.onSelect();
+              }}
               className={cn(
                 'flex min-h-control cursor-default items-center rounded-sm px-3 text-sm outline-none select-none',
                 'data-[highlighted]:bg-accent data-[highlighted]:text-accent-foreground',
+                'data-[disabled]:cursor-not-allowed data-[disabled]:opacity-50 aria-busy:cursor-wait',
               )}
             >
-              {item.label}
+              {item.busy ? (item.busyLabel ?? item.label) : item.label}
             </Menu.Item>
           ))}
         </Menu.Content>

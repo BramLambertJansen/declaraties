@@ -34,6 +34,7 @@ import {
 } from '#web/ui/index.ts';
 import { ComponentIndex } from './component-index.tsx';
 import { AdditionalExamples } from './additional-examples.tsx';
+import { UiBasicsExamples } from './ui-basics-examples.tsx';
 
 function RoutedComponentIndex() {
   const { search, setQuery } = useListSearch();
@@ -331,6 +332,7 @@ export function DesignSystemPage() {
         />
       </Section>
       <AdditionalExamples />
+      <UiBasicsExamples />
     </div>
   );
 }

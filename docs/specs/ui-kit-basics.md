@@ -1,5 +1,5 @@
 ---
-status: voorstel
+status: gebouwd # #145; gevalideerd: 55e5ca7b75394aaeca98490a57e011b92221d2b5
 namespace: ui-kit-basics
 ---
 

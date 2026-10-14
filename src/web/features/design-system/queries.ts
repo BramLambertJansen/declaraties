@@ -4,3 +4,7 @@ import { useQuery } from '@tanstack/react-query';
 export function useExampleQuery() {
   return useQuery({ queryKey: ['design-system', 'example'], queryFn: () => Promise.resolve(['Voorbeeld geladen.']) });
 }
+
+export function useEmptyExampleQuery() {
+  return useQuery({ queryKey: ['design-system', 'empty'], queryFn: () => Promise.resolve<string[]>([]) });
+}

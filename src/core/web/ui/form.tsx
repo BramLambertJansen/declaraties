@@ -5,10 +5,12 @@ import {
   useForm,
   type DefaultValues,
   type FieldPath,
+  type FieldPathByValue,
   type FieldValues,
   type UseFormReturn,
 } from 'react-hook-form';
 import type { z } from 'zod';
+import { assert } from '#core/shared/assert.ts';
 import { uiTexts } from '../copy/ui.ts';
 import { Button } from './button.tsx';
 import { useErrorText } from './error-texts.tsx';
@@ -90,7 +92,7 @@ export interface FieldProps {
   readonly id: string;
   readonly name: string;
   readonly value: string;
-  readonly onChange: (event: ChangeEvent<HTMLInputElement | HTMLSelectElement>) => void;
+  readonly onChange: (event: ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => void;
   readonly onBlur: () => void;
   readonly ref: (element: HTMLElement | null) => void;
   readonly 'aria-invalid': boolean;
@@ -99,7 +101,7 @@ export interface FieldProps {
 
 interface FormFieldProps<Input extends FieldValues, Output> {
   readonly form: UseFormReturn<Input, unknown, Output>;
-  readonly name: FieldPath<Input>;
+  readonly name: FieldPathByValue<Input, string>;
   readonly label: string;
   readonly description?: string;
   readonly children: (field: FieldProps) => ReactNode;
@@ -115,13 +117,14 @@ export function FormField<Input extends FieldValues, Output>(props: FormFieldPro
     fieldState.error === undefined ? null : `${id}-fout`,
   ].filter((part) => part !== null);
   const value: unknown = field.value;
+  assert(typeof value === 'string', 'FormField requires a string default value');
 
   return (
     <Field id={id} label={label} description={description} error={fieldState.error?.message}>
       {children({
         id,
         name: field.name,
-        value: typeof value === 'string' ? value : '',
+        value,
         onChange: field.onChange,
         onBlur: field.onBlur,
         ref: field.ref,
