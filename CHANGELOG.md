@@ -6,6 +6,8 @@ Hier staan wijzigingen die van belang zijn bij het gebruiken of bijwerken van de
 
 ### Toegevoegd
 
+- Overgangstekst in `diff-guard` (ADR 0031, PR 1): de samenvatting bij uitslag `overgang` legt uit dat label en review niet gevraagd worden en de eigenaar zelf merget; nieuwe sectie "Gate-PR in de overgang" in `docs/operations/agent-doorloop.md`.
+
 - Skill `opleveren` (ADR 0030, PR 1): CI-lus tot groen met `pnpm pr:verify <nr> --watch` en vaste stopgronden, en opruimen na de merge (`main` fast-forward, lokale en remote branch weg). Het rolhek weigert `git branch -d/-D` van `main`. De merge blijft bij de eigenaar; een agent-modus volgt in PR 2.
 
 - Taakmandaat-vervolg (spec `taakmandaat-vervolg`): binnen een taakmandaat mag alleen het vinkje van het roadmap-item van de eigen spec meewijzigen, `pnpm docs:status <spec> gebouwd --pr <nummer> --roadmap` zet status en vinkje samen, een spec naar `gebouwd` heeft één bewijsvorm (`status: gebouwd # #<PR>; gevalideerd: <sha>`) en `scripts/runner.sh` weigert genegeerde en onveilige hostpaden.

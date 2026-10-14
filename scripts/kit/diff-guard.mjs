@@ -167,6 +167,9 @@ export function beoordeel(pr, config) {
   return { uitslag: redenen.length === 0 ? 'groen' : 'rood', redenen, geraakt: g };
 }
 
+const OVERGANG_UITLEG =
+  'Overgang (ADR 0017, OV-2): de auteur is zelf goedkeurder. Label `gate-wijziging` en review worden in deze fase niet gevraagd en niet gecontroleerd. Lees de geraakte paden hieronder; de eigenaar merget zelf.';
+
 /** @param {Oordeel} oordeel */
 export function samenvatting(oordeel) {
   const lijst = (/** @type {string} */ kop, /** @type {string[]} */ items) =>
@@ -176,6 +179,7 @@ export function samenvatting(oordeel) {
     '',
     ...oordeel.redenen.map((reden) => `- ${reden}`),
     '',
+    ...(oordeel.uitslag === 'overgang' ? [OVERGANG_UITLEG, ''] : []),
     ...lijst('Gate-paden', oordeel.geraakt.gates),
     ...lijst('Gewijzigde of verwijderde tests', oordeel.geraakt.tests),
     ...lijst('Bewaakte sleutels', oordeel.geraakt.json),

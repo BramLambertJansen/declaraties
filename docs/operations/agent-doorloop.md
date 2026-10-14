@@ -105,3 +105,14 @@ onafhankelijke reviewer. De eigenaar verzorgt de ontbrekende review vóór samen
   manier om die ref of de remote `origin` te veranderen dan `git fetch origin` (`movesTrustedBase` in `.claude/hooks/lib/rolhek.mjs`).
   Een commando buiten de hooks, of een andere runtime, valt daar niet onder; de CI-guard leest `main` bij GitHub en is de echte grens
   (`scripts/kit/check-document-status.mjs`).
+
+## Gate-PR in de overgang
+
+Is de auteur van een PR zelf goedkeurder, dan geeft `diff-guard` de uitslag `overgang` (groen met waarschuwing; ADR 0017,
+OV-2, [ADR 0031](../adr/0031-guard-en-pr-verify-bruikbaarder.md) besluit 2). Dan:
+
+1. Lees de samenvatting van `diff-guard` (de geraakte gate-paden, bewaakte sleutels en gewijzigde tests) en de uitslag van
+   `document-status` (tot ADR 0031 PR 2: de stap "Documentstatus en taakmandaat" in de job `diff-guard`).
+2. Een label `gate-wijziging` of een review is niet nodig; een review is ook niet mogelijk, want GitHub laat de auteur zijn
+   eigen PR niet goedkeuren. De eigenaar merget zelf.
+3. Is `document-status` rood, merge dan niet: laat de oorzaak herstellen.

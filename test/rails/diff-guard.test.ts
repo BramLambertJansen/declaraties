@@ -173,6 +173,19 @@ describe('oordeel', () => {
     expect(tekst).toContain('- `src/core/shared/can.ts`');
     expect(tekst).toContain('**Gewijzigde of verwijderde tests**');
   });
+
+  test('de samenvatting bij overgang bevat de uitleg uit ADR 0031 besluit 2; bij groen en rood niet', () => {
+    const zin =
+      'Overgang (ADR 0017, OV-2): de auteur is zelf goedkeurder. Label `gate-wijziging` en review worden in deze fase niet gevraagd en niet gecontroleerd. Lees de geraakte paden hieronder; de eigenaar merget zelf.';
+    const overgang = beoordeel(pr([core], { auteur: EIGENAAR }), config);
+    const groen = beoordeel(pr([{ status: 'M', pad: 'README.md' }]), config);
+    const rood = beoordeel(pr([core]), config);
+
+    expect([overgang.uitslag, groen.uitslag, rood.uitslag]).toStrictEqual(['overgang', 'groen', 'rood']);
+    expect(samenvatting(overgang)).toContain(zin);
+    expect(samenvatting(groen)).not.toContain(zin);
+    expect(samenvatting(rood)).not.toContain(zin);
+  });
 });
 
 test('parseNameStatus leest echte git-uitvoer: hernoeming, verwijdering, spatie en regeleinde in een pad', () => {
