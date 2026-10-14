@@ -24,7 +24,7 @@ Een ADR met status `voorgesteld` is geen besluit; afvinken gebeurt pas als de ei
 - [x] Railwerk: rolhek, geteste hooks, ratchet, gate-register, feiten, vijf rollen, diff-guard — ADR 0011
 - [x] Uitnodigen en MFA in Better Auth — ADR 0013
 - [x] Datapad: `withUser()` met `pg`, transactie per request, Drizzle als `tx` — ADR 0012
-- [x] Werkstraat tot de merge: reviewer vóór push en PR, stap Opleveren — ADR 0025 (WS-02, 03, 04a, 06 gebouwd; open: WS-04b skill `opleveren`,
+- [x] Werkstraat tot de merge: reviewer vóór push en PR, stap Opleveren — ADR 0025 (WS-02, 03, 04a, 04b, 06 gebouwd, 04b: skill `opleveren`, bewijs `test/rails/opleveren-skill.test.ts`; open:
       WS-05 modelkeuze, zie `docs/reviews/2026-10-12-werkstraat.md`)
 - [x] Account blokkeren: `blocked_at` in `better_auth`, schrijfrecht voor `app_definer`, sessies direct ingetrokken — ADR 0026 (gebouwd in #117)
 - [ ] Achtergrondtaken: opruimen (verlopen sessies, uitnodigingen, rate-limit-rijen), mail via een outbox, eigen databaserol voor

@@ -14,7 +14,7 @@ bestaande test mag wijzigen en het lichte pad, staat op één plek: `docs/framew
 
 - Een beslissing ontbreekt, de spec spreekt zichzelf tegen, of een regel staat de opdracht in de weg.
 - Een check faalt en de fix zou een regel, check, hook of test afzwakken.
-- Na twee mislukte correctiepogingen: stop, vat samen wat je probeerde, vraag om richting.
+- Na twee mislukte correctiepogingen: stop, vat samen wat je probeerde, vraag om richting. Uitzondering: de CI-lus van de skill `opleveren` (ADR 0030) loopt door tot groen; daar gelden alleen de stopgronden uit die skill.
 
 ## Zuinig met context
 
