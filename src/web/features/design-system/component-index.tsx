@@ -1,4 +1,16 @@
-import { Input, Section, Table, TableBody, TableCell, TableHead, TableHeader, TableRow, Field } from '#web/ui/index.ts';
+import {
+  Button,
+  Input,
+  Section,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+  Field,
+} from '#web/ui/index.ts';
+import { exampleTarget, showExample } from './example-targets.ts';
 import { components } from '#web/ui/component-metadata.ts';
 
 export function ComponentIndex({
@@ -41,6 +53,7 @@ export function ComponentIndex({
             <TableHead>Bron</TableHead>
             <TableHead>Hergebruik</TableHead>
             <TableHead>Varianten</TableHead>
+            <TableHead>Voorbeeld</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -56,10 +69,32 @@ export function ComponentIndex({
                   .map(([name, values]) => `${name}: ${values.join(', ')}`)
                   .join('; ') || '—'}
               </TableCell>
+              <TableCell>
+                <ExampleLocation name={item.naam} />
+              </TableCell>
             </TableRow>
           ))}
         </TableBody>
       </Table>
     </Section>
+  );
+}
+
+function ExampleLocation({ name }: { readonly name: string }) {
+  const target = exampleTarget(name);
+  if (target === undefined) return <p>Voorbeeldlocatie ontbreekt.</p>;
+  return (
+    <div className="flex flex-col gap-2">
+      <Button
+        variant="outline"
+        aria-controls={target.id}
+        onClick={() => {
+          showExample(target.id);
+        }}
+      >
+        Toon {name}
+      </Button>
+      <p>{target.text}</p>
+    </div>
   );
 }

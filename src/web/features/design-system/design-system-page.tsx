@@ -34,6 +34,7 @@ import {
 } from '#web/ui/index.ts';
 import { ComponentIndex } from './component-index.tsx';
 import { AdditionalExamples } from './additional-examples.tsx';
+import { FormStateExamples } from './form-state-examples.tsx';
 import { UiBasicsExamples } from './ui-basics-examples.tsx';
 
 function RoutedComponentIndex() {
@@ -44,8 +45,7 @@ function RoutedComponentIndex() {
 // Catalogus van de basiskit (framework §7, spec design-system), ook in productie achter guard('design-system:read'). Elke
 // component met elke variant; de e2e-test draait axe op 375 en 1280 px, in licht en donker. De teksten zijn voorbeelden, geen
 // app-teksten. Alleen voorbeelddata en geen API-aanroepen: de chunk is statisch en voor iedereen te downloaden (AC-10).
-// AppShell, CenteredCard en ThemeToggle staan er niet los in: de eerste twee zijn een heel scherm met een eigen main, de
-// themaschakelaar staat al in de topbalk (uitzonderingen in scripts/kit/catalogus.mjs).
+// Layout en providers worden via de echte app-compositie gedemonstreerd (ADR 0028); schermcomponenten hebben previews.
 
 const voorbeeld = z.object({
   naam: z.string().min(1, 'Vul een naam in.'),
@@ -229,9 +229,15 @@ export function DesignSystemPage() {
   return (
     <div className="flex flex-col gap-10">
       <PageHeader title={copy.designSystem.title} />
+      <Section id="example-layout" title="Navigatie en layout">
+        <p>
+          De zijbalk, topbalk, profielmenu en themaschakelaar rondom deze pagina zijn de echte UI-componenten. Op smalle
+          schermen opent Menu openen de navigatie als sheet. Providers werken via de voorbeelden hieronder.
+        </p>
+      </Section>
       <RoutedComponentIndex />
 
-      <Section title="Button">
+      <Section id="example-button" title="Button">
         <div className="flex flex-wrap gap-3">
           <Button variant="primary" size="md">
             primary
@@ -253,17 +259,17 @@ export function DesignSystemPage() {
         </div>
       </Section>
 
-      <Section title="PageHeader en Notice">
+      <Section id="example-header" title="PageHeader en Notice">
         <PageHeader title="Accounts" preview actions={<Button>Account uitnodigen</Button>} />
         <Notice>Uitnodiging verstuurd naar anna@example.test.</Notice>
         <Notice tone="error">Er ging iets mis. Probeer het later opnieuw.</Notice>
       </Section>
 
-      <Section title="Toast">
+      <Section id="example-toast" title="Toast">
         <ToastExample />
       </Section>
 
-      <Section title="Table">
+      <Section id="example-table" title="Table">
         <Table label="Voorbeeldtabel">
           <TableHeader>
             <TableRow>
@@ -290,11 +296,11 @@ export function DesignSystemPage() {
         </Table>
       </Section>
 
-      <Section title="QrCode">
+      <Section id="example-qr" title="QrCode">
         <QrCode value="otpauth://totp/voorbeeld?secret=JBSWY3DPEHPK3PXP" label="Voorbeeld-QR-code" />
       </Section>
 
-      <Section title="Card">
+      <Section id="example-card" title="Card">
         <Card className="max-w-sm">
           <CardHeader>
             <CardTitle>Kaarttitel</CardTitle>
@@ -309,19 +315,19 @@ export function DesignSystemPage() {
         </Card>
       </Section>
 
-      <Section title="Dialog">
+      <Section id="example-dialog" title="Dialog">
         <DialogExample />
       </Section>
 
-      <Section title="ConfirmDialog">
+      <Section id="example-confirm" title="ConfirmDialog">
         <ConfirmDialogExample />
       </Section>
 
-      <Section title="ListToolbar">
+      <Section id="example-toolbar" title="ListToolbar">
         <ListToolbarExample />
       </Section>
 
-      <Section title="DropdownMenu">
+      <Section id="example-dropdown" title="DropdownMenu">
         <DropdownMenu
           align="start"
           trigger={<Button variant="outline">Menu openen</Button>}
@@ -333,6 +339,7 @@ export function DesignSystemPage() {
       </Section>
       <AdditionalExamples />
       <UiBasicsExamples />
+      <FormStateExamples />
     </div>
   );
 }

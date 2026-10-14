@@ -87,7 +87,7 @@ function InvalidControlsExample() {
 export function UiBasicsExamples() {
   return (
     <>
-      <Section title="Textarea, Checkbox en RadioGroup">
+      <Section id="example-controls" title="Textarea, Checkbox en RadioGroup">
         <FormControlsExample />
       </Section>
       <Section title="Invoervelden: disabled">
@@ -96,14 +96,14 @@ export function UiBasicsExamples() {
       <Section title="Invoervelden: invalid">
         <InvalidControlsExample />
       </Section>
-      <Section title="StatusBadge">
+      <Section id="example-badges" title="StatusBadge">
         <div className="flex flex-wrap gap-3">
           <StatusBadge tone="neutral">Uitgenodigd</StatusBadge>
           <StatusBadge tone="accent">Actief</StatusBadge>
           <StatusBadge tone="destructive">Geblokkeerd</StatusBadge>
         </div>
       </Section>
-      <Section title="EmptyState en AsyncView">
+      <Section id="example-empty" title="EmptyState en AsyncView">
         <EmptyExample />
       </Section>
       <Section title="Button: busy">
