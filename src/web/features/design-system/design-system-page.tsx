@@ -1,3 +1,5 @@
+import { ComboboxExamples } from './combobox-examples.tsx';
+import { CollectionExamples } from './collection-examples.tsx';
 import { Bell } from 'lucide-react';
 import { useState } from 'react';
 import { z } from 'zod';
@@ -340,6 +342,8 @@ export function DesignSystemPage() {
       <AdditionalExamples />
       <UiBasicsExamples />
       <FormStateExamples />
+      <ComboboxExamples />
+      <CollectionExamples />
     </div>
   );
 }

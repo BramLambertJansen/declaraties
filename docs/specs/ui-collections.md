@@ -1,5 +1,5 @@
 ---
-status: voorstel
+status: gebouwd # #150; gevalideerd: 281fe4928d5e489709f97ed298e4f82b44b7080b
 namespace: ui-collections
 ---
 

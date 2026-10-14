@@ -34,3 +34,8 @@ export { Sidebar, visibleNavItems, type NavItem } from '#core/web/ui/sidebar.tsx
 export { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '#core/web/ui/table.tsx';
 export { ThemeToggle } from '#core/web/ui/theme-toggle.tsx';
 export { Topbar } from '#core/web/ui/topbar.tsx';
+export { Combobox, type ComboboxProps, type ComboboxOption, type ComboboxClearProps } from '#core/web/ui/combobox.tsx';
+export { FormComboboxField, type FormComboboxFieldProps } from '#core/web/ui/form-combobox-field.tsx';
+export { Accordion, type AccordionProps, type AccordionItemData } from '#core/web/ui/accordion.tsx';
+export { List, ListItem, type ListProps, type ListItemProps } from '#core/web/ui/list.tsx';
+export { DescriptionList, type DescriptionListProps, type DescriptionItem } from '#core/web/ui/description-list.tsx';

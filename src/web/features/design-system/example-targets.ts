@@ -1,5 +1,30 @@
 // Eén vindplaats per bestaand kitonderdeel; de bronindex blijft de inventaris bepalen.
 const groups = [
+  {
+    names: ['Combobox', 'ComboboxPopup'],
+    id: 'example-combobox',
+    text: 'Zoek en kies een optie; bekijk ook disabled, invalid en de dialoog.',
+  },
+  {
+    names: ['FormComboboxField'],
+    id: 'example-form-combobox',
+    text: 'Echte formulierbinding met validatie, serverveldfout en reset.',
+  },
+  {
+    names: ['Accordion', 'AccordionItem'],
+    id: 'example-accordion',
+    text: 'Open en sluit single of multiple; de tweede instantie wordt door de ouder beheerd.',
+  },
+  {
+    names: ['List', 'ListItem'],
+    id: 'example-list',
+    text: 'Lijst met zelfstandige acties, lange inhoud en een lege lijst.',
+  },
+  {
+    names: ['DescriptionList'],
+    id: 'example-description-list',
+    text: 'Termen en waarden, lange inhoud en een leeg metadataoverzicht.',
+  },
   { names: ['Button'], id: 'example-button', text: 'Knopvarianten; busy staat verderop.' },
   { names: ['Dialog'], id: 'example-dialog', text: 'Open de dialoog. De mobiele sheet zit in het hoofdmenu.' },
   {
