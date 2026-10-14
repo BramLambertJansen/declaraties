@@ -27,7 +27,7 @@ app-ontwikkeling; [ADR 0025](0025-werkstraat-tot-de-merge.md) geeft de hoofdsess
    uit opgehaalde `origin/main` gelezen; de CI-guard gebruikt de actuele default branch en de volledige diff.
 4. **Gebouwd bij de PR, met bouwbewijs.** Een spec kan naar `gebouwd` zodra de implementatie is vastgelegd, de juiste
    PR open is en alle verplichte GitHub Actions-checks groen zijn op de broncommit. De statusregel vermeldt PR en
-   gevalideerde SHA. Daarna mogen uitsluitend statusregels veranderen; code, tests of configuratie vraagt nieuw bewijs.
+   gevalideerde SHA. Daarna mogen uitsluitend statusregels en het vinkje van het roadmap-item van de eigen spec veranderen (spec taakmandaat-vervolg); code, tests of configuratie vraagt nieuw bewijs.
    Gebouwd betekent aangeboden en gecontroleerd, geen merge of release. ADR's behouden hun eigen woordenlijst;
    implementatiebewijs hoort bij de gekoppelde spec.
 5. **Label als markering.** De hoofdsessie mag met `pnpm pr:label-gate` het label zetten op uitsluitend documentatie-PR's,

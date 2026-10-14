@@ -34,7 +34,7 @@ geeft geen extra recht. CLI-verificatiefouten geven niet-nul exitcode en maken g
 ## Hergebruik en UX
 
 Hergebruikt rolhek, shell-parser, gate-lijst, diff-guard, geïsoleerde runner en CI. Geen UI of nieuwe agentrol.
-`pnpm docs:status` wijzigt alleen de statusregel; `pnpm pr:verify` leest echte checks; `pnpm pr:label-gate` zet de markering.
+`pnpm docs:status` wijzigt alleen de statusregel, met `--roadmap` ook het vinkje van de eigen taak; `pnpm pr:verify` leest echte checks; `pnpm pr:label-gate` zet de markering.
 Agentinstructies volgen [de procedure](../operations/agent-doorloop.md). Een weigering noemt bestand en grens;
 de hoofdsessie verzorgt opvolging. Geen routineverzoek aan de eigenaar om veilig uitvoerbare runnerchecks te draaien.
 
@@ -56,7 +56,7 @@ de hoofdsessie verzorgt opvolging. Geen routineverzoek aan de eigenaar om veilig
 - **task-mandate/AC-8** — Een goedkeuringsstatus geeft op zichzelf geen bouwbewijs of broncodemandaat.
   Inhoud wijzigen onder een bestaande goedkeuringsstatus zonder nieuw eigenaarbesluit wordt geweigerd.
 - **task-mandate/AC-9** — Gebouwd vereist overeenkomende PR, onveranderde goedgekeurde inhoud, een gevalideerde
-  vooroudercommit, uitsluitend latere statuswijzigingen en alle verplichte Actions-checks groen.
+  vooroudercommit, uitsluitend latere statuswijzigingen en het vinkje van het roadmap-item van de eigen spec en alle verplichte Actions-checks groen.
   Verkeerde SHA/App-identiteit, ontbrekende checks en latere mislukte runs worden geweigerd.
 - **task-mandate/AC-10** — CI gebruikt main en controleert de volledige diff, inclusief beide renamepaden.
   Een werkbranch vervangt de controle niet. Diff-guard en eigenaarreview blijven gelden.

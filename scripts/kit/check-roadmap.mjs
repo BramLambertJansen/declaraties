@@ -1,11 +1,13 @@
 // check:roadmap (spec docs/specs/roadmap-vinkjes.md, framework §8 "Docs horen bij de wijziging"): een nieuw of gewijzigd `[x]` in
-// docs/roadmap.md moet naar bewijs verwijzen (PR-nummer, testpad of checknaam), en een spec die naar `gebouwd` gaat ook. Het
-// vergelijkt met het punt waar de branch van origin/main afsplitste, niet met de kop van main. Is origin/main niet te lezen, dan
-// faalt de check: onleesbaar telt als fout (zoals check:migrations).
+// docs/roadmap.md moet naar bewijs verwijzen (PR-nummer, testpad of checknaam), en een spec die naar `gebouwd` gaat heeft de ene
+// bewijsvorm die `pnpm docs:status` schrijft (spec taakmandaat-vervolg, B2). Het vergelijkt met het punt waar de branch van
+// origin/main afsplitste, niet met de kop van main. Is origin/main niet te lezen, dan faalt de check: onleesbaar telt als fout
+// (zoals check:migrations).
 import { execFileSync } from 'node:child_process';
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
+import { builtReference, documentInfo } from '../../.claude/hooks/lib/document-state.mjs';
 import { globMatch } from '../../.claude/hooks/lib/rolhek.mjs';
 import { doelPad, looksLikePath, packageScripts, pathExists, SPEC_STATUS } from './check-docs.mjs';
 import { gates } from './gates.mjs';
@@ -30,7 +32,7 @@ const VERWIJZING = /\broadmap stuk \d+[a-z]*|\bST-\d+/i;
  * @param {string | null} tekst
  * @returns {Item[]}
  */
-function leesItems(tekst) {
+export function leesItems(tekst) {
   if (tekst === null) return [];
   const regels = tekst.split('\n');
   /** @type {Item[]} */
@@ -106,7 +108,7 @@ function heeftAdr(tekst, kader) {
  * @param {Item} item
  * @param {Kader} kader
  */
-function heeftBewijs(item, kader) {
+export function heeftBewijs(item, kader) {
   if (item.vervallen) return PR.test(item.tekst) || heeftAdr(item.tekst, kader);
   const tekst = zonderDoorgehaald(item.tekst);
   return PR.test(tekst) || backtickTokens(tekst).some((token) => isTestpad(token, kader) || isChecknaam(token, kader));
@@ -136,26 +138,20 @@ function itemMeldingen(item, kader) {
 }
 
 /**
- * Bewijs achter de status (`status: gebouwd # …`): PR-nummer, testpad (ook zonder backticks) of checknaam tussen backticks.
+ * De ene bewijsvorm voor een spec naar gebouwd: één geldige statusregel `status: gebouwd # #<PR>; gevalideerd: <sha>`,
+ * gelezen met dezelfde code als `check-document-status` (`documentInfo` en `builtReference`).
+ * @param {string} bestand
  * @param {string} spec
- * @param {Kader} kader
  */
-function statusBewijs(spec, kader) {
-  const commentaar = /^status:\s*gebouwd[^\S\n]*#([^\n]*)$/m.exec(spec)?.[1] ?? '';
-  const woorden = commentaar.split(/\s+/).map((woord) => woord.replace(/^[(`'"]+|[).,;:`'"]+$/g, ''));
-  return (
-    PR.test(commentaar) ||
-    woorden.some((woord) => isTestpad(woord, kader)) ||
-    backtickTokens(commentaar).some((token) => isChecknaam(token, kader))
-  );
+function heeftBouwbewijs(bestand, spec) {
+  return documentInfo(bestand, spec)?.status === 'gebouwd' && builtReference(spec) !== null;
 }
 
 /**
  * @param {{ basis: Bron, head: Head }} bronnen
- * @param {{ kader: Kader, roadmapBewijs: boolean }} stand
  * @returns {Violation[]}
  */
-function specMeldingen({ basis, head }, { kader, roadmapBewijs }) {
+function specMeldingen({ basis, head }) {
   const roadmapGewijzigd = basis.lees(ROADMAP) !== head.lees(ROADMAP);
   return head.bestanden
     .filter((bestand) => SPEC_PAD.test(bestand))
@@ -166,10 +162,10 @@ function specMeldingen({ basis, head }, { kader, roadmapBewijs }) {
       if (oud !== null && SPEC_STATUS.exec(oud)?.[1] === 'gebouwd') return [];
       /** @type {Violation[]} */
       const meldingen = [];
-      if (!roadmapBewijs && !statusBewijs(tekst, kader))
+      if (!heeftBouwbewijs(bestand, tekst))
         meldingen.push({
           key: `spec:bewijs:${bestand}`,
-          message: `${bestand}: naar gebouwd zonder bewijs; vink het roadmap-item af met bewijs, of zet bewijs achter de status (status: gebouwd # #<PR> of een testpad)`,
+          message: `${bestand}: naar gebouwd zonder bouwbewijs; zet de status met pnpm docs:status (status: gebouwd # #<PR>; gevalideerd: <sha>)`,
         });
       const verwijzing = VERWIJZING.exec(tekst)?.[0];
       if (verwijzing !== undefined && !roadmapGewijzigd)
@@ -194,11 +190,7 @@ export function roadmapMeldingen({ basis, head, scripts, testpaden }) {
       .map((item) => item.tekst),
   );
   const nieuw = leesItems(head.lees(ROADMAP)).filter((item) => item.aangevinkt && !eerder.has(item.tekst));
-  const roadmapBewijs = nieuw.some((item) => heeftBewijs(item, kader));
-  return [
-    ...nieuw.flatMap((item) => itemMeldingen(item, kader)),
-    ...specMeldingen({ basis, head }, { kader, roadmapBewijs }),
-  ];
+  return [...nieuw.flatMap((item) => itemMeldingen(item, kader)), ...specMeldingen({ basis, head })];
 }
 
 /**

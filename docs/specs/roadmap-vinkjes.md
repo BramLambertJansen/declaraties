@@ -5,6 +5,10 @@ namespace: roadmap
 
 # Roadmap-vinkjes afdwingen: `check:roadmap`
 
+> Deels vervallen door [taakmandaat-vervolg](taakmandaat-vervolg.md) (B2): roadmap/AC-10 voor zover vrij commentaar
+> achter `status: gebouwd` als bewijs telt, en de route "vink het roadmap-item af" als vervanging van statusbewijs. De
+> enige vorm is nu `status: gebouwd # #<PR>; gevalideerd: <sha>`.
+
 Geen kop weglaten; "n.v.t. — reden" mag. Ontbreekt een antwoord, dan vraagt de agent het.
 
 ## Doel

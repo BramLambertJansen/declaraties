@@ -10,9 +10,54 @@ export function unchangedHead(root, expected) {
   );
 }
 import { parseNameStatus } from './diff-guard.mjs';
+import { kaderVan, ROADMAP, taakVinkje } from './roadmap-item.mjs';
 
-/** @param {string} root @param {{ from: string, to: string }} commits */
-export function statusOnlyDiff(root, commits) {
+/** @param {string} root @param {string} sha @param {string} pad */
+function bestandOp(root, sha, pad) {
+  return gitText(root, ['show', `${sha}:${pad}`]);
+}
+
+/** Alleen de statusregel wijzigt: de rest van het document heeft in beide commits dezelfde digest. */
+/** @param {string} root @param {{ from: string, to: string }} commits @param {string} pad */
+function alleenStatus(root, commits, pad) {
+  const before = documentInfo(pad, bestandOp(root, commits.from, pad) ?? '');
+  const after = documentInfo(pad, bestandOp(root, commits.to, pad) ?? '');
+  return before !== null && after !== null && before.digest === after.digest;
+}
+
+/** Specs die in from..to naar gebouwd gaan, ongeacht een mandaat (spec taakmandaat-vervolg, AC-7). */
+/** @param {string} root @param {{ from: string, to: string }} commits @param {string[]} paden */
+function specsNaarGebouwd(root, commits, paden) {
+  return paden.filter((pad) => {
+    const before = documentInfo(pad, bestandOp(root, commits.from, pad) ?? '');
+    const after = documentInfo(pad, bestandOp(root, commits.to, pad) ?? '');
+    return before?.kind === 'spec' && before.status !== 'gebouwd' && after?.status === 'gebouwd';
+  });
+}
+
+/** Het vinkje van het item van een spec die in from..to naar gebouwd gaat, mag meewijzigen (B1). */
+/** @param {string} root @param {{ from: string, to: string }} commits @param {{ paden: string[], testpaden: readonly string[] }} wijziging */
+function roadmapToegestaan(root, commits, { paden, testpaden }) {
+  const bestanden = (gitText(root, ['ls-tree', '-r', '--name-only', '-z', commits.to]) ?? '')
+    .split('\0')
+    .filter(Boolean);
+  const kader = kaderVan({ packageJson: bestandOp(root, commits.to, 'package.json'), bestanden, testpaden });
+  const melding = taakVinkje({
+    basis: bestandOp(root, commits.from, ROADMAP),
+    head: bestandOp(root, commits.to, ROADMAP),
+    specs: specsNaarGebouwd(root, commits, paden),
+    kader,
+  });
+  return melding === null;
+}
+
+/**
+ * Alleen statusregels (en het vinkje van de eigen taak) wijzigen tussen de gevalideerde commit en de huidige.
+ * @param {string} root
+ * @param {{ from: string, to: string }} commits
+ * @param {{ testpaden?: readonly string[] }} [opties]
+ */
+export function statusOnlyDiff(root, commits, opties = {}) {
   if (![commits.from, commits.to].every((sha) => /^[0-9a-f]{40}$/.test(sha))) return false;
   const diff = gitText(root, [
     'diff',
@@ -24,12 +69,14 @@ export function statusOnlyDiff(root, commits) {
     commits.to,
   ]);
   if (diff === null) return false;
-  return parseNameStatus(diff).every(({ status, pad }) => {
-    if (status !== 'M') return false;
-    const before = documentInfo(pad, gitText(root, ['show', `${commits.from}:${pad}`]) ?? '');
-    const after = documentInfo(pad, gitText(root, ['show', `${commits.to}:${pad}`]) ?? '');
-    return before !== null && after !== null && before.digest === after.digest;
-  });
+  const wijzigingen = parseNameStatus(diff);
+  if (wijzigingen.some(({ status }) => status !== 'M')) return false;
+  const documenten = wijzigingen.map(({ pad }) => pad).filter((pad) => pad !== ROADMAP);
+  if (!documenten.every((pad) => alleenStatus(root, commits, pad))) return false;
+  return (
+    documenten.length === wijzigingen.length ||
+    roadmapToegestaan(root, commits, { paden: documenten, testpaden: opties.testpaden ?? [] })
+  );
 }
 
 /** @param {string} root @param {{ from: string, to: string }} commits */

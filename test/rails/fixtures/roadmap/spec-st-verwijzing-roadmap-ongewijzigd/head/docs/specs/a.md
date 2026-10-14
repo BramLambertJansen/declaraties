@@ -1,5 +1,5 @@
 ---
-status: gebouwd # PR #51
+status: gebouwd # #51; gevalideerd: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
 ---
 
 # Spec A

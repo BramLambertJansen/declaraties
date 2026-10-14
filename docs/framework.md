@@ -294,7 +294,7 @@ volgende vrije migratie- en ADR-nummer), niet met wat in proza staat.
 
 **Docs horen bij de wijziging**: de developer werkt bij elke wijziging die gedrag, API, configuratie of conventies raakt de relevante doc
 mee, in dezelfde commit en PR (kort, met `bestand:regel`-verwijzingen, zonder code te kopiëren). Spec naar `gebouwd`, roadmap-vinkje en ADR-status
-horen daar ook bij: ADR/spec-statussen via bewijsgebonden administratie (ADR 0027), roadmap-vinkjes met eigenaarakkoord. Een item waarvan het bewijs beschikbaar is, wordt in
+horen daar ook bij: ADR/spec-statussen via bewijsgebonden administratie (ADR 0027), roadmap-vinkjes met eigenaarakkoord. Binnen een taakmandaat mag `docs/roadmap.md` alleen het vinkje van het item van de taak meewijzigen; de precieze regel staat in `docs/dod.md`. Een item waarvan het bewijs beschikbaar is, wordt in
 diezelfde PR afgevinkt, en nooit zonder bewijs (`docs/dod.md`, Altijd). `check:docs-drift` waarschuwt in CI (geen blokkade) als `src/`
 wijzigt zonder `docs/` of `CHANGELOG.md`. `check:roadmap` (in `gate:fast`) blokkeert wel: een nieuw of gewijzigd `[x]` zonder testpad, checknaam of PR-nummer, en een spec die naar `gebouwd` gaat zonder bewijs (`scripts/kit/check-roadmap.mjs`). Er is geen docs-stap na de merge.
 

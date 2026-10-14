@@ -9,7 +9,10 @@ cd "$(dirname "$0")/.."
 # lokaal aan de merge-base met origin/main, zodat ook een gecommitte wijziging niet ongelezen op de host draait; in CI
 # (ondiepe checkout zonder origin/main, wegwerp-runner) aan HEAD. Alleen de eigenaar mag dat met --sta-wijzigingen-toe
 # overslaan, na het lezen van de wijziging.
-HOST_FILES=(scripts package.json pnpm-workspace.yaml .npmrc .pnpmfile.cjs mise.toml compose.yaml compose.*.yaml
+# 'compose.*.yaml' staat gequote: git leest het als pathspec, bash expandeert het niet naar de bestanden die nu bestaan
+# (een verwijderd compose.<x>.yaml viel dan uit de vergelijking). De hook (.claude/hooks/lib/runner-authority.mjs)
+# heeft dezelfde lijst; test/scripts/runner-host-files.test.ts houdt ze gelijk.
+HOST_FILES=(scripts package.json pnpm-workspace.yaml .npmrc .pnpmfile.cjs mise.toml compose.yaml 'compose.*.yaml'
   compose.override.yaml db/test.env db/docker vitest.config.ts playwright.config.ts vite.config.ts)
 
 suite="${1:-}"
@@ -22,8 +25,42 @@ case "$suite" in
   *) echo "Gebruik: scripts/runner.sh db|ui|gen [--sta-wijzigingen-toe]" >&2; exit 2 ;;
 esac
 
+unsafe_host_path() {
+  printf '✗ Hostpad is een symlink of geen veilig pad: %s\n' "$1" >&2
+  printf '  → gebruik de wegwerp-CI (ADR 0027); geen agentoverride.\n' >&2
+  exit 1
+}
+
+# Een veilig hostpad: vaste tekenset, geen . of .. en zelf noch een map erin een symlink (net als safeRepositoryPath in de
+# hook). Bestaat een voorvoegsel niet, dan valt er voor dat pad niets te controleren. Draait vóór de git-status-controle,
+# lokaal en in CI.
+check_host_paths() {
+  local ignored hostpath prefix part
+  local -a parts
+  local LC_ALL=C # de tekenreeksen [A-Za-z] hangen anders van de locale af
+  ignored="$(git ls-files --others --ignored --exclude-standard -- "${HOST_FILES[@]}")"
+  if [[ -n "$ignored" ]]; then
+    printf '✗ Genegeerde bestanden in hostpaden; de host zou ze ongezien gebruiken:\n%s\n' "$ignored" >&2
+    printf '  → verwijder ze of gebruik de wegwerp-CI (ADR 0027).\n' >&2
+    exit 1
+  fi
+  [[ "$(pwd -P)" == "$PWD" ]] || unsafe_host_path "$PWD"
+  while IFS= read -r -d '' hostpath; do
+    [[ "$hostpath" =~ ^[A-Za-z0-9_.-]+(/[A-Za-z0-9_.-]+)*$ ]] || unsafe_host_path "$hostpath"
+    IFS='/' read -ra parts <<<"$hostpath"
+    prefix=""
+    for part in "${parts[@]}"; do
+      [[ "$part" == "." || "$part" == ".." ]] && unsafe_host_path "$hostpath"
+      prefix="${prefix:+$prefix/}$part"
+      [[ -L "$prefix" ]] && unsafe_host_path "$hostpath"
+      [[ -e "$prefix" ]] || break
+    done
+  done < <(git ls-files -z -- "${HOST_FILES[@]}")
+}
+
 check_host_files() {
   local changed base
+  check_host_paths
   changed="$(git status --porcelain --untracked-files=all -- "${HOST_FILES[@]}")"
   if [[ -n "$changed" ]]; then
     printf '✗ Bestanden die de host uitvoert, wijken af van HEAD:\n%s\n' "$changed" >&2

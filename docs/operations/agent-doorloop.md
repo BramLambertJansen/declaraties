@@ -74,11 +74,11 @@ verboden. Diff-guard behoudt label én eigenaarreview op de uiteindelijke head-S
 Bij afgeronde implementatie en groene verplichte checks registreert de agent:
 
 ```sh
-pnpm docs:status docs/specs/voorbeeld.md gebouwd --pr 123
+pnpm docs:status docs/specs/voorbeeld.md gebouwd --pr 123 --roadmap
 ```
 
-Schrijft alleen de statusregel met PR en gevalideerde bron-SHA. Commit en push de administratie, controleer CI opnieuw.
-De guard mag de groene broncommit gebruiken als de latere diff uitsluitend statusregels wijzigt. Inhoud, code, tests
+Schrijft alleen de statusregel met PR en gevalideerde bron-SHA, en met `--roadmap` het vinkje van het item dat de spec noemt. Commit en push de administratie, controleer CI opnieuw.
+De guard mag de groene broncommit gebruiken als de latere diff uitsluitend statusregels en het vinkje van de eigen taak wijzigt. Inhoud, code, tests
 of configuratie wijzigen vraagt nieuw bouwbewijs. Gebouwd vereist geen merge. ADR's hebben geen gebouwd-status:
 implementatiebewijs hoort bij hun gekoppelde spec.
 

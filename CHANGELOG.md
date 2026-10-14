@@ -6,6 +6,8 @@ Hier staan wijzigingen die van belang zijn bij het gebruiken of bijwerken van de
 
 ### Toegevoegd
 
+- Taakmandaat-vervolg (spec `taakmandaat-vervolg`): binnen een taakmandaat mag alleen het vinkje van het roadmap-item van de eigen spec meewijzigen, `pnpm docs:status <spec> gebouwd --pr <nummer> --roadmap` zet status en vinkje samen, een spec naar `gebouwd` heeft één bewijsvorm (`status: gebouwd # #<PR>; gevalideerd: <sha>`) en `scripts/runner.sh` weigert genegeerde en onveilige hostpaden.
+
 - Taakgebonden frameworkontwikkeling en bewijsgebonden ADR/spec-statusadministratie (ADR 0027), met controle vanuit main. De agent verzorgt veilige runnerchecks, verzamelt CI-bewijs en kan documentatie-PR's administratief markeren; inhoudelijke besluiten en merge blijven van de eigenaar.
 
 - `check-docs` weigert twee ADR's met hetzelfde nummer. De ADR over de volledige UI-catalogus is hernummerd naar 0028 (ADR 0027 is het taakmandaat). `PageHeader` heeft een eigen `preview`-prop naast `documentTitle`.
