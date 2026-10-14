@@ -60,6 +60,20 @@
         "src/core/web/ui/button.tsx",
         "src/core/web/ui/dropdown-menu.tsx"
       ]
+    },
+    {
+      "file": "docs/specs/ui-collections.md",
+      "digest": "42f58b6d2a41d75cab031782b1d9a0e1c97cebf81349be4e89515284ee70b138",
+      "repository": "BramLambertJansen/template",
+      "branch": "codex/ui-collections",
+      "status": "goedgekeurd",
+      "paths": [
+        "src/core/web/ui/combobox.tsx",
+        "src/core/web/ui/form-combobox-field.tsx",
+        "src/core/web/ui/accordion.tsx",
+        "src/core/web/ui/list.tsx",
+        "src/core/web/ui/description-list.tsx"
+      ]
     }
   ]
 }
