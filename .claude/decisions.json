@@ -88,6 +88,22 @@
         "src/core/web/ui/list-toolbar.tsx",
         "src/core/web/ui/carousel.tsx"
       ]
+    },
+    {
+      "file": "docs/adr/0029-snellere-beslisroute.md",
+      "digest": "bd72f91c47ed3c1a78928c67b11d7516f7462258c68f90894e62f2ab93d44a3b",
+      "repository": "BramLambertJansen/template",
+      "branch": "claude/youthful-carson-r5jhlr",
+      "status": "geaccepteerd",
+      "paths": []
+    },
+    {
+      "file": "docs/adr/0023-tokenzuinige-werkstraat.md",
+      "digest": "fc61fdd279c19b93c05e4c790ccbb9df1b6fb71321dca5b517653f4d6684fb52",
+      "repository": "BramLambertJansen/template",
+      "branch": "claude/youthful-carson-r5jhlr",
+      "status": "vervangen door 0029",
+      "paths": []
     }
   ]
 }
