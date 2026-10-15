@@ -1,6 +1,6 @@
 # 0023 — Tokenzuinige werkstraat: in de repo, meten, sessiebudget
 
-Status: voorgesteld
+Status: vervangen door 0029
 
 ## Context
 
