@@ -6,6 +6,8 @@ Hier staan wijzigingen die van belang zijn bij het gebruiken of bijwerken van de
 
 ### Toegevoegd
 
+- Meten per sessie en branch (ADR 0029 punt 12): meethook `.claude/hooks/meting.mjs` (observe-only, fail-open, alleen tellingen en sleutels in `<git common dir>/agent-meting/` of `METING_DIR`; buiten een repo niets) op de permissie-, tool-, prompt- en stop-events in `.claude/settings.json` (rij in `docs/framework.md` §8), en `pnpm meting` (`scripts/kit/meting.mjs`, `--json`, `--sessie`, `--branch`) met prompts per pad of commandoprefix, weigeringen, beurten, eigenaarberichten, pushes en CI-rondes (`gh run list` per branch, `METING_GH`/`METING_GH_TIMEOUT_MS`; bij een fout `onbekend`).
+
 - Overgangstekst in `diff-guard` (ADR 0031, PR 1): de samenvatting bij uitslag `overgang` legt uit dat label en review niet gevraagd worden en de eigenaar zelf merget; nieuwe sectie "Gate-PR in de overgang" in `docs/operations/agent-doorloop.md`.
 
 - Skill `opleveren` (ADR 0030, PR 1): CI-lus tot groen met `pnpm pr:verify <nr> --watch` en vaste stopgronden, en opruimen na de merge (`main` fast-forward, lokale en remote branch weg). Het rolhek weigert `git branch -d/-D` van `main`. De merge blijft bij de eigenaar; een agent-modus volgt in PR 2.

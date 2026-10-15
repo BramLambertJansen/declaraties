@@ -28,6 +28,7 @@
     "format:check": "git ls-files -z --cached --others --exclude-standard | xargs -0 prettier --ignore-unknown --check",
     "typecheck": "tsc -b",
     "ratchet": "node scripts/kit/ratchet.mjs",
+    "meting": "node scripts/kit/meting.mjs",
     "ratchet:update": "node scripts/kit/ratchet.mjs --update",
     "check:catalogus": "node scripts/kit/catalogus.mjs",
     "check:migrations": "node scripts/kit/check-migrations.mjs",
