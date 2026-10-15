@@ -35,6 +35,48 @@ function argumentsFor(args) {
   return { number: Number(number), watch: flag === '--watch' };
 }
 
+/** @param {string} pad @param {readonly string[]} negeer */
+function valtOnderNegeer(pad, negeer) {
+  if (pad.split('/').includes('..')) return false;
+  return negeer.some((entry) => (entry.endsWith('/') ? pad.startsWith(entry) : pad === entry));
+}
+
+/**
+ * De paden uit `git status --porcelain` die pr:verify blokkeren: alles behalve ongetrackte bestanden onder `negeer`
+ * (ADR 0031 besluit 5). Een getrackte wijziging, hernoeming of pad met `..` blokkeert altijd.
+ * @param {string} statusPorcelain @param {readonly string[]} negeer
+ * @returns {string[]}
+ */
+export function onbekendeWerkmapBestanden(statusPorcelain, negeer) {
+  return statusPorcelain
+    .split('\n')
+    .filter((regel) => regel !== '')
+    .filter((regel) => !(regel.startsWith('?? ') && valtOnderNegeer(regel.slice(3), negeer)))
+    .map((regel) => regel.slice(3));
+}
+
+/**
+ * `werkmapNegeer` uit .claude/gates.json op de vertrouwde basis (nooit uit de werkmap); ongeldige vorm geeft [].
+ * @param {string} root @param {string} base
+ * @returns {string[]}
+ */
+export function werkmapNegeer(root, base) {
+  try {
+    /** @type {unknown} */
+    const gates = JSON.parse(gitText(root, ['show', `${base}:.claude/gates.json`]) ?? '');
+    const lijst = typeof gates === 'object' && gates !== null && 'werkmapNegeer' in gates ? gates.werkmapNegeer : null;
+    return Array.isArray(lijst) && lijst.every((pad) => typeof pad === 'string') ? lijst.map(String) : [];
+  } catch {
+    return [];
+  }
+}
+
+/** @param {{ root: string, base: string }} context */
+function werkmapSchoon({ root, base }) {
+  const status = gitText(root, ['status', '--porcelain', '--untracked-files=all', '--', '.', ':!node_modules']);
+  return status !== null && onbekendeWerkmapBestanden(status, werkmapNegeer(root, base)).length === 0;
+}
+
 /** @param {{ root: string, head: string, base: string, authority: import('../../.claude/hooks/lib/task-authority.mjs').Authority, number: number }} context */
 function verifyHead(context) {
   const pr = pullRequest(context.authority.repository, context.number);
@@ -43,7 +85,7 @@ function verifyHead(context) {
     pr.branch !== context.authority.branch ||
     pr.state !== 'open' ||
     !unchangedHead(context.root, { head: context.head, branch: context.authority.branch, base: context.base }) ||
-    gitText(context.root, ['status', '--porcelain', '--untracked-files=all', '--', '.', ':!node_modules']) !== ''
+    !werkmapSchoon(context)
   )
     throw new Error('PR, branch of werkmap wijkt af van de gecontroleerde commit; bewijs opnieuw ophalen');
 }

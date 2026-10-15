@@ -1,5 +1,5 @@
 {
-  "$comment": "Enige lijst met gate-paden (framework §8 en §10, ADR 0011). De rolhek-hook leest hem lokaal; CODEOWNERS en `ask` in .claude/settings.json spiegelen hem (`scripts/kit/check-docs.mjs`); de diff-guard in CI leest hem (roadmap stuk 4). Globs: `*` binnen één map, `**` over mappen heen. `mcpLezen`: exacte namen van read-only MCP-tools die het rolhek doorlaat; elke andere `mcp__`-tool is ask (hoofdsessie) of deny (subagent).",
+  "$comment": "Enige lijst met gate-paden (framework §8 en §10, ADR 0011). De rolhek-hook leest hem lokaal; CODEOWNERS en `ask` in .claude/settings.json spiegelen hem (`scripts/kit/check-docs.mjs`); de diff-guard in CI leest hem (roadmap stuk 4). Globs: `*` binnen één map, `**` over mappen heen. `mcpLezen`: exacte namen van read-only MCP-tools die het rolhek doorlaat; elke andere `mcp__`-tool is ask (hoofdsessie) of deny (subagent). `werkmapNegeer`: ongetrackte paden onder `.claude/` die `pnpm pr:verify` niet als vuile werkmap telt (gelezen uit origin/main, ADR 0031).",
   "gates": [
     "AGENTS.md",
     "CLAUDE.md",
@@ -58,6 +58,14 @@
   "migraties": ["db/migrations/**"],
   "mcpLezen": [],
   "autoRunner": true,
+  "werkmapNegeer": [
+    ".claude/launch.json",
+    ".claude/loop.md",
+    ".claude/output-styles/",
+    ".claude/routines/",
+    ".claude/scheduled_tasks.json",
+    ".claude/workflows/"
+  ],
   "gateMarker": "docs",
   "goedkeurders": ["bramlambertjansen"],
   "schrijfrecht": {

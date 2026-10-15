@@ -39,6 +39,7 @@ export async function docsViolations(root = '.') {
     ...statusViolations(files, read),
     ...mirrorViolations(files, read),
     ...(files.includes('.claude/gates.json') ? schrijfrechtViolations(read('.claude/gates.json')) : []),
+    ...(files.includes('.claude/gates.json') ? werkmapNegeerViolations(files, read('.claude/gates.json')) : []),
   ]);
 }
 
@@ -259,6 +260,31 @@ function gatesViolations(owners, text) {
         message: `CODEOWNERS noemt ${path}, .claude/gates.json niet`,
       })),
   ];
+}
+
+/**
+ * `werkmapNegeer` (ADR 0031 besluit 5): een lijst paden onder `.claude/`, zonder `..`, waarvan niets getrackt is.
+ * @param {readonly string[]} files
+ * @param {string} text
+ * @returns {Violation[]}
+ */
+function werkmapNegeerViolations(files, text) {
+  /** @type {unknown} */
+  const config = JSON.parse(text);
+  const lijst =
+    typeof config === 'object' && config !== null
+      ? Object.entries(config).find(([n]) => n === 'werkmapNegeer')?.[1]
+      : undefined;
+  if (lijst === undefined) return [];
+  const key = 'docs:werkmapNegeer';
+  if (!Array.isArray(lijst) || !lijst.every((pad) => typeof pad === 'string'))
+    return [{ key, message: '.claude/gates.json: werkmapNegeer moet een lijst met tekst zijn' }];
+  return lijst.flatMap((pad) => {
+    const buiten = !pad.startsWith('.claude/') || pad === '.claude/' || pad.split('/').includes('..');
+    if (buiten) return [{ key: `${key}:${pad}`, message: `werkmapNegeer: ${pad} valt niet onder .claude/` }];
+    const getrackt = files.some((file) => (pad.endsWith('/') ? file.startsWith(pad) : file === pad));
+    return getrackt ? [{ key: `${key}:${pad}`, message: `werkmapNegeer: ${pad} is getrackt` }] : [];
+  });
 }
 
 /**
