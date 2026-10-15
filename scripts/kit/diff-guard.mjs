@@ -4,8 +4,12 @@
 // kan geen onafhankelijke goedkeuring bestaan: uitslag `overgang`, groen met waarschuwing (OV-2), tot de agent als App pusht.
 // Draait in .github/workflows/guard.yml vanuit main; de PR is alleen git-data (geen checkout, niets uitvoeren).
 // De samenvatting eindigt met een Risico-overzicht (nieuwe of gewijzigde migraties, permissiesleutels in
-// src/shared/permissions.ts, nieuwe dependencies en nieuwe defineRoute-aanroepen): puur tekstuele analyse van de voor- en
-// na-versie, PR-code wordt nooit geïmporteerd of uitgevoerd.
+// src/shared/permissions.ts, nieuwe dependencies en nieuwe defineRoute-aanroepen) plus contractbestanden: elke tekstwijziging in een
+// niet-testbestand onder src/shared/contracts/** (elk bestandstype, ook alleen commentaar of opmaak) wordt gemeld, met de
+// `permission:`-regels uit de ruwe tekst (oud → nieuw waar eenduidig) of anders "controleer permissie met de hand". Grenzen:
+// een verwijderd bestand (status D), een hernoeming van contracts/ naar elders (naar contracts/ telt als nieuw), `*.spec.*`-bestanden en permissiewaarden die uit een bestand buiten
+// src/shared/contracts/** komen vallen buiten het overzicht. Puur tekstuele analyse van de voor- en na-versie, PR-code wordt
+// nooit geïmporteerd of uitgevoerd.
 import { execFileSync } from 'node:child_process';
 import { appendFileSync, readFileSync } from 'node:fs';
 import path from 'node:path';
@@ -186,6 +190,7 @@ function uitslagVan(pr, config) {
 const PERMISSIES = 'src/shared/permissions.ts';
 const PAKKET = 'package.json';
 const MIGRATIE = /^db\/migrations\/.+\.sql$/;
+const CONTRACT = /^src\/shared\/contracts\/(?:.+\/)?(?![^/]*\.test\.)[^/]+$/;
 const BRON = /^src\/.+\.(?:[cm]?ts|tsx)$/;
 const DEP_SECTIES = ['dependencies', 'devDependencies', 'optionalDependencies', 'peerDependencies'];
 // Een sleutel tussen quotes met een object als waarde, zoals `'me:read': { roles: [...] }`.
@@ -267,6 +272,43 @@ function gewijzigdePermissies(versies) {
     .filter(([sleutel, waarde]) => voor.get(sleutel) !== waarde)
     .map(([sleutel]) => sleutel)
     .sort();
+}
+
+/** De waarden van alle `permission:`-regels in de ruwe tekst, commentaar incluis (ook met gequote sleutel); letterlijke strings zonder quotes. @param {string | null} bron */
+function permissieRegels(bron) {
+  const code = bron ?? '';
+  return [...code.matchAll(/(?<![\w$])(['"]?)permission\1\s*:\s*([^,}\n]*)/g)].map((treffer) => {
+    const waarde = (treffer[2] ?? '').trim();
+    return /^(['"`])(.*)\1(?:\s+as\s+const)?$/.exec(waarde)?.[2] ?? waarde;
+  });
+}
+
+/** Multiset-verschil: `lijst` zonder de elementen van `af` (elk één keer). @param {string[]} lijst @param {string[]} af */
+function zonder(lijst, af) {
+  const rest = [...af];
+  return lijst.filter((item) => {
+    const index = rest.indexOf(item);
+    if (index !== -1) rest.splice(index, 1);
+    return index === -1;
+  });
+}
+
+/**
+ * Elke tekstwijziging in een contractbestand levert een regel op, ook alleen commentaar of opmaak: de verschillen tussen de
+ * `permission:`-regels uit de ruwe tekst, of anders een melding dat de tekst wijzigde. Een pijl koppelt alleen als er
+ * precies één verwijderde en één nieuwe waarde is; anders staan ze los (`<oud> → verwijderd`, `nieuw (<waarde>)`).
+ * @param {string} pad @param {{ voor: string | null, na: string | null }} versies
+ */
+function gewijzigdeContractPermissies(pad, versies) {
+  if (!CONTRACT.test(pad)) return [];
+  const [voor, na] = [permissieRegels(versies.voor), permissieRegels(versies.na)];
+  const [weg, erbij] = [zonder(voor, na), zonder(na, voor)];
+  const gekoppeld = weg.length === 1 && erbij.length === 1;
+  const regels = gekoppeld
+    ? [`${weg[0] ?? ''} → ${erbij[0] ?? ''}`]
+    : [...weg.map((oud) => `${oud} → verwijderd`), ...erbij.map((nieuw) => `nieuw (${nieuw})`)];
+  if (regels.length > 0) return regels.map((tekst) => `${pad}: permission: ${tekst}`);
+  return (versies.voor ?? '') === (versies.na ?? '') ? [] : [`${pad}: gewijzigd; controleer permissie met de hand`];
 }
 
 /** Pakketnaam → sectie; gooit bij onleesbare JSON. @param {string | null} bron @returns {Map<string, string>} */
@@ -357,7 +399,10 @@ export function risico(pr) {
   const versies = new Map(Object.entries(pr.json));
   return {
     migraties: pr.wijzigingen.flatMap(migratieRegel).sort(),
-    permissies: gewijzigdePermissies(versies.get(PERMISSIES)),
+    permissies: [
+      ...gewijzigdePermissies(versies.get(PERMISSIES)),
+      ...[...versies].flatMap(([pad, v]) => gewijzigdeContractPermissies(pad, v)),
+    ].sort(),
     dependencies: nieuweDependencies(versies.get(PAKKET)),
     routes: [...versies]
       .filter(([pad]) => BRON.test(pad) && pad !== PERMISSIES)
@@ -463,22 +508,33 @@ function tekst(waarde) {
 }
 
 /**
+ * Pad in de basis: bij een hernoeming het oude pad, maar een hernoeming van buiten naar binnen `src/shared/contracts/**` telt
+ * als nieuw (geen basisversie): anders is `voor` gelijk aan `na` en blijft een permissie in het verplaatste bestand stil.
+ * @param {string} status @param {string} pad @param {string | undefined} van @returns {string | undefined}
+ */
+function basisPad(status, pad, van) {
+  if (status !== 'R') return pad;
+  return CONTRACT.test(pad) && !(van !== undefined && CONTRACT.test(van)) ? undefined : (van ?? pad);
+}
+
+/**
  * Gewijzigde bestanden waarvan de guard de tekst nodig heeft: bewaakte JSON, permissies, package.json en bronbestanden onder
  * src/ buiten de tests (routes). Alleen als git-object gelezen, nooit uitgevoerd; `van` is het pad in de basis (bij een
- * hernoeming; een kopie is nieuw).
+ * hernoeming; een kopie is nieuw, net als een hernoeming van buiten naar binnen contracts/).
  * @param {GuardConfig} config
  * @param {readonly Wijziging[]} wijzigingen
  */
-function teLezen(config, wijzigingen) {
+export function teLezen(config, wijzigingen) {
   const vast = [...new Set([...Object.keys(config.jsonGates), PERMISSIES, PAKKET])];
   const geraakteVaste = vast
     .filter((bestand) => wijzigingen.some(({ pad, van }) => pad === bestand || van === bestand))
     .map((bestand) => ({ pad: bestand, van: bestand }));
   const bron = wijzigingen
     .filter(
-      ({ status, pad }) => status !== 'D' && BRON.test(pad) && !vast.includes(pad) && !past(config.testpaden, pad),
+      ({ status, pad }) =>
+        status !== 'D' && (BRON.test(pad) || CONTRACT.test(pad)) && !vast.includes(pad) && !past(config.testpaden, pad),
     )
-    .map(({ status, pad, van }) => ({ pad, van: status === 'R' ? (van ?? pad) : pad }));
+    .map(({ status, pad, van }) => ({ pad, van: basisPad(status, pad, van) }));
   return [...geraakteVaste, ...bron];
 }
 
@@ -492,7 +548,10 @@ async function leesPr(config) {
     git(['diff', '--name-status', '-z', '--find-renames', '--no-ext-diff', '--no-textconv', splitsing, head]),
   );
   const json = Object.fromEntries(
-    teLezen(config, wijzigingen).map(({ pad, van }) => [pad, { voor: versie(splitsing, van), na: versie(head, pad) }]),
+    teLezen(config, wijzigingen).map(({ pad, van }) => [
+      pad,
+      { voor: van === undefined ? null : versie(splitsing, van), na: versie(head, pad) },
+    ]),
   );
   const pr = `https://api.github.com/repos/${env('REPO')}`;
   const nummer = env('PR_NUMBER');
