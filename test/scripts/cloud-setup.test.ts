@@ -1,5 +1,14 @@
-import { spawnSync } from 'node:child_process';
-import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { execFileSync, spawnSync } from 'node:child_process';
+import {
+  chmodSync,
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  symlinkSync,
+  writeFileSync,
+} from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, test } from 'vitest';
@@ -9,7 +18,7 @@ import { afterEach, describe, expect, test } from 'vitest';
 const SCRIPT = path.join(import.meta.dirname, '../../scripts/cloud-setup.sh');
 const dirs: string[] = [];
 
-type Opstelling = { home: string; stubs: string; log: string };
+type Opstelling = { home: string; stubs: string; log: string; systeem: boolean };
 
 function stub(dir: string, name: string, body: string) {
   const file = path.join(dir, name);
@@ -20,7 +29,8 @@ function stub(dir: string, name: string, body: string) {
 // mise-stub: logt de argumenten; faalt als MISE_FAIL in de argumenten voorkomt.
 const MISE = 'echo "mise $*" >> "$STUB_LOG"; [[ " $* " != *" $MISE_FAIL "* ]] || exit 3';
 
-function opstelling({ metMise }: { metMise: boolean }): Opstelling {
+// Opties: metMise (mise al aanwezig) en metSandbox (bwrap en socat al aanwezig); zonder sandbox hoeven ze niet te bestaan op PATH.
+function opstelling({ metMise, metSandbox = true }: { metMise: boolean; metSandbox?: boolean }): Opstelling {
   const root = mkdtempSync(path.join(tmpdir(), 'cloud-setup-'));
   dirs.push(root);
   const home = path.join(root, 'home');
@@ -40,13 +50,26 @@ function opstelling({ metMise }: { metMise: boolean }): Opstelling {
       `printf '%s\\n' '#!/usr/bin/env bash' '${MISE}' > "$doel"`,
     ].join('\n'),
   );
-  return { home, stubs, log };
+  stub(stubs, 'apt-get', 'echo "apt-get $*" >> "$STUB_LOG"');
+  stub(stubs, 'sudo', 'exec "$@"');
+  if (metSandbox) {
+    stub(stubs, 'bwrap', 'true');
+    stub(stubs, 'socat', 'true');
+    return { home, stubs, log, systeem: true };
+  }
+  // Zonder sandbox-pakketten: PATH krijgt alleen symlinks naar de tools die het script gebruikt, niet /usr/bin zelf.
+  const bin = path.join(root, 'bin');
+  mkdirSync(bin);
+  for (const tool of ['bash', 'uname', 'mkdir', 'chmod', 'grep', 'touch', 'dirname', 'id'])
+    symlinkSync(execFileSync('which', [tool], { encoding: 'utf8' }).trim(), path.join(bin, tool));
+  return { home, stubs, log, systeem: false };
 }
 
-function run({ home, stubs, log }: Opstelling, extra: Record<string, string> = {}) {
+function run({ home, stubs, log, systeem }: Opstelling, extra: Record<string, string> = {}) {
+  const basis = systeem ? '/usr/bin:/bin' : path.join(path.dirname(stubs), 'bin');
   const result = spawnSync('bash', [SCRIPT], {
     encoding: 'utf8',
-    env: { HOME: home, PATH: `${stubs}:/usr/bin:/bin`, STUB_LOG: log, MISE_FAIL: '__nooit__', ...extra },
+    env: { HOME: home, PATH: `${stubs}:${basis}`, STUB_LOG: log, MISE_FAIL: '__nooit__', ...extra },
   });
   return { status: result.status, aanroepen: readFileSync(log, 'utf8').trim().split('\n').filter(Boolean) };
 }
@@ -63,7 +86,7 @@ const STAPPEN = [
 ];
 
 describe('scripts/cloud-setup.sh', () => {
-  test('met mise: trust, install, pnpm install --frozen-lockfile en lefthook install, in die volgorde; geen curl', () => {
+  test('met mise en sandbox-pakketten: trust, install, pnpm install --frozen-lockfile en lefthook install, in die volgorde; geen curl', () => {
     const omgeving = opstelling({ metMise: true });
 
     expect(run(omgeving)).toStrictEqual({ status: 0, aanroepen: STAPPEN });
@@ -94,6 +117,14 @@ describe('scripts/cloud-setup.sh', () => {
     expect(bashrc.match(/mise\/shims/g)).toHaveLength(1);
     expect(tweede.status).toBe(0);
     expect(tweede.aanroepen.filter((regel) => regel.startsWith('curl'))).toHaveLength(1);
+  });
+
+  test('zonder bubblewrap en socat: apt-get update en install vóór de rest; met beide aanwezig geen apt-get', () => {
+    const omgeving = opstelling({ metMise: true, metSandbox: false });
+    const { status, aanroepen } = run(omgeving);
+
+    expect(status).toBe(0);
+    expect(aanroepen).toStrictEqual(['apt-get update', 'apt-get install -y bubblewrap socat', ...STAPPEN]);
   });
 
   test('een falende stap stopt het script met een fout', () => {

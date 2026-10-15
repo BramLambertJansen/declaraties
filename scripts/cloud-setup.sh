@@ -2,9 +2,21 @@
 # Setup-script van een cloudomgeving van Claude Code (README, Cloud): wat scripts/bootstrap.sh lokaal doet, zonder de
 # machinecontrole (in de VM draait geen lokale stack). Idempotent, zonder geheimen. Netwerk alleen via de standaard-allowlist
 # van de omgeving ("Trusted"): mise van github.com, daarna wat mise install en pnpm install ophalen. mise.run staat niet op
-# die allowlist, daarom de release-binary.
+# die allowlist, daarom de release-binary. Ook de systeempakketten die de Bash-sandbox van Claude Code nodig heeft
+# (bubblewrap, socat): zonder die faalt elke sessie met "Sandbox required but unavailable". Zie docs/ENVIRONMENT.md.
 set -euo pipefail
 cd "$(dirname "$0")/.."
+
+# Systeempakketten voor de sandbox, alleen als ze ontbreken (idempotent). Zonder root via sudo.
+pakketten=()
+command -v bwrap >/dev/null || pakketten+=(bubblewrap)
+command -v socat >/dev/null || pakketten+=(socat)
+if ((${#pakketten[@]} > 0)); then
+  as_root=()
+  [[ "$(id -u)" -eq 0 ]] || as_root=(sudo)
+  "${as_root[@]}" apt-get update
+  "${as_root[@]}" apt-get install -y "${pakketten[@]}"
+fi
 
 # Zelfde versie als jdx/mise-action in .github/workflows/.
 MISE_VERSION=v2026.9.18
