@@ -1,7 +1,7 @@
 # Inventaris tegen de principes P1–P7 (2026-10-15)
 
 Stap 1 van de opdracht "autonomie zonder kwaliteitsverlies", gecontroleerd op `origin/main` `01cca15`. Dit is ook de
-opruiminventaris die ST-14 vraagt (`docs/roadmap.md:524`); er komt geen tweede ronde. Deze PR verwijdert niets. Elk voorstel
+eerste deel van de opruiminventaris die ST-14 vraagt (`docs/roadmap.md:524`): roadmap en documentatie. Codecommentaar, gebruikers- en mailteksten, scripts en GitHub-templates (`docs/roadmap.md:524-527`) zijn hier niet geïnventariseerd; die blijven open onder ST-14. Deze PR verwijdert niets. Elk voorstel
 is een voorstel; de kolom **Besluit** vult de eigenaar in.
 
 Principes: **P1** bewijs vóór uitbreiding · **P2** rails blijven · **P3** prompts alleen voor wat werkt vóór review ·
@@ -66,7 +66,7 @@ Voorstel: parkeren onder `## Geparkeerd` met een "terug als". Niets verdwijnt.
 | D-1 | ADR 0018–0022 en 0024, specs `accountbeheer-uitbreiding`, `eigen-account`, `rate-limit` (en `lijstpagina`, volgens W-6) "ter herziening" | P7 | Sinds 2026-10-12 open (`docs/reviews/2026-10-12-werkstraat.md:43`); `lijstpagina` noemt het niet in zijn frontmatter; "ter herziening" staat alleen in het frontmatter-commentaar, dus `feiten.mjs` toont de ADR's als `geaccepteerd`, `accountbeheer-uitbreiding` als `goedgekeurd` en `eigen-account` en `rate-limit` als `gebouwd` | **open eigenaarbesluit**; de agent beslist niet | `check-docs` statuswoordenlijst (werkstraat-review :485) | — | **eigenaar** |
 | D-2 | ADR 0023 (`voorgesteld`) | P1/P6 | Alleen punt 2 (meten) is nodig; punten 1, 3–9 zijn niet gebouwd en deels achterhaald (agent `onderzoek`, `pnpm stand`) | punt 2 (verbreed, zie correctie 2) gaat naar ADR 0029 punt "Meten"; 0023 naar `vervallen` of `vervangen door 0029` | stap 2; ADR 0029 punt 6 meet al per besluit | informatie in 0023 blijft in de ADR zelf staan | |
 | D-3 | `docs/framework.md:4` "Wijzigen alleen via een PR met ADR" | P4 | Botst met ADR 0029 punt 4 (ADR-drempel) | herschrijven in stap 5, pas na acceptatie van 0029 | stap 2 | — | |
-| D-4 | `ask` in `.claude/settings.json` spiegelt alle gates; `check-docs` dwingt dat af | P3 | Een prompt voor bijvoorbeeld `docs/roadmap.md` of `eslint.config.*` voegt niets toe dat de PR-review niet al ziet | stap 2 (lijst `voorReview`) en stap 7; nu niets wijzigen | `mirrorViolations`, `gates.json`, rolhek, `test/rails/sandbox-settings.test.ts` | afzwakken mag niet (P2): CODEOWNERS en diff-guard blijven gelijk | |
+| D-4 | `ask` in `.claude/settings.json` spiegelt CODEOWNERS min `OWNERS_ONLY` (testpaden, `docs/specs/**`); `check-docs` dwingt dat af | P3 | Een prompt voor bijvoorbeeld `docs/roadmap.md` of `eslint.config.*` voegt niets toe dat de PR-review niet al ziet | stap 2 (lijst `voorReview`) en stap 7; nu niets wijzigen | `mirrorViolations`, `gates.json`, rolhek, `test/rails/sandbox-settings.test.ts` | afzwakken mag niet (P2): CODEOWNERS en diff-guard blijven gelijk | |
 | D-5 | `docs/framework.md` §10 "Meten" (`:441-444`) | P6 | "dezelfde drie testopdrachten" bestaan niet als vast script | herschrijven na stap 3 | stap 3 | — | |
 | D-6 | `README.md:19` "auditlogging … staan op de roadmap" | P7 | Gebouwd in #128 | herschrijven | `app:init` gebruikt README | `app-init.test.ts` kan op tekst rekenen; controleren | |
 | D-7 | `AGENTS.md:8` "Fundering in opbouw (fase 0/1)" | P7 | Fase 1 is grotendeels gebouwd; de echte stand is "vóór de proef-app" | herschrijven (stap 5), binnen budget (nu 94/100) | — | — | |
@@ -77,7 +77,7 @@ Voorstel: parkeren onder `## Geparkeerd` met een "terug als". Niets verdwijnt.
 | D-12 | `docs/reviews/2026-10-09-framework.md`, `2026-10-09-fundering.md` | P7 | Alleen gelinkt vanuit `roadmap.md:5` | houden; link verplaatsen naar `docs/README.md` als de roadmapkop wegvalt | `check-docs` (links) | — | |
 | D-13 | `docs/reviews/2026-10-10-tabelpatroon.md` | — | Actieve bron: `gouden-pad.md:16`, `new-resource.mjs`, `migratie.sql.tmpl`, `db/tests/invarianten.sql` | houden | generator | verplaatsen breekt generator | |
 | D-14 | `docs/reviews/2026-10-11-keuzes-agent.md`, `2026-10-12-werkstraat.md` | P7 | Nodig voor D-1 (herziening) en ADR 0025/0030 | houden tot D-1 besloten; daarna besliste punten in de ADR's | specs, ADR's | — | |
-| D-15 | `docs/reviews/2026-10-13-wrijving.md` | — | Gebruikt door `test/hooks/werkstraat.test.ts` en `test/rails/sandbox-settings.test.ts` | houden | tests | verwijderen breekt tests | |
+| D-15 | `docs/reviews/2026-10-13-wrijving.md` | — | Genoemd in commentaar in `test/hooks/werkstraat.test.ts:185` en `test/rails/sandbox-settings.test.ts:9` (onderbouwing, geen afhankelijkheid) | houden | twee testcommentaren | verwijderen breekt geen test, wel de onderbouwing in die commentaren | |
 | D-16 | `docs/reviews/2026-10-14-ui-expansion-review.md`, `design-system-coverage.md` | — | Gelinkt vanuit `ui-collections.md`, `design-system-catalogue.md` en `roadmap.md:151` (bewijs) | houden | `check:roadmap` (bewijs) | — | |
 | D-17 | `.claude/decisions.json` record `codex/ui-data-display` (`goedgekeurd`) naast spec op `voorstel` | P7 | Mandaat zonder goedgekeurde spec (zie B-1) | **eigenaarvraag**; niet aanraken | ADR 0027 | — | **eigenaar** |
 
@@ -89,7 +89,7 @@ Geen verouderde claims gevonden in `CLAUDE.md`, `.claude/agents/*`, `.claude/rul
 
 1. Herziening van ADR 0018–0022, 0024 en de specs onder mandaat (D-1).
 2. `ui-data-display`: bouwen of parkeren, en wat met het record (B-1, D-17).
-3. ST-01 (GitHub App en bescherming): voorwaarde voor B-8 en B-9.
+3. ST-01 (GitHub App en bescherming): voorwaarde voor B-8 (B-9 staat in `## Volgende`, zie besluit 2).
 4. ADR 0023: vervallen of opgaan in 0029 (D-2).
 
 ## Besluiten van de eigenaar (2026-10-15, in de sessie)
@@ -97,11 +97,15 @@ Geen verouderde claims gevonden in `CLAUDE.md`, `.claude/agents/*`, `.claude/rul
 1. **Roadmap A (R-1 t/m R-8): akkoord, alles.** ST-01..ST-14 gaan op in de fase-items, met de ST-id als label; de
    "Stand"-proza vervalt. ADR 0027 wordt afgevinkt (#130, #144); `audit-log` (#128), `taakmandaat-frameworkwerk` (#130) en
    `taakmandaat-vervolg` (#144) gaan naar `gebouwd` via `pnpm docs:status --pr`. Uitvoering in stap 4.
-2. **Parkeren (B-2 t/m B-9): akkoord.** Uitzondering: de WCAG 2.2.1-fout van toasts (pauze bij hover/focus, fout blijft
-   staan) komt als open fout in `## Volgende`. B-10 en B-11 komen in `## Volgende`.
+2. **Parkeren (B-2 t/m B-8): akkoord.** Uitzondering: twee bestaande toegankelijkheidsfouten van toasts komen als open
+   fout in `## Volgende`: WCAG 2.2.1 (pauze bij hover/focus, fout blijft staan) en de dubbele aankondiging in NVDA (`role`
+   binnen een `aria-live`-container). B-10 en B-11 komen in `## Volgende`. **B-9 (ADR 0031 PR 2) wordt niet geparkeerd maar
+   komt in `## Volgende`** (herzien na de Codex-review van #158): `check-document-status` draait als stap in de niet-verplichte
+   job `diff-guard` (`.github/workflows/guard.yml:67-71`) en staat niet in `requiredChecks` van `.claude/decisions.json`, dus
+   `pnpm pr:verify` kan groen melden terwijl de documentstatus rood is. Dat is een fout in een rail (P2), geen meta-werk.
 3. **`ui-data-display` (B-1, D-17): parkeren tot de proef-app.** De spec blijft `voorstel`; het record in
-   `.claude/decisions.json` blijft staan maar wordt niet gebruikt. Terug als de proef-app een tabel, tabs, galerij of
-   carousel nodig heeft.
+   `.claude/decisions.json` blijft staan maar wordt niet gebruikt. Terug als de proef-app een tabel, tabs, galerij,
+   filterbalk of carousel nodig heeft.
 4. **ADR 0023 (D-2): vervangen door 0029.** Het meetpunt (verbreed tot prompts, weigeringen, beurten, CI-rondes en
    correcties) gaat in de herziening van ADR 0029 (stap 2). **Herziening (D-1): later**, als open eigenaarbesluit op de roadmap.
 
@@ -109,5 +113,5 @@ Geen verouderde claims gevonden in `CLAUDE.md`, `.claude/agents/*`, `.claude/rul
    verwijzingen en afgewezen alternatieven blijven vindbaar). Een spec mag weg als hij `vervallen` is of in een gebouwde
    spec of ADR is opgegaan en niets er meer naar verwijst; elk geval wordt apart aan de eigenaar voorgelegd.
 
-Categorie C (D-3 t/m D-16) is niet apart voorgelegd. Die volgt in stap 5 zoals hierboven voorgesteld, tenzij de eigenaar
-in de review van deze PR anders beslist.
+Categorie C (D-3 t/m D-16) is niet apart voorgelegd en blijft voorstel. Elke wijziging op een beschermd pad daaruit
+(onder meer `docs/framework.md`, `AGENTS.md`, `docs/dod.md`, `.claude/rules/`) vraagt in stap 5 een eigen akkoord van de eigenaar.
