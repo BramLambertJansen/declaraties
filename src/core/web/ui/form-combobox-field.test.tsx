@@ -49,6 +49,7 @@ function show(props: ComponentProps<typeof Example>) {
   );
 }
 
+// ui-collections/AC-5
 test('AC-5: touched koppelt fout en hulp; validatiefout focust native combobox', async () => {
   show({ submit: () => Promise.resolve() });
   const input = screen.getByRole('combobox', { name: 'Rol' });
@@ -65,6 +66,7 @@ test('AC-5: touched koppelt fout en hulp; validatiefout focust native combobox',
   });
 });
 
+// ui-collections/AC-5
 test('AC-5: keuze wordt stringpayload en serverveldfout bewaart keuze en focus', async () => {
   const sent: Values[] = [];
   show({
@@ -86,6 +88,7 @@ test('AC-5: keuze wordt stringpayload en serverveldfout bewaart keuze en focus',
   });
 });
 
+// ui-collections/AC-5
 test('AC-5: reset herstelt label en verwerpt zoeken ook als gekozen waarde niet veranderde', () => {
   show({ initial: 'user', submit: () => Promise.resolve() });
   const input = screen.getByRole('combobox');
@@ -99,6 +102,7 @@ test('AC-5: reset herstelt label en verwerpt zoeken ook als gekozen waarde niet 
   expect(screen.getByDisplayValue('Gebruiker')).toBe(input);
 });
 
+// ui-collections/AC-5
 test('AC-5: adapter accepteert alleen stringvelden', () => {
   type Names = ComponentProps<typeof FormComboboxField<Values, Values>>['name'];
   expectTypeOf<Names>().toEqualTypeOf<'role'>();
@@ -109,6 +113,7 @@ function MissingDefault() {
   return <FormComboboxField form={form} name="role" label="Rol" options={options} />;
 }
 
+// ui-collections/AC-5
 test('AC-5: ontbrekende stringdefault faalt expliciet', () => {
   expect(() => render(<MissingDefault />)).toThrow(/string default value/);
 });

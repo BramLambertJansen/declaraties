@@ -2,6 +2,14 @@
 
 <!-- Eén onderwerp per PR. Link naar de spec in docs/specs/ als die er is. -->
 
+## Gedrag
+
+<!-- Per acceptatiecriterium: de test en de uitslag. Alleen docs of geen gedragsverandering: "n.v.t." met reden. -->
+
+| Acceptatiecriterium | Test | Uitslag |
+|---|---|---|
+|  |  |  |
+
 ## Bewijs
 
 - Fase(s) uit `docs/roadmap.md` en waarom:

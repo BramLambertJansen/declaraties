@@ -93,8 +93,14 @@ function sessieId(value) {
   return typeof value === 'string' && /^[A-Za-z0-9_-]+$/.test(value) ? value : 'onbekend';
 }
 
+/** De permission_mode als vaste modusnaam (alleen letters); anders undefined en wordt `m` weggelaten. @param {unknown} value */
+function modus(value) {
+  return typeof value === 'string' && /^[a-zA-Z]+$/.test(value) ? value : undefined;
+}
+
 /**
- * Eén meetregel `{t,e,s,b,a,tool,id,k}`, of null voor een event dat niet gemeten wordt.
+ * Eén meetregel `{t,e,s,b,a,m,tool,id,k}` (`m` alleen bij een geldige permission_mode), of null voor een event dat niet
+ * gemeten wordt.
  * @param {unknown} payload
  * @param {Date} nu
  */
@@ -110,6 +116,8 @@ export function regel(payload, nu) {
     b: branch(repoRoot(cwd)),
     a: text(p['agent_type']) ?? 'hoofdsessie',
   };
+  const m = modus(p['permission_mode']);
+  if (m !== undefined) Object.assign(basis, { m });
   if (!TOOL_EVENTS.has(e)) return basis;
   const tool = text(p['tool_name']);
   const k = tool === undefined ? '' : sleutel(tool, record(p['tool_input']), cwd);

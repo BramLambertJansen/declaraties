@@ -125,3 +125,19 @@ describe('de contrasttest zelf', () => {
     expect(contrast('oklch(0 0 0)', 'oklch(1 0 0)')).toBeCloseTo(21, 1);
   });
 });
+
+// ui-kit-basics/AC-6: elke tone van StatusBadge (bestaande tokens) haalt 4,5:1, in licht én donker. De tonen komen uit de
+// recepttekst zelf, zodat een nieuwe tone zonder voldoende contrast hier faalt.
+const badgeTones = [
+  ...read('core/web/ui/status-badge.tsx').matchAll(/^\s+(\w+): '(?:[^']*\s)?bg-([\w-]+) text-([\w-]+)'/gm),
+].map((match) => [match[1] ?? '', `--${match[3] ?? ''}`, `--${match[2] ?? ''}`] as const);
+
+describe.each<Theme>(['light', 'dark'])('StatusBadge (%s)', (theme) => {
+  test('alle drie de tonen zijn gevonden', () => {
+    expect(badgeTones.map(([tone]) => tone)).toStrictEqual(['neutral', 'accent', 'destructive']);
+  });
+
+  test.each(badgeTones)('tone %s: %s op %s ≥ 4,5:1', (_tone, fg, bg) => {
+    expect(ratio(theme, fg, bg)).toBeGreaterThanOrEqual(4.5);
+  });
+});

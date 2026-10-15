@@ -18,6 +18,7 @@ test.beforeEach(async ({ context }) => {
 for (const width of [375, 1280]) {
   test.describe(`UI-basics op ${String(width)} px`, () => {
     test.use({ viewport: { width, height: 900 } });
+    // ui-kit-basics/AC-2, ui-kit-basics/AC-3, ui-kit-basics/AC-4, ui-kit-basics/AC-9, ui-kit-basics/AC-10
     test('AC-2/3/4/9/10: native bediening, payload, reset en alle staten met CSP en axe', async ({ page }) => {
       const csp = collectCspViolations(page);
       await openCatalog(page);
@@ -71,6 +72,7 @@ for (const width of [375, 1280]) {
       expect(csp).toStrictEqual([]);
     });
 
+    // ui-kit-basics/AC-6, ui-kit-basics/AC-7, ui-kit-basics/AC-8
     test('AC-6/7/8: badge, lege actie en busy-herstel zonder dubbele activering', async ({ page }) => {
       const csp = collectCspViolations(page);
       await openCatalog(page);

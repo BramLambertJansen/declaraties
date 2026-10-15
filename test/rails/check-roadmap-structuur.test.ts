@@ -85,6 +85,7 @@ const matrix: [geval: string, regel: string, verwacht: string[]][] = [
   ['structuur-schoon', 'R1 (afgevinkte items tellen niet) + R2 vervolgregel + R3 geen datum', GEEN],
   ['structuur-nieuw-ingevoerd', 'activering: basis zonder structuur, bestaande items', GEEN],
   ['nu-te-veel-open', 'R1', ['roadmap:nu-open']],
+  ['nu-ingesprongen-open', 'R1 (ingesprongen open item na lege regel telt mee: 3 + 1)', ['roadmap:nu-open']],
   ['geparkeerd-zonder-terug-als', 'R2', ['roadmap:geparkeerd:14']],
   ['geparkeerd-terug-als-leeg', 'R2 (lege tekst na terug als:)', ['roadmap:geparkeerd:14']],
   ['stand-proza', 'R3', ['roadmap:stand:5']],

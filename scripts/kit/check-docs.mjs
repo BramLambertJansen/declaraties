@@ -7,6 +7,8 @@
 //  4. CODEOWNERS en `ask` in .claude/settings.json noemen dezelfde paden (CODEOWNERS daarnaast tests en docs/specs/), en
 //     CODEOWNERS noemt precies de gates en jsonGates uit .claude/gates.json (de bron, ADR 0011).
 //  5. `schrijfrecht` van een rol overlapt niet met `gates` (WS-02), op de uitzonderingen in SCHRIJFRECHT_VRIJ na.
+//  6. Elk AC-id van een gebouwde spec heeft een testbestand met `<namespace>/AC-n`, of met het AC-id samen met de specnaam
+//     of de namespace (sleutel `docs:ac:<spec>:<AC-n>`).
 import { execFileSync } from 'node:child_process';
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
@@ -37,6 +39,7 @@ export async function docsViolations(root = '.') {
     ...identifierViolations(files, read),
     ...linkViolations(root, files, read),
     ...statusViolations(files, read),
+    ...acViolations(files, read),
     ...mirrorViolations(files, read),
     ...(files.includes('.claude/gates.json') ? schrijfrechtViolations(read('.claude/gates.json')) : []),
     ...(files.includes('.claude/gates.json') ? werkmapNegeerViolations(files, read('.claude/gates.json')) : []),
@@ -193,6 +196,58 @@ function statusViolations(files, read) {
       return [];
     }),
   ];
+}
+
+// Testpaden uit .claude/gates.json (`testpaden`): `*.test.*`, `*.spec.*`, `db/tests/**`, `e2e/**`, `test/**`.
+const TESTBESTAND = /(?:^|\/)[^/]+\.(?:test|spec)\.[^/]+$|^(?:db\/tests|e2e|test)\//;
+// Een AC-id als heel woord, met een optioneel voorvoegsel `<naam>/` (groep 1); groep 2 is het id.
+const AC_ID = /(?<![\w/-])(?:([\w.-]+)\/)?(AC-\d+)(?![\w-])/g;
+
+/** Regex die `naam` als heel woord vindt (geen woordteken of `-` ervoor of erna). @param {string} naam */
+function heelWoord(naam) {
+  return new RegExp(`(?<![\\w-])${naam.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(?![\\w-])`);
+}
+
+/**
+ * Is `ac` van deze spec gedekt door de tekst van één testbestand?
+ * @param {string} tekst
+ * @param {{ naam: string, namespace: string | undefined }} spec
+ * @param {string} ac
+ */
+function dekt(tekst, spec, ac) {
+  const namen = [spec.naam, ...(spec.namespace === undefined ? [] : [spec.namespace])];
+  if (namen.some((naam) => heelWoord(`${naam}/${ac}`).test(tekst))) return true;
+  return heelWoord(ac).test(tekst) && namen.some((naam) => heelWoord(naam).test(tekst));
+}
+
+/**
+ * Regel 6: AC-traceerbaarheid van gebouwde specs naar testbestanden.
+ * @param {readonly string[]} files
+ * @param {(file: string) => string} read
+ * @returns {Violation[]}
+ */
+function acViolations(files, read) {
+  const gebouwd = files
+    .filter((file) => /^docs\/specs\/[^_/][^/]*\.md$/.test(file))
+    .map((file) => ({ file, text: read(file) }))
+    .filter(({ text }) => SPEC_STATUS.exec(text)?.[1] === 'gebouwd');
+  if (gebouwd.length === 0) return [];
+  const tests = files.filter((file) => TESTBESTAND.test(file)).map(read);
+  return gebouwd.flatMap(({ file, text }) => {
+    const spec = { naam: path.basename(file, '.md'), namespace: /^namespace:\s*(\S+)\s*$/m.exec(text)?.[1] };
+    const eigen = new Set([spec.naam, spec.namespace]);
+    // Een AC met het voorvoegsel van een andere spec (`accounts/AC-42`) is een kruisverwijzing, geen eigen AC.
+    const ids = [...text.matchAll(AC_ID)]
+      .filter(([, voor]) => voor === undefined || eigen.has(voor))
+      .map(([, , id = '']) => id);
+    const acs = [...new Set(ids)].sort((a, b) => Number(a.slice(3)) - Number(b.slice(3)));
+    return acs
+      .filter((ac) => !tests.some((tekst) => dekt(tekst, spec, ac)))
+      .map((ac) => ({
+        key: `docs:ac:${spec.naam}:${ac}`,
+        message: `${file}: ${ac} heeft geen testbestand met ${spec.namespace ?? spec.naam}/${ac} of met ${ac} en de specnaam of namespace`,
+      }));
+  });
 }
 
 /**

@@ -6,6 +6,13 @@ Hier staan wijzigingen die van belang zijn bij het gebruiken of bijwerken van de
 
 ### Toegevoegd
 
+- Snellere beslisroute (ADR 0029, geaccepteerd; vervangt ADR 0023): principes P1–P7 (ADR 0029; P1, P3, P4 en P6 kort in `docs/framework.md` §1), ADR-drempel A1–A4, mini-spec en feature-lane als besluit; de roadmap heeft de structuur Nu/Volgende/Geparkeerd, afgedwongen door `check:roadmap` (#162, #164). Inventaris tegen de principes: `docs/reviews/2026-10-15-principes-inventaris.md` (#158–#161).
+- `check:roadmap` blokkeert vinkjes en gebouwde specs zonder bewijs (#127).
+- Auditlog van beheeracties (ADR 0021, spec `audit-log`): tabel `app.audit_log` met guard-trigger, schrijvers `app.audit` en `app.audit_account_action`, `ctx.audit` en de `requestId` van de server in `withUser()`; uitnodigen, opnieuw uitnodigen, rolwijziging en blokkeren schrijven een regel (#128).
+- UI-kit: Checkbox, RadioGroup, Textarea, StatusBadge, EmptyState, `busy` op Button en DropdownMenu en bijbehorende formuliervelden (#145); catalogusvoorbeelden die vindbaar en inspecteerbaar zijn, met staatvoorbeelden (#146); doorzoekbare Combobox, Accordion, List en DescriptionList (#150).
+
+- Risico-overzicht in `diff-guard` (nieuwe, gewijzigde of hernoemde migraties, permissiesleutels, nieuwe dependencies, nieuwe routes op method en path of contract; puur tekstueel); `check-docs` controleert AC-traceerbaarheid van gebouwde specs; de meethook slaat de modus op en `pnpm meting` toont prompts per modus; `check:roadmap` R1 telt ook ingesprongen open items.
+
 - Meten per sessie en branch (ADR 0029 punt 12): meethook `.claude/hooks/meting.mjs` (observe-only, fail-open, alleen tellingen en sleutels in `<git common dir>/agent-meting/` of `METING_DIR`; buiten een repo niets) op de permissie-, tool-, prompt- en stop-events in `.claude/settings.json` (rij in `docs/framework.md` §8), en `pnpm meting` (`scripts/kit/meting.mjs`, `--json`, `--sessie`, `--branch`) met prompts per pad of commandoprefix, weigeringen, beurten, eigenaarberichten, pushes en CI-rondes (`gh run list` per branch, `METING_GH`/`METING_GH_TIMEOUT_MS`; bij een fout `onbekend`).
 
 - Overgangstekst in `diff-guard` (ADR 0031, PR 1): de samenvatting bij uitslag `overgang` legt uit dat label en review niet gevraagd worden en de eigenaar zelf merget; nieuwe sectie "Gate-PR in de overgang" in `docs/operations/agent-doorloop.md`.

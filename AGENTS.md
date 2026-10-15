@@ -5,7 +5,7 @@ Template voor webapps, gebouwd door agents binnen afgedwongen kaders. De regels 
 
 ## Status
 
-Fundering in opbouw (fase 0/1). Wat niet in `package.json` of de repo staat, bestaat nog niet: verzin geen
+Fundament gebouwd (fase 0/1); volgende stap is de proef-app (ST-09, `docs/roadmap.md`). Wat niet in `package.json` of de repo staat, bestaat nog niet: verzin geen
 commando's, scripts of bestanden. Noem iets pas klaar met de uitvoer van de check die het bewijst.
 Een voorstel is nog geen besluit. Statusadministratie volgt bewijs uit main (ADR 0027); ontbreekt akkoord, vraag de eigenaar.
 
@@ -84,6 +84,7 @@ vangen het later toch, en dan is het werk verloren. Uitzonderingen staan limitat
 - UI-tekst Nederlands; code, commits en branchnamen Engels. Naamgeving: `docs/framework.md` §5.
 - Volg `docs/dod.md` fasebewust: voer bestaande, toepasselijke checks uit, lever alleen op met een geslaagde uitslag (of expliciet akkoord van de eigenaar) en vermeld exact wat nog niet beschikbaar is; verzin geen commando's of uitslagen.
 - Volg de platformneutrale werkstraat in `docs/framework.md` §8. Agentrollen zijn onafhankelijk waar de runtime dat ondersteunt; ontbreekt een onafhankelijke reviewer, vraag de eigenaar om die review en claim niet dat je eigen werk onafhankelijk is gecontroleerd.
+- Voordat je een roadmap-item, rail of ADR toevoegt: toets aan framework §1; ontbreekt een aanleiding, vraag de eigenaar.
 - Begin met de feiten: `node scripts/kit/feiten.mjs` in plaats van wat in proza staat.
 - Runtime-specifieke instructies gelden alleen voor die runtime. De hooks in `.claude/` werken niet in andere runtimes (Codex, sommige
   cloudsessies); daar zijn CI, de diff-guard en GitHub de enige grens. Claim nooit dat een instelling klopt die je niet kunt lezen.

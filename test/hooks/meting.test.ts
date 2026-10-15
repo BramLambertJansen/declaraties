@@ -354,3 +354,50 @@ test.each(['__proto__', 'constructor'])('branchnaam %s in .git/HEAD: gewoon gelo
   expect(result.status).toBe(0);
   expect(regels(dir)).toMatchObject([{ b: naam }]);
 });
+
+// Meting per modus: `m` = permission_mode uit de payload, alleen letters; anders weggelaten.
+test.each(['default', 'auto', 'acceptEdits', 'plan', 'bypassPermissions'])('permission_mode %s wordt m', (modus) => {
+  const dir = tmp('meting-dir-');
+
+  run(JSON.stringify(event(repo(null), { tool_name: 'Grep', permission_mode: modus })), { METING_DIR: dir });
+
+  expect(regels(dir)).toMatchObject([{ m: modus }]);
+});
+
+test.each([
+  ['met streepje', 'accept-edits'],
+  ['met spatie', 'auto mode'],
+  ['met cijfer', 'auto2'],
+  ['met pad', '../../etc'],
+  ['leeg', ''],
+  ['geen string', 5],
+  ['null', null],
+])('permission_mode %s: m ontbreekt', (_naam, modus) => {
+  const dir = tmp('meting-dir-');
+
+  run(JSON.stringify(event(repo(null), { tool_name: 'Grep', permission_mode: modus })), { METING_DIR: dir });
+
+  expect(regels(dir)).toHaveLength(1);
+  expect(regels(dir)[0]).not.toHaveProperty('m');
+});
+
+test('zonder permission_mode: geen m', () => {
+  const dir = tmp('meting-dir-');
+
+  run(JSON.stringify(event(repo(null), { tool_name: 'Grep' })), { METING_DIR: dir });
+
+  expect(regels(dir)).toHaveLength(1);
+  expect(regels(dir)[0]).not.toHaveProperty('m');
+});
+
+test('m wordt ook gelogd bij een PermissionRequest en bij UserPromptSubmit', () => {
+  const dir = tmp('meting-dir-');
+  const cwd = repo(null);
+
+  for (const naam of ['PermissionRequest', 'UserPromptSubmit'])
+    run(JSON.stringify(event(cwd, { hook_event_name: naam, tool_name: 'Bash', permission_mode: 'auto' })), {
+      METING_DIR: dir,
+    });
+
+  expect(regels(dir)).toMatchObject([{ m: 'auto' }, { m: 'auto' }]);
+});

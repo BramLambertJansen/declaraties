@@ -1,7 +1,9 @@
 # Framework
 
 Normatief. Dit document is de wet voor elke app die uit deze template start.
-Wijzigen alleen via een PR met ADR, met review door de eigenaar.
+Wijzigen via een PR met review door de eigenaar. Een ADR is nodig bij een van de vier drempels in ADR 0029 punt 4 (A1 twee of meer zones,
+A2 moeilijk terug te draaien, A3 rechten verruimen of een check afzwakken, A4 een geaccepteerde ADR wijzigen); anders volstaat een regel in dit
+document of `docs/` met PR-nummer.
 
 ## 1. Principes
 
@@ -16,6 +18,12 @@ Wijzigen alleen via een PR met ADR, met review door de eigenaar.
    bracket-notatie, `bash -c`, niet-letterlijke `import()`). Hooks zijn gates en hebben dus ook tests (ADR 0011). De eigenaar reviewt elke PR en releaset.
 6. **Provider-neutraal.** De template kent geen hostingprovider en geen database-as-a-service. Een app kiest die per
    ADR (zie §3); de code raakt de keuze alleen via een adapter.
+7. **Prompts alleen voor wat werkt vóór review** (P3, ADR 0029): code die op de machine van de eigenaar of in CI draait, en de eigen
+   instructies en rechten van de agent. De rest is zichtbaar in de PR via CODEOWNERS en diff-guard.
+8. **Eén ronde per besluit** (P4, ADR 0029): framework-lane streng (één PR per besluit, de merge is het besluit), feature-lane met
+   mini-spec en spec en bouw in één PR.
+9. **Meten vóór en na** (P6, ADR 0029): een wijziging aan de werkstraat heeft een nulmeting en een vergelijking (§10 Meten).
+   Voor nieuw werk geldt P1: geen roadmap-item, rail of ADR zonder aanleiding (app-behoefte, doorgeglipte fout of gemeten wrijving).
 
 ## 2. Architectuur
 
@@ -337,7 +345,7 @@ SubagentStop staat in `.claude/settings.json` (matcher = agentnaam), niet in de 
 | PreToolUse rolhek (Edit/Write/Bash, alle rollen) | schrijfrecht per rol uit `.claude/gates.json` (ook voor Bash-schrijfdoelen: redirect, `sed -i`, `tee`, `cp`, `mv`, `rm`, `git checkout/restore`); simuleert Edit/Write op `jsonGates` en vergelijkt de sleutel; blokkeert gegenereerde bestanden, gecommitte migraties (= in de merge-base met `origin/main`, zoals `check:migrations`; onleesbaar → `HEAD` met de hint `git fetch origin`), verwijderen of skippen van bestaande tests en hulpbestanden, wijzigen van fixtures en setup; wijzigen van een bestaande test of hulpbestand meldt hij als `additionalContext` |
 | PreToolUse rolhek (Bash, alle rollen) | blokkeert push naar `main`, force-push (`--force` en elke afkorting vanaf `--forc`, `-f` ook in een cluster, `--force-with-lease`, `--force-if-includes`, refspec met `+`), mergen (`gh pr merge` ook `--auto`, `gh api` naar `…/merge`, `…/merges` of `…/auto-merge` met elke methode, ook GET: lees de status met `gh pr view --json state,mergedAt`; GraphQL `mergePullRequest`/`enablePullRequestAutoMerge`/`mergeBranch`; `ghForbidden` en `gitForbidden` in `.claude/hooks/lib/rolhek.mjs`), `LEFTHOOK=0`, `--no-verify`/`-n`, `git branch -d`/`-D`/`--delete` (ook afgekort) van `main` (ADR 0030), `core.hooksPath` (leesvormen met `--get` mogen, per commandosegment), `gh pr review`, het label `gate-wijziging`, `gh api` naar labels, reviews, statuses of check-runs; voor subagents ook elke push, `git merge`, rebase en `reset --hard`; reviewer alleen `pnpm check:*`/`test*`/`gate:*`, `git diff/log/show/status`, `gh pr view/diff/checks` |
 | PreToolUse rolhek (`mcp__.*`, alle rollen) | een MCP-tool die niet exact in `mcpLezen` (`.claude/gates.json`) staat: hoofdsessie `ask`, elke subagent (ook een onbekende) `deny`; standaard is de lijst leeg |
-| Meethook `meting.mjs` (PreToolUse, PermissionRequest, PermissionDenied, PostToolUse, PostToolUseFailure, UserPromptSubmit, Stop, SessionEnd; ADR 0029 punt 12) | observeert alleen: fail-open, schrijft nooit naar stdout; één regel per event in `<git common dir>/agent-meting/<sessie>.jsonl` of `METING_DIR` (`.claude/hooks/lib/meting.mjs:125`); alleen event, sessie, branch, rol, tool, id en sleutel (pad relatief aan de repo-root, of Bash-prefix met vast label `git push --dry-run`: `.claude/hooks/lib/meting.mjs:66`), nooit inhoud, argumenten of geheimen. Eigen repo-root zonder git-proces en zonder `CLAUDE_PROJECT_DIR`-terugval: buiten een repo schrijft hij niets. Overzicht `pnpm meting`; beurten en weigeringen zijn bovengrenzen (een geblokkeerde Stop telt dubbel, een onderbroken tool telt als weigering: `scripts/kit/meting.mjs:107`); CI-rondes zijn runs uit `gh run list` binnen het sessievenster per branch (`scripts/kit/meting.mjs:203`) |
+| Meethook `meting.mjs` (PreToolUse, PermissionRequest, PermissionDenied, PostToolUse, PostToolUseFailure, UserPromptSubmit, Stop, SessionEnd; ADR 0029 punt 12) | observeert alleen: fail-open, schrijft nooit naar stdout; één regel per event in `<git common dir>/agent-meting/<sessie>.jsonl` of `METING_DIR` (`.claude/hooks/lib/meting.mjs:133`); alleen event, sessie, branch, rol, tool, id, modus (`m`, alleen letters uit `permission_mode`) en sleutel (pad relatief aan de repo-root, of Bash-prefix met vast label `git push --dry-run`: `.claude/hooks/lib/meting.mjs:66`), nooit inhoud, argumenten of geheimen. Eigen repo-root zonder git-proces en zonder `CLAUDE_PROJECT_DIR`-terugval: buiten een repo schrijft hij niets. Overzicht `pnpm meting` (met prompts per modus; ontbrekend → `onbekend`); beurten en weigeringen zijn bovengrenzen (een geblokkeerde Stop telt dubbel, een onderbroken tool telt als weigering: `scripts/kit/meting.mjs:110`); CI-rondes zijn runs uit `gh run list` binnen het sessievenster per branch (`scripts/kit/meting.mjs:207`) |
 
 Alle hooks behalve de meethook werken in de root uit de payload: de git-root van `cwd` (een worktree), terugval `CLAUDE_PROJECT_DIR` (`.claude/hooks/lib/root.mjs`).
 Elke hook heeft een tabeltest (`test/hooks/*.test.ts`): echte stdin-payloads met de verwachte exitcode, inclusief omzeilingen (tweede commando na
@@ -398,7 +406,7 @@ Live feiten (gates, routes, componenten, nummers) komen uit `scripts/kit/feiten.
   staat als checklist in `docs/operations/rails-checklist.md`; een onleesbare instelling telt als fout, nooit als goed.
 - `check-docs`: elk pad, `pnpm`-script en identifier tussen backticks in `AGENTS.md`, `CLAUDE.md` en `.claude/**` bestaat; relatieve links in `docs/` kloppen;
   `.claude/gates.json`, CODEOWNERS en `ask` zijn gelijk (op de genoemde uitzonderingen na); het gate-register is gelijk aan `gate:fast`/`gate:slow`;
-  spec- en ADR-statussen uit de vaste woordenlijst; een goedgekeurde spec heeft "Hergebruik en UX"; elk component heeft een rij in de catalogus.
+  spec- en ADR-statussen uit de vaste woordenlijst; een goedgekeurde spec heeft "Hergebruik en UX"; elk AC-id van een gebouwde spec heeft een testbestand met `<namespace>/AC-n`, of met het AC-id samen met de specnaam of namespace; elk component heeft een rij in de catalogus.
 - **Besluit en status** (ADR 0027): agent bereidt spec/ADR en besluitrecord voor met `pnpm docs:decision`; alleen het register
   `.claude/decisions.json` op main geeft bevoegdheid. De eigenaar reviewt en merget het inhoudelijke besluit. Daarna registreert
   `pnpm docs:status` de bewezen status zonder de inhoud te wijzigen. Het register bindt inhoudsdigest, repository, exacte branch,
@@ -442,8 +450,12 @@ Daarna haalt een gewone `git merge template/main` op een branch, via een PR, de 
 
 ### Meten
 
-CI logt per PR welke checks faalden. Na een wijziging aan de agent-opzet bouwt de agent dezelfde drie testopdrachten opnieuw;
-een regel blijft alleen als hij aantoonbaar helpt.
+`pnpm meting` (ADR 0029 punt 11–13) toont per sessie en branch: prompts per pad of commandoprefix en per modus, weigeringen, beurten, CI-rondes en
+correcties van de eigenaar. Een observe-only hook (fail-open) slaat alleen tellingen op, buiten git-tracking. Per besluit telt
+`gh pr list --state merged` het aantal PR's en de doorlooptijd. De nulmeting is `pnpm new:resource demo --dry-run` plus een droge
+walk-through van het gouden pad (punt 13); dezelfde opdracht volgt na elke wijziging aan de werkstraat, en een regel blijft alleen als hij
+aantoonbaar helpt. Beperkingen: in auto mode telt de meting classifierbeslissingen en geen klikken van de eigenaar; beurten en weigeringen
+zijn bovengrenzen, en correcties zijn elk eigenaarbericht na de opdracht in dezelfde sessie.
 
 ## 11. Lokaal ontwikkelen
 

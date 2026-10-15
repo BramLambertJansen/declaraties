@@ -32,6 +32,7 @@ function Example() {
   );
 }
 
+// ui-collections/AC-2, ui-collections/AC-3
 test('AC-2/3: filteren en annuleren behouden keuze; expliciet kiezen en wissen wijzigen haar', () => {
   render(<Example />);
   const input = screen.getByRole('combobox', { name: 'Rol' });
@@ -52,6 +53,7 @@ test('AC-2/3: filteren en annuleren behouden keuze; expliciet kiezen en wissen w
   expect(document.activeElement).toBe(input);
 });
 
+// ui-collections/AC-3, ui-collections/AC-4
 test('AC-3/4: pijlen slaan disabled over, blijven aan randen en behouden inputfocus', () => {
   render(<Example />);
   const input = screen.getByRole('combobox');
@@ -67,6 +69,7 @@ test('AC-3/4: pijlen slaan disabled over, blijven aan randen en behouden inputfo
   expect(input.getAttribute('aria-activedescendant')).toBe(screen.getByRole('option', { name: 'Gebruiker' }).id);
 });
 
+// ui-collections/AC-3
 test('AC-3: Enter tijdens IME kiest niet en expliciet kiezen submit niet', () => {
   const change = vi.fn();
   const submit = vi.fn((event: React.SubmitEvent) => {
@@ -89,6 +92,7 @@ test('AC-3: Enter tijdens IME kiest niet en expliciet kiezen submit niet', () =>
   expect(submit).not.toHaveBeenCalled();
 });
 
+// ui-collections/AC-2, ui-collections/AC-3
 test.each(['Tab', 'Escape'])('AC-2/3: %s verwerpt zoektekst zonder commit', (key) => {
   const change = vi.fn();
   render(<Combobox aria-label="Rol" value="user" onValueChange={change} options={options} />);
@@ -100,6 +104,7 @@ test.each(['Tab', 'Escape'])('AC-2/3: %s verwerpt zoektekst zonder commit', (key
   expect(screen.getByDisplayValue('Gebruiker')).toBe(input);
 });
 
+// ui-collections/AC-3
 test('AC-3: pointer kiest enabled optie en disabled control opent of wist niet', () => {
   const change = vi.fn();
   const { rerender } = render(<Combobox aria-label="Rol" value="user" onValueChange={change} options={options} />);
@@ -130,6 +135,7 @@ test('AC-3: pointer kiest enabled optie en disabled control opent of wist niet',
   expect(change).not.toHaveBeenCalled();
 });
 
+// ui-collections/AC-4
 test('AC-4: opties wijzigen verwijdert actieve ids zonder een vervangende keuze', () => {
   const change = vi.fn();
   const { rerender } = render(
@@ -164,6 +170,7 @@ test('AC-4: opties wijzigen verwijdert actieve ids zonder een vervangende keuze'
   expect(screen.getByDisplayValue('')).toBe(input);
 });
 
+// ui-collections/AC-4
 test('AC-4: twee instanties hebben unieke popupids en benoemde listbox', () => {
   render(
     <>
@@ -183,6 +190,7 @@ test('AC-4: twee instanties hebben unieke popupids en benoemde listbox', () => {
   expect(new Set(ids).size).toBe(2);
 });
 
+// ui-collections/AC-2, ui-collections/AC-4
 test('AC-2/4: buitenklik herstelt het gekozen label zonder commit; geen matches krijgt geen actieve optie', () => {
   const change = vi.fn();
   render(
@@ -200,6 +208,7 @@ test('AC-2/4: buitenklik herstelt het gekozen label zonder commit; geen matches 
   expect(change).not.toHaveBeenCalled();
 });
 
+// ui-collections/AC-3, ui-collections/AC-4
 test('AC-3/4: uitsluitend disabled opties blijven niet selecteerbaar, ook na pijlen en Enter', () => {
   const change = vi.fn();
   render(

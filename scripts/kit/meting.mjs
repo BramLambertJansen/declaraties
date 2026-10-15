@@ -1,6 +1,6 @@
 // Overzicht van de meethook (ADR 0029 punt 12): `pnpm meting [--json] [--sessie <id>] [--branch <naam>]`.
 // Leest `<opslagmap>/*.jsonl` (.claude/hooks/lib/meting.mjs: METING_DIR of `<git common dir>/agent-meting`) en telt per
-// sessie en per branch: prompts (permissievragen) per pad of commandoprefix, weigeringen, beurten, eigenaarberichten na de
+// sessie en per branch: prompts (permissievragen) per pad of commandoprefix en per modus (`m`, ontbrekend → onbekend), weigeringen, beurten, eigenaarberichten na de
 // opdracht (een bovengrens), pushes (geslaagde `git push`) en CI-rondes via `gh run list` (METING_GH, METING_GH_TIMEOUT_MS):
 // runs met `createdAt` van de eerste `t` van de sessie op die branch tot de laatste `t` + 60 minuten; een fout, timeout of
 // ongeldige uitvoer geeft "onbekend". Kapotte regels slaat hij over. Sleutels zijn vrije tekst: alles in Maps en
@@ -11,8 +11,8 @@ import { readdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { opslagmap } from '../../.claude/hooks/lib/meting.mjs';
 
-/** @typedef {{ e: string, s: string, b: string, k: string, id: string | undefined, t: number | undefined, opdracht?: boolean }} Regel */
-/** @typedef {{ prompts: number, promptsPerSleutel: Map<string, number>, weigeringen: number, weigeringenPerSleutel: Map<string, number>, beurten: number, eigenaarberichten: number, pushes: number }} Telling */
+/** @typedef {{ e: string, s: string, b: string, k: string, m: string, id: string | undefined, t: number | undefined, opdracht?: boolean }} Regel */
+/** @typedef {{ prompts: number, promptsPerSleutel: Map<string, number>, promptsPerModus: Map<string, number>, weigeringen: number, weigeringenPerSleutel: Map<string, number>, beurten: number, eigenaarberichten: number, pushes: number }} Telling */
 /** @typedef {number | 'onbekend'} Ci */
 /** @typedef {{ van: number, tot: number } | null} Venster */
 /** @typedef {(branch: string, venster: Venster) => Ci} CiVoor */
@@ -40,12 +40,14 @@ function parse(lijn, sessie) {
     const e = r.get('e');
     if (typeof e !== 'string') return null;
     const id = r.get('id');
+    const m = r.get('m');
     /** @type {Regel} */
     const uit = {
       e,
       s: tekst(r.get('s'), sessie),
       b: tekst(r.get('b'), 'onbekend'),
       k: tekst(r.get('k'), ''),
+      m: typeof m === 'string' && /^[a-zA-Z]+$/.test(m) ? m : 'onbekend',
       id: typeof id === 'string' ? id : undefined,
       t: tijd(r.get('t')),
     };
@@ -86,6 +88,7 @@ function leeg() {
   return {
     prompts: 0,
     promptsPerSleutel: new Map(),
+    promptsPerModus: new Map(),
     weigeringen: 0,
     weigeringenPerSleutel: new Map(),
     beurten: 0,
@@ -119,6 +122,7 @@ function tel(t, r, geweigerd) {
   if (r.e === 'PermissionRequest') {
     t.prompts += 1;
     plus(t.promptsPerSleutel, r.k);
+    plus(t.promptsPerModus, r.m);
   }
   if (geweigerd) {
     t.weigeringen += 1;
@@ -247,6 +251,7 @@ function tellingJson(t) {
   return {
     ...t,
     promptsPerSleutel: object(t.promptsPerSleutel),
+    promptsPerModus: object(t.promptsPerModus),
     weigeringenPerSleutel: object(t.weigeringenPerSleutel),
   };
 }
@@ -273,6 +278,7 @@ function regelTekst(t) {
 function branchTekst(naam, b) {
   return [
     `  branch ${naam}: prompts ${String(b.prompts)}${perSleutel(b.promptsPerSleutel)}`,
+    `    prompts per modus${perSleutel(b.promptsPerModus)}`,
     `    weigeringen ${String(b.weigeringen)}${perSleutel(b.weigeringenPerSleutel)} · ${regelTekst(b)}`,
   ];
 }
@@ -283,6 +289,7 @@ export function alsTekst(sessies, dir) {
   const regels = [];
   for (const [sessie, t] of sessies) {
     regels.push(`sessie ${sessie}`, `  prompts ${String(t.prompts)}${perSleutel(t.promptsPerSleutel)}`);
+    regels.push(`  prompts per modus${perSleutel(t.promptsPerModus)}`);
     regels.push(`  weigeringen ${String(t.weigeringen)}${perSleutel(t.weigeringenPerSleutel)}`, `  ${regelTekst(t)}`);
     for (const [naam, b] of t.branches) regels.push(...branchTekst(naam, b));
   }

@@ -27,6 +27,7 @@ function Example({ action, custom }: { action: () => void; custom: boolean }) {
   );
 }
 
+// ui-kit-basics/AC-7
 test('AC-7: custom EmptyState vervangt uitsluitend de lege uitkomst en voert alleen de aangeleverde actie uit', async () => {
   const action = vi.fn();
   render(
@@ -44,6 +45,7 @@ test('AC-7: custom EmptyState vervangt uitsluitend de lege uitkomst en voert all
   expect(action).toHaveBeenCalledTimes(1);
 });
 
+// ui-kit-basics/AC-7
 test('AC-7: bestaande lege tekst blijft beschikbaar zonder custom inhoud', async () => {
   render(
     <QueryClientProvider client={new QueryClient()}>

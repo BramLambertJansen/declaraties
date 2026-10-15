@@ -26,7 +26,7 @@ paths:
 - Schermwerk is pas klaar na `pnpm ui:check` (375 en 1280 px + axe).
 - Aanraakdoelen ≥ 44 px en zichtbare focusring zitten in de recepten; nooit uitschakelen.
 
-## Besloten, nog niet gebouwd
+## Gebouwd en nog open
 
 Gebouwd (stuk 3b): bestandsroutes in `src/web/routes` (TanStack Router; `routeTree.gen.ts` is gegenereerd), de router in
 `src/web/lib/router.ts` met `RouteError`/`NotFound` als ErrorBoundary per route, de guard `guard('<permissie>')` uit
@@ -44,4 +44,8 @@ Gebouwd (stuk 4): `pnpm check:catalogus` ontdekt UI uit beide UI-mappen en eist 
 stringvarianten; geen uitzonderingen. Dezelfde bronindex staat in `feiten.mjs componenten` en op `/design-system` (ADR 0027). De woordenlijsttest
 `src/web/copy/woordenlijst.test.ts`.
 `scanAxe` zonder uitzonderingen: twee lintregels (axe-import en axe-uitzondering in `eslint.config.js`) houden ze tegen.
+Gebouwd (#129): Toast, `useToast().success/error` met `Toaster` in de AppShell en `ToastProvider` in `main.tsx`.
+Gebouwd (#145, #146, #150): Checkbox, RadioGroup, Textarea, StatusBadge, EmptyState, `busy` op Button en DropdownMenu, de
+bijbehorende Form-velden, Combobox, FormComboboxField, Accordion, List en DescriptionList; vindbare catalogusvoorbeelden. De
+actuele lijst staat in `pnpm check:catalogus` en `node scripts/kit/feiten.mjs componenten`.
 Nog niet: screenshot-baselines van de catalogus in de Playwright-image (roadmap, stuk 3c).

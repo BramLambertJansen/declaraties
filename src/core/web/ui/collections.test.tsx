@@ -6,6 +6,7 @@ import { Button } from './button.tsx';
 
 afterEach(cleanup);
 
+// ui-collections/AC-7
 test('AC-7: lijstitems houden titel, beschrijving, decoratie en zelfstandige actie uit elkaar', () => {
   const action = vi.fn();
   render(
@@ -30,6 +31,7 @@ test('AC-7: lijstitems houden titel, beschrijving, decoratie en zelfstandige act
   expect(screen.getByRole('button').parentElement?.closest('button')).toBeNull();
 });
 
+// ui-collections/AC-7
 test('AC-7: metadata gebruikt native term/waarde en bewaart de bijbehorende inhoud bij herschikken', () => {
   const { rerender } = render(
     <DescriptionList

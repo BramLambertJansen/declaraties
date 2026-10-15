@@ -93,9 +93,9 @@ status. Een vervanging zonder inhoudelijk akkoord activeert zichzelf niet.
 
 ## Invoering en runtime
 
-Het lege register geeft geen taakmandaten. De eerste invoering heeft nog geen nieuwe guard op main en vereist
-eigenaarreview vóór merge. Daarna worden helpers en taakrechten vanuit main actief; werkbranchconfig activeert geen
-automatische runner of ruimere labelscope.
+Zonder record op main geeft het register geen taakmandaat. De invoering is gebeurd (#130, #144): de guard staat op main en
+helpers en taakrechten worden vanuit main actief; werkbranchconfig activeert geen automatische runner of ruimere labelscope.
+Een wijziging aan die guard zelf vraagt, zolang hij nog niet op main staat, eigenaarreview vóór merge.
 
 Claude Code gebruikt de geteste hooks. Codex en andere runtimes draaien ze niet automatisch: volg dezelfde procedure
 en meld ontbrekende lokale rolgrenzen. Een subagent met dezelfde rechten als de hoofdsessie is geen afgedwongen
@@ -117,7 +117,7 @@ onafhankelijke reviewer. De eigenaar verzorgt de ontbrekende review vóór samen
 Is de auteur van een PR zelf goedkeurder, dan geeft `diff-guard` de uitslag `overgang` (groen met waarschuwing; ADR 0017,
 OV-2, [ADR 0031](../adr/0031-guard-en-pr-verify-bruikbaarder.md) besluit 2). Dan:
 
-1. Lees de samenvatting van `diff-guard` (de geraakte gate-paden, bewaakte sleutels en gewijzigde tests) en de uitslag van
+1. Lees de samenvatting van `diff-guard` (de geraakte gate-paden, bewaakte sleutels, gewijzigde tests en het Risico-overzicht: nieuwe, gewijzigde of hernoemde migraties, permissiesleutels, nieuwe dependencies en nieuwe routes (op method en path of contract)) en de uitslag van
    `document-status` (tot ADR 0031 PR 2: de stap "Documentstatus en taakmandaat" in de job `diff-guard`).
 2. Een label `gate-wijziging` of een review is niet nodig; een review is ook niet mogelijk, want GitHub laat de auteur zijn
    eigen PR niet goedkeuren. De eigenaar merget zelf.

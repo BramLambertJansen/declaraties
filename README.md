@@ -16,7 +16,7 @@ Agents werken met vaste instructies, featurespecs, voorbeelden en controles. De 
 - Een lokale database en mailserver, tests en GitHub Actions.
 - Een containerimage die de webapp en API op dezelfde origin serveert.
 
-De basis is nog in ontwikkeling. Uitgebreid accountbeheer, achtergrondtaken, auditlogging en privacyfuncties staan op de [roadmap](docs/roadmap.md). Een eerste app moet nog bewijzen dat starten en template-updates soepel verlopen. Hosting en een databaseprovider kies je per app.
+De basis is nog in ontwikkeling. Auditlogging is gebouwd; uitgebreid accountbeheer, achtergrondtaken en privacyfuncties staan op de [roadmap](docs/roadmap.md). Een eerste app moet nog bewijzen dat starten en template-updates soepel verlopen. Hosting en een databaseprovider kies je per app.
 
 ## Documentatie
 

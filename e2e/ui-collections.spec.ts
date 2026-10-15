@@ -16,6 +16,7 @@ for (const width of [375, 1280]) {
       await context.setExtraHTTPHeaders(clientIpHeaders());
     });
 
+    // ui-collections/AC-2, ui-collections/AC-3, ui-collections/AC-4, ui-collections/AC-9
     test('AC-2/3/4/9: filteren, annuleren, kiezen, wissen en popup binnen Dialog met CSP en axe', async ({ page }) => {
       const csp = collectCspViolations(page);
       await openCatalogue(page);
@@ -63,7 +64,8 @@ for (const width of [375, 1280]) {
       expect(csp).toStrictEqual([]);
     });
 
-    test('AC-5/9/10: echte formulierbinding, serverveldfout en reset van gelijke waarde', async ({ page }) => {
+    // ui-collections/AC-5, ui-collections/AC-9
+    test('AC-5/9: echte formulierbinding, serverveldfout en reset van gelijke waarde', async ({ page }) => {
       await openCatalogue(page);
       const section = page.getByRole('region', { name: 'FormComboboxField', exact: true });
       const role = section.getByRole('combobox', { name: 'Rol', exact: true });
@@ -91,6 +93,7 @@ for (const width of [375, 1280]) {
       await expect(preference).toBeDisabled();
     });
 
+    // ui-collections/AC-6, ui-collections/AC-7, ui-collections/AC-8, ui-collections/AC-9
     test('AC-6/7/8/9: accordion behoudt inhoud; lijsten hebben acties en metadata zonder overflow', async ({
       page,
     }) => {
@@ -130,3 +133,38 @@ for (const width of [375, 1280]) {
     });
   });
 }
+
+test.describe('UI-collecties: alleen lokale data', () => {
+  test.beforeEach(async ({ context }) => {
+    await context.setExtraHTTPHeaders(clientIpHeaders());
+  });
+
+  // ui-collections/AC-10
+  test('AC-10: het bedienen van de voorbeelden stuurt geen enkel /api/-verzoek', async ({ page }) => {
+    await openCatalogue(page);
+    // Wat de pagina bij het laden zelf ophaalt (sessie, rechten) is er al; meet alleen vanaf nu.
+    await page.waitForLoadState('networkidle');
+    const requests: string[] = [];
+    page.on('request', (request) => {
+      if (new URL(request.url()).pathname.startsWith('/api/')) requests.push(`${request.method()} ${request.url()}`);
+    });
+    const combobox = page.getByRole('region', { name: 'Combobox', exact: true });
+    const role = combobox.getByRole('combobox', { name: 'Rol', exact: true });
+    await role.fill('beheer');
+    await combobox.getByRole('option', { name: 'Beheerder' }).click();
+    await expect(role).toHaveValue('Beheerder');
+    const form = page.getByRole('region', { name: 'FormComboboxField', exact: true });
+    await form.getByRole('button', { name: 'Versturen', exact: true }).click();
+    await form.getByRole('button', { name: 'Annuleren', exact: true }).click();
+    const accordion = page.getByRole('region', { name: 'Accordion', exact: true });
+    await accordion.getByRole('button', { name: 'Algemeen', exact: true }).first().click();
+    const list = page.getByRole('region', { name: 'List', exact: true });
+    await list.getByRole('button', { name: 'Bekijken Anna de Vries' }).click();
+    await expect(list.getByRole('status')).toHaveText('Anna de Vries');
+    // networkidle lost direct op als er op dat moment niets loopt. Een vaste stilteperiode laat de luisteraar echt lopen,
+    // zodat ook een vertraagde query of refetch na de laatste interactie wordt opgemerkt.
+    await page.waitForTimeout(1500);
+
+    expect(requests).toStrictEqual([]);
+  });
+});

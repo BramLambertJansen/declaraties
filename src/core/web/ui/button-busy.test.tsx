@@ -4,6 +4,7 @@ import { Button } from './button.tsx';
 
 afterEach(cleanup);
 
+// ui-kit-basics/AC-8
 test('AC-8: busy houdt focus, blokkeert click/Enter/Space en herstelt na een fout', () => {
   const action = vi.fn();
   const key = vi.fn();
@@ -38,6 +39,7 @@ test('AC-8: busy houdt focus, blokkeert click/Enter/Space en herstelt na een fou
   expect(action).toHaveBeenCalledTimes(2);
 });
 
+// ui-kit-basics/AC-8
 test('AC-8: busy asChild bewaart het linkelement en weigert kindactie en navigatie', () => {
   const childAction = vi.fn();
   const parentAction = vi.fn();

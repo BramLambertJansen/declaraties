@@ -58,6 +58,7 @@ function show(props: ComponentProps<typeof Example>) {
   );
 }
 
+// ui-kit-basics/AC-2, ui-kit-basics/AC-3, ui-kit-basics/AC-4
 test('AC-2/3/4: tekst, boolean en radio behouden hun waarde in payload en reset', async () => {
   const sent: Values[] = [];
   show({
@@ -81,6 +82,7 @@ test('AC-2/3/4: tekst, boolean en radio behouden hun waarde in payload en reset'
   expect(screen.getAllByRole('radio', { checked: true })).toHaveLength(1);
 });
 
+// ui-kit-basics/AC-2
 test('AC-2: touched-validatie koppelt hulp en fout aan de textarea', async () => {
   show({ submit: () => Promise.resolve() });
   const input = screen.getByLabelText('Naam');
@@ -90,6 +92,7 @@ test('AC-2: touched-validatie koppelt hulp en fout aan de textarea', async () =>
   expect(input.getAttribute('aria-describedby')?.split(' ')).toStrictEqual([screen.getByText('Uitleg').id, error.id]);
 });
 
+// ui-kit-basics/AC-2, ui-kit-basics/AC-3
 test.each<keyof Values>(['name', 'notifications', 'role'])(
   'serverfout focust %s en blijft gekoppeld na herstel',
   async (target) => {
@@ -109,6 +112,7 @@ test.each<keyof Values>(['name', 'notifications', 'role'])(
   },
 );
 
+// ui-kit-basics/AC-3
 test('AC-3: native disabled checkbox bewaart zijn waarde', () => {
   render(<Checkbox label="Meldingen" disabled defaultChecked />);
   const checkbox = screen.getByRole('checkbox', { checked: true });
@@ -117,6 +121,7 @@ test('AC-3: native disabled checkbox bewaart zijn waarde', () => {
   expect(screen.getByRole('checkbox', { checked: true })).toBe(checkbox);
 });
 
+// ui-kit-basics/AC-5
 test('AC-5: namen volgen het echte veldtype, inclusief enum-string', () => {
   type StringNames = ComponentProps<typeof FormField<Values, Values>>['name'];
   type BooleanNames = ComponentProps<typeof FormCheckboxField<Values, Values>>['name'];
@@ -141,6 +146,7 @@ function RequiredExample({ submit }: { submit: () => Promise<unknown> }) {
   );
 }
 
+// ui-kit-basics/AC-3, ui-kit-basics/AC-4
 test('AC-3/4: schemafouten blokkeren submit; radio kiest niet impliciet een eerste optie', async () => {
   let calls = 0;
   render(
@@ -176,6 +182,7 @@ function MissingDefault() {
   );
 }
 
+// ui-kit-basics/AC-5
 test('AC-5: ontbrekende stringdefault veroorzaakt een assertion in plaats van een stille lege waarde', () => {
   expect(() => render(<MissingDefault />)).toThrow('FormField requires a string default value');
 });
@@ -207,6 +214,7 @@ function Legacy({ submit }: { submit: (values: Values) => Promise<unknown> }) {
   );
 }
 
+// ui-kit-basics/AC-1
 test('AC-1: bestaande Input/Select-binding blijft submit en reset ondersteunen', async () => {
   const sent: Values[] = [];
   render(

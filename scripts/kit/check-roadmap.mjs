@@ -230,17 +230,15 @@ function regelMelding(regel, key, tekst) {
 }
 
 /**
- * R1 en R2: hooguit drie open items (kolom 0) onder `## Nu`, en `terug als:` met tekst bij elk geparkeerd item.
- * @param {{ items: readonly Item[], regels: readonly string[], secties: readonly string[] }} roadmap
+ * R1 en R2: hooguit drie open items onder `## Nu` (ook ingesprongen, bijv. na een lege regel), en `terug als:` met tekst bij elk
+ * geparkeerd item.
+ * @param {{ items: readonly Item[], secties: readonly string[] }} roadmap
  * @returns {Violation[]}
  */
-function sectieMeldingen({ items, regels, secties }) {
+function sectieMeldingen({ items, secties }) {
   /** @type {Violation[]} */
   const meldingen = [];
-  const open = items.filter(
-    (item) =>
-      secties[item.regel - 1] === 'Nu' && !item.aangevinkt && (regels[item.regel - 1] ?? '').startsWith('- [ ]'),
-  );
+  const open = items.filter((item) => secties[item.regel - 1] === 'Nu' && !item.aangevinkt);
   if (open.length > MAX_NU_OPEN)
     meldingen.push({
       key: 'roadmap:nu-open',

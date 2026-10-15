@@ -7,7 +7,7 @@ import { expect, test } from 'vitest';
 // Het overzicht scripts/kit/meting.mjs (`pnpm meting`) als proces, met METING_DIR op een tijdelijke map (ADR 0029 punt 12).
 const root = process.cwd();
 
-type Regel = { t?: string; e: string; s?: string; b?: string; k?: string; id?: string; tool?: string };
+type Regel = { t?: string; m?: string; e: string; s?: string; b?: string; k?: string; id?: string; tool?: string };
 
 function map(bestanden: Record<string, (Regel | string)[]>): string {
   const dir = mkdtempSync(path.join(tmpdir(), 'meting-overzicht-'));
@@ -383,4 +383,53 @@ test('tekstvorm toont per branch ook de promptsPerSleutel-sleutels', () => {
 
   expect(tekst).toContain('feat/een');
   expect(tekst.split('pnpm lint').length - 1).toBeGreaterThanOrEqual(2);
+});
+
+// Meting per modus: `m` op een PermissionRequest-regel; ontbrekend telt als `onbekend`.
+const modusRegels = (b: string): (Regel | string)[] => [
+  s(b, 'PermissionRequest', { k: 'pnpm lint', m: 'default' }),
+  s(b, 'PermissionRequest', { k: 'pnpm lint', m: 'default' }),
+  ...[1, 2, 3, 4, 5].map((n) => s(b, 'PermissionRequest', { k: `k${String(n)}`, m: 'auto' })),
+  s(b, 'PermissionRequest', { k: 'rm' }),
+];
+
+test('promptsPerModus per sessie: default 2, auto 5, ontbrekend onbekend', () => {
+  const dir = map({ a: modusRegels('x') });
+
+  expect(json(dir)).toMatchObject({
+    sessies: { a: { prompts: 8, promptsPerModus: { default: 2, auto: 5, onbekend: 1 } } },
+  });
+});
+
+test('promptsPerModus per branch binnen de sessie', () => {
+  const dir = map({ a: [...modusRegels('x'), s('y', 'PermissionRequest', { k: 'git push', m: 'plan' })] });
+
+  expect(json(dir)).toMatchObject({
+    sessies: {
+      a: {
+        promptsPerModus: { default: 2, auto: 5, onbekend: 1, plan: 1 },
+        branches: { x: { promptsPerModus: { default: 2, auto: 5, onbekend: 1 } }, y: { promptsPerModus: { plan: 1 } } },
+      },
+    },
+  });
+});
+
+test('promptsPerModus telt alleen PermissionRequest, geen andere events', () => {
+  const dir = map({
+    a: [s('x', 'PreToolUse', { id: 't1', m: 'auto' }), s('x', 'Stop', { m: 'auto' })],
+  });
+
+  const sessie = sessies(dir)[0]?.[1];
+
+  expect(veld(sessie, 'promptsPerModus')).toStrictEqual({});
+});
+
+test('tekstvorm noemt de modi met hun aantal', () => {
+  const dir = map({ a: modusRegels('x') });
+
+  const tekst = overzicht(dir).stdout;
+
+  expect(tekst).toMatch(/default\D{0,5}2/);
+  expect(tekst).toMatch(/auto\D{0,5}5/);
+  expect(tekst).toContain('onbekend');
 });

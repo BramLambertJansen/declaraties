@@ -5,6 +5,7 @@ import { DropdownMenu } from './dropdown-menu.tsx';
 
 afterEach(cleanup);
 
+// ui-kit-basics/AC-8
 test('AC-8: busy/disabled selecteren en sluiten niet; herstel maakt de actie bruikbaar', async () => {
   const action = vi.fn();
   const show = (busy: boolean) => (

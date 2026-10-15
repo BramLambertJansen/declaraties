@@ -14,6 +14,7 @@ function expanded(name: string) {
   return screen.getByRole('button', { name }).getAttribute('aria-expanded');
 }
 
+// ui-collections/AC-6
 test('AC-6: single sluit vorige sectie en laat alle secties sluiten', () => {
   render(<Accordion items={items} mode="single" defaultValue={['general']} />);
   expect(expanded('Algemeen')).toBe('true');
@@ -26,6 +27,7 @@ test('AC-6: single sluit vorige sectie en laat alle secties sluiten', () => {
   expect(screen.getByLabelText('Naam')).toBeDefined();
 });
 
+// ui-collections/AC-6
 test('AC-6: multiple houdt andere secties open; disabled toggle doet niets', () => {
   render(<Accordion items={items} mode="multiple" defaultValue={['general']} />);
   fireEvent.click(screen.getByRole('button', { name: 'Meldingen' }));
@@ -35,6 +37,7 @@ test('AC-6: multiple houdt andere secties open; disabled toggle doet niets', () 
   expect(expanded('Uitgeschakeld')).toBe('false');
 });
 
+// ui-collections/AC-6
 test('AC-6: controlled wacht op ouder en herstelt focus wanneer ouder paneel sluit', () => {
   const change = vi.fn();
   const { rerender } = render(<Accordion items={items} mode="single" value={['general']} onValueChange={change} />);
@@ -46,6 +49,7 @@ test('AC-6: controlled wacht op ouder en herstelt focus wanneer ouder paneel slu
   expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Algemeen' }));
 });
 
+// ui-collections/AC-6
 test('AC-6: headings en panelen zijn gekoppeld, ids uniek en onbekende ids openen niets', () => {
   render(
     <>
@@ -68,6 +72,7 @@ test('AC-6: headings en panelen zijn gekoppeld, ids uniek en onbekende ids opene
   expect(new Set(ids).size).toBe(2);
 });
 
+// ui-collections/AC-6
 test.each([true, false])(
   'AC-6: een gesloten disabled trigger kan focus uit het verborgen paneel terugnemen (eerder disabled: %s)',
   (disabled) => {
