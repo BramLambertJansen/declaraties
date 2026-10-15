@@ -3,6 +3,7 @@
 // bewijsvorm die `pnpm docs:status` schrijft (spec taakmandaat-vervolg, B2). Het vergelijkt met het punt waar de branch van
 // origin/main afsplitste, niet met de kop van main. Is origin/main niet te lezen, dan faalt de check: onleesbaar telt als fout
 // (zoals check:migrations).
+// Heeft de head-roadmap een kop `## Nu`, dan gelden ook de structuurregels van ADR 0029 (`structuurMeldingen`).
 import { execFileSync } from 'node:child_process';
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
@@ -177,6 +178,132 @@ function specMeldingen({ basis, head }) {
     });
 }
 
+const VEREISTE_KOPPEN = ['Nu', 'Volgende', 'Geparkeerd', 'Besluiten'];
+const MAX_NU_OPEN = 3;
+const KOP = /^## (.+?)\s*$/;
+const NU = /^## Nu\s*$/m;
+const STAND = /\bstand 20\d\d-\d\d-\d\d/i;
+const TERUG_ALS = /terug als:\s*\S/i;
+
+/**
+ * De `## `-kop waaronder elke regel valt (index 0 is regel 1); lege tekst vóór de eerste kop.
+ * @param {readonly string[]} regels
+ * @returns {string[]}
+ */
+function sectiePerRegel(regels) {
+  let huidig = '';
+  return regels.map((regel) => {
+    const kop = KOP.exec(regel);
+    if (kop !== null) huidig = kop[1] ?? '';
+    return huidig;
+  });
+}
+
+/**
+ * Eerste regel van een item zonder `- [ ] `, met enkele spaties; `null` als de regel geen item is.
+ * @param {string} regel
+ */
+function eersteRegel(regel) {
+  const treffer = ITEM.exec(regel);
+  return treffer === null ? null : (treffer[3] ?? '').replace(/\s+/g, ' ').trim();
+}
+
+/**
+ * Een aanleiding verwijst naar een PR/issue (`#12`), een bestaand pad tussen backticks of een meting.
+ * @param {string} tekst samengevoegde itemtekst
+ * @param {readonly string[]} bestanden
+ */
+function heeftAanleiding(tekst, bestanden) {
+  const deel = /aanleiding:(.*)$/i.exec(tekst)?.[1];
+  if (deel === undefined) return false;
+  return PR.test(deel) || /\bmeting\b/i.test(deel) || backtickTokens(deel).some((token) => bestaat(token, bestanden));
+}
+
+/**
+ * @param {number} regel
+ * @param {string} key
+ * @param {string} tekst
+ * @returns {Violation}
+ */
+function regelMelding(regel, key, tekst) {
+  return { key: `roadmap:${key}:${regel}`, message: `${ROADMAP}:${regel}: ${tekst}` };
+}
+
+/**
+ * R1 en R2: hooguit drie open items (kolom 0) onder `## Nu`, en `terug als:` met tekst bij elk geparkeerd item.
+ * @param {{ items: readonly Item[], regels: readonly string[], secties: readonly string[] }} roadmap
+ * @returns {Violation[]}
+ */
+function sectieMeldingen({ items, regels, secties }) {
+  /** @type {Violation[]} */
+  const meldingen = [];
+  const open = items.filter(
+    (item) =>
+      secties[item.regel - 1] === 'Nu' && !item.aangevinkt && (regels[item.regel - 1] ?? '').startsWith('- [ ]'),
+  );
+  if (open.length > MAX_NU_OPEN)
+    meldingen.push({
+      key: 'roadmap:nu-open',
+      message: `${ROADMAP}: ${open.length} open items onder ## Nu, maximaal ${MAX_NU_OPEN}; rond eerst iets af of verplaats het naar ## Volgende`,
+    });
+  for (const item of items)
+    if (secties[item.regel - 1] === 'Geparkeerd' && !TERUG_ALS.test(item.tekst))
+      meldingen.push(regelMelding(item.regel, 'geparkeerd', 'geparkeerd item zonder `terug als:` met een voorwaarde'));
+  return meldingen;
+}
+
+/**
+ * R4: een nieuw open item onder `## Nu` of `## Volgende` (eerste regel niet in de basis) heeft een aanleiding met verwijzing.
+ * @param {{ items: readonly Item[], regels: readonly string[], secties: readonly string[] }} roadmap
+ * @param {string | null} basisTekst
+ * @param {readonly string[]} bestanden
+ * @returns {Violation[]}
+ */
+function aanleidingMeldingen({ items, regels, secties }, basisTekst, bestanden) {
+  const eerder = new Set((basisTekst ?? '').split('\n').map(eersteRegel));
+  return items
+    .filter((item) => !item.aangevinkt && ['Nu', 'Volgende'].includes(secties[item.regel - 1] ?? ''))
+    .filter((item) => !eerder.has(eersteRegel(regels[item.regel - 1] ?? '')))
+    .filter((item) => !heeftAanleiding(item.tekst, bestanden))
+    .map((item) =>
+      regelMelding(
+        item.regel,
+        'aanleiding',
+        'nieuw open item zonder `aanleiding:` met #nummer, bestaand pad of meting',
+      ),
+    );
+}
+
+/**
+ * Structuurregels (ADR 0029): alleen actief als de head-roadmap `## Nu` heeft; verdwijnt die kop, dan is dat een fout.
+ * @param {{ basis: Bron, head: Head }} bronnen
+ * @returns {Violation[]}
+ */
+function structuurMeldingen({ basis, head }) {
+  const tekst = head.lees(ROADMAP) ?? '';
+  const basisTekst = basis.lees(ROADMAP);
+  if (!NU.test(tekst))
+    return NU.test(basisTekst ?? '')
+      ? [{ key: 'roadmap:structuur', message: `${ROADMAP}: structuur verwijderd; de kop ## Nu ontbreekt (ADR 0029)` }]
+      : [];
+  const regels = tekst.split('\n');
+  const roadmap = { items: leesItems(tekst), regels, secties: sectiePerRegel(regels) };
+  const koppen = new Set(regels.map((regel) => KOP.exec(regel)?.[1]));
+  return [
+    ...VEREISTE_KOPPEN.filter((naam) => !koppen.has(naam)).map((naam) => ({
+      key: `roadmap:kop:${naam}`,
+      message: `${ROADMAP}: vereiste kop ## ${naam} ontbreekt (ADR 0029)`,
+    })),
+    ...sectieMeldingen(roadmap),
+    ...regels.flatMap((regel, index) =>
+      STAND.test(regel)
+        ? [regelMelding(index + 1, 'stand', 'gedateerd statusproza (Stand <datum>); status hoort in de PR')]
+        : [],
+    ),
+    ...aanleidingMeldingen(roadmap, basisTekst, head.bestanden),
+  ];
+}
+
 /**
  * Pure kern: geen git, geen fs.
  * @param {{ basis: Bron, head: Head, scripts: Readonly<Record<string, unknown>>, testpaden: readonly string[] }} invoer
@@ -190,7 +317,11 @@ export function roadmapMeldingen({ basis, head, scripts, testpaden }) {
       .map((item) => item.tekst),
   );
   const nieuw = leesItems(head.lees(ROADMAP)).filter((item) => item.aangevinkt && !eerder.has(item.tekst));
-  return [...nieuw.flatMap((item) => itemMeldingen(item, kader)), ...specMeldingen({ basis, head })];
+  return [
+    ...nieuw.flatMap((item) => itemMeldingen(item, kader)),
+    ...specMeldingen({ basis, head }),
+    ...structuurMeldingen({ basis, head }),
+  ];
 }
 
 /**
