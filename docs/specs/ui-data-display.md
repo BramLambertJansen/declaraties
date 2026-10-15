@@ -1,5 +1,5 @@
 ---
-status: voorstel
+status: goedgekeurd
 namespace: ui-data-display
 ---
 
@@ -175,6 +175,7 @@ Ontbreekt een gedeeld uitbreidingspunt, meld dat concreet vóór scopewijziging;
 
 ## Buiten scope
 
+Carousel (en daarmee AC-7) is op 2026-10-15 op verzoek van de eigenaar uit deze tranche gehaald, zie `docs/ui-data-display.md`.
 Serverquerybeheer, paginanummers, virtualisatie, kolomresize/reorder, bulkmutaties, accountpagina ombouwen, upload,
 externe media, zoom/lightboxnavigatie, autoplay/animatie, verticale tabs, routerintegratie, nieuwe themes/API/DB.
 Geen roadmap-item wordt met deze afgebakende UI-tranche afgerond of afgevinkt.

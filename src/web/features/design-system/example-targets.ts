@@ -1,6 +1,17 @@
 // Eén vindplaats per bestaand kitonderdeel; de bronindex blijft de inventaris bepalen.
 const groups = [
   {
+    names: ['DataTable', 'DataTableHeading'],
+    id: 'example-data-table',
+    text: 'Zoek, filter, sorteer, selecteer en laad lokale rijen.',
+  },
+  { names: ['Tabs'], id: 'example-tabs', text: 'Pijltjes verplaatsen focus; Enter activeert. Invoer blijft bewaard.' },
+  {
+    names: ['Gallery', 'GalleryImage'],
+    id: 'example-gallery',
+    text: 'Open de preview en bekijk lege en ontbrekende afbeeldingen.',
+  },
+  {
     names: ['Combobox', 'ComboboxPopup'],
     id: 'example-combobox',
     text: 'Zoek en kies een optie; bekijk ook disabled, invalid en de dialoog.',

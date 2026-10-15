@@ -39,3 +39,14 @@ export { FormComboboxField, type FormComboboxFieldProps } from '#core/web/ui/for
 export { Accordion, type AccordionProps, type AccordionItemData } from '#core/web/ui/accordion.tsx';
 export { List, ListItem, type ListProps, type ListItemProps } from '#core/web/ui/list.tsx';
 export { DescriptionList, type DescriptionListProps, type DescriptionItem } from '#core/web/ui/description-list.tsx';
+export {
+  DataTable,
+  type DataTableProps,
+  type DataTableColumn,
+  type DataTableSort,
+  type DataTableSelection,
+  type DataTableLoadMore,
+} from '#core/web/ui/data-table.tsx';
+export { Tabs, type TabsProps, type TabItem } from '#core/web/ui/tabs.tsx';
+export { Gallery, type GalleryProps, type GalleryItem } from '#core/web/ui/gallery.tsx';
+export type { ListToolbarProps, ListToolbarFilter } from '#core/web/ui/list-toolbar.tsx';
