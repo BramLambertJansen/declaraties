@@ -55,21 +55,11 @@ Hooguit drie open items (`check:roadmap`); nummer 1 is bewijs vóór uitbreiding
   wijziging dan apart aan de eigenaar voor. **Afhankelijkheden:** eigenaarreview van de opruiminventaris; geldende besluiten en bewijscriteria;
   `app:init` dat README en changelog gebruikt.
   aanleiding: `docs/reviews/2026-10-15-principes-inventaris.md` (categorie C, besluit 1)
-- [ ] **AC→test-check en risico-overzicht in de diff-guard** (opdracht stap 6; ADR 0029 P5). Elk acceptatiecriterium van een spec heeft een
-  test, en elke PR toont een risico-overzicht (nieuwe of gewijzigde permissiesleutels en routes, lane-uitslag). Voorwaarde voor het
-  versoepelen van prompts, agent-merge en het verwijderen van `src/api/app.ts` en `src/shared/permissions.ts` uit de gates (ADR 0029 punt 10, 16, 18).
-  **Klaar als:** fixtures bewijzen dat de check faalt bij een criterium zonder test en dat het overzicht de genoemde wijzigingen toont;
-  beide staan op main en zijn actief in `scripts/kit/diff-guard.mjs` en `.github/workflows/guard.yml`.
-  aanleiding: `docs/adr/0029-snellere-beslisroute.md` (P5, punt 10)
 
 ## Volgende
 
 Open werk dat niet geparkeerd is, grofweg in volgorde. Wat nog een spec of eigenaarbesluit nodig heeft, zegt het item.
 
-- [ ] **Prompts versoepelen** (opdracht stap 7; ADR 0029 punt 8, 9). Lijst `voorReview` in `.claude/gates.json`, `ask` = `voorReview`, spiegelregel in
-  `check-docs`, `gate()` in het rolhek; label `gate-wijziging`. Pas na de AC→test-check en het risico-overzicht (punt 10); afzwakken van
-  CODEOWNERS of de diff-guard mag niet (P2).
-  aanleiding: `docs/adr/0029-snellere-beslisroute.md` (punt 9, 10)
 - [ ] **ADR 0029 bouw: feature-lane en mini-spec** (punt 1–3, 7). Lane-herkenning in `check-document-status`, `docs/specs/_mini.md`, het
   frontmatterveld `sjabloon: mini` in `check-docs`, "Besluit en taakscope voorbereiden" in `docs/operations/agent-doorloop.md`; fixtures in `test/rails/`.
   aanleiding: `docs/adr/0029-snellere-beslisroute.md` (punt 1–7)
@@ -446,6 +436,11 @@ de bewaker houdt een afgezwakt check-script tegen; regels zonder check staan met
 - [x] Skills (spec, nieuw-route, nieuw-scherm, nieuw-component, migratie, release, security-review) met `!`-injectie uit `scripts/kit/feiten.mjs`
       (routes, permissies, foutcodes, componenten) (#42; `release` volgt in fase 3)
 - [x] `pnpm new:resource <naam>` afgeleid uit het gouden pad (ADR 0016): spec-skelet, daarna werkstraat-stap 2 met 501-handlers; `check:new-resource` als eigen CI-job
+- [x] AC→test-check en risico-overzicht in de diff-guard (ADR 0029 P5; #167, #170): `check-docs` controleert dat elk AC-id van een gebouwde spec een test heeft
+      (`test/rails/check-docs-ac.test.ts`), de diff-guard toont nieuwe of gewijzigde migraties, permissiesleutels, routes en contractwijzigingen (`test/rails/diff-guard-risico.test.ts`)
+- [x] Prompts versoepelen (ADR 0029 punt 8, 9 en 18; #174): lijst `voorReview` in `.claude/gates.json`, Edit-regels in `ask` = `voorReview` (spiegelregel in `check-docs`), het rolhek meldt
+      op andere gate-paden alleen "noem het in de PR"; `src/api/app.ts` en `src/shared/permissions.ts` zijn geen gate meer
+      (`test/hooks/rolhek-voorreview.test.ts`, `test/rails/check-docs-voorreview.test.ts`)
 
 **Klaar als:** per hook een tabeltest die hem met echte invoer aanroept en de exitcode controleert (blokkeert wat moet, laat door wat mag), groen;
 code uit `pnpm new:resource` haalt `gate:fast`; drie testopdrachten door de hele werkstraat met per opdracht: ingegrepen hook of check, aantal beurten, correcties van de eigenaar.
