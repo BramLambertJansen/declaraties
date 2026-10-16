@@ -157,9 +157,6 @@ Open werk dat niet geparkeerd is, grofweg in volgorde. Wat nog een spec of eigen
 
 Bewust nog niet, tot de genoemde aanleiding er is (P1). Niets verdwijnt: elk item staat er met zijn scope.
 
-- [ ] **ui-data-display** (tabel, tabs, galerij, filterbalk, carousel): spec `ui-data-display` blijft `voorstel`; het mandaatrecord `codex/ui-data-display`
-  in `.claude/decisions.json` blijft staan maar wordt niet gebruikt.
-  terug als: de proef-app een tabel, tabs, galerij, filterbalk of carousel nodig heeft
 - [ ] **Toasts: overige opvolging.** Bereikbaar onder een open modale `Dialog` (inert: niet voorgelezen, sluitknop onbereikbaar) en een `Toaster`
   voor `CenteredCard`-schermen (`/login`, `/uitnodiging`); toonklassen in een CVA-recept in plaats van gekopieerd uit `Notice`, zodat de
   contrasttest ze dekt; bestaande `Notice`-meldingen na een mutatie omzetten (`name-section.tsx`, `sessions-section.tsx`, `row-actions.tsx`) met
@@ -360,6 +357,7 @@ gebruikers met cursor-paginering, kent rollen toe en trekt ze in, blokkeert gebr
       productie; vervangt "alleen in dev" hierboven en in framework §6 en §7. Eerst een spec (#44, ADR 0015, #51)
 - [x] UI-kit uitgebreid: native controls en feedbackbasics (#145, spec ui-kit-basics) en een doorzoekbare combobox met collectie-primitieven (#150,
   spec ui-collections); allemaal in `check:catalogus` en op `/design-system` (`src/core/web/ui/`)
+- [ ] UI-kit: tabel, tabs, galerij, filterbalk en carousel (#156, spec `docs/specs/ui-data-display.md`); in `check:catalogus` en op `/design-system`
 
 **3d. De feature**
 - [x] Eerste feature met de hand door alle lagen (uit fase 2: dit is die feature); app-gegevens uit `better_auth."user"` via een `security definer`-view
