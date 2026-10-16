@@ -1,6 +1,6 @@
-# Beschermde paden — dezelfde lijst als docs/framework.md §10 (bron vanaf fase 1: .claude/gates.json, ADR 0011). "ask" in .claude/settings.json is dezelfde lijst
-# zonder tests en docs/specs/ (daar schrijft de agent; zie §10), plus ask op de commando's buiten de sandbox.
-# check-docs (fase 1) bewaakt beide spiegelingen. Vervang de handle per app (liever een team).
+# Beschermde paden — dezelfde lijst als docs/framework.md §10 (bron: gates + jsonGates in .claude/gates.json, ADR 0011). De Edit-regels
+# in "ask" van .claude/settings.json zijn de deelverzameling voorReview (ADR 0029 punt 8 en 9), plus ask op de commando's buiten de sandbox.
+# check-docs bewaakt beide spiegelingen. Vervang de handle per app (liever een team).
 /AGENTS.md                @bramlambertjansen
 /CLAUDE.md                @bramlambertjansen
 /docs/framework.md        @bramlambertjansen
@@ -33,11 +33,9 @@
 /renovate.json            @bramlambertjansen
 /.gitattributes           @bramlambertjansen
 /src/core/                @bramlambertjansen
-/src/api/app.ts           @bramlambertjansen
 /src/api/kit.ts           @bramlambertjansen
 /src/api/server.ts        @bramlambertjansen
 /src/api/env.ts           @bramlambertjansen
-/src/shared/permissions.ts @bramlambertjansen
 /deploy/                  @bramlambertjansen
 **/*.test.*               @bramlambertjansen
 **/*.spec.*               @bramlambertjansen

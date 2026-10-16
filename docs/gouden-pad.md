@@ -17,10 +17,11 @@ draait hem; `--dry-run` toont het plan zonder te schrijven, en bestaat een doel 
      `src/web/features/<naam>/queries.ts`, `src/web/features/<naam>/<naam>-page.tsx`, `src/web/routes/_app/<naam>.tsx`
      (en `src/web/routeTree.gen.ts` opnieuw);
    - gewijzigd: `src/shared/contracts/index.ts`, `src/shared/ids.ts` (aangemaakt als hij ontbreekt) en `db/ids.json` (brand `<Naam>Id`), `src/shared/limits.ts`
-     (paginagrootte), `src/web/copy/ui.ts` (teksten, te vervangen door die uit de spec), `src/web/lib/nav.ts` (menu-item);
-   - gate-bestanden, als afgedrukte wijziging die de hoofdsessie met Edit zet: `src/shared/permissions.ts`,
-     `src/shared/permissions.test.ts`, `src/api/app.ts` en `src/web/routes.test.tsx` (menu per rol). Noem de twee
-     testwijzigingen met reden in de PR.
+     (paginagrootte), `src/web/copy/ui.ts` (teksten, te vervangen door die uit de spec), `src/web/lib/nav.ts` (menu-item),
+     `src/shared/permissions.ts` (`<naam>:read` en `<naam>:write`) en `src/api/app.ts` (de routes); die twee zijn geen
+     gate meer (ADR 0029 punt 18), het risico-overzicht van de diff-guard noemt de nieuwe permissie en routes;
+   - bestaande tests, als afgedrukte wijziging die de hoofdsessie met Edit zet: `src/shared/permissions.test.ts` en
+     `src/web/routes.test.tsx` (menu per rol). Noem de twee testwijzigingen met reden in de PR.
 3. Daarna de werkstraat: de tester schrijft de tests (pgTAP per policy, integratie, e2e), de developer voegt de velden toe in
    een nieuwe migratie met kolomgrants en bouwt de handlers. De stappen hieronder gelden dan per bestand.
 

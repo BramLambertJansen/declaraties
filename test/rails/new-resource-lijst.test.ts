@@ -5,7 +5,7 @@ import { pathToFileURL } from 'node:url';
 import { afterAll, beforeAll, describe, expect, test } from 'vitest';
 import ts from 'typescript';
 import { z } from 'zod';
-import { pasToe, plan } from '../../scripts/kit/new-resource.mjs';
+import { plan } from '../../scripts/kit/new-resource.mjs';
 
 // Acceptatietests lijstpagina/AC-8 (docs/specs/lijstpagina.md, 'Generator'): de uitvoer van pnpm new:resource bevat een
 // lijst met zoeken en sorteren in de search params. Dat die uitvoer compileert en gate:fast haalt, bewijst check:new-resource.
@@ -146,11 +146,9 @@ describe('gegenereerd contract, echt geladen (lijstpagina/AC-8)', () => {
     for (const pad of ['src/shared/contracts/notities.ts', 'src/shared/ids.ts'])
       schrijf(pad, p.bestanden.find((b) => b.pad === pad)?.inhoud ?? '');
     schrijf('src/shared/contracts/kit.ts', readFileSync('src/shared/contracts/kit.ts', 'utf8'));
-    const perm = p.gates.find((g) => g.pad === 'src/shared/permissions.ts');
-    schrijf(
-      'src/shared/permissions.ts',
-      perm === undefined ? '' : pasToe(readFileSync('src/shared/permissions.ts', 'utf8'), perm),
-    );
+    // ADR 0029 punt 18: permissions.ts is geen gate-wijziging meer maar een bestand dat het script zelf schrijft.
+    expect(p.bestanden.map((b) => b.pad)).toContain('src/shared/permissions.ts');
+    schrijf('src/shared/permissions.ts', p.bestanden.find((b) => b.pad === 'src/shared/permissions.ts')?.inhoud ?? '');
     schrijf('src/web/copy/ui.ts', p.bestanden.find((b) => b.pad === 'src/web/copy/ui.ts')?.inhoud ?? '');
     const copyMod: unknown = await import(pathToFileURL(path.join(werkmap, 'src/web/copy/ui.ts')).href);
     const copyGeparsed = copyModule.safeParse(copyMod);

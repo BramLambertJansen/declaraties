@@ -133,12 +133,12 @@ describe('taakmandaat tegen echte git-objecten', () => {
 
   test('het echte rolhek gebruikt de gates uit main bij een lokaal weggehaalde core-bescherming', () => {
     const { root } = fixture();
-    write(root, '.claude/gates.json', CONFIG.replace('"src/core/**",', ''));
+    write(root, '.claude/gates.json', CONFIG.replaceAll('"scripts/**",', ''));
     const payload = {
       cwd: root,
       tool_name: 'Write',
       agent_type: 'developer',
-      tool_input: { file_path: path.join(root, 'src/core/web/ui/unapproved.tsx'), content: 'export {};' },
+      tool_input: { file_path: path.join(root, 'scripts/kit/unapproved.mjs'), content: 'export {};' },
     };
     expect(() =>
       execFileSync(process.execPath, [HOOK], {
@@ -213,7 +213,8 @@ describe('taakmandaat tegen echte git-objecten', () => {
       agent_type: 'developer',
       tool_input: { ...call.tool_input, file_path: `${link}/../example.tsx` },
     };
-    expect(decide(alias, ctx).deny).not.toHaveLength(0);
+    // ADR 0029 punt 9: src/core is geen voorReview-pad meer, dus geen deny; het mandaat geldt niet voor het alias.
+    expect(decide(alias, ctx).context).not.toContainEqual(expect.stringContaining('Taakmandaat:'));
     expect(decide(alias, ctx).allow).toBeUndefined();
   });
 

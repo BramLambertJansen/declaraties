@@ -164,7 +164,6 @@ describe('WS-02: configs zijn een gate', () => {
     'Dockerfile',
     '.dockerignore',
     'db/test.env',
-    'docs/nieuwe-app.md',
   ])('%s: developer deny, hoofdsessie ask', (file) => {
     expect([verdict(write(file, 'x', 'developer')), verdict(write(file, 'x'))]).toStrictEqual(['deny', 'ask']);
   });

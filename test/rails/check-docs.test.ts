@@ -69,15 +69,21 @@ test('een ADR- of specstatus buiten de woordenlijst, en een goedgekeurde spec zo
   ]);
 });
 
-test('CODEOWNERS en `ask` lopen uit elkaar (tests en specs staan alleen in CODEOWNERS)', async () => {
+// ADR 0029 punt 9: de spiegel is nu `ask` (Edit-regels) = `voorReview` in .claude/gates.json; CODEOWNERS = gates + jsonGates.
+test('`ask` en `voorReview` lopen uit elkaar (tests en specs staan niet in `ask`)', async () => {
   const root = repo({
+    '.claude/gates.json': JSON.stringify({
+      gates: ['AGENTS.md', 'src/core/**', 'scripts/**', '**/*.test.*', 'docs/specs/**'],
+      voorReview: ['AGENTS.md', 'scripts/**'],
+      jsonGates: {},
+    }),
     '.github/CODEOWNERS': `${OWNERS}/scripts/ @eigenaar\n`,
     '.claude/settings.json': JSON.stringify({
-      permissions: { ask: ['Edit(AGENTS.md)', 'Edit(src/core/**)', 'Edit(deploy/**)'] },
+      permissions: { ask: ['Edit(AGENTS.md)', 'Edit(src/core/**)'] },
     }),
   });
 
-  expect(await keys(root)).toStrictEqual(['docs:spiegel:ask:scripts/**', 'docs:spiegel:codeowners:deploy/**']);
+  expect(await keys(root)).toStrictEqual(['docs:spiegel:ask:scripts/**', 'docs:spiegel:voorreview:src/core/**']);
 });
 
 test('twee ADR-bestanden met hetzelfde nummer', async () => {

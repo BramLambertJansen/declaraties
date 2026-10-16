@@ -9,10 +9,13 @@ import { automaticRunner } from './runner-authority.mjs';
 
 /**
  * @typedef {{ gates: string[], testpaden: string[], jsonGates: Record<string, string[]>, gegenereerd: string[],
- *   migraties: string[], schrijfrecht: Record<string, string[]>, mcpLezen: string[] }} Config
+ *   migraties: string[], schrijfrecht: Record<string, string[]>, mcpLezen: string[], voorReview?: string[] | undefined }} Config
+ * `voorReview` ontbreekt → elke gate telt als voorReview (faalt dicht).
  * @typedef {{ root: string, cwd: string, config: Config, read: (rel: string) => string | null,
  *   committed: (rel: string) => boolean | 'zonder-origin', isDir: (rel: string) => boolean, branch: string,
- *   authority?: import('./task-authority.mjs').Authority | null, runnerTrusted?: boolean }} Ctx
+ *   authority?: import('./task-authority.mjs').Authority | null, runnerTrusted?: boolean,
+ *   onbekendeRol?: boolean }} Ctx
+ * `onbekendeRol`: een subagent zonder bekende rol; telt als developer, maar zonder de melding buiten voorReview.
  * `committed`: staat in de merge-base met origin/main; 'zonder-origin' = origin/main onleesbaar en wel in HEAD (terugval).
  * @typedef {{ deny: string[], ask: string[], context: string[], allow?: boolean }} Decision
  * @typedef {{ kind: 'write' | 'delete', after: string | null }} Change
@@ -36,6 +39,7 @@ export function loadConfig(text) {
       throw new Error(`.claude/gates.json: ${key} is geen lijst`);
     return found.map(String);
   };
+  const optionalList = (/** @type {string} */ key) => (value(key) === undefined ? undefined : list(key));
   const record = (/** @type {string} */ key) => {
     const found = value(key);
     if (typeof found !== 'object' || found === null || Array.isArray(found))
@@ -50,6 +54,7 @@ export function loadConfig(text) {
     mcpLezen: list('mcpLezen'),
     jsonGates: record('jsonGates'),
     schrijfrecht: record('schrijfrecht'),
+    voorReview: optionalList('voorReview'),
   };
 }
 
@@ -66,7 +71,9 @@ export function decide(payload, ctx) {
   const role = roleOf(field(payload, 'agent_type'));
   // Een onbekende subagent houdt de bestaande developerbeperkingen, maar krijgt nooit een taakmandaat.
   const namedRole = field(payload, 'agent_type');
-  const context = ['', 'developer', 'architect'].includes(namedRole) ? ctx : { ...ctx, authority: null };
+  const context = ['', 'developer', 'architect'].includes(namedRole)
+    ? ctx
+    : { ...ctx, authority: null, onbekendeRol: !SUBAGENT_ROLES.has(namedRole) };
   if (tool.startsWith('mcp__')) decideMcp({ tool, role }, context, decision);
   else if (tool === 'Bash') {
     const command = field(input, 'command');
@@ -313,8 +320,12 @@ function decideByRole({ rel, change, role }, ctx, decision) {
     decision.context.push(`Taakmandaat: ${rel}: exact bestand toegestaan door de goedgekeurde taak uit main`);
     return;
   }
-  if (!free && config.gates.some((glob) => globMatch(glob, rel)))
-    gate(decision, role, `${rel} is een beschermd pad (framework §10): wijzigen vraagt akkoord van de eigenaar`);
+  if (free || !config.gates.some((glob) => globMatch(glob, rel))) return;
+  // ADR 0029 punt 9: buiten voorReview geen prompt, wel een melding; de eigenaar reviewt het in de PR.
+  const voorReview = config.voorReview ?? config.gates;
+  if (ctx.onbekendeRol !== true && !voorReview.some((glob) => globMatch(glob, rel)))
+    decision.context.push(`${rel} is een beschermd pad (framework §10): noem het in de PR (eigenaarreview, ADR 0029 punt 9)`);
+  else gate(decision, role, `${rel} is een beschermd pad (framework §10): wijzigen vraagt akkoord van de eigenaar`);
 }
 
 /**

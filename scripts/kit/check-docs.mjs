@@ -4,8 +4,8 @@
 //     (een kale naam of relatief pad telt als een bestand in git erop eindigt; `/route` is een URL, geen pad).
 //  2. Relatieve links in docs/**/*.md en README.md wijzen naar een bestaand bestand.
 //  3. ADR- en spec-statussen komen uit de vaste woordenlijst; een goedgekeurde of gebouwde spec heeft "Hergebruik en UX".
-//  4. CODEOWNERS en `ask` in .claude/settings.json noemen dezelfde paden (CODEOWNERS daarnaast tests en docs/specs/), en
-//     CODEOWNERS noemt precies de gates en jsonGates uit .claude/gates.json (de bron, ADR 0011).
+//  4. CODEOWNERS noemt precies de gates en jsonGates uit .claude/gates.json (de bron, ADR 0011); `voorReview` valt daarbinnen
+//     en de Edit-regels in `ask` van .claude/settings.json zijn precies `voorReview` (ADR 0029 punt 8 en 9).
 //  5. `schrijfrecht` van een rol overlapt niet met `gates` (WS-02), op de uitzonderingen in SCHRIJFRECHT_VRIJ na.
 //  6. Elk AC-id van een gebouwde spec heeft een testbestand met `<namespace>/AC-n`, of met het AC-id samen met de specnaam
 //     of de namespace (sleutel `docs:ac:<spec>:<AC-n>`).
@@ -19,8 +19,6 @@ const ADR_STATUS = /^Status:\s*(voorgesteld|geaccepteerd|vervangen door \d{4}|ve
 export const SPEC_STATUS = /^status:\s*(voorstel|goedgekeurd|gebouwd|vervallen)\b/m;
 // Pakketbeheer-commando's van pnpm zelf, geen scripts uit package.json.
 const PNPM_COMMANDS = new Set(['add', 'install', 'i', 'update', 'up', 'remove', 'rm', 'exec', 'dlx', 'run', 'why']);
-// In CODEOWNERS, niet in `ask`: daar schrijft de agent (framework §10).
-const OWNERS_ONLY = new Set(['**/*.test.*', '**/*.spec.*', 'e2e/**', 'docs/specs/**', 'db/tests/**', 'test/**']);
 
 /** @param {string} root */
 function trackedFiles(root) {
@@ -264,20 +262,53 @@ function mirrorViolations(files, read) {
       .filter((entry) => entry !== '' && !entry.startsWith('#'))
       .map((entry) => entry.replace(/^\//, '').replace(/\/$/, '/**')),
   );
-  const ask = new Set(askEditPaths(read('.claude/settings.json')));
+  if (!files.includes('.claude/gates.json')) return [];
+  const gates = read('.claude/gates.json');
   return [
-    ...(files.includes('.claude/gates.json') ? gatesViolations(owners, read('.claude/gates.json')) : []),
-    ...[...owners]
-      .filter((entry) => !OWNERS_ONLY.has(entry) && !ask.has(entry))
-      .map((entry) => ({
-        key: `docs:spiegel:ask:${entry}`,
-        message: `CODEOWNERS noemt ${entry}, \`ask\` in .claude/settings.json niet`,
+    ...gatesViolations(owners, gates),
+    ...voorReviewViolations(gates, askEditPaths(read('.claude/settings.json'))),
+  ];
+}
+
+/**
+ * `voorReview` ⊆ gates + jsonGates, en de Edit-regels in `ask` zijn precies `voorReview` (ADR 0029 punt 8 en 9).
+ * @param {string} text
+ * @param {readonly string[]} askPaths
+ * @returns {Violation[]}
+ */
+function voorReviewViolations(text, askPaths) {
+  /** @type {unknown} */
+  const config = JSON.parse(text);
+  const entry = (/** @type {string} */ key) =>
+    typeof config === 'object' && config !== null
+      ? Object.entries(config).find(([name]) => name === key)?.[1]
+      : undefined;
+  const list = (/** @type {unknown} */ value) => (Array.isArray(value) ? value.map(String) : []);
+  const jsonGates = entry('jsonGates');
+  const gates = new Set([
+    ...list(entry('gates')),
+    ...(typeof jsonGates === 'object' && jsonGates !== null ? Object.keys(jsonGates) : []),
+  ]);
+  const voorReview = new Set(list(entry('voorReview')));
+  const ask = new Set(askPaths);
+  return [
+    ...[...voorReview]
+      .filter((path) => !gates.has(path))
+      .map((path) => ({
+        key: `docs:spiegel:voorreview-gates:${path}`,
+        message: `voorReview noemt ${path}, gates en jsonGates in .claude/gates.json niet`,
+      })),
+    ...[...voorReview]
+      .filter((path) => !ask.has(path))
+      .map((path) => ({
+        key: `docs:spiegel:ask:${path}`,
+        message: `voorReview noemt ${path}, \`ask\` in .claude/settings.json niet`,
       })),
     ...[...ask]
-      .filter((entry) => !owners.has(entry))
-      .map((entry) => ({
-        key: `docs:spiegel:codeowners:${entry}`,
-        message: `\`ask\` noemt ${entry}, CODEOWNERS niet`,
+      .filter((path) => !voorReview.has(path))
+      .map((path) => ({
+        key: `docs:spiegel:voorreview:${path}`,
+        message: `\`ask\` noemt ${path}, voorReview in .claude/gates.json niet`,
       })),
   ];
 }

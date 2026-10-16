@@ -3,8 +3,9 @@
 //  - Bij een goedgekeurde spec (met --rollen): werkstraat-stap 2 (framework §8, OV-1b): contract, handlers die 501 geven,
 //    migratie met het tabelpatroon (docs/reviews/2026-10-10-tabelpatroon.md), branded ID, queries, scherm, route, menu-item
 //    en teksten. Geen tests: die schrijft de tester.
-// Gate-bestanden (permissions.ts, app.ts, tests) schrijft hij niet: hij drukt de exacte wijziging af en de hoofdsessie zet
-// die met Edit, zodat het rolhek per bestand akkoord vraagt (OV-4). Bestaat een doel al, dan schrijft hij niets (OV-5).
+// Bestaande tests (permissions.test.ts, de menutest) schrijft hij niet: hij drukt de exacte wijziging af en de hoofdsessie
+// zet die met Edit, zodat het rolhek per bestand akkoord vraagt (OV-4). permissions.ts en app.ts schrijft hij wel: ze zijn
+// geen gate meer (ADR 0029 punt 18); het risico-overzicht van de diff-guard meldt een nieuwe permissie of route. Bestaat een doel al, dan schrijft hij niets (OV-5).
 // Templates in scripts/kit/templates/; check:new-resource bewijst dat de uitvoer gate:fast haalt (OV-7).
 import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
@@ -257,24 +258,36 @@ function nav(root, n) {
 }
 
 /**
+ * permissions.ts en app.ts, die het script zelf schrijft (ADR 0029 punt 18).
  * @param {string} root
  * @param {Namen} n
  * @param {readonly string[]} rollen
  * @returns {Record<string, string>} pad → nieuwe inhoud
  */
-function gateInhoud(root, n, rollen) {
+function permissieEnApp(root, n, rollen) {
   const regels = `\n  // ${n.naam} (spec docs/specs/${n.naam}.md, pnpm new:resource).\n  '${n.naam}:read': { roles: [${rollen.map((rol) => `'${rol}'`).join(', ')}] },\n  '${n.naam}:write': { roles: [${rollen.map((rol) => `'${rol}'`).join(', ')}] },`;
-  const testRegels = `\n  '${n.naam}:read': [${rollen.map((rol) => `'${rol}'`).join(', ')}],\n  '${n.naam}:write': [${rollen.map((rol) => `'${rol}'`).join(', ')}],`;
   const permissies = 'src/shared/permissions.ts';
-  const test = 'src/shared/permissions.test.ts';
   return {
     [permissies]: voegIn(
       bestand(lees(root, permissies), permissies),
       { anker: '\n});', tot: 'export type Permission' },
       regels,
     ),
-    [test]: voegIn(bestand(lees(root, test), test), { anker: '\n};', tot: 'const entries' }, testRegels),
     'src/api/app.ts': app(root, n),
+  };
+}
+
+/**
+ * @param {string} root
+ * @param {Namen} n
+ * @param {readonly string[]} rollen
+ * @returns {Record<string, string>} pad → nieuwe inhoud
+ */
+function gateInhoud(root, n, rollen) {
+  const testRegels = `\n  '${n.naam}:read': [${rollen.map((rol) => `'${rol}'`).join(', ')}],\n  '${n.naam}:write': [${rollen.map((rol) => `'${rol}'`).join(', ')}],`;
+  const test = 'src/shared/permissions.test.ts';
+  return {
+    [test]: voegIn(bestand(lees(root, test), test), { anker: '\n};', tot: 'const entries' }, testRegels),
     ...menuTest(root, n, rollen),
   };
 }
@@ -374,8 +387,10 @@ export function bestandsplan(n, versie) {
       'db/ids.json',
       'src/web/copy/ui.ts',
       'src/web/lib/nav.ts',
+      'src/shared/permissions.ts',
+      'src/api/app.ts',
     ],
-    gates: ['src/shared/permissions.ts', 'src/shared/permissions.test.ts', 'src/api/app.ts', 'src/web/routes.test.tsx'],
+    gates: ['src/shared/permissions.test.ts', 'src/web/routes.test.tsx'],
   };
 }
 
@@ -430,7 +445,8 @@ export async function plan(root, naam, opties = {}) {
     };
   }
   const rollen = parseRollen(opties.rollen?.join(','));
-  const ruw = bouwBestanden(root, n, opties.nu ?? new Date());
+  const extra = Object.entries(permissieEnApp(root, n, rollen)).map(([pad, inhoud]) => [pad, { inhoud, nieuw: false }]);
+  const ruw = { ...bouwBestanden(root, n, opties.nu ?? new Date()), ...Object.fromEntries(extra) };
   const bestanden = await Promise.all(
     Object.entries(ruw).map(async ([pad, { inhoud, nieuw }]) => ({
       pad,
