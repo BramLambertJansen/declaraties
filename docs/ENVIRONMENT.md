@@ -39,8 +39,42 @@ Het script bevat geen geheimen en vraagt er geen. Het draait zonder root via `su
 - Geen lokale stack: in een cloudsessie draaien `pnpm gate:slow` en `pnpm test:db` in CI (README, Cloud).
 - Geen secrets in de omgeving; `.env*` blijft buiten beeld (`AGENTS.md`, Repo en grenzen).
 
+## Eerst controleren in een sessie
+
+Een sessie controleert dit eerst en stopt bij een fout, voordat ze iets verkent:
+
+| Vereiste | Controle | Bij een fout |
+|---|---|---|
+| Node uit `mise.toml` en dependencies | `node scripts/kit/feiten.mjs` geeft geen `✗ toolchain ontbreekt` (`scripts/kit/toolchain.mjs`) | setup-script niet gedraaid of mislukt; zie Problemen |
+| Netwerk vanuit de Bash-tool | `pnpm install --frozen-lockfile` slaagt | zie Problemen, proxy |
+| Branch | `git branch --show-current` | zie Branchnaam |
+
+Zonder Node 26 en dependencies draait geen enkele check die bewijs levert (`pnpm gate:fast`, `pnpm pr:verify`, `pnpm meting`).
+Een overdracht aan een cloudsessie begint daarom met een blok **Vereisten** met deze drie punten.
+
+## Grens van de sandbox
+
+De Bash-sandbox (`sandbox` in `.claude/settings.json`) kan niet schrijven naar `.claude/settings.json`,
+`.claude/settings.local.json`, `.claude/hooks/**` en `.claude/skills/**`. Dat is een grens van Claude Code, niet van deze repo,
+en hij geldt lokaal en in de cloud. Een wijziging daar gaat alleen via de Edit-tool in de hoofdsessie, met een prompt die de
+eigenaar accepteert; het rolhek weigert een developer-subagent op die paden. Een taak die die paden raakt, vraagt dus een
+sessie waarin de eigenaar aanwezig is, of de eigenaar voert de wijziging zelf uit. De sandbox ruimer zetten is een
+eigenaarsbesluit (beschermd pad, `docs/framework.md` §10).
+
+## Branchnaam
+
+Een cloudsessie start op een branch die het platform kiest (`claude/<naam>`). Een overdracht schrijft daarom geen
+branchnaam voor; de PR komt van de opgelegde branch. Is een vaste naam nodig, dan start de eigenaar de sessie op die branch.
+
 ## Problemen
 
+- **`✗ toolchain ontbreekt`** (bijvoorbeeld `Node v22…, verwacht 26…` of `node_modules ontbreekt`): het setup-script is niet
+  gedraaid, mislukt of de omgeving is gecachet van vóór het script. Controleer in claude.ai/code dat het setup-script precies
+  `bash scripts/cloud-setup.sh` is en ververs de omgevingscache.
+- **`✗ mise ophalen van github.com mislukt`** (of `mise install`, `pnpm install`): geen netwerk. Controleer dat netwerktoegang
+  op Trusted staat. Meldt curl `Failed to connect to localhost port 3128`, dan antwoordt de proxy uit `HTTPS_PROXY` niet.
+- **Proxy in de Bash-tool**: het setup-script draait in een ander proces dan de sandboxed Bash-tool van de sessie. Dat het
+  script slaagt, bewijst niet dat de Bash-tool het netwerk bereikt; controleer beide (zie Eerst controleren).
 - **`Sandbox required but unavailable`**: de setup is niet gedraaid of de omgeving is gecachet van vóór deze stap. Draai
   `bash scripts/cloud-setup.sh` opnieuw of ververs de omgevingscache.
 - **Sandbox uitzetten** is bewust geen standaard: `.claude/settings.json` blijft `sandbox` aan houden. Wie dat toch wil, doet dat per

@@ -46,6 +46,7 @@ function opstelling({ metMise, metSandbox = true }: { metMise: boolean; metSandb
     'curl',
     [
       'echo "curl $*" >> "$STUB_LOG"',
+      '[[ -z "${CURL_FAIL:-}" ]] || exit 22',
       'while [[ $# -gt 0 ]]; do [[ "$1" == -o ]] && { doel="$2"; shift; }; shift; done',
       `printf '%s\\n' '#!/usr/bin/env bash' '${MISE}' > "$doel"`,
     ].join('\n'),
@@ -72,6 +73,19 @@ function run({ home, stubs, log, systeem }: Opstelling, extra: Record<string, st
     env: { HOME: home, PATH: `${stubs}:${basis}`, STUB_LOG: log, MISE_FAIL: '__nooit__', ...extra },
   });
   return { status: result.status, aanroepen: readFileSync(log, 'utf8').trim().split('\n').filter(Boolean) };
+}
+
+// Zoals run, met ook stderr, voor de meldingen bij een mislukte stap.
+function runMetStderr({ home, stubs, log }: Opstelling, extra: Record<string, string>) {
+  const result = spawnSync('bash', [SCRIPT], {
+    encoding: 'utf8',
+    env: { HOME: home, PATH: `${stubs}:/usr/bin:/bin`, STUB_LOG: log, MISE_FAIL: '__nooit__', ...extra },
+  });
+  return {
+    status: result.status,
+    stderr: result.stderr,
+    aanroepen: readFileSync(log, 'utf8').trim().split('\n').filter(Boolean),
+  };
 }
 
 afterEach(() => {
@@ -135,6 +149,30 @@ describe('scripts/cloud-setup.sh', () => {
     expect(status).not.toBe(0);
     expect(aanroepen).toStrictEqual(['mise trust', 'mise install']);
   });
+
+  test('mislukte curl van mise: status ≠ 0, melding met Trusted en docs/ENVIRONMENT.md, daarna geen mise-aanroep', () => {
+    const omgeving = opstelling({ metMise: false });
+
+    const { status, stderr, aanroepen } = runMetStderr(omgeving, { CURL_FAIL: '1' });
+
+    expect(status).not.toBe(0);
+    expect(stderr).toContain('Trusted');
+    expect(stderr).toContain('docs/ENVIRONMENT.md');
+    expect(aanroepen.filter((regel) => regel.startsWith('mise'))).toStrictEqual([]);
+  });
+
+  test.each(['install', 'pnpm'])(
+    'mislukte mise-stap %s: status ≠ 0 en melding met Trusted en docs/ENVIRONMENT.md',
+    (fail) => {
+      const omgeving = opstelling({ metMise: true });
+
+      const { status, stderr } = runMetStderr(omgeving, { MISE_FAIL: fail });
+
+      expect(status).not.toBe(0);
+      expect(stderr).toContain('Trusted');
+      expect(stderr).toContain('docs/ENVIRONMENT.md');
+    },
+  );
 
   test('bevat geen geheimen of tokens en draait geen doctor of docker', () => {
     const bron = readFileSync(SCRIPT, 'utf8');

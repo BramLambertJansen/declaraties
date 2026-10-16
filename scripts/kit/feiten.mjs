@@ -1,8 +1,17 @@
 // Live feiten (framework §8, ADR 0011): elke rol begint hiermee, niet met wat in proza staat.
 // Gebruik: node scripts/kit/feiten.mjs [gates|adr|specs|migraties|routes|permissies|foutcodes|componenten] [--json]
 import { readdirSync, readFileSync } from 'node:fs';
-import { componenten } from './catalogus.mjs';
-import { gates } from './gates.mjs';
+import { fileURLToPath } from 'node:url';
+import { toolchainProbleemIn } from './toolchain.mjs';
+
+// Eerst de toolchain: catalogus.mjs laadt typescript, dus zonder node_modules anders een stacktrace (docs/ENVIRONMENT.md).
+const probleem = toolchainProbleemIn(fileURLToPath(new URL('../..', import.meta.url)));
+if (probleem !== null) {
+  console.error(probleem);
+  process.exit(1);
+}
+const { componenten } = await import('./catalogus.mjs');
+const { gates } = await import('./gates.mjs');
 
 const TEMPLATE_ADR_MAX = 99;
 

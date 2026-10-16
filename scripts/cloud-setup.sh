@@ -18,6 +18,24 @@ if ((${#pakketten[@]} > 0)); then
   "${as_root[@]}" apt-get install -y "${pakketten[@]}"
 fi
 
+# Stap die het netwerk nodig heeft: bij een fout een leesbare diagnose in plaats van alleen de fout van het commando (set -e).
+netwerk() {
+  local stap="$1"
+  shift
+  "$@" && return 0
+  local status=$?
+  # Alleen host en poort: een proxy-URL kan inloggegevens bevatten.
+  local proxy="${HTTPS_PROXY:-${https_proxy:-leeg}}"
+  proxy="${proxy#*://}"
+  proxy="${proxy##*@}"
+  {
+    printf '✗ %s mislukt (exit %s): waarschijnlijk geen netwerk.\n' "$stap" "$status"
+    printf '  → staat netwerktoegang van de omgeving op Trusted (claude.ai/code)? Is de proxy bereikbaar (HTTPS_PROXY=%s)?\n' "$proxy"
+    printf '  → zie docs/ENVIRONMENT.md, Problemen.\n'
+  } >&2
+  exit "$status"
+}
+
 # Zelfde versie als jdx/mise-action in .github/workflows/.
 MISE_VERSION=v2026.9.18
 export PATH="$HOME/.local/bin:$PATH"
@@ -29,7 +47,7 @@ if ! command -v mise >/dev/null; then
     *) echo "✗ onbekende architectuur $(uname -m)" >&2; exit 1 ;;
   esac
   mkdir -p "$HOME/.local/bin"
-  curl -fsSL -o "$HOME/.local/bin/mise" \
+  netwerk "mise ophalen van github.com" curl -fsSL -o "$HOME/.local/bin/mise" \
     "https://github.com/jdx/mise/releases/download/$MISE_VERSION/mise-$MISE_VERSION-linux-$arch"
   chmod +x "$HOME/.local/bin/mise"
 fi
@@ -41,7 +59,7 @@ touch "$HOME/.bashrc"
 grep -qxF "$line" "$HOME/.bashrc" || printf '%s\n' "$line" >>"$HOME/.bashrc"
 
 mise trust
-mise install
-mise exec -- pnpm install --frozen-lockfile
+netwerk "mise install" mise install
+netwerk "pnpm install (of lockfile ongeldig)" mise exec -- pnpm install --frozen-lockfile
 # lefthook heeft geen postinstall (pnpm-workspace.yaml: allowBuilds); de hooks komen alleen hier.
 mise exec -- pnpm exec lefthook install
