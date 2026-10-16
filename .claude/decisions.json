@@ -104,6 +104,14 @@
       "branch": "claude/youthful-carson-r5jhlr",
       "status": "vervangen door 0029",
       "paths": []
+    },
+    {
+      "file": "docs/adr/0032-developer-volgt-hoofdsessie-buiten-voorreview.md",
+      "digest": "d0168371ee6adefe2e65defe1ab39e6dd06954359ccd902b4ee2516428c0bd2f",
+      "repository": "BramLambertJansen/template",
+      "branch": "docs/adr-0032-developer-voorreview",
+      "status": "geaccepteerd",
+      "paths": []
     }
   ]
 }
