@@ -1,5 +1,5 @@
 // Preflight van de toolchain (docs/ENVIRONMENT.md): vóór een script modules met dependencies laadt, één leesbare regel in
-// plaats van een stacktrace als Node niet de versie uit mise.toml is of node_modules ontbreekt (verse cloudsessie zonder setup).
+// plaats van een stacktrace als Node niet de versie uit mise.toml is of node_modules ontbreekt of onvolledig is (verse cloudsessie zonder setup, onderbroken install).
 // Zonder dependencies, zodat het ook op een kale Node draait.
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
@@ -30,10 +30,13 @@ export function toolchainProbleem({ node, miseToml, nodeModules }) {
   const problemen = [];
   if (verwacht !== undefined && !passend(node, verwacht))
     problemen.push(`Node ${node}, verwacht ${verwacht} of nieuwer binnen dezelfde major (mise.toml)`);
-  if (!nodeModules) problemen.push('node_modules ontbreekt');
+  if (!nodeModules) problemen.push('node_modules ontbreekt of is onvolledig');
   if (problemen.length === 0) return null;
   return `✗ toolchain ontbreekt: ${problemen.join('; ')} → draai \`bash scripts/cloud-setup.sh\` (cloud) of \`scripts/bootstrap.sh\` (lokaal), zie docs/ENVIRONMENT.md`;
 }
+
+// Een complete install, niet alleen de map: pnpm schrijft .modules.yaml pas aan het eind, en typescript laadt catalogus.mjs als eerste.
+const INSTALLATIE = ['.modules.yaml', 'typescript/package.json'];
 
 /** @param {string} root */
 export function toolchainProbleemIn(root) {
@@ -41,6 +44,6 @@ export function toolchainProbleemIn(root) {
   return toolchainProbleem({
     node: process.version,
     miseToml: existsSync(mise) ? readFileSync(mise, 'utf8') : '',
-    nodeModules: existsSync(path.join(root, 'node_modules')),
+    nodeModules: INSTALLATIE.every((rel) => existsSync(path.join(root, 'node_modules', rel))),
   });
 }

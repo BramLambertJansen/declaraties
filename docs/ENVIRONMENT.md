@@ -68,7 +68,7 @@ branchnaam voor; de PR komt van de opgelegde branch. Is een vaste naam nodig, da
 
 ## Problemen
 
-- **`✗ toolchain ontbreekt`** (bijvoorbeeld `Node v22…, verwacht 26…` of `node_modules ontbreekt`): het setup-script is niet
+- **`✗ toolchain ontbreekt`** (bijvoorbeeld `Node v22…, verwacht 26…` of `node_modules ontbreekt of is onvolledig`): het setup-script is niet
   gedraaid, mislukt of de omgeving is gecachet van vóór het script. Controleer in claude.ai/code dat het setup-script precies
   `bash scripts/cloud-setup.sh` is en ververs de omgevingscache.
 - **`✗ mise ophalen van github.com mislukt`** (of `mise install`, `pnpm install`): geen netwerk. Controleer dat netwerktoegang
