@@ -4,7 +4,7 @@
 //    migratie met het tabelpatroon (docs/reviews/2026-10-10-tabelpatroon.md), branded ID, queries, scherm, route, menu-item
 //    en teksten. Geen tests: die schrijft de tester.
 // Bestaande tests (permissions.test.ts, de menutest) schrijft hij niet: hij drukt de exacte wijziging af en de hoofdsessie
-// zet die met Edit, zodat het rolhek per bestand akkoord vraagt (OV-4). permissions.ts en app.ts schrijft hij wel: ze zijn
+// zet die met Edit en noemt ze met reden in de PR (OV-4). permissions.ts en app.ts schrijft hij wel: ze zijn
 // geen gate meer (ADR 0029 punt 18); het risico-overzicht van de diff-guard meldt een nieuwe permissie of route. Bestaat een doel al, dan schrijft hij niets (OV-5).
 // Templates in scripts/kit/templates/; check:new-resource bewijst dat de uitvoer gate:fast haalt (OV-7).
 import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
@@ -524,7 +524,7 @@ function verslag(p, proef) {
       ? ['  gewijzigd src/web/routeTree.gen.ts']
       : []),
     '',
-    'Gate-bestanden: zet deze wijzigingen met Edit (het rolhek vraagt per bestand akkoord; noem de testwijzigingen met reden in de PR):',
+    'Bestaande tests: zet deze wijzigingen met Edit en noem ze met reden in de PR:',
     ...gates,
     '',
     'Daarna: pnpm db:generate (runner) en pnpm gate:fast. De tester schrijft de tests (framework §8); de handlers geven 501 tot dan.',

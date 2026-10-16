@@ -283,8 +283,8 @@ volgende vrije migratie- en ADR-nummer), niet met wat in proza staat.
 2. **Contract**: zod-schema's en routes die `501` teruggeven wanneer de wijziging een API-contract toevoegt.
 3. **Tester-agent** schrijft acceptatietests tegen het contract; ze compileren en falen op hun asserties. Schrijft alleen in testpaden;
    per permissie en per policy ook de negatieve test.
-4. **Developer** (hoofdsessie of developer-agent) bouwt tot groen; beschermde broncode alleen binnen een geldig exact taakmandaat
-   uit main (ADR 0027), overige gates blijven gesloten. Mag tests toevoegen. Een bestaande test wijzigen mag alleen als de spec of opdracht het geteste
+4. **Developer** (hoofdsessie of developer-agent) bouwt tot groen; gate-paden in `voorReview` alleen binnen een geldig exact
+   taakmandaat uit main (ADR 0027); een ander gate-pad mag, met de melding "noem het in de PR" (ADR 0029 punt 9). Mag tests toevoegen. Een bestaande test wijzigen mag alleen als de spec of opdracht het geteste
    gedrag verandert; elke gewijzigde test staat met reden in de PR. Verwijderen of skippen alleen met akkoord van de eigenaar.
    Lijkt een test van de tester fout zonder dat het gedrag verandert, dan stopt de hoofdsessie en legt het de eigenaar voor;
    na akkoord past de tester (niet de hoofdsessie) de test aan.
@@ -329,7 +329,7 @@ vergelijkt CODEOWNERS (= `gates` + `jsonGates`) en de Edit-regels in `ask` (= `v
 `*.test.*`/`*.spec.*`/`db/tests/`) wijzigen meldt het rolhek ("hulpbestand gewijzigd"), verwijderen is een gate; een bestaand bestand onder
 `test/rails/fixtures/` of `test/setup/` wijzigen ook, ook als het `*.test.*` heet (`existingTest` in `.claude/hooks/lib/rolhek.mjs`). `check-docs`
 faalt als `schrijfrecht` van een rol overlapt met `gates`, behalve architect → `docs/adr/**` en `docs/specs/**`, tester → testpaden, en developer
-en hoofdsessie (het rolhek handelt gates voor hen af met ask/deny, met taakgebonden broncode- en statusuitzonderingen uit ADR 0027); alleen de bestandsnaam-gates uit `testpaden` (`**/*.test.*`, `**/*.spec.*`)
+en hoofdsessie (het rolhek handelt gates voor hen af: ask/deny op `voorReview`, een melding op de andere gates, met taakgebonden broncode- en statusuitzonderingen uit ADR 0027); alleen de bestandsnaam-gates uit `testpaden` (`**/*.test.*`, `**/*.spec.*`)
 tellen niet mee, map-gates als `test/**` en `e2e/**` wel (`schrijfrechtViolations` in `scripts/kit/check-docs.mjs`).
 
 Hooks (exit 2 blokkeert; exit 1 en een timeout laten het toolgebruik door — fail-open. Elke hook is daarom kort en deterministisch,

@@ -183,3 +183,39 @@ describe('andere rollen: schrijfrecht ongewijzigd', () => {
     expect(verdict(write(file, 'x', agent))).toBe(expected);
   });
 });
+
+// Review N1: zonder sleutel `voorReview` telt elke gate als voorReview (faalt dicht); een niet-lijst is een configfout.
+describe('voorReview ontbreekt of is ongeldig', () => {
+  const raw: unknown = JSON.parse(readFileSync('.claude/gates.json', 'utf8'));
+  const zonder = Object.fromEntries(
+    Object.entries(typeof raw === 'object' && raw !== null ? raw : {}).filter(([k]) => k !== 'voorReview'),
+  );
+  const kaal = loadConfig(JSON.stringify(zonder));
+  const verdictKaal = (payload: unknown): Verdict => {
+    const decision = decide(payload, {
+      root: ROOT,
+      cwd: ROOT,
+      config: kaal,
+      read: (rel: string) => FILES[rel] ?? null,
+      committed: (rel: string) => rel in FILES,
+      isDir: () => false,
+      branch: 'feat/x',
+    });
+    if (decision.deny.length > 0) return 'deny';
+    return decision.ask.length > 0 ? 'ask' : 'allow';
+  };
+
+  test.each(['docs/adr/0099-x.md', 'src/core/web/ui/x.tsx'])(
+    'zonder voorReview: %s is ask (hoofdsessie) en deny (developer)',
+    (file) => {
+      expect([verdictKaal(write(file, 'x')), verdictKaal(write(file, 'x', 'developer'))]).toStrictEqual([
+        'ask',
+        'deny',
+      ]);
+    },
+  );
+
+  test('voorReview geen lijst: loadConfig gooit', () => {
+    expect(() => loadConfig(JSON.stringify({ ...zonder, voorReview: 'x' }))).toThrow(/voorReview/);
+  });
+});
