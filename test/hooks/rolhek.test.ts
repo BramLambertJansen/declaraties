@@ -13,7 +13,7 @@ const FILES: Record<string, string> = {
   'docs/specs/x.md': 'status: voorstel\n',
   'src/core/web/ui/button.tsx': 'export {}',
 };
-const DIRS = new Set(['src/core', 'src/core/web']);
+const DIRS = new Set(['src/core', 'src/core/web', 'scripts']);
 
 function ctx(branch = 'feat/x') {
   return {
@@ -55,7 +55,16 @@ const edit = (file: string, [from, to]: [string, string], agent?: string) => ({
 describe('bestanden: hoofdsessie', () => {
   test.each([
     { name: 'gewone code', payload: write('src/web/features/a/page.tsx', 'x'), expected: 'allow' },
-    { name: 'beschermd pad → de eigenaar kiest', payload: write('src/core/web/ui/x.tsx', 'x'), expected: 'ask' },
+    {
+      name: 'beschermd pad buiten voorReview → door, met melding',
+      payload: write('src/core/web/ui/x.tsx', 'x'),
+      expected: 'context',
+    },
+    {
+      name: 'beschermd pad in voorReview → de eigenaar kiest',
+      payload: write('scripts/kit/x.mjs', 'x'),
+      expected: 'ask',
+    },
     {
       name: 'nieuwe test is vrij',
       payload: write('src/api/routes/b.test.ts', "test('x', () => {});"),
@@ -109,10 +118,19 @@ describe('rollen', () => {
     { name: 'architect in code', payload: write('src/api/x.ts', 'x', 'architect'), expected: 'deny' },
     { name: 'docs in docs/', payload: write('docs/gouden-pad.md', 'x', 'docs'), expected: 'allow' },
     { name: 'reviewer schrijft niets', payload: write('docs/x.md', 'x', 'reviewer'), expected: 'deny' },
-    { name: 'developer op beschermd pad', payload: write('src/core/x.ts', 'x', 'developer'), expected: 'deny' },
+    {
+      name: 'developer op beschermd pad buiten voorReview',
+      payload: write('src/core/x.ts', 'x', 'developer'),
+      expected: 'context',
+    },
+    {
+      name: 'developer op beschermd pad in voorReview',
+      payload: write('scripts/kit/x.mjs', 'x', 'developer'),
+      expected: 'deny',
+    },
     {
       name: 'onbekende subagent telt als developer',
-      payload: write('src/core/x.ts', 'x', 'Explore'),
+      payload: write('scripts/kit/x.mjs', 'x', 'Explore'),
       expected: 'deny',
     },
     { name: 'reviewer leest', payload: bash('git diff main...HEAD', 'reviewer'), expected: 'allow' },
@@ -127,11 +145,13 @@ describe('rollen', () => {
 
 describe('Bash: schrijfdoelen', () => {
   test.each([
-    { name: 'redirect naar beschermd pad', command: 'echo x > src/core/x.ts', expected: 'ask' },
-    { name: 'redirect met aanhalingstekens', command: 'echo x > "src/core/x.ts"', expected: 'ask' },
+    { name: 'redirect naar beschermd pad in voorReview', command: 'echo x > scripts/x.ts', expected: 'ask' },
+    { name: 'redirect naar beschermd pad buiten voorReview', command: 'echo x > src/core/x.ts', expected: 'context' },
+    { name: 'redirect met aanhalingstekens', command: 'echo x > "scripts/x.ts"', expected: 'ask' },
     { name: 'append via tee', command: 'echo x | tee -a scripts/a.sh', expected: 'ask' },
     { name: 'sed -i', command: "sed -i 's/a/b/' AGENTS.md", expected: 'ask' },
-    { name: 'cp naar een beschermde map', command: 'cp x.ts src/core/', expected: 'ask' },
+    { name: 'cp naar een beschermde map in voorReview', command: 'cp x.ts scripts/', expected: 'ask' },
+    { name: 'cp naar een beschermde map buiten voorReview', command: 'cp x.ts src/core/', expected: 'context' },
     { name: 'git checkout -- pad', command: 'git checkout -- eslint.config.js', expected: 'ask' },
     {
       name: 'heredoc naar gegenereerd bestand',

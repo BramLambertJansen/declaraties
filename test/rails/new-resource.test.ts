@@ -151,9 +151,11 @@ describe('plan', () => {
     expect(readdirSync(path.join(root, 'db/migrations'))).toStrictEqual(readdirSync('db/migrations'));
   });
 
-  test('de gate-wijzigingen zijn met Edit te zetten: permissies, tabeltest, app.ts en de menutest per rol', async () => {
+  // ADR 0029 punt 18: permissions.ts en app.ts zijn geen gate meer; het script schrijft ze zelf (bestanden), de tests blijven gate.
+  test('permissions.ts en app.ts worden geschreven; alleen de tabeltest en de menutest blijven gate-wijziging', async () => {
     const root = kopie(goedgekeurd);
     const p = await plan(root, 'invoices', { rollen: ['user'] });
+    const inhoud = (pad: string) => p.bestanden.find((bestand) => bestand.pad === pad);
     const na = Object.fromEntries(
       p.gates.map((wijziging) => [
         wijziging.pad,
@@ -161,13 +163,23 @@ describe('plan', () => {
       ]),
     );
 
-    expect(na['src/shared/permissions.ts']).toContain("'invoices:read': { roles: ['user'] },");
-    expect(na['src/shared/permissions.ts']).toContain("'invoices:write': { roles: ['user'] },");
+    expect(p.gates.map(({ pad }) => pad)).toStrictEqual(['src/shared/permissions.test.ts', 'src/web/routes.test.tsx']);
+    expect(inhoud('src/shared/permissions.ts')).toMatchObject({ nieuw: false });
+    expect(inhoud('src/shared/permissions.ts')?.inhoud).toContain("'invoices:read': { roles: ['user'] },");
+    expect(inhoud('src/shared/permissions.ts')?.inhoud).toContain("'invoices:write': { roles: ['user'] },");
+    expect(inhoud('src/api/app.ts')).toMatchObject({ nieuw: false });
+    expect(inhoud('src/api/app.ts')?.inhoud).toContain("from './routes/invoices.ts';");
+    expect(inhoud('src/api/app.ts')?.inhoud).toMatch(/invoicesDeleteRoute,?\s*\] as const;/);
     expect(na['src/shared/permissions.test.ts']).toContain("'invoices:read': ['user'],");
-    expect(na['src/api/app.ts']).toContain("from './routes/invoices.ts';");
-    expect(na['src/api/app.ts']).toMatch(/invoicesDeleteRoute,?\s*\] as const;/);
     // Alleen de verwachting van de user krijgt het menu-item; die van de admin (met Dashboard) blijft gelijk.
     expect(menuRegels(na['src/web/routes.test.tsx'])).toStrictEqual([expect.not.stringContaining("'Dashboard'")]);
+  });
+
+  test('het bestandsplan: permissions.ts en app.ts staan onder gewijzigd, niet onder gates', () => {
+    const verwacht = bestandsplan(namen('invoices'), '20000101000000');
+
+    expect(verwacht.gewijzigd).toEqual(expect.arrayContaining(['src/shared/permissions.ts', 'src/api/app.ts']));
+    expect(verwacht.gates).toStrictEqual(['src/shared/permissions.test.ts', 'src/web/routes.test.tsx']);
   });
 
   test('de menutest met --rollen admin: alleen de verwachting van de admin', async () => {

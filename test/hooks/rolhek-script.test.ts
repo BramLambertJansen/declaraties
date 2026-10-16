@@ -25,8 +25,8 @@ test('verboden: exit 2 met de reden op stderr', () => {
   expect([result.status, result.stderr.trim()]).toStrictEqual([2, 'rolhek: push naar main is verboden; open een PR']);
 });
 
-test('beschermd pad voor de hoofdsessie: permissionDecision ask', () => {
-  const result = run(bash('echo x > src/core/x.ts'));
+test('beschermd pad in voorReview voor de hoofdsessie: permissionDecision ask', () => {
+  const result = run(bash('echo x > scripts/x.ts'));
   const output: unknown = JSON.parse(result.stdout);
 
   expect(result.status).toBe(0);
@@ -52,13 +52,13 @@ test('gewoon commando: door, zonder uitvoer', () => {
 
 // ADR 0016 (gevolgen): paden tellen vanaf de git-root van de sessie (een worktree), niet vanaf CLAUDE_PROJECT_DIR. Vanaf
 // CLAUDE_PROJECT_DIR lag src/core/ van de worktree buiten de repo (of onder .claude/**) en klopte het oordeel niet.
-test('in een andere worktree: src/core/ van die worktree is een gate (ask)', () => {
+test('in een andere worktree: scripts/ van die worktree is een gate in voorReview (ask)', () => {
   const worktree = mkdtempSync(path.join(tmpdir(), 'rolhek-worktree-'));
   spawnSync('git', ['init', '-q'], { cwd: worktree });
   cpSync('.claude/gates.json', path.join(worktree, '.claude/gates.json'));
   const payload = JSON.stringify({
     tool_name: 'Write',
-    tool_input: { file_path: path.join(worktree, 'src/core/x.ts'), content: 'export {};\n' },
+    tool_input: { file_path: path.join(worktree, 'scripts/x.ts'), content: 'export {};\n' },
     cwd: worktree,
   });
   const result = run(payload);

@@ -6,13 +6,13 @@ import { expect, test } from 'vitest';
 import { docsViolations } from '../../scripts/kit/check-docs.mjs';
 
 // check-docs: CODEOWNERS noemt precies de gates en jsonGates uit .claude/gates.json (framework §10, ADR 0011).
-function repo(gates: unknown): string {
+function repo(gates: Record<string, unknown>): string {
   const root = mkdtempSync(path.join(tmpdir(), 'check-docs-gates-'));
   const files: Record<string, string> = {
     'package.json': JSON.stringify({ scripts: {} }),
     '.github/CODEOWNERS': '/src/core/ @eigenaar\n/package.json @eigenaar\n**/*.test.* @eigenaar\n',
     '.claude/settings.json': JSON.stringify({ permissions: { ask: ['Edit(src/core/**)', 'Edit(package.json)'] } }),
-    '.claude/gates.json': JSON.stringify(gates),
+    '.claude/gates.json': JSON.stringify({ voorReview: ['src/core/**', 'package.json'], ...gates }),
   };
   for (const [file, content] of Object.entries(files)) {
     mkdirSync(path.dirname(path.join(root, file)), { recursive: true });

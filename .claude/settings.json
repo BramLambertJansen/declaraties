@@ -76,8 +76,6 @@
       "Edit(CLAUDE.md)",
       "Edit(docs/framework.md)",
       "Edit(docs/dod.md)",
-      "Edit(docs/roadmap.md)",
-      "Edit(docs/adr/**)",
       "Edit(.github/**)",
       "Edit(.claude/**)",
       "Edit(scripts/**)",
@@ -99,15 +97,6 @@
       "Edit(tsconfig*.json)",
       "Edit(.dependency-cruiser.*)",
       "Edit(lefthook.yml)",
-      "Edit(renovate.json)",
-      "Edit(src/core/**)",
-      "Edit(src/api/app.ts)",
-      "Edit(src/api/kit.ts)",
-      "Edit(src/api/server.ts)",
-      "Edit(src/api/env.ts)",
-      "Edit(src/shared/permissions.ts)",
-      "Edit(deploy/**)",
-      "Edit(.gitattributes)",
       "Edit(vitest.config.ts)",
       "Edit(playwright.config.ts)",
       "Edit(vite.config.ts)",
@@ -115,8 +104,7 @@
       "Edit(.prettierignore)",
       "Edit(Dockerfile)",
       "Edit(.dockerignore)",
-      "Edit(db/test.env)",
-      "Edit(docs/nieuwe-app.md)"
+      "Edit(db/test.env)"
     ]
   },
   "sandbox": {
