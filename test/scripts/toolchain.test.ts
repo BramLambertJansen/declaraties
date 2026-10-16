@@ -1,5 +1,5 @@
 import { spawnSync } from 'node:child_process';
-import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readdirSync, rmSync } from 'node:fs';
+import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { toolchainProbleem } from '../../scripts/kit/toolchain.mjs';
@@ -106,6 +106,34 @@ describe('scripts/kit/feiten.mjs voorcontrole', () => {
 
     expect(r.status).toBe(1);
     expect(r.stderr).toContain('node_modules ontbreekt');
+    expect(r.stdout + r.stderr).not.toContain('ERR_MODULE_NOT_FOUND');
+    expect(r.stdout + r.stderr).not.toContain('    at ');
+  });
+
+  test.each([
+    { naam: 'lege map node_modules', bestanden: [] },
+    { naam: 'node_modules met alleen .modules.yaml, zonder typescript', bestanden: ['.modules.yaml'] },
+    { naam: 'node_modules met typescript maar zonder .modules.yaml', bestanden: ['typescript/package.json'] },
+  ])('onvolledige installatie ($naam): status 1, leesbare regel, geen stacktrace', ({ bestanden }) => {
+    const root = mkdtempSync(path.join(tmpdir(), 'feiten-'));
+    dirs.push(root);
+    const kit = path.join(root, 'scripts/kit');
+    mkdirSync(kit, { recursive: true });
+    for (const naam of readdirSync(path.join(REPO, 'scripts/kit')))
+      if (/^(feiten|toolchain|gates|catalogus)\.mjs$|^catalogus-.*\.ts$/.test(naam))
+        copyFileSync(path.join(REPO, 'scripts/kit', naam), path.join(kit, naam));
+    copyFileSync(path.join(REPO, 'mise.toml'), path.join(root, 'mise.toml'));
+    mkdirSync(path.join(root, 'node_modules'));
+    for (const naam of bestanden) {
+      const doel = path.join(root, 'node_modules', naam);
+      mkdirSync(path.dirname(doel), { recursive: true });
+      writeFileSync(doel, '{}');
+    }
+
+    const r = spawnSync('node', ['scripts/kit/feiten.mjs', 'specs'], { cwd: root, encoding: 'utf8' });
+
+    expect(r.status).toBe(1);
+    expect(r.stderr).toContain('node_modules ontbreekt of is onvolledig');
     expect(r.stdout + r.stderr).not.toContain('ERR_MODULE_NOT_FOUND');
     expect(r.stdout + r.stderr).not.toContain('    at ');
   });
