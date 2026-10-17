@@ -40,13 +40,15 @@ De echte grens is al de diff-guard (`guard.yml`, draait van `main`) plus de merg
    - `rails/**` komt in `gates` en in `voorReview`. Skills en agents blijven in `.claude/` (daar laadt Claude Code ze);
      de agent wijzigt ze met Edit/Write, niet met Bash.
 2. **Modus `onderhoud`, gebonden aan de template-repo.** Nieuwe sleutel in `.claude/gates.json`:
-   `onderhoud: { "repository": "bramlambertjansen/template" }`. Het rolhek leest hem uit `origin/main` (zoals `autoRunner`, ADR 0027
-   punt 6), nooit uit de werkmap, en zet de modus alleen aan als `git remote get-url origin` naar die repository wijst. Een app uit
+   `onderhoud: { "repository": "BramLambertJansen/template" }`. Het rolhek leest hem uit `origin/main` (zoals `autoRunner`, ADR 0027
+   punt 6), nooit uit de werkmap, en zet de modus alleen aan als `repositoryName()` (`.claude/hooks/lib/authority-context.mjs`) van
+   `git remote get-url origin` gelijk is aan die waarde, hoofdletterongevoelig (GitHub-namen zijn dat ook). Een app uit
    "Use this template" heeft een andere origin, en daar staat de modus dus vanzelf uit. Onleesbaar → uit. `check-docs` faalt op een andere vorm.
 3. **In `onderhoud`** behandelt het rolhek `voorReview` voor de hoofdsessie en de developer-subagent zoals de overige gate-paden
    (0032 punt 1): geen prompt en geen deny, wel de melding "gate-pad: eigenaarreview in de PR". Uitgezonderd is de nieuwe lijst
-   `altijdVragen` in `.claude/gates.json`: `.github/**`, `.claude/settings.json`, `.claude/gates.json`, `.claude/decisions.json`.
-   Daar blijft de huidige `voorReview`-behandeling (hoofdsessie ask, subagent deny).
+   `altijdVragen` in `.claude/gates.json`: `.github/**`, `.claude/hooks/**` (de stubs uit punt 1: wie die vervangt, omzeilt de
+   versie van `main`), `.claude/settings.json`, `.claude/gates.json`, `.claude/decisions.json`, `package.json` en `pnpm-lock.yaml`
+   (een nieuwe dependency vraagt akkoord, AGENTS.md). Daar blijft de huidige `voorReview`-behandeling (hoofdsessie ask, subagent deny).
 4. **`ask` in `.claude/settings.json` = `altijdVragen`.** De Edit-regels voor de overige `voorReview`-paden vervallen; het rolhek
    vraagt daar zelf (buiten `onderhoud`) en faalt dicht bij een crash. De commando-regels in `ask` blijven. De spiegelregel in
    `check-docs` wordt "`ask` = `altijdVragen`"; CODEOWNERS blijft `gates` + `jsonGates`.
@@ -54,9 +56,11 @@ De echte grens is al de diff-guard (`guard.yml`, draait van `main`) plus de merg
    - deny-regels in `.claude/settings.json` en `ghForbidden` in het rolhek (push naar `main`, force-push, `--no-verify`, mergen,
      reviews, het label `gate-wijziging`, check-statussen, `docker`);
    - bestaande tests verwijderen of skippen, gecommitte migraties, gegenereerde bestanden en `.env*`;
+   - `jsonGates` (`package.json` → `scripts`): `decideByRole` handelt die af vóór `voorReview`, en dat blijft zo;
    - `schrijfrecht` van architect, tester, reviewer en docs; een onbekende subagent houdt deny;
    - de diff-guard, `check-document-status`, de statusregels (de agent zet nooit `goedgekeurd`/`geaccepteerd`) en de merge door de eigenaar;
-   - `src/core` in een app (`check-core`).
+   - een app: daar staat `onderhoud` uit (punt 2), dus `src/core` en `voorReview` houden er hun huidige behandeling. Dit ADR leunt
+     niet op `check-core`; die is nog niet gebouwd (`docs/roadmap.md`, `.claude/rules/core.md`).
 6. **Lokale instellingen van de eigenaar.** Voor onderhoudssessies zet de eigenaar `.claude/settings.local.json` (in `.gitignore`)
    met `defaultMode: acceptEdits` en `allow` voor de snelle checks, pushen naar een feature-branch zonder `-u` en lezend `gh`-werk.
    Het bestand verruimt alleen wat geen deny of ask heeft. De agent schrijft het niet (de sandbox maskeert het). Een worktree heeft
