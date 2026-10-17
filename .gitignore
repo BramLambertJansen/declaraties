@@ -13,6 +13,7 @@ test-results/
 .claude/settings.local.json
 # Worktrees van subagents (Claude Code); elk een eigen kopie van de repo.
 .claude/worktrees/
+.claude/hooks/.cache/
 mise.local.toml
 blob-report/
 .runner-output/

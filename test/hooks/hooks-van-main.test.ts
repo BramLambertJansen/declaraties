@@ -5,8 +5,10 @@ import {
   mkdirSync,
   mkdtempSync,
   readdirSync,
+  readFileSync,
   realpathSync,
   rmSync,
+  statSync,
   symlinkSync,
   writeFileSync,
 } from 'node:fs';
@@ -15,7 +17,7 @@ import path from 'node:path';
 import { afterEach, describe, expect, test } from 'vitest';
 
 // ADR 0033 punt 1: hooks draaien van main. Een stub in .claude/hooks/ voert rails/hooks/<naam>.mjs uit zoals die op
-// origin/main staat. Echte tijdelijke repo's met een lokale bare remote; het echte netwerk komt er nooit aan te pas.
+// de remote main staat (anker .claude/hooks/.cache/main, cache .claude/hooks/.cache/<tree-oid>/). Echte tijdelijke repo's met een lokale bare remote; het echte netwerk komt er nooit aan te pas.
 const STUB_SOURCE = path.join(process.cwd(), '.claude/hooks');
 const STUB_FILES = ['rolhek.mjs', 'werkstraat.mjs', 'meting.mjs', 'laden.mjs'];
 const NAMES = ['rolhek', 'werkstraat', 'meting'] as const;
@@ -31,7 +33,10 @@ const GIT_ENV = {
   GIT_CONFIG_SYSTEM: '/dev/null',
 };
 
-const EXIT_MAIN = 7;
+/** Standaard exitcode van het script van main: het rolhek gebruikt 2, de andere hooks 7. */
+function defaultExit(naam: Naam): string {
+  return naam === 'rolhek' ? '2' : '7';
+}
 
 function tmp(prefix: string): string {
   const dir = mkdtempSync(path.join(tmpdir(), prefix));
@@ -45,7 +50,7 @@ function git(cwd: string, ...args: string[]): string {
   return result.stdout.trim();
 }
 
-/** Een klein hookscript dat zijn omgeving echoot, een helper uit ./lib importeert en met EXIT_MAIN stopt. */
+/** Een klein hookscript dat zijn omgeving echoot, een helper uit ./lib importeert en met HOOK_EXIT stopt. */
 function scriptSource(version: string): string {
   return [
     "import { writeFileSync } from 'node:fs';",
@@ -53,6 +58,7 @@ function scriptSource(version: string): string {
     'const chunks = [];',
     'for await (const chunk of process.stdin) chunks.push(chunk);',
     "if (process.env.RAN_FILE) writeFileSync(process.env.RAN_FILE, '1');",
+    "if (process.env.HOOK_CRASH) throw new Error('crash-van-main');",
     'process.stdout.write(JSON.stringify({',
     `  marker: ${JSON.stringify(version)},`,
     '  helper,',
@@ -62,7 +68,7 @@ function scriptSource(version: string): string {
     '  env: process.env.HOOK_ENV,',
     '}));',
     "process.stderr.write('stderr-van-main');",
-    `process.exit(${String(EXIT_MAIN)});`,
+    "process.exit(Number(process.env.HOOK_EXIT ?? '0'));",
     '',
   ].join('\n');
 }
@@ -86,8 +92,8 @@ interface Repo {
   other: string;
 }
 
-/** Repo met main (stubs + `files`), een bare origin en een tweede kloon waarmee we origin/main kunnen verleggen. */
-function makeRepo(files: Record<string, string>, remote = true): Repo {
+/** Repo met main (stubs + `files`), een bare origin en een tweede kloon waarmee we de remote main kunnen verleggen. */
+function makeRepo(files: Record<string, string>): Repo {
   const dir = tmp('hvm-repo-');
   git(dir, 'init', '-q', '-b', 'main');
   mkdirSync(path.join(dir, '.claude/hooks'), { recursive: true });
@@ -96,27 +102,40 @@ function makeRepo(files: Record<string, string>, remote = true): Repo {
     if (existsSync(source)) copyFileSync(source, path.join(dir, '.claude/hooks', file));
   }
   write(dir, { 'README.md': 'x\n', ...files });
+  // De cache en het anker horen niet in git (anders wijzigt een run de werkmap).
+  writeFileSync(path.join(dir, '.gitignore'), '.claude/hooks/.cache/\n');
   git(dir, 'add', '-A');
   git(dir, 'commit', '-q', '-m', 'init');
   const bare = tmp('hvm-bare-');
   const other = path.join(tmp('hvm-other-'), 'clone');
-  if (remote) {
-    git(bare, 'init', '-q', '--bare', '-b', 'main');
-    git(dir, 'remote', 'add', 'origin', bare);
-    git(dir, 'push', '-q', 'origin', 'main');
-    git(dir, 'fetch', '-q', 'origin');
-    git(path.dirname(other), 'clone', '-q', bare, other);
-  }
+  git(bare, 'init', '-q', '--bare', '-b', 'main');
+  git(dir, 'remote', 'add', 'origin', bare);
+  git(dir, 'push', '-q', 'origin', 'main');
+  git(dir, 'fetch', '-q', 'origin');
+  git(path.dirname(other), 'clone', '-q', bare, other);
   return { dir, bare, other };
 }
 
 /** Zet nieuwe bestanden op de remote main; met `fetch` ziet de lokale origin/main ze ook. */
-function advanceRemote(repo: Repo, files: Record<string, string>, fetch: boolean) {
+function advanceRemote(repo: Repo, files: Record<string, string>, fetch = false) {
   write(repo.other, files);
   git(repo.other, 'add', '-A');
   git(repo.other, 'commit', '-q', '-m', 'advance');
   git(repo.other, 'push', '-q', 'origin', 'main');
   if (fetch) git(repo.dir, 'fetch', '-q', 'origin');
+}
+
+function pushSymlink(repo: Repo) {
+  const link = path.join(repo.other, 'rails/hooks/lib/link');
+  mkdirSync(path.dirname(link), { recursive: true });
+  symlinkSync('/etc/passwd', link);
+  git(repo.other, 'add', '-A');
+  git(repo.other, 'commit', '-q', '-m', 'symlink');
+  git(repo.other, 'push', '-q', 'origin', 'main');
+}
+
+function breakRemote(repo: Repo) {
+  git(repo.dir, 'remote', 'set-url', 'origin', path.join(repo.bare, 'bestaat-niet'));
 }
 
 interface RunOptions {
@@ -132,7 +151,7 @@ function run(repo: Repo, naam: Naam, options: RunOptions = {}) {
     input: options.input ?? '',
     cwd: options.cwd ?? repo.dir,
     encoding: 'utf8',
-    env: { ...process.env, ...GIT_ENV, ...options.env },
+    env: { ...process.env, ...GIT_ENV, HOOK_EXIT: defaultExit(naam), ...options.env },
   });
   return { status: result.status, stdout: result.stdout, stderr: result.stderr };
 }
@@ -141,16 +160,19 @@ function expected(version: string, fields: { args: string[]; stdin: string; cwd:
   return JSON.stringify({ marker: version, helper: 'helper-ok', ...fields });
 }
 
-function cacheRoot(repo: Repo): string {
-  const common = git(repo.dir, 'rev-parse', '--path-format=absolute', '--git-common-dir');
-  return path.join(common, 'rails-hooks');
-}
+const cacheDir = (repo: Repo) => path.join(repo.dir, '.claude/hooks/.cache');
+const anchorFile = (repo: Repo) => path.join(cacheDir(repo), 'main');
+const remoteSha = (repo: Repo) => git(repo.bare, 'rev-parse', 'main');
+const treeMap = (repo: Repo, sha: string) =>
+  path.join(cacheDir(repo), git(repo.other, 'rev-parse', `${sha}:rails/hooks`));
+const cacheMaps = (repo: Repo) =>
+  existsSync(cacheDir(repo)) ? readdirSync(cacheDir(repo)).filter((entry) => /^[0-9a-f]{40}$/.test(entry)) : [];
 
 afterEach(() => {
   for (const dir of dirs.splice(0)) rmSync(dir, { recursive: true, force: true });
 });
 
-describe('hooks-van-main punt 1: stub draait rails/hooks/<naam>.mjs van origin/main, transparant', () => {
+describe('punt 1: de stub draait rails/hooks/<naam>.mjs van main, transparant', () => {
   test.each(NAMES)(
     '1: %s geeft args, stdin, env en cwd door en laat stdout, stderr en exitcode ongewijzigd',
     (naam) => {
@@ -166,7 +188,7 @@ describe('hooks-van-main punt 1: stub draait rails/hooks/<naam>.mjs van origin/m
       });
 
       expect(result).toStrictEqual({
-        status: EXIT_MAIN,
+        status: Number(defaultExit(naam)),
         stdout: expected('main-versie', {
           args: ['--a', 'b c'],
           stdin: 'stdin-inhoud',
@@ -185,13 +207,54 @@ describe('hooks-van-main punt 1: stub draait rails/hooks/<naam>.mjs van origin/m
     const result = run(repo, 'rolhek', { cwd: elders, env: { HOOK_ENV: 'e' } });
 
     expect([result.status, result.stdout]).toStrictEqual([
-      EXIT_MAIN,
+      2,
       expected('main-versie', { args: [], stdin: '', cwd: realpathSync(elders), env: 'e' }),
     ]);
   });
 });
 
-describe('hooks-van-main punt 2: lokale wijzigingen hebben geen effect', () => {
+describe('punt 1/E: exitcodes van het script', () => {
+  test('E: rolhek met een exitcode van het script anders dan 0 of 2 (7) wordt exit 2, uitvoer blijft doorgegeven', () => {
+    const repo = makeRepo(hookFiles('main-versie'));
+
+    const result = run(repo, 'rolhek', { env: { HOOK_EXIT: '7' } });
+
+    expect(result.status).toBe(2);
+    expect(result.stdout).toContain('"marker":"main-versie"');
+    expect(result.stderr).toContain('stderr-van-main');
+  });
+
+  test('E: rolhek met exit 0 van het script blijft 0', () => {
+    const repo = makeRepo(hookFiles('main-versie'));
+
+    const result = run(repo, 'rolhek', { env: { HOOK_EXIT: '0' } });
+
+    expect([result.status, result.stdout]).toStrictEqual([0, expect.stringContaining('"marker":"main-versie"')]);
+  });
+
+  test('E: een crash van rolhek.mjs wordt exit 2', () => {
+    const repo = makeRepo(hookFiles('main-versie'));
+
+    const result = run(repo, 'rolhek', { env: { HOOK_CRASH: '1' } });
+
+    expect(result.status).toBe(2);
+    expect(result.stderr).toContain('crash-van-main');
+  });
+
+  test.each(['werkstraat', 'meting'] as const)(
+    'E: %s geeft de exitcode van het script ongewijzigd door (7 en 0)',
+    (naam) => {
+      const repo = makeRepo(hookFiles('main-versie'));
+
+      const zeven = run(repo, naam, { env: { HOOK_EXIT: '7' } });
+      const nul = run(repo, naam, { env: { HOOK_EXIT: '0' } });
+
+      expect([zeven.status, nul.status]).toStrictEqual([7, 0]);
+    },
+  );
+});
+
+describe('punt 2: lokale wijzigingen hebben geen effect', () => {
   test('2: een ongecommitte en een op de branch gecommitte wijziging aan rails/hooks worden genegeerd', () => {
     const repo = makeRepo(hookFiles('main-versie'));
     git(repo.dir, 'checkout', '-q', '-b', 'feat/x');
@@ -202,157 +265,206 @@ describe('hooks-van-main punt 2: lokale wijzigingen hebben geen effect', () => {
 
     const result = run(repo, 'rolhek');
 
-    expect(result.status).toBe(EXIT_MAIN);
     expect(result.stdout).toContain('"marker":"main-versie"');
     expect(result.stdout).not.toContain('branch-versie');
     expect(result.stdout).not.toContain('werkmap-versie');
   });
 });
 
-describe('hooks-van-main punt 3: cache op tree-oid in de git common dir', () => {
-  test('3: uitgepakt in <common dir>/rails-hooks/<tree-oid> en bij de tweede aanroep hergebruikt', () => {
+describe('punt A: anker van de remote, niet van de lokale origin/main', () => {
+  test('A: een lokale refs/remotes/origin/main met andere hooks wint niet van de remote', () => {
     const repo = makeRepo(hookFiles('main-versie'));
-    const tree = git(repo.dir, 'rev-parse', 'origin/main:rails/hooks');
-    const map = path.join(cacheRoot(repo), tree);
+    git(repo.dir, 'checkout', '-q', '-b', 'lokaal');
+    write(repo.dir, hookFiles('lokale-versie'));
+    git(repo.dir, 'add', '-A');
+    git(repo.dir, 'commit', '-q', '-m', 'lokaal');
+    git(repo.dir, 'update-ref', 'refs/remotes/origin/main', 'HEAD');
+    git(repo.dir, 'checkout', '-q', 'main');
 
-    run(repo, 'rolhek');
-    const naEerste = existsSync(path.join(map, 'rolhek.mjs'));
-    mkdirSync(map, { recursive: true });
-    writeFileSync(path.join(map, 'sentinel'), 'x');
-    const tweede = run(repo, 'rolhek');
+    const result = run(repo, 'rolhek');
 
-    expect(naEerste).toBe(true);
-    expect(tweede.stdout).toContain('"marker":"main-versie"');
-    expect(readdirSync(cacheRoot(repo))).toStrictEqual([tree]);
-    expect(existsSync(path.join(map, 'sentinel'))).toBe(true);
+    expect(result.stdout).toContain('"marker":"main-versie"');
+    expect(result.stdout).not.toContain('lokale-versie');
   });
 
-  test('3: een nieuwe origin/main met andere inhoud geeft een nieuwe map en de nieuwe versie draait', () => {
+  test('A: het anker .claude/hooks/.cache/main krijgt de commit-SHA van de remote main', () => {
     const repo = makeRepo(hookFiles('main-versie'));
+
     run(repo, 'rolhek');
 
-    advanceRemote(repo, hookFiles('main-versie-2'), true);
+    expect(readFileSync(anchorFile(repo), 'utf8').trim()).toBe(remoteSha(repo));
+  });
+
+  test('A: bij een bestaand anker draait een gewone aanroep de oude versie; werkstraat session-start ververst het anker', () => {
+    const repo = makeRepo(hookFiles('main-versie'));
+    run(repo, 'rolhek');
+    advanceRemote(repo, hookFiles('main-versie-2'));
+
+    const gewoon = run(repo, 'rolhek');
+    run(repo, 'werkstraat', { args: ['session-start'] });
+    const ververst = readFileSync(anchorFile(repo), 'utf8').trim();
+    const daarna = run(repo, 'rolhek');
+
+    expect(gewoon.stdout).toContain('"marker":"main-versie"');
+    expect(ververst).toBe(remoteSha(repo));
+    expect(daarna.stdout).toContain('"marker":"main-versie-2"');
+  });
+
+  test('A: mislukt het verversen en bestaat er een anker, dan blijft het oude anker gelden', () => {
+    const repo = makeRepo(hookFiles('main-versie'));
+    run(repo, 'rolhek');
+    const oud = readFileSync(anchorFile(repo), 'utf8').trim();
+    advanceRemote(repo, hookFiles('main-versie-2'));
+    breakRemote(repo);
+
+    run(repo, 'werkstraat', { args: ['session-start'] });
+    const result = run(repo, 'rolhek');
+
+    expect(readFileSync(anchorFile(repo), 'utf8').trim()).toBe(oud);
+    expect(result.stdout).toContain('"marker":"main-versie"');
+    expect(result.stdout).not.toContain('main-versie-2');
+  });
+
+  test('A: staat de hook niet in de tree van het anker, dan wordt het anker ververst', () => {
+    const repo = makeRepo(hookFiles('main-versie', ['werkstraat']));
+    run(repo, 'werkstraat');
+    advanceRemote(repo, hookFiles('main-versie-2', ['rolhek']));
+
     const result = run(repo, 'rolhek');
 
     expect(result.stdout).toContain('"marker":"main-versie-2"');
-    expect(readdirSync(cacheRoot(repo))).toHaveLength(2);
-  });
-
-  test('3: een worktree deelt de cache met de hoofdrepo', () => {
-    const repo = makeRepo(hookFiles('main-versie'));
-    const wt = path.join(tmp('hvm-wt-'), 'wt');
-    git(repo.dir, 'worktree', 'add', '-q', '-b', 'feat/wt', wt);
-    const tree = git(repo.dir, 'rev-parse', 'origin/main:rails/hooks');
-    const worktreeRepo: Repo = { ...repo, dir: wt };
-
-    const result = run(worktreeRepo, 'rolhek');
-
-    expect(result.stdout).toContain('"marker":"main-versie"');
-    expect(existsSync(path.join(cacheRoot(repo), tree, 'rolhek.mjs'))).toBe(true);
-    expect(existsSync(path.join(wt, '.git', 'rails-hooks'))).toBe(false);
   });
 });
 
-describe('hooks-van-main punt 4: relatieve imports', () => {
+describe('punt B: cache naast de stub, op tree-oid van het anker', () => {
+  test('B: uitgepakt in .claude/hooks/.cache/<tree-oid>/ (niet in de git common dir) en bij de tweede aanroep hergebruikt', () => {
+    const repo = makeRepo(hookFiles('main-versie'));
+    const map = treeMap(repo, remoteSha(repo));
+
+    run(repo, 'rolhek');
+    const eerste = statSync(path.join(map, 'rolhek.mjs'));
+    const tweede = run(repo, 'rolhek');
+    const na = statSync(path.join(map, 'rolhek.mjs'));
+
+    expect(tweede.stdout).toContain('"marker":"main-versie"');
+    expect(cacheMaps(repo)).toStrictEqual([path.basename(map)]);
+    expect([na.ino, na.mtimeMs]).toStrictEqual([eerste.ino, eerste.mtimeMs]);
+    expect(existsSync(path.join(repo.dir, '.git/rails-hooks'))).toBe(false);
+  });
+
+  test('B: een nieuwe remote main met andere inhoud geeft een nieuwe map en de nieuwe versie draait', () => {
+    const repo = makeRepo(hookFiles('main-versie'));
+    run(repo, 'rolhek');
+    advanceRemote(repo, hookFiles('main-versie-2'));
+    run(repo, 'werkstraat', { args: ['session-start'] });
+
+    const result = run(repo, 'rolhek');
+
+    expect(result.stdout).toContain('"marker":"main-versie-2"');
+    expect(cacheMaps(repo)).toHaveLength(2);
+  });
+});
+
+describe('punt C: integriteit van een bestaande cachemap', () => {
+  const tampers: Record<string, (map: string) => void> = {
+    'een gewijzigd bestand': (map) => {
+      writeFileSync(path.join(map, 'rolhek.mjs'), "console.log('gemanipuleerd');\n");
+    },
+    'een verwijderd bestand': (map) => {
+      rmSync(path.join(map, 'lib/helper.mjs'));
+    },
+    'een extra bestand': (map) => {
+      writeFileSync(path.join(map, 'extra.mjs'), "console.log('extra');\n");
+    },
+  };
+
+  test.each(Object.keys(tampers))('C: %s: de lader pakt opnieuw uit en draait de echte versie van main', (naam) => {
+    const repo = makeRepo(hookFiles('main-versie'));
+    const map = treeMap(repo, remoteSha(repo));
+    run(repo, 'rolhek');
+    tampers[naam]?.(map);
+
+    const result = run(repo, 'rolhek');
+
+    expect(result.stdout).toContain('"marker":"main-versie"');
+    expect(result.stdout).toContain('"helper":"helper-ok"');
+    expect(result.stdout).not.toContain('gemanipuleerd');
+    expect(existsSync(path.join(map, 'extra.mjs'))).toBe(false);
+  });
+});
+
+describe('punt D: replace-objecten tellen niet', () => {
+  test('D: git replace op de blob van rolhek.mjs verandert niet wat er draait (lege cache)', () => {
+    const repo = makeRepo(hookFiles('main-versie'));
+    const nep = path.join(tmp('hvm-nep-'), 'nep.mjs');
+    writeFileSync(nep, scriptSource('vervangen-versie'));
+    const echt = git(repo.dir, 'rev-parse', 'origin/main:rails/hooks/rolhek.mjs');
+    git(repo.dir, 'replace', echt, git(repo.dir, 'hash-object', '-w', nep));
+
+    const result = run(repo, 'rolhek');
+
+    expect(result.stdout).toContain('"marker":"main-versie"');
+    expect(result.stdout).not.toContain('vervangen-versie');
+  });
+});
+
+describe('punt 4: relatieve imports', () => {
   test('4: ./lib/helper.mjs wordt in de uitgepakte versie gevonden', () => {
     const repo = makeRepo(hookFiles('main-versie'));
 
     const result = run(repo, 'werkstraat');
 
-    expect(result.status).toBe(EXIT_MAIN);
+    expect(result.status).toBe(7);
     expect(result.stdout).toContain('"helper":"helper-ok"');
   });
 });
 
-describe('hooks-van-main punt 5: faalgedrag', () => {
-  test('5: rolhek faalt dicht zonder origin/main (exit 2, reden op stderr)', () => {
-    const repo = makeRepo(hookFiles('main-versie'), false);
+describe('punt E: faalgedrag (rolhek en werkstraat dicht, meting open)', () => {
+  const uitkomst = (naam: Naam) => (naam === 'meting' ? 0 : 2);
 
-    const result = run(repo, 'rolhek');
+  function verwacht(naam: Naam, ran: string, result: ReturnType<typeof run>) {
+    expect([result.status, existsSync(ran)]).toStrictEqual([uitkomst(naam), false]);
+    if (naam !== 'meting') expect(result.stderr.trim()).not.toBe('');
+  }
 
-    expect(result.status).toBe(2);
-    expect(result.stderr.trim()).not.toBe('');
-  });
-
-  test('5: rolhek faalt dicht als rails/hooks/rolhek.mjs niet op origin/main staat, ook na een fetch', () => {
-    const repo = makeRepo(hookFiles('main-versie', ['werkstraat']));
-
-    const result = run(repo, 'rolhek');
-
-    expect(result.status).toBe(2);
-    expect(result.stderr.trim()).not.toBe('');
-    expect(result.stdout).not.toContain('main-versie');
-  });
-
-  test('5: rolhek faalt dicht als origin/main onder rails/hooks een symlink bevat', () => {
+  test.each(NAMES)('E: %s zonder anker en met onbereikbare remote', (naam) => {
     const ran = path.join(tmp('hvm-ran-'), 'ran');
     const repo = makeRepo(hookFiles('main-versie'));
-    const link = path.join(repo.other, 'rails/hooks/lib/link');
-    mkdirSync(path.dirname(link), { recursive: true });
-    symlinkSync('/etc/passwd', link);
-    git(repo.other, 'add', '-A');
-    git(repo.other, 'commit', '-q', '-m', 'symlink');
-    git(repo.other, 'push', '-q', 'origin', 'main');
-    git(repo.dir, 'fetch', '-q', 'origin');
+    breakRemote(repo);
 
-    const result = run(repo, 'rolhek', { env: { RAN_FILE: ran } });
-
-    expect(result.status).toBe(2);
-    expect(result.stderr.trim()).not.toBe('');
-    expect(existsSync(ran)).toBe(false);
+    verwacht(naam, ran, run(repo, naam, { env: { RAN_FILE: ran } }));
   });
 
-  test.each(['werkstraat', 'meting'] as const)('5: %s faalt open zonder origin/main (exit 0)', (naam) => {
+  test.each(NAMES)('E: %s als zijn script niet op main staat (ook na verversen)', (naam) => {
     const ran = path.join(tmp('hvm-ran-'), 'ran');
-    const repo = makeRepo(hookFiles('main-versie'), false);
+    const repo = makeRepo(
+      hookFiles(
+        'main-versie',
+        NAMES.filter((andere) => andere !== naam),
+      ),
+    );
 
-    const result = run(repo, naam, { env: { RAN_FILE: ran } });
-
-    expect([result.status, existsSync(ran)]).toStrictEqual([0, false]);
+    verwacht(naam, ran, run(repo, naam, { env: { RAN_FILE: ran } }));
   });
 
-  test.each(['werkstraat', 'meting'] as const)(
-    '5: %s faalt open als zijn script niet op origin/main staat (exit 0)',
-    (naam) => {
-      const ran = path.join(tmp('hvm-ran-'), 'ran');
-      const repo = makeRepo(hookFiles('main-versie', ['rolhek']));
+  test.each(NAMES)('E: %s als main onder rails/hooks een symlink bevat', (naam) => {
+    const ran = path.join(tmp('hvm-ran-'), 'ran');
+    const repo = makeRepo(hookFiles('main-versie'));
+    pushSymlink(repo);
 
-      const result = run(repo, naam, { env: { RAN_FILE: ran } });
-
-      expect([result.status, existsSync(ran)]).toStrictEqual([0, false]);
-    },
-  );
-
-  test.each(['werkstraat', 'meting'] as const)(
-    '5: %s faalt open bij een symlink onder rails/hooks en draait niets',
-    (naam) => {
-      const ran = path.join(tmp('hvm-ran-'), 'ran');
-      const repo = makeRepo(hookFiles('main-versie'));
-      const link = path.join(repo.other, 'rails/hooks/lib/link');
-      mkdirSync(path.dirname(link), { recursive: true });
-      symlinkSync('/etc/passwd', link);
-      git(repo.other, 'add', '-A');
-      git(repo.other, 'commit', '-q', '-m', 'symlink');
-      git(repo.other, 'push', '-q', 'origin', 'main');
-      git(repo.dir, 'fetch', '-q', 'origin');
-
-      const result = run(repo, naam, { env: { RAN_FILE: ran } });
-
-      expect([result.status, existsSync(ran)]).toStrictEqual([0, false]);
-    },
-  );
+    verwacht(naam, ran, run(repo, naam, { env: { RAN_FILE: ran } }));
+  });
 });
 
-describe('hooks-van-main punt 6: ontbrekend script lokaal, aanwezig op de remote', () => {
-  test.each(NAMES)('6: %s haalt origin/main eenmalig op en draait daarna de opgehaalde versie', (naam) => {
-    const repo = makeRepo(hookFiles('oud', []));
-    expect(() => git(repo.dir, 'rev-parse', `origin/main:rails/hooks/${naam}.mjs`)).toThrow();
-    advanceRemote(repo, hookFiles('main-versie'), false);
+describe('punt F: bootstrap zonder anker', () => {
+  test.each(NAMES)('F: %s haalt main op als de lokale origin/main rails/hooks mist en draait main-versie', (naam) => {
+    const repo = makeRepo({});
+    expect(() => git(repo.dir, 'rev-parse', 'origin/main:rails/hooks')).toThrow();
+    advanceRemote(repo, hookFiles('main-versie'));
 
     const result = run(repo, naam);
 
-    expect(result.status).toBe(EXIT_MAIN);
+    expect(result.status).toBe(Number(defaultExit(naam)));
     expect(result.stdout).toContain('"marker":"main-versie"');
-    expect(git(repo.dir, 'rev-parse', `origin/main:rails/hooks/${naam}.mjs`)).not.toBe('');
   });
 });

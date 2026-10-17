@@ -32,16 +32,25 @@ De echte grens is al de diff-guard (`guard.yml`, draait van `main`) plus de merg
 ## Besluit
 
 1. **Hooks draaien van `main`.** De broncode van de hooks verhuist van `.claude/hooks/` naar `rails/hooks/` (entry's en `lib/`).
-   `.claude/hooks/*.mjs` worden kleine stubs: ze pakken `rails/hooks/` uit `origin/main` uit
-   (`git archive origin/main rails/hooks`) naar een cache per SHA in de gedeelde git-dir en starten die versie.
-   - De hook die de sessie bewaakt is dus altijd die van `main`; een wijziging op de branch werkt pas na de merge door de eigenaar.
-   - De rolhek-stub faalt dicht (exit 2) als `origin/main` of `rails/hooks/` onleesbaar is; de meldende hooks falen open (exit 0).
+   `.claude/hooks/*.mjs` worden kleine stubs die via `.claude/hooks/laden.mjs` `rails/hooks/` van `main` uitpakken en die versie
+   starten.
+   - **Anker van de remote.** De SHA van `main` komt van `git ls-remote origin refs/heads/main` en staat in `.claude/hooks/.cache/main`;
+     verversen bij de start van een sessie, zonder anker, of als de hook niet in het anker staat. De lokale `origin/main` telt niet: die
+     kan een agent ombuigen (`git fetch origin +<branch>:refs/remotes/origin/main`, of rechtstreeks in `.git`).
+   - **Cache naast de stubs**, per tree-oid in `.claude/hooks/.cache/<oid>/` (in `.gitignore`): die map laat de sandbox van Claude Code
+     niet beschrijven, zoals vóór de verhuizing `.claude/hooks/` zelf. Vóór elke run vergelijkt de lader de bestanden met de blob-hashes
+     van de tree (geen extra bestanden, geen symlinks); wijkt iets af, dan pakt hij opnieuw uit. Git draait met
+     `GIT_NO_REPLACE_OBJECTS=1` (anders vervalst `git replace` de inhoud) en `GIT_TERMINAL_PROMPT=0`.
+   - De hook die de sessie bewaakt is dus altijd die van `main`; een wijziging op de branch werkt pas na de merge door de eigenaar,
+     en een merge midden in een sessie pas in de volgende sessie.
+   - Rolhek en werkstraat falen dicht (exit 2) als het anker niet te bepalen is of de hook op `main` ontbreekt; het rolhek maakt van
+     elke andere exitcode dan 0 of 2 een 2. Alleen de meethook faalt open (exit 0).
    - Tests en scripts importeren de branchversie uit `rails/hooks/`, zodat wijzigingen vóór de merge getest worden.
    - `rails/**` komt in `gates` en in `voorReview`. Skills en agents blijven in `.claude/` (daar laadt Claude Code ze);
      de agent wijzigt ze met Edit/Write, niet met Bash.
 2. **Modus `onderhoud`, gebonden aan de template-repo.** Nieuwe sleutel in `.claude/gates.json`:
    `onderhoud: { "repository": "BramLambertJansen/template" }`. Het rolhek leest hem uit `origin/main` (zoals `autoRunner`, ADR 0027
-   punt 6), nooit uit de werkmap, en zet de modus alleen aan als `repositoryName()` (`.claude/hooks/lib/authority-context.mjs`) van
+   punt 6), nooit uit de werkmap, en zet de modus alleen aan als `repositoryName()` (`rails/hooks/lib/authority-context.mjs`) van
    `git remote get-url origin` gelijk is aan die waarde, hoofdletterongevoelig (GitHub-namen zijn dat ook). Een app uit
    "Use this template" heeft een andere origin, en daar staat de modus dus vanzelf uit. Onleesbaar → uit. `check-docs` faalt op een andere vorm.
 3. **In `onderhoud`** behandelt het rolhek `voorReview` voor de hoofdsessie en de developer-subagent zoals de overige gate-paden

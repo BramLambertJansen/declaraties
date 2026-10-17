@@ -350,10 +350,11 @@ SubagentStop staat in `.claude/settings.json` (matcher = agentnaam), niet in de 
 | Meethook `meting.mjs` (PreToolUse, PermissionRequest, PermissionDenied, PostToolUse, PostToolUseFailure, UserPromptSubmit, Stop, SessionEnd; ADR 0029 punt 12) | observeert alleen: fail-open, schrijft nooit naar stdout; één regel per event in `<git common dir>/agent-meting/<sessie>.jsonl` of `METING_DIR` (`rails/hooks/lib/meting.mjs:133`); alleen event, sessie, branch, rol, tool, id, modus (`m`, alleen letters uit `permission_mode`) en sleutel (pad relatief aan de repo-root, of Bash-prefix met vast label `git push --dry-run`: `rails/hooks/lib/meting.mjs:66`), nooit inhoud, argumenten of geheimen. Eigen repo-root zonder git-proces en zonder `CLAUDE_PROJECT_DIR`-terugval: buiten een repo schrijft hij niets. Overzicht `pnpm meting` (met prompts per modus; ontbrekend → `onbekend`); beurten en weigeringen zijn bovengrenzen (een geblokkeerde Stop telt dubbel, een onderbroken tool telt als weigering: `scripts/kit/meting.mjs:110`); CI-rondes zijn runs uit `gh run list` binnen het sessievenster per branch (`scripts/kit/meting.mjs:207`) |
 
 Alle hooks behalve de meethook werken in de root uit de payload: de git-root van `cwd` (een worktree), terugval `CLAUDE_PROJECT_DIR` (`rails/hooks/lib/root.mjs`).
-De broncode staat in `rails/hooks/`; `.claude/hooks/*.mjs` zijn stubs die via `.claude/hooks/laden.mjs` de versie van `origin/main` draaien,
-uitgepakt per tree-oid in `<git common dir>/rails-hooks/` (ADR 0033 punt 1). Een hookwijziging op een branch werkt dus pas na de merge; de
-tabeltests draaien de branchversie. Ontbreekt de hook op `origin/main`, dan haalt de stub één keer `git fetch origin main` op; daarna faalt
-het rolhek dicht en de rest open.
+De broncode staat in `rails/hooks/`; `.claude/hooks/*.mjs` zijn stubs die via `.claude/hooks/laden.mjs` de versie van `main` draaien
+(ADR 0033 punt 1). Het anker is de SHA van `main` op de remote (`git ls-remote`, ververst bij de start van een sessie), niet de lokale
+`origin/main`; anker en cache staan in `.claude/hooks/.cache/`, en de cache wordt vóór elke run tegen de blob-hashes gecontroleerd.
+Een hookwijziging op een branch werkt dus pas na de merge, en een merge midden in een sessie pas in de volgende; de tabeltests draaien
+de branchversie. Rolhek en werkstraat falen dicht als het anker of de hook ontbreekt, de meethook open.
 Elke hook heeft een tabeltest (`test/hooks/*.test.ts`): echte stdin-payloads met de verwachte exitcode, inclusief omzeilingen (tweede commando na
 een leesuitzondering, aanhalingstekens rond redirect-doelen). Wat tekstheuristiek niet vangt (`bash -c`, `node -e`), vangt de diff-guard in CI.
 

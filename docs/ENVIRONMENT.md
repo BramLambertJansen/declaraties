@@ -62,7 +62,8 @@ sessie waarin de eigenaar aanwezig is, of de eigenaar voert de wijziging zelf ui
 eigenaarsbesluit (beschermd pad, `docs/framework.md` §10).
 
 De broncode van de hooks staat daarom in `rails/hooks/`, buiten die grens (ADR 0033 punt 1). In `.claude/hooks/` staan alleen
-stubs die de versie van `origin/main` draaien; wie `rails/hooks/` op een branch wijzigt, verandert de lopende sessie niet.
+stubs die de versie van `main` op de remote draaien, uitgepakt in `.claude/hooks/.cache/`: binnen de grens, zodat Bash die code
+niet kan vervangen. Wie `rails/hooks/` op een branch wijzigt, verandert de lopende sessie niet.
 
 ## Branchnaam
 
