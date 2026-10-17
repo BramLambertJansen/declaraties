@@ -352,7 +352,8 @@ SubagentStop staat in `.claude/settings.json` (matcher = agentnaam), niet in de 
 Alle hooks behalve de meethook werken in de root uit de payload: de git-root van `cwd` (een worktree), terugval `CLAUDE_PROJECT_DIR` (`rails/hooks/lib/root.mjs`).
 De broncode staat in `rails/hooks/`; `.claude/hooks/*.mjs` zijn stubs die via `.claude/hooks/laden.mjs` de versie van `main` draaien
 (ADR 0033 punt 1). Het anker is de SHA van `main` op de remote (`git ls-remote`, ververst bij de start van een sessie), niet de lokale
-`origin/main`; anker en cache staan in `.claude/hooks/.cache/`, en de cache wordt vóór elke run tegen de blob-hashes gecontroleerd.
+`origin/main`; anker en cache staan in `.claude/hooks/.cache/`. De lader hasht zelf de commit, de trees en de blobs (git doet dat bij
+lezen niet, en `.git/objects` is schrijfbaar); het rolhek gebruikt geen netwerk, `werkstraat session-start` legt het anker vast.
 Een hookwijziging op een branch werkt dus pas na de merge, en een merge midden in een sessie pas in de volgende; de tabeltests draaien
 de branchversie. Rolhek en werkstraat falen dicht als het anker of de hook ontbreekt, de meethook open.
 Elke hook heeft een tabeltest (`test/hooks/*.test.ts`): echte stdin-payloads met de verwachte exitcode, inclusief omzeilingen (tweede commando na

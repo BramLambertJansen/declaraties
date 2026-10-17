@@ -63,7 +63,9 @@ eigenaarsbesluit (beschermd pad, `docs/framework.md` §10).
 
 De broncode van de hooks staat daarom in `rails/hooks/`, buiten die grens (ADR 0033 punt 1). In `.claude/hooks/` staan alleen
 stubs die de versie van `main` op de remote draaien, uitgepakt in `.claude/hooks/.cache/`: binnen de grens, zodat Bash die code
-niet kan vervangen. Wie `rails/hooks/` op een branch wijzigt, verandert de lopende sessie niet.
+niet kan vervangen. Wie `rails/hooks/` op een branch wijzigt, verandert de lopende sessie niet. Het anker (de SHA van `main` op de
+remote) legt de start van een sessie vast en vraagt netwerk; weigert het rolhek alles met "geen geldig anker", start dan één sessie
+met netwerk.
 
 ## Branchnaam
 

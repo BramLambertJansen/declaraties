@@ -62,45 +62,73 @@ function ververs() {
   }
 }
 
-/** Tree-oid van `rails/hooks` in de commit als `<naam>.mjs` erin staat, anders null. @param {string | null} sha @param {string} naam */
+/** Git-oid van een object (sha1 of sha256, naar de lengte van de verwachte oid). @param {string} soort @param {Uint8Array} data @param {number} lengte */
+function objectOid(soort, data, lengte) {
+  return createHash(lengte === 64 ? 'sha256' : 'sha1')
+    .update(`${soort} ${String(data.length)}\0`)
+    .update(data)
+    .digest('hex');
+}
+
+/**
+ * De ruwe inhoud van een object, alleen als die bij zijn oid hoort. Git controleert dat bij gewoon lezen niet, en `.git/objects` is
+ * voor de sandbox schrijfbaar: een los, vervalst object onder het anker zou anders een eigen tree laten uitpakken.
+ * @param {string} soort @param {string} oid
+ */
+function gecontroleerd(soort, oid) {
+  const data = execFileSync('git', ['cat-file', soort, oid], { cwd: HIER, env: GIT_ENV, stdio: ['ignore', 'pipe', 'ignore'] });
+  if (objectOid(soort, data, oid.length) !== oid) throw new Error(`object ${oid} klopt niet met zijn hash`);
+  return data;
+}
+
+/** Entries van een gecontroleerde tree. @param {string} oid @returns {{ modus: string, naam: string, oid: string }[]} */
+function entries(oid) {
+  const data = gecontroleerd('tree', oid);
+  const breedte = oid.length / 2;
+  const lijst = [];
+  for (let i = 0; i < data.length; ) {
+    const spatie = data.indexOf(0x20, i);
+    const nul = data.indexOf(0, spatie);
+    if (spatie < 0 || nul < 0) throw new Error(`tree ${oid} is onleesbaar`);
+    const id = data.subarray(nul + 1, nul + 1 + breedte).toString('hex');
+    lijst.push({ modus: data.subarray(i, spatie).toString(), naam: data.subarray(spatie + 1, nul).toString(), oid: id });
+    i = nul + 1 + breedte;
+  }
+  return lijst;
+}
+
+/** Tree-oid van `rails/hooks` in de commit als `<naam>.mjs` erin staat, anders null; elk object op het pad gecontroleerd. @param {string | null} sha @param {string} naam */
 function boomVan(sha, naam) {
   if (sha === null) return null;
   try {
-    git(['cat-file', '-e', `${sha}:rails/hooks/${naam}.mjs`]);
-    if (git(['cat-file', '-t', `${sha}:rails/hooks`]).trim() !== 'tree') return null;
-    return git(['rev-parse', '--verify', `${sha}:rails/hooks`]).trim();
+    let oid = /^tree ([0-9a-f]+)\n/.exec(gecontroleerd('commit', sha).toString())?.[1];
+    for (const deel of ['rails', 'hooks'])
+      oid = oid === undefined ? undefined : entries(oid).find((entry) => entry.naam === deel && entry.modus === '40000')?.oid;
+    return oid !== undefined && entries(oid).some((entry) => entry.naam === `${naam}.mjs`) ? oid : null;
   } catch {
     return null;
   }
 }
 
-/** Het anker, ververst bij de start van een sessie, zonder anker of als de hook er niet in staat. @param {string} naam @param {boolean} sessieStart */
+/**
+ * Het anker; zonder anker, als de hook er niet in staat of bij de start van een sessie ververst. Het rolhek gebruikt nooit het
+ * netwerk: zijn timeout van 10 s verstrijken is voor Claude Code fail-open. Zijn anker legt `werkstraat session-start` vast.
+ * @param {string} naam @param {boolean} sessieStart
+ */
 function bron(naam, sessieStart) {
   const anker = leesAnker();
   const huidig = sessieStart ? null : boomVan(anker, naam);
-  if (huidig !== null) return huidig;
+  if (huidig !== null || naam === 'rolhek') return huidig;
   return boomVan(ververs(), naam) ?? boomVan(anker, naam);
 }
 
-/** @param {string} boom @returns {{ pad: string, oid: string }[]} */
-function inhoud(boom) {
-  return git(['ls-tree', '-r', '-z', '--full-tree', boom])
-    .split('\0')
-    .filter(Boolean)
-    .map((regel) => {
-      const [kop = '', pad = ''] = regel.split('\t');
-      const [modus, soort, oid = ''] = kop.split(' ');
-      if (soort !== 'blob' || modus === '120000') throw new Error(`rails/hooks/${pad} is geen gewoon bestand op main`);
-      return { pad, oid };
-    });
-}
-
-/** Git-blob-oid van inhoud (sha1 of sha256, naar de lengte van de verwachte oid). @param {Uint8Array} data @param {number} lengte */
-function blobOid(data, lengte) {
-  return createHash(lengte === 64 ? 'sha256' : 'sha1')
-    .update(`blob ${String(data.length)}\0`)
-    .update(data)
-    .digest('hex');
+/** Alle bestanden onder een gecontroleerde tree. @param {string} boom @param {string} [voor] @returns {{ pad: string, oid: string }[]} */
+function inhoud(boom, voor = '') {
+  return entries(boom).flatMap(({ modus, naam, oid }) => {
+    if (modus === '40000') return inhoud(oid, `${voor}${naam}/`);
+    if (modus !== '100644' && modus !== '100755') throw new Error(`rails/hooks/${voor}${naam} is geen gewoon bestand op main`);
+    return [{ pad: `${voor}${naam}`, oid }];
+  });
 }
 
 /** Precies de bestanden van de tree (plus de marker), met de juiste inhoud, zonder symlinks of extra's. @param {string} map @param {{ pad: string, oid: string }[]} lijst */
@@ -113,7 +141,7 @@ function intact(map, lijst) {
       .map((item) => path.relative(map, path.join(item.parentPath, item.name)).split(path.sep).join('/'));
     const verwacht = new Set([...lijst.map(({ pad }) => pad), COMPLEET]);
     if (op.length !== verwacht.size || op.some((pad) => !verwacht.has(pad))) return false;
-    return lijst.every(({ pad, oid }) => blobOid(readFileSync(path.join(map, pad)), oid.length) === oid);
+    return lijst.every(({ pad, oid }) => objectOid('blob', readFileSync(path.join(map, pad)), oid.length) === oid);
   } catch {
     return false;
   }
@@ -172,7 +200,7 @@ export function draai(naam, dicht) {
   let map;
   try {
     const boom = bron(naam, naam === 'werkstraat' && process.argv[2] === 'session-start');
-    if (boom === null) return weiger(naam, dicht, `rails/hooks/${naam}.mjs staat niet op main van de remote, of die is onbereikbaar`);
+    if (boom === null) return weiger(naam, dicht, `geen geldig anker met rails/hooks/${naam}.mjs; een nieuwe sessie met netwerk legt het vast`);
     map = uitpakken(boom);
   } catch (error) {
     return weiger(naam, dicht, error instanceof Error ? error.message : String(error));
