@@ -1,5 +1,5 @@
 {
-  "$comment": "Enige lijst met gate-paden (framework §8 en §10, ADR 0011). De rolhek-hook leest hem uit origin/main (lokaal als die onleesbaar is); CODEOWNERS spiegelt `gates` + `jsonGates`, de Edit-regels in `ask` van .claude/settings.json spiegelen `voorReview` (`scripts/kit/check-docs.mjs`). `voorReview` (ADR 0029 punt 8): gate-paden met effect vóór review; alleen daar vraagt het rolhek de hoofdsessie en weigert het de developer, op de andere gate-paden geeft het een melding; de diff-guard in CI leest hem (roadmap stuk 4). Globs: `*` binnen één map, `**` over mappen heen. `mcpLezen`: exacte namen van read-only MCP-tools die het rolhek doorlaat; elke andere `mcp__`-tool is ask (hoofdsessie) of deny (subagent). `werkmapNegeer`: ongetrackte paden onder `.claude/` die `pnpm pr:verify` niet als vuile werkmap telt (gelezen uit origin/main, ADR 0031).",
+  "$comment": "Enige lijst met gate-paden (framework §8 en §10, ADR 0011). De rolhek-hook leest hem uit het anker van de stub-lader (ADR 0033); buiten een hook uit origin/main, lokaal als die onleesbaar is; CODEOWNERS spiegelt `gates` + `jsonGates`, de Edit-regels in `ask` van .claude/settings.json spiegelen `altijdVragen` (`scripts/kit/check-docs.mjs`). `onderhoud` (ADR 0033 punt 2): de repository waarin de onderhoudsmodus geldt; daar is een `voorReview`-pad voor hoofdsessie en developer alleen een melding, behalve `altijdVragen` (punt 3). `voorReview` (ADR 0029 punt 8): gate-paden met effect vóór review; alleen daar vraagt het rolhek de hoofdsessie en weigert het de developer, op de andere gate-paden geeft het een melding; de diff-guard in CI leest hem (roadmap stuk 4). Globs: `*` binnen één map, `**` over mappen heen. `mcpLezen`: exacte namen van read-only MCP-tools die het rolhek doorlaat; elke andere `mcp__`-tool is ask (hoofdsessie) of deny (subagent). `werkmapNegeer`: ongetrackte paden onder `.claude/` die `pnpm pr:verify` niet als vuile werkmap telt (gelezen uit origin/main, ADR 0031).",
   "gates": [
     "AGENTS.md",
     "CLAUDE.md",
@@ -87,6 +87,16 @@
     ".betterleaksignore",
     ".env.example"
   ],
+  "altijdVragen": [
+    ".github/**",
+    ".claude/hooks/**",
+    ".claude/settings.json",
+    ".claude/gates.json",
+    ".claude/decisions.json",
+    "package.json",
+    "pnpm-lock.yaml"
+  ],
+  "onderhoud": { "repository": "BramLambertJansen/template" },
   "testpaden": ["**/*.test.*", "**/*.spec.*", "e2e/**", "db/tests/**", "test/**"],
   "jsonGates": { "package.json": ["scripts"] },
   "gegenereerd": ["src/web/routeTree.gen.ts", "src/api/db/schema.ts", "db/schema.snapshot.sql"],

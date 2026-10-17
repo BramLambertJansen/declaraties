@@ -4,8 +4,9 @@
 //     (een kale naam of relatief pad telt als een bestand in git erop eindigt; `/route` is een URL, geen pad).
 //  2. Relatieve links in docs/**/*.md en README.md wijzen naar een bestaand bestand.
 //  3. ADR- en spec-statussen komen uit de vaste woordenlijst; een goedgekeurde of gebouwde spec heeft "Hergebruik en UX".
-//  4. CODEOWNERS noemt precies de gates en jsonGates uit .claude/gates.json (de bron, ADR 0011); `voorReview` valt daarbinnen
-//     en de Edit-regels in `ask` van .claude/settings.json zijn precies `voorReview` (ADR 0029 punt 8 en 9).
+//  4. CODEOWNERS noemt precies de gates en jsonGates uit .claude/gates.json (de bron, ADR 0011); `voorReview` valt daarbinnen,
+//     `altijdVragen` valt binnen `voorReview`, en de Edit-regels in `ask` van .claude/settings.json zijn precies `altijdVragen`
+//     (zonder die lijst: `voorReview`; ADR 0029 punt 8 en 9, ADR 0033 punt 4). `onderhoud` heeft de vorm { repository }.
 //  5. `schrijfrecht` van een rol overlapt niet met `gates` (WS-02), op de uitzonderingen in SCHRIJFRECHT_VRIJ na.
 //  6. Elk AC-id van een gebouwde spec heeft een testbestand met `<namespace>/AC-n`, of met het AC-id samen met de specnaam
 //     of de namespace (sleutel `docs:ac:<spec>:<AC-n>`).
@@ -271,7 +272,7 @@ function mirrorViolations(files, read) {
 }
 
 /**
- * `voorReview` ⊆ gates + jsonGates, en de Edit-regels in `ask` zijn precies `voorReview` (ADR 0029 punt 8 en 9).
+ * `voorReview` ⊆ gates + jsonGates, `altijdVragen` ⊆ `voorReview`, Edit-regels in `ask` = `altijdVragen` (ADR 0033 punt 4).
  * @param {string} text
  * @param {readonly string[]} askPaths
  * @returns {Violation[]}
@@ -290,7 +291,7 @@ function voorReviewViolations(text, askPaths) {
     ...(typeof jsonGates === 'object' && jsonGates !== null ? Object.keys(jsonGates) : []),
   ]);
   const voorReview = new Set(list(entry('voorReview')));
-  const ask = new Set(askPaths);
+  const altijd = entry('altijdVragen') === undefined ? null : new Set(list(entry('altijdVragen')));
   return [
     ...[...voorReview]
       .filter((path) => !gates.has(path))
@@ -298,19 +299,57 @@ function voorReviewViolations(text, askPaths) {
         key: `docs:spiegel:voorreview-gates:${path}`,
         message: `voorReview noemt ${path}, gates en jsonGates in .claude/gates.json niet`,
       })),
-    ...[...voorReview]
+    ...[...(altijd ?? [])]
+      .filter((path) => !gedektDoor(path, voorReview))
+      .map((path) => ({
+        key: `docs:spiegel:altijdvragen-voorreview:${path}`,
+        message: `altijdVragen noemt ${path}, voorReview in .claude/gates.json dekt het niet`,
+      })),
+    ...askViolations(altijd ?? voorReview, altijd === null ? 'voorReview' : 'altijdVragen', new Set(askPaths)),
+    ...onderhoudViolations(entry('onderhoud')),
+  ];
+}
+
+/** Een pad staat letterlijk in de lijst of valt onder een `<map>/**` ervan. @param {string} path @param {ReadonlySet<string>} lijst */
+function gedektDoor(path, lijst) {
+  return lijst.has(path) || [...lijst].some((glob) => glob.endsWith('/**') && path.startsWith(glob.slice(0, -2)));
+}
+
+/**
+ * De Edit-regels in `ask` zijn precies `altijdVragen`, of `voorReview` zolang die ontbreekt (ADR 0033 punt 4, ADR 0029 punt 9).
+ * @param {ReadonlySet<string>} bron @param {string} naam @param {ReadonlySet<string>} ask
+ * @returns {Violation[]}
+ */
+function askViolations(bron, naam, ask) {
+  return [
+    ...[...bron]
       .filter((path) => !ask.has(path))
       .map((path) => ({
         key: `docs:spiegel:ask:${path}`,
-        message: `voorReview noemt ${path}, \`ask\` in .claude/settings.json niet`,
+        message: `${naam} noemt ${path}, \`ask\` in .claude/settings.json niet`,
       })),
     ...[...ask]
-      .filter((path) => !voorReview.has(path))
+      .filter((path) => !bron.has(path))
       .map((path) => ({
         key: `docs:spiegel:voorreview:${path}`,
-        message: `\`ask\` noemt ${path}, voorReview in .claude/gates.json niet`,
+        message: `\`ask\` noemt ${path}, ${naam} in .claude/gates.json niet`,
       })),
   ];
+}
+
+/** `onderhoud` is ontbrekend of precies `{ "repository": "<owner>/<repo>" }` (ADR 0033 punt 2). @param {unknown} value @returns {Violation[]} */
+function onderhoudViolations(value) {
+  if (value === undefined) return [];
+  const entries = typeof value === 'object' && value !== null && !Array.isArray(value) ? Object.entries(value) : [];
+  const repository = entries.length === 1 && entries[0]?.[0] === 'repository' ? entries[0][1] : undefined;
+  return typeof repository === 'string' && /^[\w-]+\/[\w.-]+$/.test(repository)
+    ? []
+    : [
+        {
+          key: 'docs:gates:onderhoud',
+          message: '.claude/gates.json: onderhoud is geen { "repository": "<owner>/<repo>" }',
+        },
+      ];
 }
 
 /**

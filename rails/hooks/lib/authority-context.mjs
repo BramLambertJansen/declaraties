@@ -2,6 +2,7 @@
 import { execFileSync } from 'node:child_process';
 import { lstatSync, readFileSync, realpathSync } from 'node:fs';
 import path from 'node:path';
+import { anker, vertrouwdeCommit, vertrouwdeTekst } from './objecten.mjs';
 import { canonicalPath, readRegistry } from './task-authority.mjs';
 
 /** @param {string} root @param {string[]} args */
@@ -63,20 +64,33 @@ function workingText(root, file) {
 }
 
 /**
+ * De vertrouwde basis: binnen een hook het anker van de stub-lader (ADR 0033), gecontroleerd gelezen; daarbuiten `base` of
+ * origin/main. Een gezet maar ongeldig anker geeft null (nooit terugval op origin/main, die een agent kan ombuigen).
+ * @param {string} root @param {string | undefined} base
+ * @returns {{ sha: string, read: (file: string) => string | null } | null}
+ */
+export function trustedBase(root, base) {
+  const vast = base === undefined ? anker() : null;
+  if (vast !== null) return vertrouwdeCommit(root, vast) ? { sha: vast, read: (file) => vertrouwdeTekst(root, vast, file) } : null;
+  const sha = gitText(root, ['rev-parse', '--verify', `${base ?? 'origin/main'}^{commit}`])?.trim() ?? '';
+  return /^[0-9a-f]{40}$/.test(sha) ? { sha, read: (file) => gitText(root, ['show', `${sha}:${file}`]) } : null;
+}
+
+/**
  * @param {{ root: string, base?: string, repository?: string, branch?: string }} config
  * @returns {import('./task-authority.mjs').Authority | null}
  */
 export function readAuthority(config) {
-  const sha = gitText(config.root, ['rev-parse', '--verify', `${config.base ?? 'origin/main'}^{commit}`])?.trim() ?? null;
+  const basis = trustedBase(config.root, config.base);
   const repository = config.repository ?? repositoryName(gitText(config.root, ['config', '--get', 'remote.origin.url'])?.trim() ?? '');
   const branch = config.branch ?? gitText(config.root, ['branch', '--show-current'])?.trim() ?? null;
-  if (sha === null || !/^[0-9a-f]{40}$/.test(sha) || repository === null || branch === null) return null;
-  const registryText = gitText(config.root, ['show', `${sha}:.claude/decisions.json`]);
+  if (basis === null || repository === null || branch === null) return null;
+  const registryText = basis.read('.claude/decisions.json');
   // Voor de eerste template-update bestaan er nog geen besluiten. Dat geeft geen extra bevoegdheid.
   const registry = registryText === null ? { version: 1, requiredChecks: [], decisions: [] } : readRegistry(registryText);
   return {
     registry, repository, branch,
-    trusted: (file) => canonicalPath(file) ? gitText(config.root, ['show', `${sha}:${file}`]) : null,
+    trusted: (file) => canonicalPath(file) ? basis.read(file) : null,
     working: (file) => workingText(config.root, file),
     safe: (file) => safeRepositoryPath(config.root, file),
   };

@@ -67,10 +67,10 @@ Open werk dat niet geparkeerd is, grofweg in volgorde. Wat nog een spec of eigen
   (`.github/workflows/guard.yml`) en staat niet in `requiredChecks` van `.claude/decisions.json`; `pnpm pr:verify` kan dus groen melden bij een
   rode documentstatus. Dat is een fout in een rail (P2), geen meta-werk. Na PR 2 eist `gebouwd` een extra check (ADR 0031, "Gevolg voor gebouwd").
   aanleiding: `docs/operations/agent-doorloop.md` (besluit 2 van de inventaris)
-- [ ] **Vertrouwde basis niet uit de lokale `origin/main`.** `movesTrustedBase` (`rails/hooks/lib/rolhek.mjs`) laat
+- [x] **Vertrouwde basis niet uit de lokale `origin/main`.** `movesTrustedBase` (`rails/hooks/lib/rolhek.mjs`) laat
   `git fetch origin +<branch>:refs/remotes/origin/main` door, en de sandbox laat `.git/refs` beschrijven. De hooks zelf draaien sinds ADR 0033
   punt 1 van een remote-anker, maar `readAuthority` (gates, `voorReview`, `schrijfrecht`, register) leest nog de lokale ref. Gebruik het anker
-  uit `.claude/hooks/.cache/main` of weiger een refspec naar `origin/main` met een andere bron dan `main`, met tabeltest.
+  uit `.claude/hooks/.cache/main` of weiger een refspec naar `origin/main` met een andere bron dan `main`, met tabeltest. Gebouwd: de hooks lezen hun vertrouwde basis uit het anker (`RAILS_ANKER`), gecontroleerd; bewijs `test/hooks/vertrouwde-basis-anker.test.ts`.
   aanleiding: `rails/hooks/lib/rolhek.mjs` (movesTrustedBase; review van de PR voor ADR 0033 punt 1)
 - [ ] **Subagent-stop leest de JSON van vitest niet.** `rails/hooks/lib/werkstraat.mjs` zoekt het rapport van `vitest --reporter=json` op stdout;
   vitest 5 schrijft het naar `.vitest/json/output.json`, dus de tester-stop meldt "geen uitvoer van vitest".

@@ -117,9 +117,15 @@ function boomVan(sha, naam) {
  */
 function bron(naam, sessieStart) {
   const anker = leesAnker();
-  const huidig = sessieStart ? null : boomVan(anker, naam);
+  const huidig = sessieStart ? null : paar(anker, naam);
   if (huidig !== null || naam === 'rolhek') return huidig;
-  return boomVan(ververs(), naam) ?? boomVan(anker, naam);
+  return paar(ververs(), naam) ?? paar(anker, naam);
+}
+
+/** @param {string | null} sha @param {string} naam @returns {{ sha: string, boom: string } | null} */
+function paar(sha, naam) {
+  const boom = boomVan(sha, naam);
+  return sha === null || boom === null ? null : { sha, boom };
 }
 
 /** Alle bestanden onder een gecontroleerde tree. @param {string} boom @param {string} [voor] @returns {{ pad: string, oid: string }[]} */
@@ -198,16 +204,20 @@ function weiger(naam, dicht, reden) {
 export function draai(naam, dicht) {
   const invoer = leesStdin();
   let map;
+  let anker;
   try {
-    const boom = bron(naam, naam === 'werkstraat' && process.argv[2] === 'session-start');
-    if (boom === null) return weiger(naam, dicht, `geen geldig anker met rails/hooks/${naam}.mjs; een nieuwe sessie met netwerk legt het vast`);
-    map = uitpakken(boom);
+    const gevonden = bron(naam, naam === 'werkstraat' && process.argv[2] === 'session-start');
+    if (gevonden === null) return weiger(naam, dicht, `geen geldig anker met rails/hooks/${naam}.mjs; een nieuwe sessie met netwerk legt het vast`);
+    map = uitpakken(gevonden.boom);
+    anker = gevonden.sha;
   } catch (error) {
     return weiger(naam, dicht, error instanceof Error ? error.message : String(error));
   }
   const result = spawnSync(process.execPath, [path.join(map, `${naam}.mjs`), ...process.argv.slice(2)], {
     input: invoer,
     stdio: ['pipe', 'inherit', 'inherit'],
+    // Het script leest zijn vertrouwde basis (gates, register, runner) uit dit anker, niet uit de lokale origin/main.
+    env: { ...process.env, RAILS_ANKER: anker },
   });
   if (result.status === null) return weiger(naam, dicht, `rails/hooks/${naam}.mjs stopte zonder exitcode`);
   if (naam === 'rolhek' && result.status !== 0 && result.status !== 2)

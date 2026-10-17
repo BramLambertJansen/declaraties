@@ -1,5 +1,5 @@
 # Beschermde paden — dezelfde lijst als docs/framework.md §10 (bron: gates + jsonGates in .claude/gates.json, ADR 0011). De Edit-regels
-# in "ask" van .claude/settings.json zijn de deelverzameling voorReview (ADR 0029 punt 8 en 9), plus ask op de commando's buiten de sandbox.
+# in "ask" van .claude/settings.json zijn de deelverzameling altijdVragen (ADR 0033 punt 4), plus ask op de commando's buiten de sandbox.
 # check-docs bewaakt beide spiegelingen. Vervang de handle per app (liever een team).
 /AGENTS.md                @bramlambertjansen
 /CLAUDE.md                @bramlambertjansen

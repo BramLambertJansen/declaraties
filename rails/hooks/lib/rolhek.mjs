@@ -9,12 +9,15 @@ import { automaticRunner } from './runner-authority.mjs';
 
 /**
  * @typedef {{ gates: string[], testpaden: string[], jsonGates: Record<string, string[]>, gegenereerd: string[],
- *   migraties: string[], schrijfrecht: Record<string, string[]>, mcpLezen: string[], voorReview?: string[] | undefined }} Config
- * `voorReview` ontbreekt → elke gate telt als voorReview (faalt dicht).
+ *   migraties: string[], schrijfrecht: Record<string, string[]>, mcpLezen: string[], voorReview?: string[] | undefined,
+ *   altijdVragen?: string[] | undefined, onderhoud?: { repository: string } | undefined }} Config
+ * `voorReview` ontbreekt → elke gate telt als voorReview (faalt dicht). `altijdVragen` ontbreekt → in onderhoud blijft elk
+ * voorReview-pad een gate (faalt dicht). `onderhoud`: de repository waarin de onderhoudsmodus geldt (ADR 0033 punt 2).
  * @typedef {{ root: string, cwd: string, config: Config, read: (rel: string) => string | null,
  *   committed: (rel: string) => boolean | 'zonder-origin', isDir: (rel: string) => boolean, branch: string,
  *   authority?: import('./task-authority.mjs').Authority | null, runnerTrusted?: boolean,
- *   onbekendeRol?: boolean }} Ctx
+ *   onbekendeRol?: boolean, onderhoud?: boolean }} Ctx
+ * `onderhoud`: de onderhoudsmodus is actief (vertrouwde configuratie en origin is die repository, ADR 0033 punt 2–3).
  * `onbekendeRol`: een subagent zonder bekende rol; telt als developer, maar zonder de melding buiten voorReview.
  * `committed`: staat in de merge-base met origin/main; 'zonder-origin' = origin/main onleesbaar en wel in HEAD (terugval).
  * @typedef {{ deny: string[], ask: string[], context: string[], allow?: boolean }} Decision
@@ -55,7 +58,19 @@ export function loadConfig(text) {
     jsonGates: record('jsonGates'),
     schrijfrecht: record('schrijfrecht'),
     voorReview: optionalList('voorReview'),
+    altijdVragen: optionalList('altijdVragen'),
+    onderhoud: onderhoudVan(value('onderhoud')),
   };
+}
+
+/** `{ "repository": "<owner>/<repo>" }` of ontbrekend; elke andere vorm gooit. @param {unknown} found */
+function onderhoudVan(found) {
+  if (found === undefined) return undefined;
+  const entries = typeof found === 'object' && found !== null && !Array.isArray(found) ? Object.entries(found) : [];
+  const repository = entries.length === 1 && entries[0]?.[0] === 'repository' ? entries[0][1] : undefined;
+  if (typeof repository !== 'string' || !/^[\w-]+\/[\w.-]+$/.test(repository))
+    throw new Error('.claude/gates.json: onderhoud is geen { "repository": "<owner>/<repo>" }');
+  return { repository };
 }
 
 /**
@@ -323,9 +338,21 @@ function decideByRole({ rel, change, role }, ctx, decision) {
   if (free || !config.gates.some((glob) => globMatch(glob, rel))) return;
   // ADR 0029 punt 9: buiten voorReview geen prompt, wel een melding; de eigenaar reviewt het in de PR.
   const voorReview = config.voorReview ?? config.gates;
-  if (ctx.onbekendeRol !== true && !voorReview.some((glob) => globMatch(glob, rel)))
+  const melding = ctx.onbekendeRol !== true && (!voorReview.some((glob) => globMatch(glob, rel)) || inOnderhoud(rel, ctx));
+  if (melding && ctx.onderhoud === true && voorReview.some((glob) => globMatch(glob, rel)))
+    decision.context.push(`${rel} is een beschermd pad (framework §10, onderhoudsmodus ADR 0033): noem het in de PR (eigenaarreview)`);
+  else if (melding)
     decision.context.push(`${rel} is een beschermd pad (framework §10): noem het in de PR (eigenaarreview, ADR 0029 punt 9)`);
   else gate(decision, role, `${rel} is een beschermd pad (framework §10): wijzigen vraagt akkoord van de eigenaar`);
+}
+
+/**
+ * In onderhoud (ADR 0033 punt 3) is een voorReview-pad een melding, behalve `altijdVragen`; ontbreekt die lijst, dan geen melding.
+ * @param {string} rel @param {Ctx} ctx
+ */
+function inOnderhoud(rel, ctx) {
+  const altijd = ctx.config.altijdVragen;
+  return ctx.onderhoud === true && altijd !== undefined && !altijd.some((glob) => globMatch(glob, rel));
 }
 
 /**

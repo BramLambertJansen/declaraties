@@ -133,12 +133,13 @@ describe('taakmandaat tegen echte git-objecten', () => {
 
   test('het echte rolhek gebruikt de gates uit main bij een lokaal weggehaalde core-bescherming', () => {
     const { root } = fixture();
-    write(root, '.claude/gates.json', CONFIG.replaceAll('"scripts/**",', ''));
+    // Een pad uit altijdVragen: in de template-repo staat de onderhoudsmodus aan (ADR 0033), waarin scripts/** alleen een melding is.
+    write(root, '.claude/gates.json', CONFIG.replaceAll('".github/**",', ''));
     const payload = {
       cwd: root,
       tool_name: 'Write',
       agent_type: 'developer',
-      tool_input: { file_path: path.join(root, 'scripts/kit/unapproved.mjs'), content: 'export {};' },
+      tool_input: { file_path: path.join(root, '.github/workflows/unapproved.yml'), content: 'on: push' },
     };
     expect(() =>
       execFileSync(process.execPath, [HOOK], {
