@@ -554,9 +554,10 @@ describe('punt G: vervalst object onder het anker', () => {
   function forgeLoose(repo: Repo, oid: string, object: { type: string; body: Buffer }) {
     const { type, body } = object;
     const file = path.join(repo.dir, '.git/objects', oid.slice(0, 2), oid.slice(2));
-    expect(existsSync(file), `${oid} moet een los object zijn`).toBe(true);
-    rmSync(file);
-    mkdirSync(path.dirname(file), { recursive: true });
+    // rmSync zonder force gooit als het object niet los staat; geen aparte bestaanscontrole vóór het schrijven.
+    expect(() => {
+      rmSync(file);
+    }, `${oid} moet een los object zijn`).not.toThrow();
     writeFileSync(file, deflateSync(Buffer.concat([Buffer.from(`${type} ${String(body.length)}\0`), body])));
   }
 
