@@ -112,6 +112,14 @@
       "branch": "docs/adr-0032-developer-voorreview",
       "status": "geaccepteerd",
       "paths": []
+    },
+    {
+      "file": "docs/adr/0033-onderhoudsmodus-voor-templatewerk.md",
+      "digest": "1a0948ac5a39f7efc7c2af8925aa6056c1b9f7fd35d38ee1c9f272bde16f9986",
+      "repository": "BramLambertJansen/template",
+      "branch": "docs/adr-0033-geaccepteerd",
+      "status": "geaccepteerd",
+      "paths": []
     }
   ]
 }
