@@ -52,6 +52,11 @@ describe('statusregelOvertreding: overtredingen in een nieuwe of gewijzigde rege
     ['link met een andere tekst dan het nummer', 'Status: geaccepteerd (2026-10-14), [diff-guard](0017-diff-guard.md)'],
     ['datum in een verkeerde vorm', 'Status: geaccepteerd (14-10-2026)'],
     ['PR zonder nummer', 'Status: geaccepteerd (2026-10-14), #'],
+    ['komma direct na de statuswaarde', 'Status: geaccepteerd, #153'],
+    ['spatie aan het eind', 'Status: geaccepteerd (2026-10-14) '],
+    ['dubbele spatie na de komma', 'Status: geaccepteerd (2026-10-14),  #153'],
+    ['tab als scheiding', 'Status: geaccepteerd\t(2026-10-14)'],
+    ['dubbel streepje', 'Status: geaccepteerd — — #153'],
   ])('%s: overtreding', async (_naam, regel) => {
     const resultaat = await overtreding(regel, 'Status: voorgesteld');
     expect(typeof resultaat).toBe('string');
@@ -75,6 +80,10 @@ describe('statusregelOvertreding: ongewijzigd en buiten de regel', () => {
     const oud = 'Status: geaccepteerd — herkomsttekst';
     const resultaat = await overtreding('Status: geaccepteerd — herkomsttekst, uitgebreid', oud);
     expect(typeof resultaat).toBe('string');
+  });
+
+  test('de melding noemt het afgewezen deel, ook zonder geldige scheiding', async () => {
+    expect(await overtreding('Status: geaccepteerd, #153', 'Status: voorgesteld')).toContain(', #153');
   });
 
   test('spec met #-commentaar (builtReference) valt buiten de regel', async () => {

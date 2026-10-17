@@ -85,7 +85,7 @@ export function statusregelOvertreding(nieuweRegel, oudeRegel, bestaandeAdrNumme
   const rest = /^Status: (?:voorgesteld|geaccepteerd|vervallen|vervangen door \d{4})(.*)$/.exec(nieuweRegel)?.[1];
   if (rest === undefined) return 'statusregel heeft geen geldige statuswaarde';
   if (rest === '') return null;
-  const delen = /^ (?:— )?(.+)$/.exec(rest)?.[1]?.split(/, | — /) ?? [''];
+  const delen = /^ (?:— )?(.+)$/.exec(rest)?.[1]?.split(/, | — /) ?? [rest];
   const fout = delen.find((deel) => !toegestaanDeel(deel, bestaandeAdrNummers));
   return fout === undefined
     ? null
