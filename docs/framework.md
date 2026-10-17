@@ -416,6 +416,9 @@ Live feiten (gates, routes, componenten, nummers) komen uit `scripts/kit/feiten.
   status en exacte bronbestanden. `gebouwd` vereist de juiste PR en verplichte Actions-checks op de gevalideerde bron-SHA;
   uitsluitend latere statusregels mogen daarvan afwijken. Ook intrekking en vervanging vragen bewijs. De CI-guard gebruikt
   `scripts/kit/check-document-status.mjs` uit main; een werkversie of commit-auteur geeft zichzelf geen goedkeuring.
+  Een nieuwe of gewijzigde ADR-statusregel draagt achter de statuswaarde alleen `(JJJJ-MM-DD)`, `#<nr>` en een link naar een bestaand
+  ADR met alleen het nummer als linktekst, gescheiden door `, ` of ` — ` (`statusregelOvertreding`, ADR 0031 besluit 4); een regel
+  gelijk aan main blijft geldig. Een geaccepteerd ADR corrigeren: [procedure](operations/agent-doorloop.md#correctie-aan-een-geaccepteerd-adr).
 - `guard.yml` (`pull_request_target`, draait altijd de versie van de default branch) voert de check-scripts van `main` uit. PR-code wordt
   alleen als git-data in een aparte map uitgecheckt en nooit uitgevoerd: geen `pnpm install`, geen configs of scripts uit de PR,
   `persist-credentials: false`, minimale `permissions`; controleert dat base-repo en -branch kloppen en beide SHA's volledig (40 tekens) zijn.

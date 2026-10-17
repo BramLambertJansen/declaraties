@@ -1,5 +1,10 @@
 // guard.yml voert uitsluitend deze versie uit main uit; PR-code wordt alleen als git-data gelezen (ADR 0027).
-import { documentInfo, documentKind, builtReference } from '../../.claude/hooks/lib/document-state.mjs';
+import {
+  documentInfo,
+  documentKind,
+  builtReference,
+  statusregelOvertreding,
+} from '../../.claude/hooks/lib/document-state.mjs';
 import { readAuthority, gitText } from '../../.claude/hooks/lib/authority-context.mjs';
 import { canRecordStatus, canWriteProtected } from '../../.claude/hooks/lib/task-authority.mjs';
 import { canRecordBuilt } from '../../.claude/hooks/lib/built-evidence.mjs';
@@ -9,7 +14,7 @@ import { pullRequest, checkRuns } from './github-evidence.mjs';
 import { kaderVan, ROADMAP, taakVinkje } from './roadmap-item.mjs';
 import { regularGitFile, statusOnlyDiff, isAncestor } from './status-git.mjs';
 
-/** @typedef {{ root: string, sha: string, split: string, authority: import('../../.claude/hooks/lib/task-authority.mjs').Authority, config: import('../../.claude/hooks/lib/rolhek.mjs').Config }} Context */
+/** @typedef {{ root: string, sha: string, split: string, adrBestanden: string[], authority: import('../../.claude/hooks/lib/task-authority.mjs').Authority, config: import('../../.claude/hooks/lib/rolhek.mjs').Config }} Context */
 
 /** @param {string} name */
 function requiredEnv(name) {
@@ -39,6 +44,14 @@ function verifyDocument(document, context) {
   const info = documentInfo(document.file, document.after);
   if (info === null || !regularGitFile(context.root, document.file, context.sha))
     throw new Error(`${document.file}: ongeldige status of symlink`);
+  if (info.kind === 'adr') {
+    const fout = statusregelOvertreding(
+      statusLine(document.after) ?? '',
+      statusLine(document.before),
+      context.adrBestanden,
+    );
+    if (fout !== null) throw new Error(`${document.file}: ${fout}`);
+  }
   if (['voorstel', 'voorgesteld'].includes(info.status) || document.before === document.after) return;
   const target = { file: document.file, text: document.after };
   const valid = info.status === 'gebouwd' ? verifyBuilt(target, context) : canRecordStatus(target, context.authority);
@@ -46,6 +59,22 @@ function verifyDocument(document, context) {
     throw new Error(
       `${document.file}: status of inhoud heeft geen geldig besluit of bouwbewijs uit de vertrouwde basis`,
     );
+}
+
+/** De ADR-statusregel van een document, of null. @param {string | null} text */
+function statusLine(text) {
+  return (
+    text
+      ?.replaceAll('\r\n', '\n')
+      .split('\n')
+      .find((line) => line.startsWith('Status:')) ?? null
+  );
+}
+
+/** Bestandsnamen van de ADR's op HEAD. @param {string} root @param {string} sha */
+function adrFiles(root, sha) {
+  const names = gitText(root, ['ls-tree', '--name-only', '-z', sha, 'docs/adr/']) ?? '';
+  return names.split('\0').flatMap((file) => /^docs\/adr\/(\d{4}-[^/]+\.md)$/.exec(file)?.[1] ?? []);
 }
 
 /** De specs met een actief mandaat op deze repository en branch. @param {Context} context */
@@ -144,7 +173,7 @@ async function main() {
   const changes = parseNameStatus(diff);
   const config = loadConfig(gitText(root, ['show', `${base}:.claude/gates.json`]) ?? '');
   /** @type {Context} */
-  const context = { root, sha, split, authority: snapshot, config };
+  const context = { root, sha, split, adrBestanden: adrFiles(root, sha), authority: snapshot, config };
   for (const { pad } of changes)
     verifyDocument({ file: pad, before: authority.trusted(pad), after: snapshot.working(pad) }, context);
   verifyScope(changes, context);

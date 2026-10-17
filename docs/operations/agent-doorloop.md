@@ -122,3 +122,19 @@ OV-2, [ADR 0031](../adr/0031-guard-en-pr-verify-bruikbaarder.md) besluit 2). Dan
 2. Een label `gate-wijziging` of een review is niet nodig; een review is ook niet mogelijk, want GitHub laat de auteur zijn
    eigen PR niet goedkeuren. De eigenaar merget zelf.
 3. Is `document-status` rood, merge dan niet: laat de oorzaak herstellen.
+
+## Correctie aan een geaccepteerd ADR
+
+De inhoud van een geaccepteerd ADR (buiten de statusregel) verandert niet zonder record op main en eigenaarmerge (ADR 0027).
+Kies het spoor naar wat er verandert
+([ADR 0031](../adr/0031-guard-en-pr-verify-bruikbaarder.md) besluit 3):
+
+1. **Normatief** (wat besloten is): een nieuw ADR dat het oude wijzigt of vervangt. De tekst van het oude blijft.
+2. **Verwijzing naar een later ADR**: een ADR-link achter de statuswaarde, met alleen het nummer als linktekst en het
+   bestand ernaast als doel (zoals `0032` naar het bestand van ADR 0032). Geen record nodig; de eigenaar ziet het in de gate-PR.
+   Achter de statuswaarde mag verder alleen `(JJJJ-MM-DD)` en `#<nr>`, gescheiden door `, ` of ` — ` (besluit 4,
+   `statusregelOvertreding` in `.claude/hooks/lib/document-state.mjs`); anders is `document-status` rood. Een ongewijzigde regel
+   op main blijft geldig.
+3. **Niet-normatieve tekstcorrectie** (taalfout, kapotte link): PR 1 zet het ADR terug op `voorgesteld` met het record
+   (`pnpm docs:decision <adr> geaccepteerd --branch <tweede branch>`); PR 2 registreert `geaccepteerd` met `pnpm docs:status`.
+   De PR-beschrijving noemt dat het ADR tussen beide merges `voorgesteld` is; bundel zulke correcties.
