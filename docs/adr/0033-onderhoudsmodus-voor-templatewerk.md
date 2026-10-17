@@ -35,7 +35,7 @@ De echte grens is al de diff-guard (`guard.yml`, draait van `main`) plus de merg
    `.claude/hooks/*.mjs` worden kleine stubs die via `.claude/hooks/laden.mjs` `rails/hooks/` van `main` uitpakken en die versie
    starten.
    - **Anker van de remote.** De SHA van `main` komt van `git ls-remote origin refs/heads/main` en staat in `.claude/hooks/.cache/main`;
-     verversen bij de start van een sessie, zonder anker, of als de hook niet in het anker staat. De lokale `origin/main` telt niet: die
+     verversen bij de start van een sessie, zonder anker, of als de hook niet in het anker staat (nooit door het rolhek, zie hieronder). De lokale `origin/main` telt niet: die
      kan een agent ombuigen (`git fetch origin +<branch>:refs/remotes/origin/main`, of rechtstreeks in `.git`).
    - **Cache naast de stubs**, per tree-oid in `.claude/hooks/.cache/<oid>/` (in `.gitignore`): die map laat de sandbox van Claude Code
      niet beschrijven, zoals vóór de verhuizing `.claude/hooks/` zelf. Vóór elke run vergelijkt de lader de bestanden met de blob-hashes
