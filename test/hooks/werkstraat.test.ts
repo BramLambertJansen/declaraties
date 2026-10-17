@@ -7,7 +7,7 @@ import {
   sessionStart,
   stop,
   subagentStop,
-} from '../../.claude/hooks/lib/werkstraat.mjs';
+} from '../../rails/hooks/lib/werkstraat.mjs';
 
 // De werkstraat-hooks (framework §8): per hook de beslissing met echte payloads; de commando's zijn nagebootst en
 // vastgelegd, zodat de test ook bewijst wát er draait (netwerk alleen voor de fetch van session-start, nooit een database).

@@ -2,11 +2,11 @@
 // het item van de eigen spec (ADR 0027, spec taakmandaat-vervolg).
 import { readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
-import { readAuthority, gitText } from '../../.claude/hooks/lib/authority-context.mjs';
-import { changeStatus, documentInfo, documentKind } from '../../.claude/hooks/lib/document-state.mjs';
-import { canRecordStatus } from '../../.claude/hooks/lib/task-authority.mjs';
-import { canRecordBuilt } from '../../.claude/hooks/lib/built-evidence.mjs';
-import { loadConfig } from '../../.claude/hooks/lib/rolhek.mjs';
+import { readAuthority, gitText } from '../../rails/hooks/lib/authority-context.mjs';
+import { changeStatus, documentInfo, documentKind } from '../../rails/hooks/lib/document-state.mjs';
+import { canRecordStatus } from '../../rails/hooks/lib/task-authority.mjs';
+import { canRecordBuilt } from '../../rails/hooks/lib/built-evidence.mjs';
+import { loadConfig } from '../../rails/hooks/lib/rolhek.mjs';
 import { pullRequest, checkRuns } from './github-evidence.mjs';
 import { kaderVan, ROADMAP, taakVinkje, tikAf } from './roadmap-item.mjs';
 import { statusOnlyDiff, isAncestor, unchangedHead } from './status-git.mjs';
@@ -29,7 +29,7 @@ function argumentsFor(args) {
   return { file, status, pr: Number(number), roadmap };
 }
 
-/** Het nieuwe roadmap-bestand voor `--roadmap`, of een fout; schrijft niets (B1, spec taakmandaat-vervolg). @param {{ root: string, file: string, pr: number }} target @param {import('../../.claude/hooks/lib/task-authority.mjs').Authority} authority */
+/** Het nieuwe roadmap-bestand voor `--roadmap`, of een fout; schrijft niets (B1, spec taakmandaat-vervolg). @param {{ root: string, file: string, pr: number }} target @param {import('../../rails/hooks/lib/task-authority.mjs').Authority} authority */
 function nextRoadmap(target, authority) {
   const { root } = target;
   const before = gitText(root, ['show', `HEAD:${ROADMAP}`]);
@@ -52,7 +52,7 @@ function nextRoadmap(target, authority) {
   return next.tekst;
 }
 
-/** @param {{ file: string, status: string, pr: number }} target @param {{ root: string, authority: import('../../.claude/hooks/lib/task-authority.mjs').Authority, before: string }} context */
+/** @param {{ file: string, status: string, pr: number }} target @param {{ root: string, authority: import('../../rails/hooks/lib/task-authority.mjs').Authority, before: string }} context */
 function nextStatus(target, context) {
   if (target.status !== 'gebouwd') {
     const after = changeStatus(target.file, context.before, { status: target.status });

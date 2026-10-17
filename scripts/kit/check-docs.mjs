@@ -391,7 +391,7 @@ function askEditPaths(text) {
 
 // Uitzonderingen op check 5 (besluit eigenaar, 2026-10-12). Architect en tester schrijven bewust in een gate: specs en ADR's
 // (status `goedgekeurd` bewaakt check-spec-approval) en testpaden (bestaande tests bewaakt het rolhek). Developer en hoofdsessie
-// zijn vrijgesteld: voor hen handelt het rolhek gates af met ask/deny (.claude/hooks/lib/rolhek.mjs, decideByRole).
+// zijn vrijgesteld: voor hen handelt het rolhek gates af met ask/deny (rails/hooks/lib/rolhek.mjs, decideByRole).
 /** @type {Record<string, (config: { testpaden: string[] }) => string[]>} */
 const SCHRIJFRECHT_VRIJ = {
   architect: () => ['docs/adr/**', 'docs/specs/**'],
@@ -433,7 +433,7 @@ function schrijfrechtViolations(text) {
 }
 
 /**
- * Glob als NFA-stappen (zelfde taal als globMatch in .claude/hooks/lib/rolhek.mjs): `*`, `**`, `**\/` en `?`.
+ * Glob als NFA-stappen (zelfde taal als globMatch in rails/hooks/lib/rolhek.mjs): `*`, `**`, `**\/` en `?`.
  * Een stap leest één teken: een letterlijk teken, 'segment' (geen `/`) of 'alles'.
  * @typedef {{ from: number, to: number, read: string | null }} Step
  * @param {string} glob

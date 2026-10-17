@@ -3,10 +3,10 @@ import { mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSyn
 import os from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, test } from 'vitest';
-import { documentInfo } from '../../.claude/hooks/lib/document-state.mjs';
-import { readAuthority, repositoryName } from '../../.claude/hooks/lib/authority-context.mjs';
-import { canWriteProtected } from '../../.claude/hooks/lib/task-authority.mjs';
-import { decide, loadConfig } from '../../.claude/hooks/lib/rolhek.mjs';
+import { documentInfo } from '../../rails/hooks/lib/document-state.mjs';
+import { readAuthority, repositoryName } from '../../rails/hooks/lib/authority-context.mjs';
+import { canWriteProtected } from '../../rails/hooks/lib/task-authority.mjs';
+import { decide, loadConfig } from '../../rails/hooks/lib/rolhek.mjs';
 import { unchangedHead } from '../../scripts/kit/status-git.mjs';
 
 const SPEC = 'docs/specs/example.md';
@@ -15,7 +15,7 @@ const BODY = '---\nstatus: voorstel\nnamespace: example\n---\n\n# Voorbeeld\n\n#
 const SCRIPT = path.resolve('scripts/kit/document-status.mjs');
 const CHECKER = path.resolve('scripts/kit/check-document-status.mjs');
 const DECISION = path.resolve('scripts/kit/document-decision.mjs');
-const HOOK = path.resolve('.claude/hooks/rolhek.mjs');
+const HOOK = path.resolve('rails/hooks/rolhek.mjs');
 const CONFIG = readFileSync('.claude/gates.json', 'utf8');
 const directories: string[] = [];
 

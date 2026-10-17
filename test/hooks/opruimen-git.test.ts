@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, test } from 'vitest';
-import { decide, loadConfig } from '../../.claude/hooks/lib/rolhek.mjs';
+import { decide, loadConfig } from '../../rails/hooks/lib/rolhek.mjs';
 
 // ADR 0030 punt 8: het opruimen na de merge gebruikt alleen deze gitvormen. Karakteriseringstests van bestaand rolhekgedrag; het weigeren van `git branch -D main` is nieuw gedrag (ADR 0030).
 const ROOT = '/repo';

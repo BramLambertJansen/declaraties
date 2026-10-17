@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, test } from 'vitest';
-import { decide, loadConfig } from '../../.claude/hooks/lib/rolhek.mjs';
+import { decide, loadConfig } from '../../rails/hooks/lib/rolhek.mjs';
 
 // WS-02: railgaten dichten. Hulpbestanden in testpaden (fixtures, setup, harnesses), configs die checks bepalen
 // en de docs-rol die geen gate-paden mag schrijven. Laadt de echte .claude/gates.json: faalt tot die is bijgewerkt.

@@ -1,5 +1,5 @@
 // Overzicht van de meethook (ADR 0029 punt 12): `pnpm meting [--json] [--sessie <id>] [--branch <naam>]`.
-// Leest `<opslagmap>/*.jsonl` (.claude/hooks/lib/meting.mjs: METING_DIR of `<git common dir>/agent-meting`) en telt per
+// Leest `<opslagmap>/*.jsonl` (rails/hooks/lib/meting.mjs: METING_DIR of `<git common dir>/agent-meting`) en telt per
 // sessie en per branch: prompts (permissievragen) per pad of commandoprefix en per modus (`m`, ontbrekend → onbekend), weigeringen, beurten, eigenaarberichten na de
 // opdracht (een bovengrens), pushes (geslaagde `git push`) en CI-rondes via `gh run list` (METING_GH, METING_GH_TIMEOUT_MS):
 // runs met `createdAt` van de eerste `t` van de sessie op die branch tot de laatste `t` + 60 minuten; een fout, timeout of
@@ -9,7 +9,7 @@
 import { execFileSync } from 'node:child_process';
 import { readdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
-import { opslagmap } from '../../.claude/hooks/lib/meting.mjs';
+import { opslagmap } from '../../rails/hooks/lib/meting.mjs';
 
 /** @typedef {{ e: string, s: string, b: string, k: string, m: string, id: string | undefined, t: number | undefined, opdracht?: boolean }} Regel */
 /** @typedef {{ prompts: number, promptsPerSleutel: Map<string, number>, promptsPerModus: Map<string, number>, weigeringen: number, weigeringenPerSleutel: Map<string, number>, beurten: number, eigenaarberichten: number, pushes: number }} Telling */

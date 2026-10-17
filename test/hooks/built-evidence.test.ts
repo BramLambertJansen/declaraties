@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto';
 import { describe, expect, test } from 'vitest';
-import { canRecordBuilt, checkedCommit } from '../../.claude/hooks/lib/built-evidence.mjs';
+import { canRecordBuilt, checkedCommit } from '../../rails/hooks/lib/built-evidence.mjs';
 import { parseCheckRun, parsePullRequest } from '../../scripts/kit/github-evidence.mjs';
 
 type BuiltEvidence = Parameters<typeof canRecordBuilt>[1];

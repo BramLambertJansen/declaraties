@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { expect, test } from 'vitest';
 
-// Het echte entry-script (.claude/hooks/meting.mjs) via stdin; observeert alleen (ADR 0029 punt 12).
+// Het echte entry-script (rails/hooks/meting.mjs) via stdin; observeert alleen (ADR 0029 punt 12).
 const root = process.cwd();
 const SESSIE = 'sess-1';
 
@@ -22,7 +22,7 @@ function repo(head: string | null): string {
 }
 
 function run(input: string, env: Record<string, string>) {
-  const result = spawnSync('node', [path.join(root, '.claude/hooks/meting.mjs')], {
+  const result = spawnSync('node', [path.join(root, 'rails/hooks/meting.mjs')], {
     cwd: root,
     input,
     encoding: 'utf8',
@@ -309,7 +309,7 @@ test('fail-open: onschrijfbare map geeft exit 0 zonder stdout', () => {
   });
 
   expect(result).toStrictEqual({ status: 0, stdout: '' });
-  expect(existsSync(path.join(root, '.claude/hooks/meting.mjs'))).toBe(true);
+  expect(existsSync(path.join(root, 'rails/hooks/meting.mjs'))).toBe(true);
 });
 
 function subRepo(): { root: string; sub: string } {

@@ -11,6 +11,7 @@
 /.github/                 @bramlambertjansen
 /.claude/                 @bramlambertjansen
 /scripts/                 @bramlambertjansen
+/rails/                   @bramlambertjansen
 /db/init/                 @bramlambertjansen
 /db/docker/               @bramlambertjansen
 /db/tests/                @bramlambertjansen

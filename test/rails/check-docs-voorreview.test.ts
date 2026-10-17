@@ -104,7 +104,7 @@ test('CODEOWNERS blijft gates + jsonGates: een gate buiten voorReview moet er we
   expect(await keys(root)).toStrictEqual(['docs:spiegel:codeowners-gates:src/core/**']);
 });
 
-// De echte lijst, letterlijk uit de tabel van ADR 0029 punt 8 (rijen "ja").
+// De echte lijst, letterlijk uit de tabel van ADR 0029 punt 8 (rijen "ja"), plus `rails/**` (ADR 0033 punt 1: de hookbroncode).
 const VOOR_REVIEW = [
   'AGENTS.md',
   'CLAUDE.md',
@@ -112,6 +112,7 @@ const VOOR_REVIEW = [
   'docs/dod.md',
   '.claude/**',
   'scripts/**',
+  'rails/**',
   '.github/**',
   'lefthook.yml',
   'package.json',

@@ -8,8 +8,8 @@ import { execFileSync } from 'node:child_process';
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { builtReference, documentInfo } from '../../.claude/hooks/lib/document-state.mjs';
-import { globMatch } from '../../.claude/hooks/lib/rolhek.mjs';
+import { builtReference, documentInfo } from '../../rails/hooks/lib/document-state.mjs';
+import { globMatch } from '../../rails/hooks/lib/rolhek.mjs';
 import { doelPad, looksLikePath, packageScripts, pathExists, SPEC_STATUS } from './check-docs.mjs';
 import { gates } from './gates.mjs';
 

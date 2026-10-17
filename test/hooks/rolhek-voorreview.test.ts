@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, test } from 'vitest';
-import { decide, loadConfig } from '../../.claude/hooks/lib/rolhek.mjs';
+import { decide, loadConfig } from '../../rails/hooks/lib/rolhek.mjs';
 
 // ADR 0029 punt 9 (stap 7): het rolhek vraagt (hoofdsessie ask, developer deny) alleen nog op paden in `voorReview`
 // (.claude/gates.json). Op de andere gate-paden is de schrijfactie toegestaan, met een melding "beschermd pad ... noem het

@@ -61,6 +61,12 @@ eigenaar accepteert; het rolhek weigert een developer-subagent op die paden. Een
 sessie waarin de eigenaar aanwezig is, of de eigenaar voert de wijziging zelf uit. De sandbox ruimer zetten is een
 eigenaarsbesluit (beschermd pad, `docs/framework.md` §10).
 
+De broncode van de hooks staat daarom in `rails/hooks/`, buiten die grens (ADR 0033 punt 1). In `.claude/hooks/` staan alleen
+stubs die de versie van `main` op de remote draaien, uitgepakt in `.claude/hooks/.cache/`: binnen de grens, zodat Bash die code
+niet kan vervangen. Wie `rails/hooks/` op een branch wijzigt, verandert de lopende sessie niet. Het anker (de SHA van `main` op de
+remote) legt de start van een sessie vast en vraagt netwerk; weigert het rolhek alles met "geen geldig anker", probeer de actie opnieuw (de meethook legt het anker dan meestal vast) of start één sessie
+met netwerk.
+
 ## Branchnaam
 
 Een cloudsessie start op een branch die het platform kiest (`claude/<naam>`). Een overdracht schrijft daarom geen

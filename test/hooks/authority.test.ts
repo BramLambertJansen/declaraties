@@ -1,7 +1,7 @@
 import { createHash } from 'node:crypto';
 import { describe, expect, test } from 'vitest';
-import { changeStatus, documentInfo } from '../../.claude/hooks/lib/document-state.mjs';
-import { canRecordStatus, canWriteProtected, readRegistry } from '../../.claude/hooks/lib/task-authority.mjs';
+import { changeStatus, documentInfo } from '../../rails/hooks/lib/document-state.mjs';
+import { canRecordStatus, canWriteProtected, readRegistry } from '../../rails/hooks/lib/task-authority.mjs';
 
 const SPEC = 'docs/specs/framework-task.md';
 const ADR = 'docs/adr/0027-framework-task.md';

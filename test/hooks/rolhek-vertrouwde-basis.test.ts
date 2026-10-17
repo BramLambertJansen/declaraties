@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, test } from 'vitest';
-import { decide, loadConfig } from '../../.claude/hooks/lib/rolhek.mjs';
+import { decide, loadConfig } from '../../rails/hooks/lib/rolhek.mjs';
 
 // De hooks lezen hun bevoegdheid (besluiten, autoRunner, gateMarker) uit de lokale ref origin/main (ADR 0027). Die ref en de
 // remote waar ze vandaan komt mogen alleen door `git fetch` veranderen, nooit door een agent met een eigen commit.

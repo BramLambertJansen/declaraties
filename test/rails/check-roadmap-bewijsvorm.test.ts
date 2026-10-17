@@ -8,7 +8,7 @@ import { exportVan, roep, testpaden } from '../hooks/follow-up-kit';
 // (`documentInfo` en `builtReference`). Inline invoer: elke regel van AC-10 is één statusregel in een spec die naar gebouwd gaat.
 // De gewijzigde bestaande gevallen staan in test/rails/check-roadmap.test.ts (spec "Bestaande tests die wijzigen").
 const ROADMAP_MODULE = ['../../scripts/kit', 'check-roadmap.mjs'].join('/');
-const DOCUMENT_STATE_MODULE = ['../../.claude/hooks/lib', 'document-state.mjs'].join('/');
+const DOCUMENT_STATE_MODULE = ['../../rails/hooks/lib', 'document-state.mjs'].join('/');
 const SCRIPT = path.join(import.meta.dirname, '../../scripts/kit/check-roadmap.mjs');
 
 const SHA = 'a'.repeat(40);
