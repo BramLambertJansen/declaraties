@@ -38,7 +38,7 @@ function repoPath(repository) {
   return `repos/${repository}`;
 }
 
-/** @param {unknown} raw @returns {import('../../.claude/hooks/lib/built-evidence.mjs').PullRequest} */
+/** @param {unknown} raw @returns {import('../../rails/hooks/lib/built-evidence.mjs').PullRequest} */
 export function parsePullRequest(raw) {
   const base = valueOf(raw, 'base');
   const head = valueOf(raw, 'head');
@@ -63,7 +63,7 @@ export function pullRequest(repository, number) {
   return parsePullRequest(github(`${repoPath(repository)}/pulls/${String(number)}`));
 }
 
-/** @param {unknown} raw @returns {import('../../.claude/hooks/lib/built-evidence.mjs').CheckRun} */
+/** @param {unknown} raw @returns {import('../../rails/hooks/lib/built-evidence.mjs').CheckRun} */
 export function parseCheckRun(raw) {
   const conclusion = valueOf(raw, 'conclusion');
   if (conclusion !== null && typeof conclusion !== 'string') throw new Error('GitHub-check mist zijn uitslag');
@@ -80,7 +80,7 @@ export function parseCheckRun(raw) {
 /** @param {string} repository @param {string} sha */
 export function checkRuns(repository, sha) {
   if (!/^[0-9a-f]{40}$/.test(sha)) throw new Error('Ongeldige gevalideerde commit');
-  /** @type {import('../../.claude/hooks/lib/built-evidence.mjs').CheckRun[]} */
+  /** @type {import('../../rails/hooks/lib/built-evidence.mjs').CheckRun[]} */
   const checks = [];
   for (let page = 1; page <= 10; page += 1) {
     const response = github(`${repoPath(repository)}/commits/${sha}/check-runs?per_page=100&page=${String(page)}`);

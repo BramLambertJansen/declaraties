@@ -15,6 +15,7 @@
     "test",
     "scripts",
     ".claude/hooks",
+    "rails",
     "*.config.ts"
   ],
   "exclude": ["test/rails/fixtures"]

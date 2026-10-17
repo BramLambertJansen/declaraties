@@ -1,5 +1,5 @@
-import { documentInfo } from '../../.claude/hooks/lib/document-state.mjs';
-import { gitText } from '../../.claude/hooks/lib/authority-context.mjs';
+import { documentInfo } from '../../rails/hooks/lib/document-state.mjs';
+import { gitText } from '../../rails/hooks/lib/authority-context.mjs';
 
 /** @param {string} root @param {{ head: string, branch: string, base: string }} expected */
 export function unchangedHead(root, expected) {

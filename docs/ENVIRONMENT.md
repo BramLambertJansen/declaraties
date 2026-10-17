@@ -61,6 +61,9 @@ eigenaar accepteert; het rolhek weigert een developer-subagent op die paden. Een
 sessie waarin de eigenaar aanwezig is, of de eigenaar voert de wijziging zelf uit. De sandbox ruimer zetten is een
 eigenaarsbesluit (beschermd pad, `docs/framework.md` §10).
 
+De broncode van de hooks staat daarom in `rails/hooks/`, buiten die grens (ADR 0033 punt 1). In `.claude/hooks/` staan alleen
+stubs die de versie van `origin/main` draaien; wie `rails/hooks/` op een branch wijzigt, verandert de lopende sessie niet.
+
 ## Branchnaam
 
 Een cloudsessie start op een branch die het platform kiest (`claude/<naam>`). Een overdracht schrijft daarom geen

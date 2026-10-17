@@ -4,11 +4,11 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { expect, test } from 'vitest';
 
-// Het echte entry-script (.claude/hooks/werkstraat.mjs) via stdin, op de snelle paden (geen gate:fast in gate:fast).
+// Het echte entry-script (rails/hooks/werkstraat.mjs) via stdin, op de snelle paden (geen gate:fast in gate:fast).
 const root = process.cwd();
 
 function run(event: string, input: string, projectDir: string = root) {
-  const result = spawnSync('node', [path.join(root, '.claude/hooks/werkstraat.mjs'), event], {
+  const result = spawnSync('node', [path.join(root, 'rails/hooks/werkstraat.mjs'), event], {
     cwd: root,
     input,
     encoding: 'utf8',

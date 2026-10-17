@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { expect, test } from 'vitest';
-import { decide, loadConfig } from '../../.claude/hooks/lib/rolhek.mjs';
+import { decide, loadConfig } from '../../rails/hooks/lib/rolhek.mjs';
 
 function action(command: string, role = '', trusted = true) {
   const root = process.cwd();

@@ -1,9 +1,9 @@
 // De agent bereidt een besluit voor. Alleen de versie die de eigenaar naar main brengt is bevoegdheid.
 import { readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
-import { documentInfo, documentKind } from '../../.claude/hooks/lib/document-state.mjs';
-import { readRegistry } from '../../.claude/hooks/lib/task-authority.mjs';
-import { gitText, repositoryName, safeRepositoryPath } from '../../.claude/hooks/lib/authority-context.mjs';
+import { documentInfo, documentKind } from '../../rails/hooks/lib/document-state.mjs';
+import { readRegistry } from '../../rails/hooks/lib/task-authority.mjs';
+import { gitText, repositoryName, safeRepositoryPath } from '../../rails/hooks/lib/authority-context.mjs';
 
 /** @param {string[]} args */
 function argumentsFor(args) {

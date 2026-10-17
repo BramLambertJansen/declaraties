@@ -1,4 +1,4 @@
-// Meten per sessie en branch (ADR 0029 punt 12): de pure delen van de meethook (.claude/hooks/meting.mjs) en de opslag
+// Meten per sessie en branch (ADR 0029 punt 12): de pure delen van de meethook (rails/hooks/meting.mjs) en de opslag
 // die het overzicht (scripts/kit/meting.mjs) leest. Alleen tellingen en sleutels: nooit prompt- of antwoordtekst,
 // commando-argumenten buiten het prefix, bestandsinhoud of geheimen. Getest in test/hooks/meting.test.ts.
 import { existsSync, readFileSync, statSync } from 'node:fs';

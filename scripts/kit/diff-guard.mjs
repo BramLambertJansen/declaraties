@@ -13,7 +13,7 @@
 import { execFileSync } from 'node:child_process';
 import { appendFileSync, readFileSync } from 'node:fs';
 import path from 'node:path';
-import { globMatch } from '../../.claude/hooks/lib/rolhek.mjs';
+import { globMatch } from '../../rails/hooks/lib/rolhek.mjs';
 
 const LABEL = 'gate-wijziging';
 // Een review die de stand bepaalt; COMMENTED en PENDING laten de vorige beslissing staan.

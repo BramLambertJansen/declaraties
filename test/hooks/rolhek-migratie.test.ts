@@ -6,7 +6,7 @@ import { afterEach, describe, expect, test } from 'vitest';
 
 // WS-04 punt 5: een migratie is "gecommit" als hij in de merge-base met origin/main staat (zoals check:migrations),
 // niet zodra hij in HEAD staat. Echte tijdelijke repo's met een bare remote, door het echte hook-script beoordeeld.
-const hook = path.join(process.cwd(), '.claude/hooks/rolhek.mjs');
+const hook = path.join(process.cwd(), 'rails/hooks/rolhek.mjs');
 const gates = path.join(process.cwd(), '.claude/gates.json');
 const MIGRATION = 'db/migrations/20261012000000_x.sql';
 const dirs: string[] = [];

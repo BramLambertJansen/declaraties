@@ -104,11 +104,11 @@ onafhankelijke reviewer. De eigenaar verzorgt de ontbrekende review vóór samen
 ## Bekende beperkingen
 
 - De automatische runner draait ook door de agent geschreven tests buiten de sandbox, zonder prompt (het gat uit ADR 0009).
-  De hostbestanden in `.claude/hooks/lib/runner-authority.mjs` en `scripts/runner.sh` zijn de enige controle vooraf: scripts,
+  De hostbestanden in `rails/hooks/lib/runner-authority.mjs` en `scripts/runner.sh` zijn de enige controle vooraf: scripts,
   packagebestanden, compose en de configs van vite, vitest en playwright. De testbestanden zelf horen daar niet bij; die vraagt
   de agent juist te mogen toevoegen en draaien.
 - De hooks lezen de vertrouwde basis uit de lokale ref `origin/main` en doen geen netwerkwerk. Het rolhek weigert elke andere
-  manier om die ref of de remote `origin` te veranderen dan `git fetch origin` (`movesTrustedBase` in `.claude/hooks/lib/rolhek.mjs`).
+  manier om die ref of de remote `origin` te veranderen dan `git fetch origin` (`movesTrustedBase` in `rails/hooks/lib/rolhek.mjs`).
   Een commando buiten de hooks, of een andere runtime, valt daar niet onder; de CI-guard leest `main` bij GitHub en is de echte grens
   (`scripts/kit/check-document-status.mjs`).
 
@@ -133,7 +133,7 @@ Kies het spoor naar wat er verandert
 2. **Verwijzing naar een later ADR**: een ADR-link achter de statuswaarde, met alleen het nummer als linktekst en het
    bestand ernaast als doel (zoals `0032` naar het bestand van ADR 0032). Geen record nodig; de eigenaar ziet het in de gate-PR.
    Achter de statuswaarde mag verder alleen `(JJJJ-MM-DD)` en `#<nr>`, gescheiden door `, ` of ` — ` (besluit 4,
-   `statusregelOvertreding` in `.claude/hooks/lib/document-state.mjs`); anders is `document-status` rood. Een ongewijzigde regel
+   `statusregelOvertreding` in `rails/hooks/lib/document-state.mjs`); anders is `document-status` rood. Een ongewijzigde regel
    op main blijft geldig.
 3. **Niet-normatieve tekstcorrectie** (taalfout, kapotte link): PR 1 zet het ADR terug op `voorgesteld` met het record
    (`pnpm docs:decision <adr> geaccepteerd --branch <tweede branch>`); PR 2 registreert `geaccepteerd` met `pnpm docs:status`.

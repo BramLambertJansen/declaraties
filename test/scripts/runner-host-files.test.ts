@@ -9,7 +9,7 @@ import { afterEach, describe, expect, test } from 'vitest';
 // docker-stub; "voorbij de guard" is waarneembaar doordat de stub elke aanroep logt.
 const ROOT = path.join(import.meta.dirname, '../..');
 const SCRIPT = readFileSync(path.join(ROOT, 'scripts/runner.sh'), 'utf8');
-const AUTHORITY_MODULE = ['../../.claude/hooks/lib', 'runner-authority.mjs'].join('/');
+const AUTHORITY_MODULE = ['../../rails/hooks/lib', 'runner-authority.mjs'].join('/');
 const dirs: string[] = [];
 
 const GIT_ENV = {

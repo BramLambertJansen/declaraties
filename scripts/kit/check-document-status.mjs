@@ -4,17 +4,17 @@ import {
   documentKind,
   builtReference,
   statusregelOvertreding,
-} from '../../.claude/hooks/lib/document-state.mjs';
-import { readAuthority, gitText } from '../../.claude/hooks/lib/authority-context.mjs';
-import { canRecordStatus, canWriteProtected } from '../../.claude/hooks/lib/task-authority.mjs';
-import { canRecordBuilt } from '../../.claude/hooks/lib/built-evidence.mjs';
-import { loadConfig, globMatch } from '../../.claude/hooks/lib/rolhek.mjs';
+} from '../../rails/hooks/lib/document-state.mjs';
+import { readAuthority, gitText } from '../../rails/hooks/lib/authority-context.mjs';
+import { canRecordStatus, canWriteProtected } from '../../rails/hooks/lib/task-authority.mjs';
+import { canRecordBuilt } from '../../rails/hooks/lib/built-evidence.mjs';
+import { loadConfig, globMatch } from '../../rails/hooks/lib/rolhek.mjs';
 import { parseNameStatus } from './diff-guard.mjs';
 import { pullRequest, checkRuns } from './github-evidence.mjs';
 import { kaderVan, ROADMAP, taakVinkje } from './roadmap-item.mjs';
 import { regularGitFile, statusOnlyDiff, isAncestor } from './status-git.mjs';
 
-/** @typedef {{ root: string, sha: string, split: string, adrBestanden: string[], authority: import('../../.claude/hooks/lib/task-authority.mjs').Authority, config: import('../../.claude/hooks/lib/rolhek.mjs').Config }} Context */
+/** @typedef {{ root: string, sha: string, split: string, adrBestanden: string[], authority: import('../../rails/hooks/lib/task-authority.mjs').Authority, config: import('../../rails/hooks/lib/rolhek.mjs').Config }} Context */
 
 /** @param {string} name */
 function requiredEnv(name) {
@@ -124,7 +124,7 @@ function verifyScope(changes, context) {
   if (files.includes(ROADMAP)) verifyRoadmap(changes, mandated, context);
 }
 
-/** @param {string} file @param {{ authority: import('../../.claude/hooks/lib/task-authority.mjs').Authority, config: import('../../.claude/hooks/lib/rolhek.mjs').Config }} context */
+/** @param {string} file @param {{ authority: import('../../rails/hooks/lib/task-authority.mjs').Authority, config: import('../../rails/hooks/lib/rolhek.mjs').Config }} context */
 function verifyScopedFile(file, context) {
   if (!context.config.gates.some((glob) => globMatch(glob, file))) return;
   if (
@@ -148,7 +148,7 @@ async function main() {
   if (![base, sha].every((value) => /^[0-9a-f]{40}$/.test(value))) throw new Error('Geen volledige commit-SHA');
   const authority = readAuthority({ root, base, repository: requiredEnv('REPO'), branch: requiredEnv('HEAD_REF') });
   if (authority === null) throw new Error('Geen leesbare vertrouwde basis voor statuscontrole');
-  /** @type {import('../../.claude/hooks/lib/task-authority.mjs').Authority} */
+  /** @type {import('../../rails/hooks/lib/task-authority.mjs').Authority} */
   const snapshot = {
     ...authority,
     working: (file) => gitText(root, ['show', `${sha}:${file}`]),

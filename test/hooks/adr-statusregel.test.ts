@@ -14,7 +14,7 @@ import {
 
 // ADR 0031 besluit 4 (strikte statusregel voor ADR's), tests vóór de bouw.
 //
-// Verwachte pure functie in .claude/hooks/lib/document-state.mjs:
+// Verwachte pure functie in rails/hooks/lib/document-state.mjs:
 //   statusregelOvertreding(nieuweRegel: string, oudeRegel: string | null, bestaandeAdrBestanden: readonly string[]): string | null
 // `nieuweRegel` en `oudeRegel` zijn de volledige regels (`Status: ...`); `oudeRegel` is null bij een nieuw ADR-bestand.
 // Resultaat: null = geen overtreding, anders de melding (niet-lege tekst). Een regel gelijk aan `oudeRegel` wordt niet getoetst.
@@ -23,7 +23,7 @@ import {
 // het nummer als linktekst, de bestandsnaam moet in `bestaandeAdrBestanden` staan), gescheiden door `, ` of ` — `.
 afterEach(opruimen);
 
-const MODULE = ['../../.claude/hooks/lib', 'document-state.mjs'].join('/');
+const MODULE = ['../../rails/hooks/lib', 'document-state.mjs'].join('/');
 const BESTAAND = ['0001-voorbeeld.md', '0017-diff-guard.md'];
 
 async function overtreding(nieuw: string, oud: string | null = null): Promise<unknown> {

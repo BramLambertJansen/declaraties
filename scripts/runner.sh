@@ -10,7 +10,7 @@ cd "$(dirname "$0")/.."
 # (ondiepe checkout zonder origin/main, wegwerp-runner) aan HEAD. Alleen de eigenaar mag dat met --sta-wijzigingen-toe
 # overslaan, na het lezen van de wijziging.
 # 'compose.*.yaml' staat gequote: git leest het als pathspec, bash expandeert het niet naar de bestanden die nu bestaan
-# (een verwijderd compose.<x>.yaml viel dan uit de vergelijking). De hook (.claude/hooks/lib/runner-authority.mjs)
+# (een verwijderd compose.<x>.yaml viel dan uit de vergelijking). De hook (rails/hooks/lib/runner-authority.mjs)
 # heeft dezelfde lijst; test/scripts/runner-host-files.test.ts houdt ze gelijk.
 HOST_FILES=(scripts package.json pnpm-workspace.yaml .npmrc .pnpmfile.cjs mise.toml compose.yaml 'compose.*.yaml'
   compose.override.yaml db/test.env db/docker vitest.config.ts playwright.config.ts vite.config.ts)

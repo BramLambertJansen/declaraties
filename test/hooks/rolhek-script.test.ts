@@ -4,12 +4,12 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { expect, test } from 'vitest';
 
-// Het echte hook-script (.claude/hooks/rolhek.mjs) met echte stdin-payloads: exitcode en uitvoer zoals Claude Code ze leest.
+// Het echte hook-script (rails/hooks/rolhek.mjs) met echte stdin-payloads: exitcode en uitvoer zoals Claude Code ze leest.
 // Exit 2 blokkeert; een interne fout is ook exit 2 (faalt dicht, framework §8).
 const root = process.cwd();
 
 function run(input: string): { status: number | null; stdout: string; stderr: string } {
-  const result = spawnSync('node', ['.claude/hooks/rolhek.mjs'], {
+  const result = spawnSync('node', ['rails/hooks/rolhek.mjs'], {
     input,
     encoding: 'utf8',
     env: { ...process.env, CLAUDE_PROJECT_DIR: root },

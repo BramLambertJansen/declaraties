@@ -29,6 +29,7 @@ const SRC = ['src/**/*.{ts,tsx}'];
 const CODE = [
   'src/**/*.{ts,tsx,mjs}',
   'scripts/**/*.{mjs,js,ts}',
+  'rails/hooks/**/*.mjs',
   '.claude/hooks/**/*.mjs',
   'test/**/*.ts',
   'e2e/**/*.ts',

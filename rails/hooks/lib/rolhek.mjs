@@ -1,6 +1,6 @@
 // Rolhek (framework §8, ADR 0011): beslist per toolgebruik of het mag (allow), de eigenaar moet kiezen (ask) of het
 // verboden is (deny). Puur: alles wat van de schijf of git komt, zit in `ctx`, zodat test/hooks/rolhek.test.ts elke regel
-// met echte payloads kan bewijzen. De stdin/stdout-kant staat in .claude/hooks/rolhek.mjs.
+// met echte payloads kan bewijzen. De stdin/stdout-kant staat in rails/hooks/rolhek.mjs.
 import path from 'node:path';
 import { gitSubcommand, parseCommands, splitCommand, writeTargets } from './shell.mjs';
 import { documentInfo } from './document-state.mjs';

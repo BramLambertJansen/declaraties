@@ -1,6 +1,6 @@
 // Het label is uitsluitend administratie; diff-guard blijft de echte eigenaarreview controleren (ADR 0027).
 import { execFileSync } from 'node:child_process';
-import { readAuthority, gitText } from '../../.claude/hooks/lib/authority-context.mjs';
+import { readAuthority, gitText } from '../../rails/hooks/lib/authority-context.mjs';
 import { pullRequest } from './github-evidence.mjs';
 import { parseNameStatus, leesConfig, geraakt } from './diff-guard.mjs';
 

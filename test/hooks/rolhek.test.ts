@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, test } from 'vitest';
-import { decide, globMatch, loadConfig } from '../../.claude/hooks/lib/rolhek.mjs';
+import { decide, globMatch, loadConfig } from '../../rails/hooks/lib/rolhek.mjs';
 
 // Rolhek (framework §8, ADR 0011): per regel een echte payload met de verwachte beslissing, ook bekende omzeilingen.
 // De schijf is nagebootst: FILES zijn bestaande bestanden, COMMITTED staat in HEAD.

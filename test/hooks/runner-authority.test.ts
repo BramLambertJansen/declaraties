@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { afterEach, describe, expect, test } from 'vitest';
-import { automaticRunner, trustedRunner } from '../../.claude/hooks/lib/runner-authority.mjs';
+import { automaticRunner, trustedRunner } from '../../rails/hooks/lib/runner-authority.mjs';
 
 // Alleen tijdelijke Git-fixtures; deze tests starten geen runner, package-manager, netwerk of Docker.
 const ROOTS: string[] = [];
@@ -283,7 +283,7 @@ describe('trustedRunner: toestemming en hostcode uit de echte vertrouwde Git-bas
 
   test('een context waarin git niet beschikbaar is geeft geen runnerrecht', () => {
     const { root } = fixture();
-    const moduleUrl = pathToFileURL(path.resolve('.claude/hooks/lib/runner-authority.mjs')).href;
+    const moduleUrl = pathToFileURL(path.resolve('rails/hooks/lib/runner-authority.mjs')).href;
     const source = `import { trustedRunner } from ${JSON.stringify(moduleUrl)}; process.stdout.write(String(trustedRunner(${JSON.stringify(root)})));`;
     const result = execFileSync(process.execPath, ['--input-type=module', '-e', source], {
       encoding: 'utf8',

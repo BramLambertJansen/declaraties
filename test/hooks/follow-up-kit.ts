@@ -2,7 +2,7 @@ import { execFileSync, spawnSync } from 'node:child_process';
 import { chmodSync, mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { documentInfo } from '../../.claude/hooks/lib/document-state.mjs';
+import { documentInfo } from '../../rails/hooks/lib/document-state.mjs';
 
 // Gedeelde onderdelen voor de acceptatietests van docs/specs/taakmandaat-vervolg.md (mandate-follow-up/AC-1 t/m AC-25).
 // Echte tijdelijke Git-repositories; GitHub-gegevens komen van een `gh`-stub (geen netwerk), zoals de spec voorschrijft.
