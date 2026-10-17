@@ -77,26 +77,36 @@ export function changeStatus(file, text, target) {
 /**
  * ADR 0031 besluit 4: achter een nieuwe of gewijzigde ADR-statuswaarde alleen `(JJJJ-MM-DD)`, `#<nr>` en `[NNNN](NNNN-<slug>.md)`
  * naar een bestaand ADR, gescheiden door `, ` of ` — `. Een regel gelijk aan main en een spec-regel vallen erbuiten.
- * @param {string} nieuweRegel @param {string | null} oudeRegel @param {readonly string[]} bestaandeAdrNummers
+ * @param {string} nieuweRegel @param {string | null} oudeRegel
+ * @param {readonly string[]} bestaandeAdrBestanden bestandsnamen in `docs/adr/` op HEAD, zoals `0017-diff-guard.md`
  * @returns {string | null} null of de reden
  */
-export function statusregelOvertreding(nieuweRegel, oudeRegel, bestaandeAdrNummers) {
+export function statusregelOvertreding(nieuweRegel, oudeRegel, bestaandeAdrBestanden) {
   if (!nieuweRegel.startsWith('Status:') || nieuweRegel === oudeRegel) return null;
   const rest = /^Status: (?:voorgesteld|geaccepteerd|vervallen|vervangen door \d{4})(.*)$/.exec(nieuweRegel)?.[1];
   if (rest === undefined) return 'statusregel heeft geen geldige statuswaarde';
   if (rest === '') return null;
   const delen = /^ (?:— )?(.+)$/.exec(rest)?.[1]?.split(/, | — /) ?? [rest];
-  const fout = delen.find((deel) => !toegestaanDeel(deel, bestaandeAdrNummers));
+  const fout = delen.find((deel) => !toegestaanDeel(deel, bestaandeAdrBestanden));
   return fout === undefined
     ? null
     : `statusregel: "${fout}" mag niet achter de statuswaarde; alleen (JJJJ-MM-DD), #<nr> en [NNNN](NNNN-<slug>.md) naar een bestaand ADR (ADR 0031 besluit 4)`;
 }
 
-/** @param {string} deel @param {readonly string[]} bestaandeAdrNummers */
-function toegestaanDeel(deel, bestaandeAdrNummers) {
-  if (/^\(\d{4}-\d{2}-\d{2}\)$/.test(deel) || /^#\d+$/.test(deel)) return true;
-  const nummer = /^\[(\d{4})\]\((\d{4})-[a-z0-9]+(?:-[a-z0-9]+)*\.md\)$/.exec(deel);
-  return nummer !== null && nummer[1] === nummer[2] && bestaandeAdrNummers.includes(nummer[1] ?? '');
+/** @param {string} deel @param {readonly string[]} bestaandeAdrBestanden */
+function toegestaanDeel(deel, bestaandeAdrBestanden) {
+  if (/^#\d+$/.test(deel) || bestaandeDatum(deel)) return true;
+  const link = /^\[(\d{4})\]\(((\d{4})-[a-z0-9]+(?:-[a-z0-9]+)*\.md)\)$/.exec(deel);
+  return link !== null && link[1] === link[3] && bestaandeAdrBestanden.includes(link[2] ?? '');
+}
+
+/** `(JJJJ-MM-DD)` met een datum die in de kalender bestaat. @param {string} deel */
+function bestaandeDatum(deel) {
+  const datum = /^\((\d{4})-(\d{2})-(\d{2})\)$/.exec(deel);
+  if (datum === null) return false;
+  const [jaar, maand, dag] = [datum[1], datum[2], datum[3]].map(Number);
+  const tijd = new Date(Date.UTC(jaar ?? 0, (maand ?? 0) - 1, dag ?? 0));
+  return tijd.getUTCFullYear() === jaar && tijd.getUTCMonth() + 1 === maand && tijd.getUTCDate() === dag;
 }
 
 /** @param {string} text */

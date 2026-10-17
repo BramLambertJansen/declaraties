@@ -15,16 +15,16 @@ import {
 // ADR 0031 besluit 4 (strikte statusregel voor ADR's), tests vóór de bouw.
 //
 // Verwachte pure functie in .claude/hooks/lib/document-state.mjs:
-//   statusregelOvertreding(nieuweRegel: string, oudeRegel: string | null, bestaandeAdrNummers: readonly string[]): string | null
+//   statusregelOvertreding(nieuweRegel: string, oudeRegel: string | null, bestaandeAdrBestanden: readonly string[]): string | null
 // `nieuweRegel` en `oudeRegel` zijn de volledige regels (`Status: ...`); `oudeRegel` is null bij een nieuw ADR-bestand.
 // Resultaat: null = geen overtreding, anders de melding (niet-lege tekst). Een regel gelijk aan `oudeRegel` wordt niet getoetst.
 // Een regel die niet met `Status:` begint (spec-frontmatter, `status: gebouwd # #<PR>; gevalideerd: <sha>`) valt erbuiten.
-// Toegestaan achter de statuswaarde: `(JJJJ-MM-DD)`, `#<nr>` en `[NNNN](NNNN-<slug>.md)` (alleen het nummer als linktekst, het
-// nummer moet in `bestaandeAdrNummers` staan), gescheiden door `, ` of ` — `.
+// Toegestaan achter de statuswaarde: `(JJJJ-MM-DD)` met een bestaande kalenderdatum, `#<nr>` en `[NNNN](NNNN-<slug>.md)` (alleen
+// het nummer als linktekst, de bestandsnaam moet in `bestaandeAdrBestanden` staan), gescheiden door `, ` of ` — `.
 afterEach(opruimen);
 
 const MODULE = ['../../.claude/hooks/lib', 'document-state.mjs'].join('/');
-const BESTAAND = ['0001', '0017'];
+const BESTAAND = ['0001-voorbeeld.md', '0017-diff-guard.md'];
 
 async function overtreding(nieuw: string, oud: string | null = null): Promise<unknown> {
   return roep(MODULE, 'statusregelOvertreding', nieuw, oud, BESTAAND);
@@ -38,6 +38,7 @@ describe('statusregelOvertreding: toegestane regels', () => {
     ['datum, PR en ADR-link met streepje', 'Status: geaccepteerd (2026-10-14) — #153 — [0017](0017-diff-guard.md)'],
     ['alleen een ADR-link', 'Status: geaccepteerd — [0001](0001-voorbeeld.md)'],
     ['vervangen door', 'Status: vervangen door 0017 (2026-10-14)'],
+    ['schrikkeldag', 'Status: geaccepteerd (2028-02-29)'],
   ])('%s: geen overtreding', async (_naam, regel) => {
     expect(await overtreding(regel)).toBeNull();
   });
@@ -52,6 +53,12 @@ describe('statusregelOvertreding: overtredingen in een nieuwe of gewijzigde rege
     ['link met een andere tekst dan het nummer', 'Status: geaccepteerd (2026-10-14), [diff-guard](0017-diff-guard.md)'],
     ['datum in een verkeerde vorm', 'Status: geaccepteerd (14-10-2026)'],
     ['PR zonder nummer', 'Status: geaccepteerd (2026-10-14), #'],
+    [
+      'link naar een bestaand nummer met een verkeerde bestandsnaam',
+      'Status: geaccepteerd, [0001](0001-bestaat-niet.md)',
+    ],
+    ['maand die niet bestaat', 'Status: geaccepteerd (2026-13-14)'],
+    ['dag die niet bestaat', 'Status: geaccepteerd (2026-02-30)'],
     ['komma direct na de statuswaarde', 'Status: geaccepteerd, #153'],
     ['spatie aan het eind', 'Status: geaccepteerd (2026-10-14) '],
     ['dubbele spatie na de komma', 'Status: geaccepteerd (2026-10-14),  #153'],

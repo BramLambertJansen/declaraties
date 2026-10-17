@@ -14,7 +14,7 @@ import { pullRequest, checkRuns } from './github-evidence.mjs';
 import { kaderVan, ROADMAP, taakVinkje } from './roadmap-item.mjs';
 import { regularGitFile, statusOnlyDiff, isAncestor } from './status-git.mjs';
 
-/** @typedef {{ root: string, sha: string, split: string, adrNummers: string[], authority: import('../../.claude/hooks/lib/task-authority.mjs').Authority, config: import('../../.claude/hooks/lib/rolhek.mjs').Config }} Context */
+/** @typedef {{ root: string, sha: string, split: string, adrBestanden: string[], authority: import('../../.claude/hooks/lib/task-authority.mjs').Authority, config: import('../../.claude/hooks/lib/rolhek.mjs').Config }} Context */
 
 /** @param {string} name */
 function requiredEnv(name) {
@@ -48,7 +48,7 @@ function verifyDocument(document, context) {
     const fout = statusregelOvertreding(
       statusLine(document.after) ?? '',
       statusLine(document.before),
-      context.adrNummers,
+      context.adrBestanden,
     );
     if (fout !== null) throw new Error(`${document.file}: ${fout}`);
   }
@@ -71,10 +71,10 @@ function statusLine(text) {
   );
 }
 
-/** Nummers van de ADR's op HEAD. @param {string} root @param {string} sha */
-function adrNumbers(root, sha) {
+/** Bestandsnamen van de ADR's op HEAD. @param {string} root @param {string} sha */
+function adrFiles(root, sha) {
   const names = gitText(root, ['ls-tree', '--name-only', '-z', sha, 'docs/adr/']) ?? '';
-  return names.split('\0').flatMap((file) => /^docs\/adr\/(\d{4})-/.exec(file)?.[1] ?? []);
+  return names.split('\0').flatMap((file) => /^docs\/adr\/(\d{4}-[^/]+\.md)$/.exec(file)?.[1] ?? []);
 }
 
 /** De specs met een actief mandaat op deze repository en branch. @param {Context} context */
@@ -173,7 +173,7 @@ async function main() {
   const changes = parseNameStatus(diff);
   const config = loadConfig(gitText(root, ['show', `${base}:.claude/gates.json`]) ?? '');
   /** @type {Context} */
-  const context = { root, sha, split, adrNummers: adrNumbers(root, sha), authority: snapshot, config };
+  const context = { root, sha, split, adrBestanden: adrFiles(root, sha), authority: snapshot, config };
   for (const { pad } of changes)
     verifyDocument({ file: pad, before: authority.trusted(pad), after: snapshot.working(pad) }, context);
   verifyScope(changes, context);
