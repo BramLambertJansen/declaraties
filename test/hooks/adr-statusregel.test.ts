@@ -60,7 +60,7 @@ describe('statusregelOvertreding: overtredingen in een nieuwe of gewijzigde rege
   ])('%s: overtreding', async (_naam, regel) => {
     const resultaat = await overtreding(regel, 'Status: voorgesteld');
     expect(typeof resultaat).toBe('string');
-    expect(resultaat).not.toBe('');
+    expect(resultaat).toContain('mag niet achter de statuswaarde');
   });
 
   test('een nieuw ADR-bestand (geen oude regel) wordt ook getoetst', async () => {
