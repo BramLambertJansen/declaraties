@@ -41,6 +41,11 @@ De echte grens is al de diff-guard (`guard.yml`, draait van `main`) plus de merg
      niet beschrijven, zoals vóór de verhuizing `.claude/hooks/` zelf. Vóór elke run vergelijkt de lader de bestanden met de blob-hashes
      van de tree (geen extra bestanden, geen symlinks); wijkt iets af, dan pakt hij opnieuw uit. Git draait met
      `GIT_NO_REPLACE_OBJECTS=1` (anders vervalst `git replace` de inhoud) en `GIT_TERMINAL_PROMPT=0`.
+   - **Elk object gecontroleerd.** `.git/objects` is voor de sandbox schrijfbaar en git controleert hashes niet bij gewoon lezen. De
+     lader hasht daarom zelf de commit van het anker en elke tree op het pad naar en onder `rails/hooks`, en leest tree-oids alleen
+     uit die gecontroleerde objecten. Een vervalst object onder het anker geeft geen andere code, maar een dichte hook.
+   - **Het rolhek gebruikt geen netwerk**: zijn timeout van 10 s verstrijken is voor Claude Code fail-open. `werkstraat session-start`
+     legt het anker vast; zonder anker faalt het rolhek meteen dicht.
    - De hook die de sessie bewaakt is dus altijd die van `main`; een wijziging op de branch werkt pas na de merge door de eigenaar,
      en een merge midden in een sessie pas in de volgende sessie.
    - Rolhek en werkstraat falen dicht (exit 2) als het anker niet te bepalen is of de hook op `main` ontbreekt; het rolhek maakt van
