@@ -3,6 +3,8 @@
 De adminpagina `/design-system` gebruikt dezelfde UI-kit als de app. De componentenindex ontdekt alle componenten uit
 `src/core/web/ui` en `src/web/ui`, inclusief interne onderdelen. De zoekparameter `q` bewaart de zoekopdracht bij herladen.
 
+De gebruikscontracten voor tabellen, tabs, galerijen en filters staan in [Gegevensweergave en navigatie](ui-data-display.md).
+
 Bij iedere indexrij staat **Toon [component]**. Die knop scrollt naar het voorbeeld en verplaatst de toetsenbordfocus naar
 de benoemde sectie. De zoekopdracht blijft behouden. Onderdelen zoals CardHeader en TableCell worden in hun compositie getoond.
 De vindplaatstekst legt uit wanneer je een menu moet openen of een knop moet bedienen. Layoutcomponenten werken in de echte
@@ -22,19 +24,19 @@ navigatie en topbalk; providers worden via hun zichtbare resultaten gedemonstree
 - **RouteError en NotFound:** generieke fout, verboden toegang en niet gevonden als previews, zonder extra main/h1 of
   echte sessiefout. Bestaande dialoog-, toast-, busy- en validatievoorbeelden blijven beschikbaar.
 
-Alle nieuwe query- en submituitkomsten zijn lokale voorbeelddata. Ze doen geen API-aanroep en wijzigen geen accounts.
-`queries.ts` bevat de lokale queries; Form en de adapters voeren de werkelijke validatie en foutafhandeling uit.
+De query- en submituitkomsten zijn lokale voorbeelddata. Ze doen geen API-aanroep en wijzigen geen accounts.
+[queries.ts](../src/web/features/design-system/queries.ts) bevat de lokale queries; Form en de adapters voeren de werkelijke validatie en foutafhandeling uit.
 
 ## Uitbreiden en controleren
 
 Bij een nieuw UI-onderdeel blijven bronindex, barrel-export en bereikbaar voorbeeld verplicht (ADR 0028).
-Voeg daarnaast in `example-targets.ts` de vindplaats en korte bedieningsinstructie toe. Het doel is het `id` van een
+Voeg daarnaast in [example-targets.ts](../src/web/features/design-system/example-targets.ts) de vindplaats en korte bedieningsinstructie toe. Het doel is het `id` van een
 Section; die wordt alleen met een expliciet id programmatisch focusbaar. Nieuwe Section-aanroepen zonder id veranderen niet.
 
-`pnpm check:catalogus` controleert bronbereikbaarheid en eindige stringvarianten. De nieuwe e2e-test
-`e2e/design-system-coverage.spec.ts` bedient voor iedere indexrij de voorbeeldknop en controleert het bestaande focusdoel.
+`pnpm check:catalogus` controleert bronbereikbaarheid en eindige stringvarianten. De e2e-test
+[design-system-coverage.spec.ts](../e2e/design-system-coverage.spec.ts) bedient voor iedere indexrij de voorbeeldknop en controleert het bestaande focusdoel.
 Dezelfde test controleert lokale toestanden, formulierfouten, mobiele overflow, CSP en axe in licht/donker.
-`catalogue-states.test.tsx` test de query- en formulierinteracties zonder netwerk.
+[catalogue-states.test.tsx](../src/web/features/design-system/catalogue-states.test.tsx) test de query- en formulierinteracties zonder netwerk.
 
 Een groene broncheck bewijst niet dat een lokale server dezelfde versie draait. Controleer eerst de werkdirectory en
 commit van de server. Werk nooit een andere developerbranch met lokale wijzigingen stilzwijgend bij: gebruik een actuele

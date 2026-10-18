@@ -3,8 +3,14 @@
 Deze componenten horen bij [de spec](specs/ui-data-display.md) en staan met werkende voorbeelden op de bestaande
 adminpagina `/design-system`. Importeer componenten en types uit de app-barrel `src/web/ui/index.ts`.
 Geen nieuwe dependency, netwerklaag, token of autorisatie is nodig.
-De lokale voorbeeldbeelden staan in `src/web/public/`, onder de Vite-root (`vite.config.ts:95`). Ze laden daardoor
+De lokale voorbeeldafbeeldingen staan in `src/web/public/`, onder de Vite-root (`vite.config.ts:95`). Ze laden daardoor
 via dezelfde origin in development en de productiebuild, zonder aanvullende configuratie.
+
+## ID's en invoer
+
+Gebruik niet-lege, unieke ID's voor de rijen en kolommen van `DataTable` en voor de items van `Tabs` en `Gallery`.
+De rij-ID komt uit `getRowId`; kolommen en items hebben een eigen `id`. Een `DataTable` heeft minstens één kolom nodig.
+De componenten weigeren invoer die hier niet aan voldoet; een lege lijst met rijen of items is wel toegestaan.
 
 ## DataTable
 
@@ -12,14 +18,18 @@ Geef rows, getRowId, columns en een label. Een kolom heeft id, header en cell(ro
 wanneer ook sort/onSortChange zijn opgegeven. DataTable sorteert zelf geen data: de ouder verwerkt sortering lokaal of
 in de query. Zonder sortprops blijft de tabel statisch. Gebruik AsyncView buiten de tabel voor laden/fout/leeg bij queries.
 
-Selection is optioneel en controlled. SelectedIds bevat stabiele ids, ook van andere pagina's. Select-all raakt uitsluitend
-de aangeleverde rijen; bij geen rijen is het disabled en bij deels geselecteerd native indeterminate. De ouder beslist
-wanneer selectie reset bij filteren. RowActions met actionsLabel blijft een aparte kolom; geef eigen acties disabled
-wanneer busy. Busy blokkeert sorteren, selecteren en meer laden en zet aria-busy. Het tabelvoorbeeld gebruikt lokale data.
+`selection` is optioneel en wordt door de ouder beheerd. Geef daarin `selectedIds`, `onSelectionChange`,
+`selectionLabel` en `selectAllLabel` mee: de laatste twee benoemen de selectievakjes voor schermlezers.
+`selectedIds` bevat stabiele ids, ook van andere pagina's. Select-all raakt uitsluitend de aangeleverde rijen;
+bij geen rijen is het disabled en bij deels geselecteerd native indeterminate. De ouder beslist wanneer selectie reset
+bij filteren. `rowActions` met `actionsLabel` blijft een aparte kolom; geef eigen acties disabled wanneer `busy`.
+`busy` blokkeert sorteren, selecteren en meer laden en zet aria-busy. Het tabelvoorbeeld gebruikt lokale data.
 
-LoadMore ontvangt hasMore/loading/onLoadMore/label/loadingLabel; de ouder beheert cursor/data en laadstatus.
+`loadMore` ontvangt hasMore/loading/onLoadMore/label/loadingLabel; de ouder beheert cursor/data en laadstatus.
 Geen paginanummers of totaal worden verzonnen. Zet loading zodra laden start om herhaalde acties te blokkeren.
 De bestaande benoemde Table-regio scrolt intern op mobiel en blijft met het toetsenbord bereikbaar.
+
+De exacte props en hun samenhang staan in [DataTableProps](../src/core/web/ui/data-table.tsx).
 
 ## Tabs
 
@@ -35,18 +45,19 @@ Na bewust verlaten van een zichtbaar, bereikbaar veld wordt ook een blur zonder 
 
 Gallery-items bevatten id/src/alt en optioneel caption/description. Benoem de lijst met label en geef unavailableText.
 Afbeeldingen laden lazy. Een fout toont een placeholder; een andere src wordt opnieuw geprobeerd. Voor decoratieve beelden
-mag alt leeg zijn. Benoem previewcontrols altijd via preview.previewLabel en geef closeLabel. Een caption wordt de
+mag alt leeg zijn. Geef voor de preview `preview.previewLabel` en `preview.closeLabel` mee; beide horen bij het
+optionele `preview`-object ([GalleryProps](../src/core/web/ui/gallery.tsx)). Een caption wordt de
 Dialogtitel, anders de previewlabel. De bestaande Dialog bewaakt focus/Escape; verwijderen van de geopende kaart sluit
 preview en focust de gallerycontainer. De previewinhoud heeft interne verticale scrolling. Geen remote voorbeeldmedia.
 Previewknoppen breken lange labels binnen de kaart af (`src/core/web/ui/gallery.tsx:87`), zodat ze de pagina niet verbreden.
 
 ## ListToolbar
 
-Bestaande Select-filters en props blijven bruikbaar. Searchable op een filter gebruikt Combobox; een lege Select-optie
+Bestaande Select-filters en props blijven bruikbaar. `searchable` op een filter gebruikt Combobox; een lege Select-optie
 wordt de placeholder en wordt niet aan Combobox doorgegeven. De wisactie kiest de lege waarde. Disabled opties zijn
 alleen actief in searchable-modus; het Select-contract verandert niet.
 
-ShowActiveFilters toont verwijderbare chips voor committed zoekterm en filterwaarden. Filterchip wissen verandert één
+`showActiveFilters` toont verwijderbare chips voor committed zoekterm en filterwaarden. Filterchip wissen verandert één
 filter en focust dat veld; zoekchip/alles wissen annuleert de pending zoekdebounce. De ouder beheert URL/query/sortering.
 Filter-id's krijgen een eigen prefix, ook wanneer hun waarde zoeken of sorteren is. Geen chips voor sortering.
 
