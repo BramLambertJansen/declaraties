@@ -1,6 +1,6 @@
 # 0034 — Gedeelde Claude Code-permissies
 
-Status: voorgesteld
+Status: geaccepteerd
 
 ## Context
 
