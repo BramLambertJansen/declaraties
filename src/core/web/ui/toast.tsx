@@ -5,9 +5,10 @@ import { Button } from './button.tsx';
 
 // Toast: korte terugkoppeling na een actie ("gelukt" of "fout"). Context zonder globale store: ToastProvider staat in de
 // app-root, de AppShell rendert de Toaster. Succes is een beleefde statusmelding (role=status, polite), een fout wordt
-// direct voorgelezen (role=alert, assertive). Beide regio's staan altijd in de DOM, anders pakt een schermlezer de
-// eerste melding niet op. Timing (WCAG 2.2.1): een succes verdwijnt na 5 s en pauzeert zolang de muis erboven staat of de focus
-// erin; een fout verdwijnt niet vanzelf maar blijft tot de gebruiker hem sluit (of tot het maximum van drie hem verdringt).
+// direct voorgelezen (role=alert, assertive). De rol zit op de kaart en er is geen aria-live-container omheen: een role binnen
+// een aria-live-regio laat NVDA de melding dubbel aankondigen. Timing (WCAG 2.2.1): een succes verdwijnt na 5 s en pauzeert
+// zolang de muis erboven staat of de focus erin; een fout verdwijnt niet vanzelf maar blijft tot de gebruiker hem sluit (of tot
+// het maximum van drie hem verdringt).
 type ToastTone = 'success' | 'error';
 
 interface ToastItem {
@@ -235,12 +236,12 @@ export function Toaster() {
   const errors = toasts.filter((toast) => toast.tone === 'error');
   return (
     <div className="pointer-events-none fixed inset-x-4 bottom-4 z-50 flex flex-col items-end gap-2 sm:start-auto sm:w-96">
-      <div aria-live="polite" className="flex w-full flex-col gap-2">
+      <div className="flex w-full flex-col gap-2">
         {successes.map((toast) => (
           <ToastCard key={toast.id} toast={toast} />
         ))}
       </div>
-      <div aria-live="assertive" className="flex w-full flex-col gap-2">
+      <div className="flex w-full flex-col gap-2">
         {errors.map((toast) => (
           <ToastCard key={toast.id} toast={toast} />
         ))}

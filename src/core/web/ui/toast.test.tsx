@@ -56,22 +56,31 @@ test('useToast buiten een ToastProvider gooit een duidelijke fout', () => {
   expect(() => render(<Trigger />)).toThrow(/ToastProvider/);
 });
 
-test('een succes-toast toont de tekst in role=status met aria-live polite', () => {
+test('een succes-toast toont de tekst in role=status (impliciet polite)', () => {
   setup();
   fire('succes');
   const toast = screen.getByRole('status');
   expect(toast.textContent).toContain('Opgeslagen');
-  expect(toast.closest('[aria-live]')?.getAttribute('aria-live')).toBe('polite');
   expect(screen.queryByRole('alert')).toBeNull();
 });
 
-test('een fout-toast toont de tekst in role=alert met aria-live assertive', () => {
+test('een fout-toast toont de tekst in role=alert (impliciet assertive)', () => {
   setup();
   fire('fout');
   const toast = screen.getByRole('alert');
   expect(toast.textContent).toContain('Opslaan mislukt');
-  expect(toast.closest('[aria-live]')?.getAttribute('aria-live')).toBe('assertive');
   expect(screen.queryByRole('status')).toBeNull();
+});
+
+// NVDA kondigt een melding dubbel aan als een role=status/alert binnen een aria-live-container staat (de rol is zelf al een
+// live-regio). De rol zit daarom alleen op de kaart; geen container, voorouder of kind erboven of eronder heeft aria-live.
+test('geen aria-live rond of in een toast: de rol van de kaart is de enige live-regio (geen dubbele aankondiging)', () => {
+  const { container } = setup();
+  fire('succes');
+  fire('fout');
+  expect(container.querySelectorAll('[aria-live]')).toHaveLength(0);
+  expect(screen.getByRole('status').closest('[aria-live]')).toBeNull();
+  expect(screen.getByRole('alert').closest('[aria-live]')).toBeNull();
 });
 
 test('zonder toast is er geen melding in de regio', () => {
