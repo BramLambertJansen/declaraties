@@ -120,6 +120,14 @@
       "branch": "docs/adr-0033-geaccepteerd",
       "status": "geaccepteerd",
       "paths": []
+    },
+    {
+      "file": "docs/adr/0034-gedeelde-claude-permissies.md",
+      "digest": "2225a2ca2d51c8f93d14d9dba8d4c0891c8276fd33bf5e93447342a1871e2002",
+      "repository": "BramLambertJansen/template",
+      "branch": "docs/adr-0034-geaccepteerd",
+      "status": "geaccepteerd",
+      "paths": []
     }
   ]
 }
