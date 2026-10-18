@@ -193,9 +193,27 @@ function statusViolations(files, read) {
             message: `${file}: ${status}, maar de sectie "Hergebruik en UX" ontbreekt of is leeg`,
           },
         ];
-      return [];
+      return sjabloonViolations(file, text);
     }),
   ];
+}
+
+const MINI_KOPPEN = ['Doel', 'Rollen en wie wat ziet', 'Routes en foutcodes', 'Acceptatiecriteria', 'Hergebruik en UX'];
+
+/**
+ * ADR 0029 punt 5: `sjabloon: mini` is de marker van de mini-spec (`docs/specs/_mini.md`); die heeft vaste koppen.
+ * @param {string} file @param {string} text
+ * @returns {Violation[]}
+ */
+function sjabloonViolations(file, text) {
+  const waarde = /^sjabloon:[ \t]*(.*?)\s*$/m.exec(text.split(/^---\s*$/m)[1] ?? '')?.[1];
+  if (waarde === undefined) return [];
+  const key = `docs:${file}:sjabloon`;
+  if (waarde !== 'mini') return [{ key, message: `${file}: sjabloon is "${waarde}"; alleen "mini" bestaat` }];
+  const ontbreekt = MINI_KOPPEN.filter((kop) => !new RegExp(`^## ${kop}\\s*$`, 'm').test(text));
+  return ontbreekt.length === 0
+    ? []
+    : [{ key, message: `${file}: mini-spec mist de koppen ${ontbreekt.map((kop) => `"${kop}"`).join(', ')}` }];
 }
 
 // Testpaden uit .claude/gates.json (`testpaden`): `*.test.*`, `*.spec.*`, `db/tests/**`, `e2e/**`, `test/**`.
