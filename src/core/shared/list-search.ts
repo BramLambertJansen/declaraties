@@ -53,11 +53,12 @@ const query = z
   .max(MAX_SEARCH_LENGTH)
   .transform((value) => (value === '' ? undefined : value));
 
-// TanStack Router leest `?q=2026` als getal en `?q=true` als boolean; een gedeelde URL moet zijn zoekterm houden.
-const webQuery = z.preprocess(
-  (value) => (typeof value === 'number' || typeof value === 'boolean' ? String(value) : value),
-  query,
-);
+// TanStack Router leest `2026` als getal en `true` als boolean; gedeelde URL’s moeten hun tekstwaarden houden.
+function webValue(value: unknown): unknown {
+  return typeof value === 'number' || typeof value === 'boolean' ? String(value) : value;
+}
+
+const webQuery = z.preprocess(webValue, query);
 
 export function defineListSearch<const Config extends ListSearchConfig>(config: Config): ListSearch<Config> {
   const defaultSort = config.sorts[0];
@@ -72,8 +73,10 @@ export function defineListSearch<const Config extends ListSearchConfig>(config: 
   };
   const webShape = {
     q: webQuery.optional().catch(undefined),
-    ...Object.fromEntries(filterEntries.map(([key, values]) => [key, z.enum(values).optional().catch(undefined)])),
-    sort: z.enum(config.sorts).catch(defaultSort),
+    ...Object.fromEntries(
+      filterEntries.map(([key, values]) => [key, z.preprocess(webValue, z.enum(values)).optional().catch(undefined)]),
+    ),
+    sort: z.preprocess(webValue, z.enum(config.sorts)).catch(defaultSort),
   };
   // `overwrite` houdt het een `ZodObject`; het haalt de lege `q` (undefined na de transform) uit de uitvoer.
   const api = z.object(apiShape).strict().overwrite(withoutUndefined);

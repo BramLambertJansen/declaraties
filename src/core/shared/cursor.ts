@@ -24,7 +24,7 @@ export function encodeCursor(key: unknown): string {
 
 function decodeBase64Url(value: string): string {
   const binary = atob(value.replaceAll('-', '+').replaceAll('_', '/'));
-  return new TextDecoder().decode(Uint8Array.from(binary, (char) => char.charCodeAt(0)));
+  return new TextDecoder('utf-8', { fatal: true }).decode(Uint8Array.from(binary, (char) => char.charCodeAt(0)));
 }
 
 export function decodeCursor<Key extends z.ZodType>(cursor: string, key: Key): z.infer<Key> {

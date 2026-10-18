@@ -37,15 +37,18 @@ const variantClasses = {
     'backdrop:opacity-0 open:backdrop:opacity-100 starting:open:backdrop:opacity-0',
 } as const;
 
-// Openen met de focus op een element met data-autofocus (ConfirmDialog: "Annuleren"), anders op het eerste veld (spec
+function focusTarget(dialog: HTMLDialogElement, selector: string): HTMLElement | undefined {
+  return [...dialog.querySelectorAll<HTMLElement>(selector)].find(
+    (element) => !element.matches(':disabled, [type="hidden"]') && element.closest('[hidden], [inert]') === null,
+  );
+}
+
+// Openen met de focus op een bruikbaar element met data-autofocus (ConfirmDialog: "Annuleren"), anders op het eerste veld (spec
 // accountbeheer). React's autoFocus vuurt vóór showModal, als de dialoog nog dicht is, en zonder veld kiest showModal zelf
 // (de sluitknop).
 function openModal(dialog: HTMLDialogElement) {
   dialog.showModal();
-  (
-    dialog.querySelector<HTMLElement>('[data-autofocus]') ??
-    dialog.querySelector<HTMLElement>('input, select, textarea')
-  )?.focus();
+  (focusTarget(dialog, '[data-autofocus]') ?? focusTarget(dialog, 'input, select, textarea'))?.focus();
 }
 
 function useModal(open: boolean) {

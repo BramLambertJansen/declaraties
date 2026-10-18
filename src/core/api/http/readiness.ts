@@ -14,6 +14,17 @@ export interface ReadinessOptions {
 
 export type Readiness = () => Promise<boolean>;
 
+function checkOutcome(check: () => Promise<void>): Promise<boolean> {
+  try {
+    return check().then(
+      () => true,
+      () => false,
+    );
+  } catch {
+    return Promise.resolve(false);
+  }
+}
+
 function within(check: Promise<boolean>, timeoutMs: number): Promise<boolean> {
   let timer: NodeJS.Timeout | undefined;
   const timedOut = new Promise<boolean>((resolve) => {
@@ -34,10 +45,7 @@ export function createReadiness(check: () => Promise<void>, options: ReadinessOp
 
   async function run(): Promise<boolean> {
     checking = true;
-    const outcome = check().then(
-      () => true,
-      () => false,
-    );
+    const outcome = checkOutcome(check);
     void outcome.finally(() => {
       checking = false;
     });

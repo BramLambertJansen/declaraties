@@ -6,6 +6,10 @@ Hier staan wijzigingen die van belang zijn bij het gebruiken of bijwerken van de
 
 ### Opgelost
 
+- Gedeelde lijstlinks behouden ook filters en sorteringen waarvan de toegestane tekstwaarden op getallen of booleans lijken, zoals `jaar=2026` of `actief=false`. De API blijft echte getallen en booleans weigeren (`src/core/shared/list-search.ts`).
+- Dialogen slaan verborgen, uitgeschakelde en inerte velden over bij het kiezen van de eerste focus. Een bruikbaar `data-autofocus`-doel houdt voorrang (`src/core/web/ui/dialog.tsx`).
+- Een synchrone fout bij het starten van een readiness-controle geeft nu “niet klaar” en blokkeert latere controles niet blijvend (`src/core/api/http/readiness.ts`).
+- Cursors met ongeldige UTF-8 worden geweigerd in plaats van stilzwijgend naar een andere sorteersleutel te worden omgezet (`src/core/shared/cursor.ts`).
 - Onbekende foutcodes zoals `constructor`, `toString` en `__proto__` tonen de algemene fouttekst. Ze werden ten onrechte als geregistreerde teksten gelezen, wat een lege melding of renderfout kon veroorzaken (`src/core/web/ui/error-texts.tsx`).
 - De sessielijst herkent Firefox op iOS als Firefox in plaats van Safari (`src/core/api/auth/user-agent.ts`).
 - Gedeelde zoeklinks met `?q=true` of `?q=false` behouden hun letterlijke zoekterm. De router las die als booleans, waarna het zoekschema de term wegliet (`src/core/shared/list-search.ts`).
