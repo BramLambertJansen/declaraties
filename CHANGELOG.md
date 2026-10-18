@@ -6,6 +6,7 @@ Hier staan wijzigingen die van belang zijn bij het gebruiken of bijwerken van de
 
 ### Opgelost
 
+- De accountformulieren geven bij een te lang inlogwachtwoord, huidig wachtwoord of nieuw e-mailadres een Nederlandse lengtemelding met het maximum. De bestaande grenzen blijven gelijk (`src/shared/schemas/auth.ts`).
 - De API-client laat optionele queryvelden met waarde `undefined` weg bij GET en DELETE. Ze kwamen als de tekst `"undefined"` bij de server terecht, waardoor een weggelaten filter onbedoeld een validatiefout kon geven. Lege tekst, `0`, `false` en de letterlijke zoekterm `"undefined"` blijven behouden (`src/core/web/lib/api-client.ts`).
 - Het inlogformulier hanteert nu ook de bestaande `MAX_EMAIL_LENGTH` uit `src/shared/limits.ts`, met een Nederlandse melding bij een te lang adres; dezelfde grens geldt al bij uitnodigen en e-mail wijzigen (`src/shared/schemas/login-email-length.test.ts`).
 - **Toast: geen dubbele aankondiging meer in NVDA.** In `src/core/web/ui/toast.tsx` stond een `role="status"`/`"alert"` binnen een `aria-live`-container; de rol is zelf al een live-regio, dus NVDA las de melding twee keer voor. De containers hebben geen `aria-live` meer; de rol blijft op de kaart. Wat verandert voor een app: niets in de API; schermlezers lezen een toast één keer voor. Een `role=status` die met zijn inhoud wordt toegevoegd, lezen sommige schermlezers minder betrouwbaar voor dan een bestaande live-regio. Wat de eigenaar moet doen: niets.

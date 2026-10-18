@@ -9,7 +9,10 @@ export const loginInput = z
     email: z
       .email('Vul een geldig e-mailadres in.')
       .max(MAX_EMAIL_LENGTH, `Hooguit ${String(MAX_EMAIL_LENGTH)} tekens.`),
-    password: z.string().min(1, 'Vul je wachtwoord in.').max(MAX_PASSWORD_LENGTH),
+    password: z
+      .string()
+      .min(1, 'Vul je wachtwoord in.')
+      .max(MAX_PASSWORD_LENGTH, `Hooguit ${String(MAX_PASSWORD_LENGTH)} tekens.`),
   })
   .strict();
 
@@ -32,7 +35,10 @@ export const newPasswordInput = z
 // Spec eigen-account: wachtwoord wijzigen. Het nieuwe wachtwoord volgt dezelfde grenzen als bij het instellen.
 export const changePasswordInput = z
   .object({
-    huidig: z.string().min(1, 'Vul je huidige wachtwoord in.').max(MAX_PASSWORD_LENGTH),
+    huidig: z
+      .string()
+      .min(1, 'Vul je huidige wachtwoord in.')
+      .max(MAX_PASSWORD_LENGTH, `Hooguit ${String(MAX_PASSWORD_LENGTH)} tekens.`),
     nieuw: z
       .string()
       .min(MIN_PASSWORD_LENGTH, `Minstens ${String(MIN_PASSWORD_LENGTH)} tekens.`)
@@ -47,5 +53,9 @@ export const changePasswordInput = z
 
 // Spec eigen-account: een e-mailwijziging aanvragen. Alleen het nieuwe adres; de server controleert opnieuw.
 export const changeEmailInput = z
-  .object({ email: z.email('Vul een geldig e-mailadres in.').max(MAX_EMAIL_LENGTH) })
+  .object({
+    email: z
+      .email('Vul een geldig e-mailadres in.')
+      .max(MAX_EMAIL_LENGTH, `Hooguit ${String(MAX_EMAIL_LENGTH)} tekens.`),
+  })
   .strict();
