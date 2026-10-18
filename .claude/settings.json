@@ -1,6 +1,7 @@
 {
   "$schema": "https://json.schemastore.org/claude-code-settings.json",
   "permissions": {
+    "defaultMode": "acceptEdits",
     "deny": [
       "Read(.env)",
       "Read(.env.*)",
@@ -82,6 +83,38 @@
       "Edit(.claude/decisions.json)",
       "Edit(package.json)",
       "Edit(pnpm-lock.yaml)"
+    ],
+    "allow": [
+      "Bash(git push origin chore/mandate-adr-statusregel)",
+      "Bash(gh pr create:*)",
+      "Bash(node scripts/kit/feiten.mjs)",
+      "Bash(pnpm gate:fast)",
+      "Bash(pnpm format:check)",
+      "Bash(pnpm format)",
+      "Bash(pnpm lint)",
+      "Bash(pnpm typecheck)",
+      "Bash(pnpm ratchet)",
+      "Bash(pnpm test:unit)",
+      "Bash(pnpm test:unit *)",
+      "Bash(pnpm check:catalogus)",
+      "Bash(pnpm check:migrations)",
+      "Bash(pnpm check:secdef)",
+      "Bash(pnpm check:roadmap)",
+      "Bash(pnpm check:docs-drift)",
+      "Bash(pnpm pr:verify *)",
+      "Bash(git push origin feat/*)",
+      "Bash(git push origin fix/*)",
+      "Bash(git push origin docs/*)",
+      "Bash(git push origin chore/*)",
+      "Bash(git push origin test/*)",
+      "Bash(git push origin refactor/*)",
+      "Bash(gh pr create *)",
+      "Bash(gh pr view *)",
+      "Bash(gh pr list *)",
+      "Bash(gh pr diff *)",
+      "Bash(gh pr checks *)",
+      "Bash(gh run list *)",
+      "Bash(gh run view *)"
     ]
   },
   "sandbox": {

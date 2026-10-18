@@ -1,6 +1,6 @@
 # 0033 — Onderhoudsmodus voor templatewerk
 
-Status: voorgesteld
+Status: geaccepteerd
 
 Wijzigt [0029](0029-snellere-beslisroute.md) punt 9 (`ask` = `voorReview`) en [0032](0032-developer-volgt-hoofdsessie-buiten-voorreview.md)
 punt 2 (laatste opsomming) alleen in de template-repo, en de plek van de hooks uit [0011](0011-railwerk.md). Drempel (0029 punt 4):
