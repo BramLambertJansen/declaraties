@@ -22,6 +22,7 @@ export function useErrorText(): (error: unknown) => string {
       typeof error === 'object' && error !== null && 'code' in error && typeof error.code === 'string'
         ? error.code
         : 'INTERNAL_ERROR';
-    return texts[code] ?? texts['INTERNAL_ERROR'] ?? coreErrorTexts.INTERNAL_ERROR;
+    const text = Object.hasOwn(texts, code) ? texts[code] : undefined;
+    return text ?? texts['INTERNAL_ERROR'] ?? coreErrorTexts.INTERNAL_ERROR;
   };
 }

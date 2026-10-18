@@ -8,7 +8,7 @@ const MAX_USER_AGENT_LENGTH = 512;
 const BROWSERS: readonly (readonly [RegExp, string])[] = [
   [/\bEdg(?:e|A|iOS)?\//, 'Edge'],
   [/\bOPR\//, 'Opera'],
-  [/\bFirefox\//, 'Firefox'],
+  [/\b(?:Firefox|FxiOS)\//, 'Firefox'],
   [/\b(?:Chrome|CriOS)\//, 'Chrome'],
   [/\bSafari\//, 'Safari'],
 ];

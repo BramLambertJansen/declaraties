@@ -53,8 +53,11 @@ const query = z
   .max(MAX_SEARCH_LENGTH)
   .transform((value) => (value === '' ? undefined : value));
 
-// TanStack Router parset `?q=2026` tot een getal; een met de hand gedeelde URL moet zijn zoekterm houden.
-const webQuery = z.preprocess((value) => (typeof value === 'number' ? String(value) : value), query);
+// TanStack Router leest `?q=2026` als getal en `?q=true` als boolean; een gedeelde URL moet zijn zoekterm houden.
+const webQuery = z.preprocess(
+  (value) => (typeof value === 'number' || typeof value === 'boolean' ? String(value) : value),
+  query,
+);
 
 export function defineListSearch<const Config extends ListSearchConfig>(config: Config): ListSearch<Config> {
   const defaultSort = config.sorts[0];
