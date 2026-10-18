@@ -57,7 +57,11 @@ export function createApiClient<Contracts extends readonly AnyContract[]>() {
     const { url, rest } = fillPath(path, typeof input === 'object' && input !== null ? { ...input } : {});
     const query =
       method === 'GET' || method === 'DELETE'
-        ? `?${new URLSearchParams(Object.entries(rest).map(([k, v]) => [k, String(v)])).toString()}`
+        ? `?${new URLSearchParams(
+            Object.entries(rest)
+              .filter(([, value]) => value !== undefined)
+              .map(([k, v]) => [k, String(v)]),
+          ).toString()}`
         : '';
     const response = await fetch(`${url}${query === '?' ? '' : query}`, {
       method,
