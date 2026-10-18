@@ -7,12 +7,22 @@ import { expect, test } from 'vitest';
 // Het echte hook-script (rails/hooks/rolhek.mjs) met echte stdin-payloads: exitcode en uitvoer zoals Claude Code ze leest.
 // Exit 2 blokkeert; een interne fout is ook exit 2 (faalt dicht, framework §8).
 const root = process.cwd();
+// De test hangt niet af van de echte origin: in de template-repo staat de onderhoudsmodus aan (ADR 0033 punt 2) en geeft een
+// voorReview-pad geen ask. Zo ziet het script de origin van een app, waar de modus uit staat.
+const APP_ORIGIN = {
+  GIT_CONFIG_COUNT: '1',
+  GIT_CONFIG_KEY_0: 'remote.origin.url',
+  GIT_CONFIG_VALUE_0: 'https://github.com/acme/app.git',
+};
 
-function run(input: string): { status: number | null; stdout: string; stderr: string } {
+function run(
+  input: string,
+  origin: Record<string, string> = APP_ORIGIN,
+): { status: number | null; stdout: string; stderr: string } {
   const result = spawnSync('node', ['rails/hooks/rolhek.mjs'], {
     input,
     encoding: 'utf8',
-    env: { ...process.env, CLAUDE_PROJECT_DIR: root },
+    env: { ...process.env, ...origin, CLAUDE_PROJECT_DIR: root },
   });
   return { status: result.status, stdout: result.stdout, stderr: result.stderr };
 }
@@ -31,6 +41,15 @@ test('beschermd pad in voorReview voor de hoofdsessie: permissionDecision ask', 
 
   expect(result.status).toBe(0);
   expect(output).toMatchObject({ hookSpecificOutput: { hookEventName: 'PreToolUse', permissionDecision: 'ask' } });
+});
+
+test('beschermd pad in voorReview in de template-repo (onderhoudsmodus): alleen een melding, geen ask', () => {
+  const template = { ...APP_ORIGIN, GIT_CONFIG_VALUE_0: 'https://github.com/BramLambertJansen/template.git' };
+  const result = run(bash('echo x > scripts/x.ts'), template);
+
+  expect(result.status).toBe(0);
+  expect(result.stdout).not.toContain('"permissionDecision":"ask"');
+  expect(result.stdout).toContain('noem het in de PR');
 });
 
 test('bestaande test wijzigen: door, met context voor de PR', () => {
