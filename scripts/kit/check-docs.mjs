@@ -13,6 +13,7 @@
 import { execFileSync } from 'node:child_process';
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
+import { onderhoudVan } from '../../rails/hooks/lib/rolhek.mjs';
 
 /** @typedef {{ key: string, message: string }} Violation */
 
@@ -337,19 +338,14 @@ function askViolations(bron, naam, ask) {
   ];
 }
 
-/** `onderhoud` is ontbrekend of precies `{ "repository": "<owner>/<repo>" }` (ADR 0033 punt 2). @param {unknown} value @returns {Violation[]} */
+/** `onderhoud` is ontbrekend of precies `{ "repository": "<owner>/<repo>" }` (ADR 0033 punt 2); dezelfde vormcheck als het rolhek. @param {unknown} value @returns {Violation[]} */
 function onderhoudViolations(value) {
-  if (value === undefined) return [];
-  const entries = typeof value === 'object' && value !== null && !Array.isArray(value) ? Object.entries(value) : [];
-  const repository = entries.length === 1 && entries[0]?.[0] === 'repository' ? entries[0][1] : undefined;
-  return typeof repository === 'string' && /^[\w-]+\/[\w.-]+$/.test(repository)
-    ? []
-    : [
-        {
-          key: 'docs:gates:onderhoud',
-          message: '.claude/gates.json: onderhoud is geen { "repository": "<owner>/<repo>" }',
-        },
-      ];
+  try {
+    onderhoudVan(value);
+    return [];
+  } catch (error) {
+    return [{ key: 'docs:gates:onderhoud', message: error instanceof Error ? error.message : String(error) }];
+  }
 }
 
 /**

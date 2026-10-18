@@ -6,6 +6,7 @@
 import { spawnSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
+import { checkEnv } from './lib/check-env.mjs';
 import { payloadCwd, projectRoot } from './lib/root.mjs';
 import { changedFromStatus, postEdit, sessionStart, stop, subagentStop } from './lib/werkstraat.mjs';
 
@@ -22,8 +23,7 @@ function makeDeps(root) {
     const result = spawnSync(command, args, {
       cwd: root,
       encoding: 'utf8',
-      // Het anker is voor deze hook, niet voor de checks: vitest en scripts zouden anders hun eigen basis vervangen (ADR 0033).
-      env: { ...Object.fromEntries(Object.entries(process.env).filter(([naam]) => naam !== 'RAILS_ANKER')), ...options.env },
+      env: checkEnv(process.env, options.env),
       timeout: options.timeout,
       maxBuffer: 32 * 1024 * 1024,
     });

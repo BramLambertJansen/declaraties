@@ -77,6 +77,17 @@ describe('planAppInit', () => {
     expect(typeof gates === 'object' && gates !== null && 'altijdVragen' in gates).toBe(true);
   });
 
+  test('weigert luid als de onderhoud-regel in .claude/gates.json niet meer te vinden is', () => {
+    const dir = copy();
+    mkdirSync(path.join(dir, '.claude'), { recursive: true });
+    const gates = readFileSync(path.join(ROOT, '.claude/gates.json'), 'utf8').replace(
+      '"onderhoud": {',
+      '"onderhoud":{',
+    );
+    writeFileSync(path.join(dir, '.claude/gates.json'), gates);
+    expect(() => planAppInit(dir, options)).toThrow(/onderhoud-regel/);
+  });
+
   test('--owner mag ook een team zijn', () => {
     const codeowners = changed(planAppInit(copy(), { ...options, owner: 'acme/beheer' }), '.github/CODEOWNERS');
     expect(codeowners).toContain('/AGENTS.md                @acme/beheer');

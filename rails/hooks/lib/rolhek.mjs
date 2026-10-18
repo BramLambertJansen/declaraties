@@ -64,7 +64,7 @@ export function loadConfig(text) {
 }
 
 /** `{ "repository": "<owner>/<repo>" }` of ontbrekend; elke andere vorm gooit. @param {unknown} found */
-function onderhoudVan(found) {
+export function onderhoudVan(found) {
   if (found === undefined) return undefined;
   const entries = typeof found === 'object' && found !== null && !Array.isArray(found) ? Object.entries(found) : [];
   const repository = entries.length === 1 && entries[0]?.[0] === 'repository' ? entries[0][1] : undefined;

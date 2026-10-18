@@ -326,7 +326,7 @@ tester: testpaden; reviewer: niets; docs (optioneel): `docs/reviews/`, `docs/ope
 `voorReview` vraagt het rolhek de hoofdsessie en weigert het de developer; op een ander gate-pad meldt het "noem het in de PR" (ADR 0029 punt 9).
 **Onderhoudsmodus** (ADR 0033 punt 2–3): staat `onderhoud.repository` in de vertrouwde `.claude/gates.json` en is `origin` die repository
 (hoofdletterongevoelig), dan is ook een `voorReview`-pad voor hoofdsessie en developer alleen een melding, behalve `altijdVragen`; in een app
-uit de template staat de modus dus vanzelf uit. De rolhek-hook leest de lijsten uit het anker van de stub-lader, gecontroleerd gelezen (ADR 0033;
+uit de template staat de modus dus vanzelf uit, en blijft `.claude/**` (ook het lokale `.claude/settings.local.json`) daar `voorReview`: ask voor de hoofdsessie, deny voor de developer (`test/hooks/rolhek-git-map.test.ts`). Schrijven in een `.git`-map (remote-URL, refs, objecten: de basis van anker en modus) is voor elke rol altijd een deny, ook in de modus. De rolhek-hook leest de lijsten uit het anker van de stub-lader, gecontroleerd gelezen (ADR 0033;
 een versoepeling werkt pas na de merge, de werkmap telt dan niet), de diff-guard in CI leest dezelfde lijst, en `check-docs` vergelijkt
 CODEOWNERS (= `gates` + `jsonGates`) en de Edit-regels in `ask` (= `altijdVragen`) ermee. Een bestaand hulpbestand in een testpad (geen
 `*.test.*`/`*.spec.*`/`db/tests/`) wijzigen meldt het rolhek ("hulpbestand gewijzigd"), verwijderen is een gate; een bestaand bestand onder

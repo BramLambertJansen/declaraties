@@ -56,3 +56,24 @@ describe('schrijven in .git is verboden voor elke rol', () => {
     expect(decision.deny.join('\n')).toMatch(/\.git is verboden/);
   });
 });
+
+// De onderhoudsmodus geldt alleen in de template-repo: daar mag de agent frameworkwerk doen, in een app blijft `.claude/**` dicht.
+describe('template tegenover app: .claude/settings.local.json', () => {
+  const lokaal = (agent?: string) => write(`${ROOT}/.claude/settings.local.json`, agent);
+
+  test('in een app (modus uit) vraagt het rolhek de hoofdsessie', () => {
+    expect(decide(lokaal(), { ...basis, onderhoud: false }).ask).not.toStrictEqual([]);
+  });
+
+  test('in een app (modus uit) weigert het rolhek de developer', () => {
+    expect(decide(lokaal('developer'), { ...basis, onderhoud: false }).deny).not.toStrictEqual([]);
+  });
+
+  test('in de template (modus aan) geeft het rolhek de hoofdsessie en de developer alleen een melding', () => {
+    for (const agent of [undefined, 'developer']) {
+      const decision = decide(lokaal(agent), { ...basis, onderhoud: true });
+
+      expect([decision.ask, decision.deny]).toStrictEqual([[], []]);
+    }
+  });
+});
