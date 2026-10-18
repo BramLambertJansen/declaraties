@@ -77,3 +77,34 @@ describe('template tegenover app: .claude/settings.local.json', () => {
     }
   });
 });
+
+// Dezelfde grens via Bash: een commando dat in `.git` schrijft is voor elke rol een deny, ook de hoofdsessie.
+describe('schrijven in .git via Bash is verboden voor elke rol', () => {
+  const bash = (command: string, agent?: string) => ({
+    tool_name: 'Bash',
+    tool_input: { command },
+    ...(agent === undefined ? {} : { agent_type: agent }),
+  });
+
+  test.each([
+    "sed -i 's#BramLambertJansen/template#evil/template#' .git/config",
+    'echo x >> .git/config',
+    'cp evil.cfg .git/config',
+    'tee .git/config < evil.cfg',
+    'dd if=evil.cfg of=.git/config',
+    'ln -s .git/config sneaky',
+    'mv x .Git/config',
+    'rm -f .git/refs/remotes/origin/main',
+  ])('%s geeft een deny', (command) => {
+    for (const agent of [undefined, 'developer']) {
+      expect(decide(bash(command, agent), { ...basis, onderhoud: true }).deny.join('\n')).toMatch(/\.git is verboden/);
+    }
+  });
+
+  test.each(['echo x >> .gitignore', 'cp a.txt .github/x.txt', 'ls .git', 'git status'])(
+    '%s geeft geen .git-deny',
+    (command) => {
+      expect(decide(bash(command), { ...basis, onderhoud: true }).deny.join('\n')).not.toMatch(/\.git is verboden/);
+    },
+  );
+});

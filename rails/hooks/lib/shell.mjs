@@ -188,7 +188,7 @@ export function splitCommand(words) {
 /** @typedef {{ writes: string[], deletes: string[] }} Targets */
 
 /**
- * Bestanden die een commando schrijft of verwijdert (redirect, tee, sed -i, perl -i, cp, mv, rm, touch, truncate, dd,
+ * Bestanden die een commando schrijft of verwijdert (redirect, tee, sed -i, perl -i, cp, mv, ln, rm, touch, truncate, dd,
  * git checkout/restore/rm/mv). Paden zoals geschreven; het rolhek maakt ze relatief aan de repo.
  * @param {Command} command
  * @returns {Targets}
@@ -221,6 +221,8 @@ function fileTargets(program, args) {
       return { writes: operands.slice(-1), deletes: [] };
     case 'mv':
       return { writes: operands.slice(-1), deletes: operands.slice(0, -1) };
+    case 'ln':
+      return { writes: operands, deletes: [] };
     case 'dd':
       return { writes: args.filter((arg) => arg.startsWith('of=')).map((arg) => arg.slice(3)), deletes: [] };
     case 'sed':

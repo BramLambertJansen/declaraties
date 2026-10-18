@@ -166,9 +166,8 @@ function decideMcp({ tool, role }, ctx, decision) {
  */
 function decideEdit({ tool, input, role }, ctx, decision) {
   const file = field(input, 'file_path') || field(input, 'notebook_path');
-  // Remote-URL, refs en objecten zijn de vertrouwensbasis van anker en onderhoudsmodus (ADR 0033): nooit schrijven in .git.
-  if (/(?:^|[\\/])\.git(?:[\\/]|$)/i.test(file)) {
-    decision.deny.push(`${file}: schrijven in .git is verboden voor elke rol (ADR 0033)`);
+  if (inGitMap(file)) {
+    decision.deny.push(gitMapMelding(file));
     return;
   }
   ctx = scopedContext(ctx, file);
@@ -408,6 +407,20 @@ export function globMatch(glob, rel) {
 // ---------- Bash ----------
 
 /**
+ * Remote-URL, refs en objecten zijn de vertrouwensbasis van anker en onderhoudsmodus (ADR 0033): nooit schrijven in een `.git`-map,
+ * met Edit/Write of met Bash. @param {string} file
+ */
+function inGitMap(file) {
+  return /(?:^|[\\/])\.git(?:[\\/]|$)/i.test(file);
+}
+
+/** @param {string} file */
+function gitMapMelding(file) {
+  return `${file}: schrijven in .git is verboden voor elke rol (ADR 0033)`;
+}
+
+
+/**
  * @param {{ command: string, role: string }} call
  * @param {Ctx} ctx
  * @param {Decision} decision
@@ -430,6 +443,10 @@ function decideBash({ command, role }, ctx, decision) {
  * @param {Decision} decision
  */
 function bashTarget({ file, kind, role }, ctx, decision) {
+  if (inGitMap(file)) {
+    decision.deny.push(gitMapMelding(file));
+    return;
+  }
   ctx = scopedContext(ctx, file);
   const rel = relative(ctx, file);
   if (rel === null) return;
