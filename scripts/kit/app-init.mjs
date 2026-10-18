@@ -121,7 +121,8 @@ export function planAppInit(root, options) {
   ];
   // De onderhoudsmodus hoort bij de template-repo, niet bij een app (ADR 0033 punt 2).
   const gates = readOptional(path.join(root, '.claude/gates.json'));
-  if (gates?.includes(ONDERHOUD) === true) plan.push({ pad: '.claude/gates.json', inhoud: gates.replace(ONDERHOUD, '') });
+  if (gates?.includes(ONDERHOUD) === true)
+    plan.push({ pad: '.claude/gates.json', inhoud: gates.replace(ONDERHOUD, '') });
   if (options.owner !== undefined) {
     const codeowners = read('.github/CODEOWNERS');
     if (!codeowners.includes(TEMPLATE_OWNER))

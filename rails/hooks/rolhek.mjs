@@ -45,9 +45,10 @@ function configuratie(root, basis, authority) {
     if (text === null) throw new Error('geen gecontroleerde .claude/gates.json in het anker (ADR 0033)');
     return { config: loadConfig(text), vertrouwd: true };
   }
-  // Buiten een hook (tests, overgang met een oude stub) nooit onderhoud: de lokale origin/main is om te buigen (ADR 0033).
   const trusted = authority?.trusted('.claude/gates.json') ?? null;
-  return { config: loadConfig(trusted ?? readFileSync(path.join(root, '.claude/gates.json'), 'utf8')), vertrouwd: false };
+  return trusted === null
+    ? { config: loadConfig(readFileSync(path.join(root, '.claude/gates.json'), 'utf8')), vertrouwd: false }
+    : { config: loadConfig(trusted), vertrouwd: true };
 }
 
 /**
