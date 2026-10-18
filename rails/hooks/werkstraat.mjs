@@ -22,7 +22,8 @@ function makeDeps(root) {
     const result = spawnSync(command, args, {
       cwd: root,
       encoding: 'utf8',
-      env: { ...process.env, ...options.env },
+      // Het anker is voor deze hook, niet voor de checks: vitest en scripts zouden anders hun eigen basis vervangen (ADR 0033).
+      env: { ...Object.fromEntries(Object.entries(process.env).filter(([naam]) => naam !== 'RAILS_ANKER')), ...options.env },
       timeout: options.timeout,
       maxBuffer: 32 * 1024 * 1024,
     });

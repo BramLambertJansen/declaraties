@@ -33,7 +33,7 @@ function safe(probe) {
 }
 
 /**
- * De configuratie en of die vertrouwd is. Binnen een hook (anker gezet) alleen uit het anker, gecontroleerd gelezen, anders een
+ * De configuratie en of die uit het anker komt. Binnen een hook (anker gezet) alleen uit het anker, gecontroleerd gelezen, anders een
  * fout (het rolhek faalt dan dicht); daarbuiten de vertrouwde basis van readAuthority, met terugval op de werkmap.
  * @param {string} root
  * @param {{ read: (file: string) => string | null } | null} basis
@@ -45,14 +45,13 @@ function configuratie(root, basis, authority) {
     if (text === null) throw new Error('geen gecontroleerde .claude/gates.json in het anker (ADR 0033)');
     return { config: loadConfig(text), vertrouwd: true };
   }
+  // Buiten een hook (tests, overgang met een oude stub) nooit onderhoud: de lokale origin/main is om te buigen (ADR 0033).
   const trusted = authority?.trusted('.claude/gates.json') ?? null;
-  return trusted === null
-    ? { config: loadConfig(readFileSync(path.join(root, '.claude/gates.json'), 'utf8')), vertrouwd: false }
-    : { config: loadConfig(trusted), vertrouwd: true };
+  return { config: loadConfig(trusted ?? readFileSync(path.join(root, '.claude/gates.json'), 'utf8')), vertrouwd: false };
 }
 
 /**
- * Onderhoudsmodus (ADR 0033 punt 2): alleen uit een vertrouwde configuratie en alleen als origin die repository is.
+ * Onderhoudsmodus (ADR 0033 punt 2): alleen uit de configuratie van het anker en alleen als origin die repository is.
  * @param {import('./lib/rolhek.mjs').Config} config
  * @param {boolean} vertrouwd
  * @param {string} root
@@ -92,20 +91,23 @@ function context(root, cwd) {
 }
 
 /**
- * Een migratie is gecommit als hij in de merge-base met de vertrouwde basis staat, zoals check:migrations kijkt (WS-04 punt 5).
- * Is die onleesbaar, dan terugval op HEAD (strenger) en 'zonder-origin', zodat de weigering "git fetch origin" noemt.
+ * Een migratie is gecommit als hij in de merge-base met het anker of met origin/main staat (de strengste van beide), zoals
+ * check:migrations kijkt (WS-04 punt 5). Zijn beide onleesbaar, dan terugval op HEAD en 'zonder-origin' ("git fetch origin").
  * @param {string} root
  * @param {string | null} basis
  * @returns {(rel: string) => boolean | 'zonder-origin'}
  */
 function committedIn(root, basis) {
-  /** @type {string | null | undefined} */
-  let base;
+  /** @type {string[] | undefined} */
+  let bases;
   const exists = (/** @type {string} */ tree, /** @type {string} */ rel) =>
     safe(() => git(root, ['cat-file', '-e', `${tree}:${rel}`]) === '');
   return (rel) => {
-    if (base === undefined) base = basis === null ? null : mergeBase(root, basis);
-    if (base !== null) return exists(base, rel);
+    bases ??= [basis, 'origin/main'].flatMap((ref) => {
+      const sha = ref === null ? null : mergeBase(root, ref);
+      return sha === null ? [] : [sha];
+    });
+    if (bases.length > 0) return bases.some((tree) => exists(tree, rel));
     return exists('HEAD', rel) ? 'zonder-origin' : false;
   };
 }

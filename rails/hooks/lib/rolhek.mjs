@@ -19,7 +19,7 @@ import { automaticRunner } from './runner-authority.mjs';
  *   onbekendeRol?: boolean, onderhoud?: boolean }} Ctx
  * `onderhoud`: de onderhoudsmodus is actief (vertrouwde configuratie en origin is die repository, ADR 0033 punt 2–3).
  * `onbekendeRol`: een subagent zonder bekende rol; telt als developer, maar zonder de melding buiten voorReview.
- * `committed`: staat in de merge-base met origin/main; 'zonder-origin' = origin/main onleesbaar en wel in HEAD (terugval).
+ * `committed`: staat in de merge-base met het anker of met origin/main; 'zonder-origin' = beide onleesbaar en wel in HEAD (terugval).
  * @typedef {{ deny: string[], ask: string[], context: string[], allow?: boolean }} Decision
  * @typedef {{ kind: 'write' | 'delete', after: string | null }} Change
  */
@@ -166,6 +166,11 @@ function decideMcp({ tool, role }, ctx, decision) {
  */
 function decideEdit({ tool, input, role }, ctx, decision) {
   const file = field(input, 'file_path') || field(input, 'notebook_path');
+  // Remote-URL, refs en objecten zijn de vertrouwensbasis van anker en onderhoudsmodus (ADR 0033): nooit schrijven in .git.
+  if (/(?:^|[\\/])\.git(?:[\\/]|$)/.test(file)) {
+    decision.deny.push(`${file}: schrijven in .git is verboden voor elke rol (ADR 0033)`);
+    return;
+  }
   ctx = scopedContext(ctx, file);
   const rel = relative(ctx, file);
   if (rel === null) return;
