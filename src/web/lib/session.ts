@@ -10,6 +10,7 @@ export interface RouterContext {
 }
 
 export const LOGIN_PATH = '/login';
+const REDIRECT_ORIGIN = 'https://redirect.invalid';
 
 export const meQuery = queryOptions({ queryKey: ['me'], queryFn: () => api.call('GET /me', {}) });
 
@@ -27,7 +28,15 @@ export function homeFor(role: Role): '/' | '/admin' {
 // Alleen een pad binnen de app als terugweg na inloggen; nooit een andere origin (//host) of de inlogpagina zelf.
 export function safeRedirect(target: string | undefined): string | null {
   if (target === undefined || !target.startsWith('/') || target.startsWith('//')) return null;
-  return target.startsWith(LOGIN_PATH) ? null : target;
+  try {
+    // URL normaliseert ook backslashes, tabs/regeleinden en dot-segmenten, zoals de browser.
+    const normalized = target.replaceAll('\\', '/').replaceAll('\t', '').replaceAll('\r', '').replaceAll('\n', '');
+    if (normalized.startsWith('//')) return null;
+    const resolved = new URL(normalized, REDIRECT_ORIGIN);
+    return resolved.origin !== REDIRECT_ORIGIN || resolved.pathname.startsWith(LOGIN_PATH) ? null : target;
+  } catch {
+    return null;
+  }
 }
 
 // Er was een sessie in dit tabblad (de actor staat in de cache): dan is een 401 een verlopen sessie, geen eerste bezoek.
