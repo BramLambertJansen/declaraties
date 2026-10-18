@@ -26,10 +26,19 @@ wachtwoord in de code; lokaal zijn er de seed-accounts (README).
 
 Lokaal leest het commando `.env.local`; in een echte omgeving zet je de variabelen in de shell (niet in een bestand in de repo).
 
+`--reset-mfa` trekt alle bestaande sessies direct in. Bij alleen `--reset-password` vervallen de sessies pas nadat
+de beheerder via de gemailde link een nieuw wachtwoord heeft ingesteld.
+
 ## Controle
 
-- De uitvoer eindigt met `✓ <adres>: rol admin` (of `nieuw admin-account`).
+- Het commando eindigt zonder fout (exitcode 0). De melding `✓ <adres>: rol admin` bevestigt de roltoekenning;
+  eventuele herstelstappen volgen daarna en moeten ook slagen.
+- Bij een nieuw account meldt de uitvoer `nieuw admin-account; uitnodiging verstuurd`.
+- Bij `--reset-mfa` volgt `2FA gewist en sessies ingetrokken`; bij `--reset-password` volgt
+  `link om een nieuw wachtwoord in te stellen verstuurd`.
 - Na inloggen met TOTP opent `/admin`. Zonder TOTP vraagt de app eerst "Tweestapsverificatie instellen".
+
+De uitvoer en volgorde staan in [admin-create.mjs](../../scripts/admin-create.mjs).
 
 ## Wat het commando niet doet
 
