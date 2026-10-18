@@ -60,9 +60,9 @@ Hooguit drie open items (`check:roadmap`); nummer 1 is bewijs vóór uitbreiding
 
 Open werk dat niet geparkeerd is, grofweg in volgorde. Wat nog een spec of eigenaarbesluit nodig heeft, zegt het item.
 
-- [ ] **ADR 0029 bouw: feature-lane en mini-spec** (punt 1–3, 7). Lane-herkenning in `check-document-status`, `docs/specs/_mini.md`, het
+- [x] **ADR 0029 bouw: feature-lane en mini-spec** (punt 1–3, 7). Lane-herkenning in `check-document-status`, `docs/specs/_mini.md`, het
   frontmatterveld `sjabloon: mini` in `check-docs`, "Besluit en taakscope voorbereiden" in `docs/operations/agent-doorloop.md`; fixtures in `test/rails/`.
-  aanleiding: `docs/adr/0029-snellere-beslisroute.md` (punt 1–7)
+  aanleiding: `docs/adr/0029-snellere-beslisroute.md` (punt 1–7). Gebouwd in #199: `scripts/kit/lane.mjs`, `_mini.md`, `sjabloon: mini` in `check-docs`, statuscommit-controle (a)–(c).
 - [ ] **ADR 0031 PR 2: documentstatus als verplichte check.** `check-document-status` draait als stap in de niet-verplichte job `diff-guard`
   (`.github/workflows/guard.yml`) en staat niet in `requiredChecks` van `.claude/decisions.json`; `pnpm pr:verify` kan dus groen melden bij een
   rode documentstatus. Dat is een fout in een rail (P2), geen meta-werk. Na PR 2 eist `gebouwd` een extra check (ADR 0031, "Gevolg voor gebouwd").
