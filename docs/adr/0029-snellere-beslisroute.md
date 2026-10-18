@@ -1,6 +1,6 @@
 # 0029 — Snellere beslisroute: één PR per besluit, ADR-drempel en mini-spec
 
-Status: voorgesteld
+Status: geaccepteerd
 
 Wijzigt [0027](0027-taakmandaat-voor-frameworkwerk.md) punt 2 en vult [0025](0025-werkstraat-tot-de-merge.md) punt 1 en 10 aan.
 Vervangt [0023](0023-tokenzuinige-werkstraat.md) (eigenaarbesluit 2026-10-15; de status daar zet de eigenaar, zie Gevolgen).
