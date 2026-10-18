@@ -121,9 +121,22 @@ function testerStop(deps) {
   if (typecheck.code !== 0 || lint.code !== 0)
     return block(`Tester: lint en typecheck moeten groen zijn.\n${lastLines(`${typecheck.output}\n${lint.output}`)}`);
   if (tests.length === 0) return {};
-  const run = deps.run('pnpm', ['exec', 'vitest', 'run', '--reporter=json', ...tests]);
-  const wrong = nonAssertionFailures(run.output);
+  const run = deps.run('pnpm', ['exec', 'vitest', 'run', '--reporter=json', `--outputFile.json=${TESTER_REPORT}`, ...tests]);
+  const wrong = nonAssertionFailures(vitestReport(run.output, deps));
   return wrong.length === 0 ? {} : block(`Tester: een nieuwe test faalt niet op een assertie (compileert hij, bestaat de import?):\n${lastLines(wrong.join('\n'))}`);
+}
+
+/** Vast uitvoerbestand voor het JSON-rapport: vitest 5 schrijft het daarheen en meldt op stdout alleen waar. */
+const TESTER_REPORT = '.vitest/json/tester-run.json';
+
+/**
+ * Het JSON-rapport van de tester-run: uit het uitvoerbestand als vitest meldt dat hij dat schreef (een bestand van een eerdere
+ * run telt dus niet), anders de uitvoer zelf (oudere vitest zet het rapport op stdout).
+ * @param {string} output
+ * @param {Deps} deps
+ */
+function vitestReport(output, deps) {
+  return output.includes(TESTER_REPORT) ? (deps.read(TESTER_REPORT) ?? output) : output;
 }
 
 /**

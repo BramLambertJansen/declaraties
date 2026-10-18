@@ -6,6 +6,7 @@ Hier staan wijzigingen die van belang zijn bij het gebruiken of bijwerken van de
 
 ### Opgelost
 
+- De tester-stop (`subagent-stop`) leest het JSON-rapport van vitest 5 weer: vitest krijgt een vast uitvoerbestand (`.vitest/json/tester-run.json`) en de hook leest dat, in plaats van "geen uitvoer van vitest" te melden. Wat verandert voor een app: niets behalve dat de tester-stop weer werkt. Wat de eigenaar moet doen: niets.
 - De terugweg na inloggen wordt na URL-normalisatie gecontroleerd. Externe doelen met backslashes of tabs/regeleinden en genormaliseerde paden naar de inlogpagina worden geweigerd; gewone interne paden behouden hun zoekparameters en fragment (`src/web/lib/session.ts`, `src/web/lib/session-redirect.test.ts`).
 
 ### Toegevoegd

@@ -13,7 +13,14 @@ import {
 // vastgelegd, zodat de test ook bewijst wát er draait (netwerk alleen voor de fetch van session-start, nooit een database).
 const ROOT = '/repo';
 
-function fakeDeps(options: { failing?: readonly string[]; changed?: readonly string[]; output?: string } = {}) {
+function fakeDeps(
+  options: {
+    failing?: readonly string[];
+    changed?: readonly string[];
+    output?: string;
+    files?: Record<string, string>;
+  } = {},
+) {
   const calls: string[] = [];
   return {
     calls,
@@ -25,7 +32,7 @@ function fakeDeps(options: { failing?: readonly string[]; changed?: readonly str
         return { code: failed ? 1 : 0, output: options.output ?? (failed ? `fout in ${line}` : 'feat/x') };
       },
       changed: () => [...(options.changed ?? [])],
-      read: () => null,
+      read: (rel: string) => options.files?.[rel] ?? null,
     },
   };
 }
@@ -134,6 +141,70 @@ describe('subagent-stop', () => {
 
     expect(blocked(subagentStop({ agent_type: 'tester' }, importError.deps))).toContain('niet op een assertie');
     expect(subagentStop({ agent_type: 'tester' }, assertion.deps)).toStrictEqual({});
+  });
+
+  // Vitest 5 schrijft het JSON-rapport naar een bestand en meldt op stdout alleen waar; de hook leest dat bestand.
+  describe('tester: het JSON-rapport van vitest staat in een bestand', () => {
+    const REPORT = '.vitest/json/tester-run.json';
+    const written = `JSON report written to ${ROOT}/${REPORT}\n`;
+    const report = (message: string) =>
+      JSON.stringify({
+        testResults: [
+          { name: 'src/a.test.ts', assertionResults: [{ title: 't', status: 'failed', failureMessages: [message] }] },
+        ],
+      });
+    const tester = (options: { output: string; files?: Record<string, string>; failing?: readonly string[] }) => {
+      const fake = fakeDeps({ changed: ['src/a.test.ts'], ...options });
+      return { ...fake, result: subagentStop({ agent_type: 'tester' }, fake.deps) };
+    };
+
+    test('vitest krijgt een vast uitvoerbestand voor het json-rapport', () => {
+      const { calls } = tester({ output: written, files: { [REPORT]: report('AssertionError: expected 1 to be 2') } });
+
+      expect(calls.find((call) => call.includes('vitest'))).toContain(`--outputFile.json=${REPORT}`);
+    });
+
+    test('een test die op een import faalt, in het bestand, blokkeert', () => {
+      const { result } = tester({
+        output: written,
+        failing: ['vitest'],
+        files: { [REPORT]: report('TypeError: x is not a function') },
+      });
+
+      expect(blocked(result)).toContain('TypeError: x is not a function');
+    });
+
+    test('een rode assertie, in het bestand, blokkeert niet', () => {
+      const { result } = tester({
+        output: written,
+        failing: ['vitest'],
+        files: { [REPORT]: report('AssertionError: expected 1 to be 2') },
+      });
+
+      expect(result).toStrictEqual({});
+    });
+
+    test('een oud bestand telt niet als vitest niet meldt dat hij het schreef: geen uitvoer blokkeert', () => {
+      const { result } = tester({
+        output: 'vitest crashte vóór het rapport',
+        failing: ['vitest'],
+        files: { [REPORT]: report('AssertionError: expected 1 to be 2') },
+      });
+
+      expect(blocked(result)).toContain('geen uitvoer van vitest');
+    });
+
+    test('vitest noemt het bestand maar het ontbreekt: geen uitvoer blokkeert', () => {
+      const { result } = tester({ output: written, failing: ['vitest'] });
+
+      expect(blocked(result)).toContain('geen uitvoer van vitest');
+    });
+
+    test('nog steeds bruikbaar als vitest het rapport op stdout zet', () => {
+      const { result } = tester({ output: report('TypeError: x is not a function'), failing: ['vitest'] });
+
+      expect(blocked(result)).toContain('TypeError: x is not a function');
+    });
   });
 
   test('reviewer: zonder rapport-kop blokkeren, met kop klaar', () => {

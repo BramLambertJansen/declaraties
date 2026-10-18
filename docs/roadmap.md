@@ -72,8 +72,9 @@ Open werk dat niet geparkeerd is, grofweg in volgorde. Wat nog een spec of eigen
   bewijs `test/hooks/vertrouwde-basis-anker.test.ts`. Een omgebogen lokale ref (`movesTrustedBase` laat een fetch met een andere bron door)
   telt daardoor niet meer voor de hooks (met de nieuwe stub-lader; een sessie met een oude stub leest nog de lokale ref); scripts buiten een hook lezen nog de lokale ref, CI blijft de grens.
   aanleiding: `rails/hooks/lib/rolhek.mjs` (review van de PR voor ADR 0033 punt 1)
-- [ ] **Subagent-stop leest de JSON van vitest niet.** `rails/hooks/lib/werkstraat.mjs` zoekt het rapport van `vitest --reporter=json` op stdout;
-  vitest 5 schrijft het naar `.vitest/json/output.json`, dus de tester-stop meldt "geen uitvoer van vitest".
+- [x] **Subagent-stop leest de JSON van vitest niet.** `rails/hooks/lib/werkstraat.mjs` zocht het rapport van `vitest --reporter=json` op stdout;
+  vitest 5 schrijft het naar een bestand, dus de tester-stop meldde "geen uitvoer van vitest". Nu krijgt vitest `--outputFile.json=.vitest/json/tester-run.json`
+  en leest de hook dat bestand, alleen als vitest meldt dat hij het schreef; bewijs `test/hooks/werkstraat.test.ts`.
   aanleiding: `rails/hooks/lib/werkstraat.mjs` (tester-run in de PR voor ADR 0033 punt 1)
 - [ ] **Toast: pauze bij hover en focus, fout blijft staan** (WCAG 2.2.1), plus een eigenaarbesluit over de duur (nu 5 s en 8 s, een aanname).
   Toegankelijkheidsfout in de bestaande `Toaster` (`src/core/web/ui/toast.test.tsx`).
