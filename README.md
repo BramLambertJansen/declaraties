@@ -50,6 +50,8 @@ Dit start Postgres en Mailpit, past migraties toe en start de API en webapp. Sta
 
 Poorten staan in `.env.local`. Bij meerdere apps moet je ook de bijbehorende poorten in de database-URL's en `SMTP_URL` aanpassen.
 
+Start de lokale omgeving niet goed, voer dan `scripts/doctor.sh` uit. Dit controleert de toolchain, sandbox-pakketten, Docker, git-hooks en bereikbaarheid van de lokale stack, met een herstelstap per probleem.
+
 ### Lokale accounts
 
 `pnpm dev` maakt onderstaande demoaccounts. Het wachtwoord is `lokaal-demo-wachtwoord`.
@@ -69,7 +71,11 @@ Deze accounts en waarden zijn alleen voor lokaal gebruik. Voor een eerste beheer
 
 ## Cloud
 
-Opdrachten geven vanaf telefoon of browser (claude.ai/code, Code-tab in de app) gaat via een cloudsessie: een verse clone in een VM van Anthropic. Eenmalig per repo:
+Opdrachten geven vanaf telefoon of browser (claude.ai/code, Code-tab in de app) gaat via een cloudsessie: een verse clone in een VM van Anthropic.
+
+Deze inrichting is voor Claude Code. Andere runtimes, zoals Codex, voeren de hooks en permissieregels uit `.claude/` niet automatisch uit; zie de [agentinstructies](AGENTS.md).
+
+Eenmalig per repo:
 
 1. Maak op claude.ai/code een omgeving met netwerktoegang **Trusted** (de standaard). `mise.run` staat niet op die allowlist; het script haalt mise daarom van github.com.
 2. Zet als setup-script `bash scripts/cloud-setup.sh`. Het installeert de sandbox-pakketten (bubblewrap, socat), mise, de toolchain uit `mise.toml`, de dependencies en de git-hooks, zonder geheimen. Klaar binnen ongeveer vijf minuten betekent dat de omgeving wordt gecachet.
@@ -78,6 +84,7 @@ Opdrachten geven vanaf telefoon of browser (claude.ai/code, Code-tab in de app) 
 Een cloudsessie heeft geen lokale stack: `pnpm gate:slow` en `pnpm test:db` draaien in CI. De GitHub-proxy beperkt niet naar welke branch gepusht wordt, dus de ruleset op `main` is daar de grens. Wat in een echte sessie wel en niet werkt (sandbox, hooks, `ask` vanaf de telefoon), staat in de cloudreview onder `docs/reviews/`. Tot die er is, is het pad naar het setup-script vanuit de omgeving niet bewezen.
 
 Wat het script doet en waarom, staat in [docs/ENVIRONMENT.md](docs/ENVIRONMENT.md).
+Bij installatie-, proxy- of sandboxproblemen volg je de [probleemdiagnose voor de cloudomgeving](docs/ENVIRONMENT.md#problemen).
 
 ## Controles
 
@@ -85,6 +92,8 @@ Wat het script doet en waarom, staat in [docs/ENVIRONMENT.md](docs/ENVIRONMENT.m
 |---|---|
 | `pnpm gate:fast` | Formatteren, lint, types, architectuurregels en unittests |
 | `pnpm gate:slow` | Database- en integratietests, schermtests en schema-snapshot |
+| `pnpm ratchet` | Architectuur- en documentatiecontroles tegen de bestaande baseline |
+| `pnpm check:catalogus` | Bereikbare UI-voorbeelden en eindige stringvarianten |
 | `pnpm build` | TypeScript en de productiebuild van de webapp |
 | `scripts/doctor.sh` | De lokale ontwikkelomgeving |
 | `node scripts/kit/feiten.mjs` | Beschikbare controles, registraties en documentstatussen |
