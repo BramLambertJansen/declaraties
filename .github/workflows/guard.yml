@@ -1,5 +1,6 @@
 # Diff-guard (framework §10, ADR 0011 punt 9, ADR 0017). pull_request_target draait altijd de workflow en de scripts van de
 # default branch; de PR is hier alleen git-data: geen checkout van de PR, geen install, niets uit de PR uitvoeren.
+# Twee jobs (ADR 0031 besluit 1): `diff-guard` en `document-status`, elk met een eigen naam in de checklijst.
 # Nog geen verplichte check (ADR 0017, OV-1): dat wordt hij bij de overstap op de GitHub App. Na een goedkeuring draait hij
 # opnieuw bij het zetten van het label (OV-3), of via Re-run.
 name: guard
@@ -64,6 +65,49 @@ jobs:
           GITHUB_TOKEN: ${{ github.token }}
           REPO: ${{ github.repository }}
         run: node scripts/kit/diff-guard.mjs
+
+  document-status:
+    name: document-status
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    env:
+      BASE_REPO: ${{ github.event.pull_request.base.repo.full_name }}
+      BASE_REF: ${{ github.event.pull_request.base.ref }}
+      DEFAULT_REF: ${{ github.event.repository.default_branch }}
+      BASE_SHA: ${{ github.event.pull_request.base.sha }}
+      HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+      PR_NUMBER: ${{ github.event.pull_request.number }}
+      AUTHOR: ${{ github.event.pull_request.user.login }}
+      HEAD_REF: ${{ github.event.pull_request.head.ref }}
+    steps:
+      - name: Base-repo en SHA's controleren
+        run: |
+          [ "$BASE_REPO" = "$GITHUB_REPOSITORY" ] || { echo "::error::base-repo $BASE_REPO is niet $GITHUB_REPOSITORY"; exit 1; }
+          [ "$BASE_REF" = "$DEFAULT_REF" ] || { echo "::error::alleen de default branch is een vertrouwde basis"; exit 1; }
+          for sha in "$BASE_SHA" "$HEAD_SHA"; do
+            [[ "$sha" =~ ^[0-9a-f]{40}$ ]] || { echo "::error::geen volledige SHA: $sha"; exit 1; }
+          done
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.pull_request.base.sha }}
+          persist-credentials: false
+          fetch-depth: 0
+      - name: PR alleen als git-objecten ophalen
+        env:
+          TOKEN: ${{ github.token }}
+        run: |
+          auth="AUTHORIZATION: basic $(printf 'x-access-token:%s' "$TOKEN" | base64 -w0)"
+          git -c "http.https://github.com/.extraheader=$auth" fetch --no-tags --quiet origin \
+            "+refs/pull/${PR_NUMBER}/head:refs/guard/head" "+refs/heads/${BASE_REF}:refs/guard/base"
+          [ "$(git rev-parse refs/guard/head)" = "$HEAD_SHA" ] || { echo "::error::de PR is intussen verder; draai de guard opnieuw"; exit 1; }
+          # base.sha in de payload blijft staan als main doorschuift (bijv. een andere PR is net gemerged): vooruit is
+          # toegestaan, een herschreven main niet. De scripts komen uit BASE_SHA, een echte commit van main.
+          git merge-base --is-ancestor "$BASE_SHA" refs/guard/base || { echo "::error::BASE_SHA zit niet in de geschiedenis van main"; exit 1; }
+          git cat-file -e "${BASE_SHA}^{commit}"
+      - uses: jdx/mise-action@7a4e45a543138629540c9a1616d08632b893e492 # v5.0.1
+        with:
+          version: 2026.9.18
+          install_args: node
       - name: Documentstatus en taakmandaat
         env:
           GH_TOKEN: ${{ github.token }}

@@ -1,4 +1,5 @@
 // guard.yml voert uitsluitend deze versie uit main uit; PR-code wordt alleen als git-data gelezen (ADR 0027).
+import { appendFileSync } from 'node:fs';
 import {
   documentInfo,
   documentKind,
@@ -261,6 +262,18 @@ function verifyInPrStatus({ pending, changes }, context) {
   return `${eerste}: statusovergang in de PR (${lane}-lane); bevoegdheid is de merge door de eigenaar (overgang, ADR 0017)`;
 }
 
+/** Een GitHub Actions-foutannotatie; `%`, CR en LF worden geëscaped zoals `@actions/core` doet, zodat een bestandsnaam geen commando kan invoegen. @param {string} message */
+export function annotatie(message) {
+  const veilig = message.replaceAll('%', '%25').replaceAll('\r', '%0D').replaceAll('\n', '%0A');
+  return `::error title=document-status::${veilig}`;
+}
+
+/** Korte stapsamenvatting voor de job (ADR 0031 besluit 1). @param {string} tekst */
+function samenvatting(tekst) {
+  const bestand = process.env['GITHUB_STEP_SUMMARY'];
+  if (bestand !== undefined && bestand !== '') appendFileSync(bestand, tekst);
+}
+
 async function main() {
   const root = process.cwd();
   const base = requiredEnv('BASE_SHA');
@@ -301,11 +314,17 @@ async function main() {
   const melding = verifyInPrStatus({ pending, changes }, context);
   verifyScope(changes, context);
   console.log('document-status: besluiten, bouwbewijs en eventuele taakscope gecontroleerd vanuit main');
+  samenvatting(
+    `## document-status: goedgekeurd\n\n${melding ?? 'besluiten, bouwbewijs en taakscope gecontroleerd vanuit main'}\n`,
+  );
   if (melding !== null) console.log(melding);
 }
 
 if (import.meta.main)
   await main().catch((error) => {
-    console.error(error instanceof Error ? error.message : String(error));
+    const message = error instanceof Error ? error.message : String(error);
+    console.log(annotatie(message));
+    console.error(message.replaceAll(/[\r\n]+/g, ' '));
+    samenvatting(`## document-status: afgekeurd\n\n${message.replaceAll(/[\r\n]+/g, ' ')}\n`);
     process.exitCode = 1;
   });

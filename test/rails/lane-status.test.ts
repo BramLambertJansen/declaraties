@@ -1,5 +1,5 @@
 import { execFileSync } from 'node:child_process';
-import { mkdirSync } from 'node:fs';
+import { mkdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { afterEach, describe, expect, test } from 'vitest';
 import { documentInfo } from '../../rails/hooks/lib/document-state.mjs';
@@ -11,6 +11,8 @@ import {
   maakRepo,
   opruimen,
   read,
+  roep,
+  tempDir,
   write,
   type Fixture,
 } from '../hooks/follow-up-kit';
@@ -409,5 +411,39 @@ describe('framework-lane: het record', () => {
   test('het record van een ander document erbij: faalt', () => {
     const { fixture, head } = metRecord(false);
     expect(draaiChecker(fixture, head).stderr).toContain('wijzigt meer dan het record');
+  });
+});
+
+describe('annotatie voor de job document-status', () => {
+  test('annotatie() escapet %, CR en LF, zodat een bestandsnaam geen commando kan invoegen', async () => {
+    const tekst = await roep(
+      ['../../scripts/kit', 'check-document-status.mjs'].join('/'),
+      'annotatie',
+      'a%b\r\n::warning::x',
+    );
+    expect(tekst).toBe('::error title=document-status::a%25b%0D%0A::warning::x');
+  });
+
+  test('een stapsamenvatting wordt geschreven bij een fout en bij succes (ADR 0031 besluit 1)', () => {
+    const bestand = path.join(tempDir('samenvatting-'), 'summary.md');
+    process.env['GITHUB_STEP_SUMMARY'] = bestand;
+    try {
+      const fout = feature({ statusCommit: 'agent' });
+      draaiChecker(fout.fixture, fout.head);
+      expect(readFileSync(bestand, 'utf8')).toContain('document-status: afgekeurd');
+      const goed = feature();
+      draaiChecker(goed.fixture, goed.head);
+      expect(readFileSync(bestand, 'utf8')).toContain('document-status: goedgekeurd');
+    } finally {
+      delete process.env['GITHUB_STEP_SUMMARY'];
+    }
+  });
+
+  test('een fout komt als ::error title=document-status:: op stdout (ADR 0031 besluit 1)', () => {
+    const { fixture, head } = feature({ statusCommit: 'agent' });
+    const uitvoer = draaiChecker(fixture, head);
+    expect(uitvoer.status).toBe(1);
+    expect(uitvoer.stdout).toContain('::error title=document-status::');
+    expect(uitvoer.stdout).toContain('web-flow');
   });
 });

@@ -8,7 +8,8 @@
     "check:new-resource",
     "codeql (javascript-typescript)",
     "codeql (actions)",
-    "osv-scanner"
+    "osv-scanner",
+    "document-status"
   ],
   "decisions": [
     {

@@ -133,7 +133,7 @@ Is de auteur van een PR zelf goedkeurder, dan geeft `diff-guard` de uitslag `ove
 OV-2, [ADR 0031](../adr/0031-guard-en-pr-verify-bruikbaarder.md) besluit 2). Dan:
 
 1. Lees de samenvatting van `diff-guard` (de geraakte gate-paden, bewaakte sleutels, gewijzigde tests en het Risico-overzicht: nieuwe, gewijzigde of hernoemde migraties, permissiesleutels, elke tekstwijziging in een contractbestand onder `src/shared/contracts/**` (elk bestandstype, ook alleen commentaar of witruimte; `permission:` oud → nieuw waar eenduidig, anders "controleer permissie met de hand"; buiten het overzicht vallen verwijderde bestanden, hernoeming uit `contracts/` (een hernoeming naar `contracts/` telt als nieuw), `*.spec.*`-bestanden en permissiewaarden uit een bestand buiten `src/shared/contracts/**`), nieuwe dependencies en nieuwe routes (op method en path of contract)) en de uitslag van
-   `document-status` (tot ADR 0031 PR 2: de stap "Documentstatus en taakmandaat" in de job `diff-guard`).
+   `document-status` (een eigen job in `.github/workflows/guard.yml`, ADR 0031 besluit 1; een fout staat als `::error title=document-status::`).
 2. Een label `gate-wijziging` of een review is niet nodig; een review is ook niet mogelijk, want GitHub laat de auteur zijn
    eigen PR niet goedkeuren. De eigenaar merget zelf.
 3. Is `document-status` rood, merge dan niet: laat de oorzaak herstellen.
