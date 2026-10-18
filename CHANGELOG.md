@@ -6,6 +6,7 @@ Hier staan wijzigingen die van belang zijn bij het gebruiken of bijwerken van de
 
 ### Opgelost
 
+- **Toast: pauze bij hover en focus, een fout blijft staan (WCAG 2.2.1).** In `src/core/web/ui/toast.tsx` loopt de timer van een succes-toast (5 s) niet door zolang de muis op een toast staat of de focus erin; daarna loopt hij verder met de resterende tijd. Een fout-toast verdwijnt niet meer vanzelf (was 8 s) en blijft tot de gebruiker hem sluit (of tot het maximum van drie toasts tegelijk hem verdringt). Wat verandert voor een app: een `toast.error(…)` blijft staan tot sluiten; wie dat niet wil, laat de aanroep weg of gebruikt `toast.success`. Wat de eigenaar moet doen: niets.
 - De tester-stop (`subagent-stop`) leest het JSON-rapport van vitest 5 weer: vitest krijgt een vast uitvoerbestand (`.vitest/json/tester-run.json`) en de hook leest dat, in plaats van "geen uitvoer van vitest" te melden. Wat verandert voor een app: niets behalve dat de tester-stop weer werkt. Wat de eigenaar moet doen: niets.
 - De terugweg na inloggen wordt na URL-normalisatie gecontroleerd. Externe doelen met backslashes of tabs/regeleinden en genormaliseerde paden naar de inlogpagina worden geweigerd; gewone interne paden behouden hun zoekparameters en fragment (`src/web/lib/session.ts`, `src/web/lib/session-redirect.test.ts`).
 

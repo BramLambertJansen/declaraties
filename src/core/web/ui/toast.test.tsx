@@ -3,7 +3,8 @@ import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 import { Toaster, ToastProvider, useToast } from './toast.tsx';
 
 // Toast (roadmap "Toasts standaard in de basiskit"): context zonder globale store, success beleefd (status), error direct (alert),
-// sluitknop 'Sluiten', automatisch weg na 5 s (succes) of 8 s (fout), maximaal 3 tegelijk.
+// sluitknop 'Sluiten', succes verdwijnt na 5 s, een fout blijft tot de gebruiker sluit (WCAG 2.2.1), de timer pauzeert bij hover en
+// focus, maximaal 3 tegelijk.
 beforeEach(() => {
   vi.useFakeTimers();
 });
@@ -106,17 +107,154 @@ test('een succes-toast verdwijnt na 5 s, niet eerder', () => {
   expect(screen.queryByText('Opgeslagen')).toBeNull();
 });
 
-test('een fout-toast verdwijnt na 8 s, niet eerder', () => {
+test('een fout-toast verdwijnt niet vanzelf: hij blijft tot de gebruiker hem sluit', () => {
   setup();
   fire('fout');
   act(() => {
-    vi.advanceTimersByTime(7999);
+    vi.advanceTimersByTime(10 * 60 * 1000);
   });
   expect(screen.getByText('Opslaan mislukt')).toBeTruthy();
+
+  fireEvent.click(screen.getByRole('button', { name: 'Sluiten' }));
+  expect(screen.queryByText('Opslaan mislukt')).toBeNull();
+});
+
+test('een succes-toast pauzeert zolang de muis erboven staat en loopt daarna verder met de rest van de tijd', () => {
+  setup();
+  fire('succes');
+  act(() => {
+    vi.advanceTimersByTime(3000);
+  });
+  const toast = screen.getByRole('status');
+  fireEvent.mouseEnter(toast);
+  act(() => {
+    vi.advanceTimersByTime(60_000);
+  });
+  expect(screen.getByText('Opgeslagen')).toBeTruthy();
+
+  fireEvent.mouseLeave(toast);
+  act(() => {
+    vi.advanceTimersByTime(1999);
+  });
+  expect(screen.getByText('Opgeslagen')).toBeTruthy();
   act(() => {
     vi.advanceTimersByTime(1);
   });
-  expect(screen.queryByText('Opslaan mislukt')).toBeNull();
+  expect(screen.queryByText('Opgeslagen')).toBeNull();
+});
+
+test('een succes-toast pauzeert zolang er focus in staat en loopt daarna verder', () => {
+  setup();
+  fire('succes');
+  act(() => {
+    vi.advanceTimersByTime(4000);
+  });
+  const close = screen.getByRole('button', { name: 'Sluiten' });
+  fireEvent.focus(close);
+  act(() => {
+    vi.advanceTimersByTime(60_000);
+  });
+  expect(screen.getByText('Opgeslagen')).toBeTruthy();
+
+  fireEvent.blur(close);
+  act(() => {
+    vi.advanceTimersByTime(999);
+  });
+  expect(screen.getByText('Opgeslagen')).toBeTruthy();
+  act(() => {
+    vi.advanceTimersByTime(1);
+  });
+  expect(screen.queryByText('Opgeslagen')).toBeNull();
+});
+
+test('pauze door hover én focus: pas als beide weg zijn loopt de tijd verder', () => {
+  setup();
+  fire('succes');
+  const toast = screen.getByRole('status');
+  const close = screen.getByRole('button', { name: 'Sluiten' });
+  fireEvent.mouseEnter(toast);
+  fireEvent.focus(close);
+  fireEvent.mouseLeave(toast);
+  act(() => {
+    vi.advanceTimersByTime(60_000);
+  });
+  expect(screen.getByText('Opgeslagen')).toBeTruthy();
+
+  fireEvent.blur(close);
+  act(() => {
+    vi.advanceTimersByTime(5000);
+  });
+  expect(screen.queryByText('Opgeslagen')).toBeNull();
+});
+
+test('een toast die tijdens de pauze sluit, houdt de andere toasts niet vast', () => {
+  setup();
+  fire('succes');
+  fire('fout');
+  const [closeSuccess] = screen.getAllByRole('button', { name: 'Sluiten' });
+  if (closeSuccess === undefined) throw new Error('sluitknop ontbreekt');
+  fireEvent.focus(closeSuccess);
+  fireEvent.click(closeSuccess);
+  expect(screen.queryByText('Opgeslagen')).toBeNull();
+
+  fire('succes');
+  act(() => {
+    vi.advanceTimersByTime(5000);
+  });
+  expect(screen.queryByText('Opgeslagen')).toBeNull();
+});
+
+test('een toast die door het maximum wegvalt terwijl de muis erop staat, houdt de timers niet vast', () => {
+  setup();
+  fire('succes');
+  fireEvent.mouseEnter(screen.getByRole('status'));
+  fire('fout');
+  fire('fout');
+  fire('fout');
+  expect(screen.queryByRole('status')).toBeNull();
+
+  fire('succes');
+  act(() => {
+    vi.advanceTimersByTime(5000);
+  });
+  expect(screen.queryByRole('status')).toBeNull();
+});
+
+test('focus die binnen dezelfde toast blijft, geeft de pauze niet vrij', () => {
+  setup();
+  fire('succes');
+  const toast = screen.getByRole('status');
+  const close = screen.getByRole('button', { name: 'Sluiten' });
+  fireEvent.focus(close);
+  fireEvent.blur(close, { relatedTarget: toast });
+  act(() => {
+    vi.advanceTimersByTime(60_000);
+  });
+  expect(screen.getByText('Opgeslagen')).toBeTruthy();
+
+  fireEvent.blur(close, { relatedTarget: null });
+  act(() => {
+    vi.advanceTimersByTime(5000);
+  });
+  expect(screen.queryByText('Opgeslagen')).toBeNull();
+});
+
+test('een nieuwe succes-toast tijdens een pauze start pas als de pauze eindigt', () => {
+  setup();
+  fire('succes');
+  const toast = screen.getByRole('status');
+  fireEvent.mouseEnter(toast);
+  fire('succes');
+  act(() => {
+    vi.advanceTimersByTime(60_000);
+  });
+  expect(screen.getAllByText('Opgeslagen')).toHaveLength(2);
+
+  fireEvent.mouseLeave(toast);
+  act(() => {
+    vi.advanceTimersByTime(5000);
+  });
+  expect(screen.queryByText('Opgeslagen')).toBeNull();
 });
 
 test('meerdere toasts stapelen', () => {
