@@ -186,7 +186,19 @@ test.each(['src/api/app.ts', 'src/shared/permissions.ts'])(
   },
 );
 
-test('de echte repo: de Edit-regels in permissions.ask zijn gelijk aan voorReview en de spiegel is schoon', async () => {
+// ADR 0033 punt 4 (contract B4): de Edit-regels in `ask` zijn precies `altijdVragen` (niet meer `voorReview`); zonder altijdVragen
+// blijft ask = voorReview (fixtures hierboven). De echte altijdVragen-lijst staat in check-docs-onderhoud.test.ts.
+const ALTIJD_VRAGEN = [
+  '.github/**',
+  '.claude/hooks/**',
+  '.claude/settings.json',
+  '.claude/gates.json',
+  '.claude/decisions.json',
+  'package.json',
+  'pnpm-lock.yaml',
+];
+
+test('de echte repo: de Edit-regels in permissions.ask zijn gelijk aan altijdVragen en de spiegel is schoon', async () => {
   const settings = lees('.claude/settings.json');
   const permissions = settings['permissions'];
   const ask =
@@ -195,6 +207,6 @@ test('de echte repo: de Edit-regels in permissions.ask zijn gelijk aan voorRevie
       : [];
   const edits = ask.flatMap((regel) => /^Edit\((.+)\)$/.exec(regel)?.[1] ?? []);
 
-  expect([...edits].sort()).toStrictEqual([...VOOR_REVIEW].sort());
+  expect([...edits].sort()).toStrictEqual([...ALTIJD_VRAGEN].sort());
   expect(await keys('.')).toStrictEqual([]);
 });

@@ -1,5 +1,5 @@
 // Alleen vaste runner-opdrachten met ongewijzigde hostcode mogen zonder handmatige prompt (ADR 0027).
-import { gitText, safeRepositoryPath } from './authority-context.mjs';
+import { gitText, safeRepositoryPath, trustedBase } from './authority-context.mjs';
 
 export const HOST_FILES = ['scripts', 'package.json', 'pnpm-workspace.yaml', '.npmrc', '.pnpmfile.cjs', 'mise.toml',
   'compose.yaml', 'compose.*.yaml', 'compose.override.yaml', 'db/test.env', 'db/docker',
@@ -23,11 +23,11 @@ function enabled(text) {
 
 /** @param {string} root */
 export function trustedRunner(root) {
-  const base = gitText(root, ['merge-base', 'origin/main', 'HEAD'])?.trim();
+  // Binnen een hook het anker (ADR 0033), gecontroleerd gelezen; anders origin/main.
+  const basis = trustedBase(root, undefined);
+  if (basis === null || !enabled(basis.read('.claude/gates.json') ?? '')) return false;
+  const base = gitText(root, ['merge-base', basis.sha, 'HEAD'])?.trim();
   if (base === undefined || !/^[0-9a-f]{40}$/.test(base)) return false;
-  const trusted = gitText(root, ['rev-parse', '--verify', 'origin/main^{commit}'])?.trim();
-  if (trusted === undefined || !/^[0-9a-f]{40}$/.test(trusted) ||
-    !enabled(gitText(root, ['show', `${trusted}:.claude/gates.json`]) ?? '')) return false;
   const local = gitText(root, ['status', '--porcelain', '--untracked-files=all', '--', ...HOST_FILES]);
   const changed = gitText(root, ['diff', '--name-only', base, 'HEAD', '--', ...HOST_FILES]);
   const ignored = gitText(root, ['ls-files', '--others', '--ignored', '--exclude-standard', '--', ...HOST_FILES]);

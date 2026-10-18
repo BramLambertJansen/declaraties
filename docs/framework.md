@@ -324,8 +324,11 @@ voor andere runtimes (Codex, cloudsessies) niet gelden. De eisen hierboven gelde
 tester: testpaden; reviewer: niets; docs (optioneel): `docs/reviews/`, `docs/operations/`, `docs/README.md`, `docs/gouden-pad.md`, `README.md`,
 `CHANGELOG.md`, geen gate-paden: roadmap-vinkjes en spec- of ADR-statussen stelt hij voor; developer en hoofdsessie: alles behalve gates en bestaande tests) en `voorReview` (ADR 0029 punt 8: de gates met effect vóór review). Alleen op
 `voorReview` vraagt het rolhek de hoofdsessie en weigert het de developer; op een ander gate-pad meldt het "noem het in de PR" (ADR 0029 punt 9).
-De rolhek-hook leest hem uit origin/main (een versoepeling werkt pas na de merge), de diff-guard in CI leest dezelfde lijst, en `check-docs`
-vergelijkt CODEOWNERS (= `gates` + `jsonGates`) en de Edit-regels in `ask` (= `voorReview`) ermee. Een bestaand hulpbestand in een testpad (geen
+**Onderhoudsmodus** (ADR 0033 punt 2–3): staat `onderhoud.repository` in de vertrouwde `.claude/gates.json` en is `origin` die repository
+(hoofdletterongevoelig), dan is ook een `voorReview`-pad voor hoofdsessie en developer alleen een melding, behalve `altijdVragen`; in een app
+uit de template staat de modus dus vanzelf uit, en blijft `.claude/**` (ook het lokale `.claude/settings.local.json`) daar `voorReview`: ask voor de hoofdsessie, deny voor de developer (`test/hooks/rolhek-git-map.test.ts`). Schrijven in een `.git`-map (remote-URL, refs, objecten: de basis van anker en modus) is voor elke rol altijd een deny, ook in de modus, met Edit/Write en met Bash (`writeTargets`, `rails/hooks/lib/shell.mjs`). De rolhek-hook leest de lijsten uit het anker van de stub-lader, gecontroleerd gelezen (ADR 0033;
+een versoepeling werkt pas na de merge, de werkmap telt dan niet), de diff-guard in CI leest dezelfde lijst, en `check-docs` vergelijkt
+CODEOWNERS (= `gates` + `jsonGates`) en de Edit-regels in `ask` (= `altijdVragen`) ermee. Een bestaand hulpbestand in een testpad (geen
 `*.test.*`/`*.spec.*`/`db/tests/`) wijzigen meldt het rolhek ("hulpbestand gewijzigd"), verwijderen is een gate; een bestaand bestand onder
 `test/rails/fixtures/` of `test/setup/` wijzigen ook, ook als het `*.test.*` heet (`existingTest` in `rails/hooks/lib/rolhek.mjs`). `check-docs`
 faalt als `schrijfrecht` van een rol overlapt met `gates`, behalve architect → `docs/adr/**` en `docs/specs/**`, tester → testpaden, en developer
@@ -398,7 +401,7 @@ Live feiten (gates, routes, componenten, nummers) komen uit `scripts/kit/feiten.
   en geen code-owner-review, wel PR-plicht, geen force push en geen delete (ADR 0006). Rulesets op private repo's vragen GitHub Pro of Team.
 - Actions-instellingen: "Allow GitHub Actions to create and approve pull requests" uit; "Require actions to be pinned to a full-length commit SHA" aan.
 - **Beschermde paden** (bron: `.claude/gates.json`, ADR 0011; CODEOWNERS spiegelt `gates` + `jsonGates`, de Edit-regels in `ask` van `.claude/settings.json`
-  spiegelen alleen `voorReview` (ADR 0029 punt 8 en 9). Tests (`*.test.*`, `*.spec.*`, `db/tests/`, `e2e/`, `test/`) en `docs/specs/`: toevoegen mag; verwijderen of skippen
+  spiegelen alleen `altijdVragen` (ADR 0033 punt 4; daarbuiten vraagt het rolhek zelf op `voorReview`). Tests (`*.test.*`, `*.spec.*`, `db/tests/`, `e2e/`, `test/`) en `docs/specs/`: toevoegen mag; verwijderen of skippen
   van bestaande tests blokkeert de rolhek-hook; status en inhoud worden vanuit main bewaakt door `check-document-status.mjs` (ADR 0027). `check-docs` bewaakt beide spiegelingen):
   `AGENTS.md`, `CLAUDE.md`, `docs/framework.md`, `docs/dod.md`, `docs/roadmap.md`, `docs/adr/`, `docs/specs/`, `.github/`, `.claude/`, `scripts/`, `rails/`,
   `db/init/`, `db/docker/`, `db/tests/`, `compose*.yaml`, `package.json`, `pnpm-lock.yaml`, `pnpm-workspace.yaml`, `.npmrc`, `.pnpmfile.cjs`,
@@ -414,7 +417,8 @@ Live feiten (gates, routes, componenten, nummers) komen uit `scripts/kit/feiten.
   beheerders de regels kunnen omzeilen of als reviewgesprekken niet opgelost hoeven te zijn. Wat niet als code kan (host, database-provider),
   staat als checklist in `docs/operations/rails-checklist.md`; een onleesbare instelling telt als fout, nooit als goed.
 - `check-docs`: elk pad, `pnpm`-script en identifier tussen backticks in `AGENTS.md`, `CLAUDE.md` en `.claude/**` bestaat; relatieve links in `docs/` kloppen;
-  CODEOWNERS = `gates` + `jsonGates`, `voorReview` valt daarbinnen en de Edit-regels in `ask` = `voorReview`; het gate-register is gelijk aan `gate:fast`/`gate:slow`;
+  CODEOWNERS = `gates` + `jsonGates`, `voorReview` valt daarbinnen, `altijdVragen` binnen `voorReview`, de Edit-regels in `ask` = `altijdVragen`
+  en `onderhoud` heeft de vorm `{ "repository": "<owner>/<repo>" }`; het gate-register is gelijk aan `gate:fast`/`gate:slow`;
   spec- en ADR-statussen uit de vaste woordenlijst; een goedgekeurde spec heeft "Hergebruik en UX"; elk AC-id van een gebouwde spec heeft een testbestand met `<namespace>/AC-n`, of met het AC-id samen met de specnaam of namespace; elk component heeft een rij in de catalogus.
 - **Besluit en status** (ADR 0027): agent bereidt spec/ADR en besluitrecord voor met `pnpm docs:decision`; alleen het register
   `.claude/decisions.json` op main geeft bevoegdheid. De eigenaar reviewt en merget het inhoudelijke besluit. Daarna registreert

@@ -68,6 +68,26 @@ describe('planAppInit', () => {
     expect(readFileSync(path.join(dir, 'package.json'), 'utf8')).toContain('"name": "app-template"');
   });
 
+  test('haalt de onderhoudsmodus uit .claude/gates.json: die hoort bij de template-repo (ADR 0033 punt 2)', () => {
+    const dir = copy();
+    mkdirSync(path.join(dir, '.claude'), { recursive: true });
+    cpSync(path.join(ROOT, '.claude/gates.json'), path.join(dir, '.claude/gates.json'));
+    const gates: unknown = JSON.parse(changed(planAppInit(dir, options), '.claude/gates.json'));
+    expect(typeof gates === 'object' && gates !== null && 'onderhoud' in gates).toBe(false);
+    expect(typeof gates === 'object' && gates !== null && 'altijdVragen' in gates).toBe(true);
+  });
+
+  test('weigert luid als de onderhoud-regel in .claude/gates.json niet meer te vinden is', () => {
+    const dir = copy();
+    mkdirSync(path.join(dir, '.claude'), { recursive: true });
+    const gates = readFileSync(path.join(ROOT, '.claude/gates.json'), 'utf8').replace(
+      '"onderhoud": {',
+      '"onderhoud":{',
+    );
+    writeFileSync(path.join(dir, '.claude/gates.json'), gates);
+    expect(() => planAppInit(dir, options)).toThrow(/onderhoud-regel/);
+  });
+
   test('--owner mag ook een team zijn', () => {
     const codeowners = changed(planAppInit(copy(), { ...options, owner: 'acme/beheer' }), '.github/CODEOWNERS');
     expect(codeowners).toContain('/AGENTS.md                @acme/beheer');

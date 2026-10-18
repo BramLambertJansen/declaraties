@@ -7,7 +7,8 @@ import { readFileSync, statSync } from 'node:fs';
 import path from 'node:path';
 import { decide, loadConfig } from './lib/rolhek.mjs';
 import { payloadCwd, projectRoot } from './lib/root.mjs';
-import { readAuthority } from './lib/authority-context.mjs';
+import { gitText, readAuthority, repositoryName, trustedBase } from './lib/authority-context.mjs';
+import { anker } from './lib/objecten.mjs';
 import { trustedRunner } from './lib/runner-authority.mjs';
 
 /**
@@ -32,15 +33,49 @@ function safe(probe) {
 }
 
 /**
+ * De configuratie en of die uit het anker komt. Binnen een hook (anker gezet) alleen uit het anker, gecontroleerd gelezen, anders een
+ * fout (het rolhek faalt dan dicht); daarbuiten de vertrouwde basis van readAuthority, met terugval op de werkmap.
+ * @param {string} root
+ * @param {{ read: (file: string) => string | null } | null} basis
+ * @param {import('./lib/task-authority.mjs').Authority | null} authority
+ */
+function configuratie(root, basis, authority) {
+  if (anker() !== null) {
+    const text = basis?.read('.claude/gates.json') ?? null;
+    if (text === null) throw new Error('geen gecontroleerde .claude/gates.json in het anker (ADR 0033)');
+    return { config: loadConfig(text), vertrouwd: true };
+  }
+  const trusted = authority?.trusted('.claude/gates.json') ?? null;
+  return trusted === null
+    ? { config: loadConfig(readFileSync(path.join(root, '.claude/gates.json'), 'utf8')), vertrouwd: false }
+    : { config: loadConfig(trusted), vertrouwd: true };
+}
+
+/**
+ * Onderhoudsmodus (ADR 0033 punt 2): alleen uit de configuratie van het anker en alleen als origin die repository is.
+ * @param {import('./lib/rolhek.mjs').Config} config
+ * @param {boolean} vertrouwd
+ * @param {string} root
+ */
+function onderhoudActief(config, vertrouwd, root) {
+  const doel = config.onderhoud?.repository;
+  const origin = repositoryName(gitText(root, ['config', '--get', 'remote.origin.url'])?.trim() ?? '');
+  return vertrouwd && doel !== undefined && origin !== null && origin.toLowerCase() === doel.toLowerCase();
+}
+
+/**
  * @param {string} root
  * @param {string} cwd
  */
 function context(root, cwd) {
   const authority = readAuthority({ root });
+  const basis = trustedBase(root, undefined);
+  const { config, vertrouwd } = configuratie(root, basis, authority);
   return {
     root,
     cwd,
-    config: loadConfig(authority?.trusted('.claude/gates.json') ?? readFileSync(path.join(root, '.claude/gates.json'), 'utf8')),
+    config,
+    onderhoud: onderhoudActief(config, vertrouwd, root),
     read: (/** @type {string} */ rel) => {
       try {
         return readFileSync(path.join(root, rel), 'utf8');
@@ -48,7 +83,7 @@ function context(root, cwd) {
         return null;
       }
     },
-    committed: committedIn(root),
+    committed: committedIn(root, basis?.sha ?? null),
     isDir: (/** @type {string} */ rel) => safe(() => statSync(path.join(root, rel)).isDirectory()),
     branch: gitBranch(root),
     authority,
@@ -57,27 +92,31 @@ function context(root, cwd) {
 }
 
 /**
- * Een migratie is gecommit als hij in de merge-base met origin/main staat, zoals check:migrations kijkt (WS-04 punt 5).
- * Is origin/main onleesbaar, dan terugval op HEAD (strenger) en 'zonder-origin', zodat de weigering "git fetch origin" noemt.
+ * Een migratie is gecommit als hij in de merge-base met het anker of met origin/main staat (de strengste van beide), zoals
+ * check:migrations kijkt (WS-04 punt 5). Zijn beide onleesbaar, dan terugval op HEAD en 'zonder-origin' ("git fetch origin").
  * @param {string} root
+ * @param {string | null} basis
  * @returns {(rel: string) => boolean | 'zonder-origin'}
  */
-function committedIn(root) {
-  /** @type {string | null | undefined} */
-  let base;
+function committedIn(root, basis) {
+  /** @type {string[] | undefined} */
+  let bases;
   const exists = (/** @type {string} */ tree, /** @type {string} */ rel) =>
     safe(() => git(root, ['cat-file', '-e', `${tree}:${rel}`]) === '');
   return (rel) => {
-    if (base === undefined) base = mergeBase(root);
-    if (base !== null) return exists(base, rel);
+    bases ??= [basis, 'origin/main'].flatMap((ref) => {
+      const sha = ref === null ? null : mergeBase(root, ref);
+      return sha === null ? [] : [sha];
+    });
+    if (bases.length > 0) return bases.some((tree) => exists(tree, rel));
     return exists('HEAD', rel) ? 'zonder-origin' : false;
   };
 }
 
-/** @param {string} root */
-function mergeBase(root) {
+/** @param {string} root @param {string} basis */
+function mergeBase(root, basis) {
   try {
-    return git(root, ['merge-base', 'origin/main', 'HEAD']) || null;
+    return git(root, ['merge-base', basis, 'HEAD']) || null;
   } catch {
     return null;
   }

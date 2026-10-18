@@ -15,6 +15,17 @@ const MAX_SLUG = 50;
 const LOGIN = /^[A-Za-z0-9][A-Za-z0-9-]{0,38}(?:\/[A-Za-z0-9][A-Za-z0-9_.-]*)?$/;
 const TEMPLATE_OWNER = '@bramlambertjansen';
 
+const ONDERHOUD = '  "onderhoud": { "repository": "BramLambertJansen/template" },\n';
+
+/** @param {string} file */
+function readOptional(file) {
+  try {
+    return readFileSync(file, 'utf8');
+  } catch {
+    return null;
+  }
+}
+
 export class AppInitError extends Error {}
 
 /**
@@ -108,6 +119,12 @@ export function planAppInit(root, options) {
       ),
     },
   ];
+  // De onderhoudsmodus hoort bij de template-repo, niet bij een app (ADR 0033 punt 2).
+  const gates = readOptional(path.join(root, '.claude/gates.json'));
+  if (gates !== null && /"onderhoud"\s*:/.test(gates)) {
+    if (!gates.includes(ONDERHOUD)) throw new AppInitError('.claude/gates.json: de onderhoud-regel is niet gevonden');
+    plan.push({ pad: '.claude/gates.json', inhoud: gates.replace(ONDERHOUD, '') });
+  }
   if (options.owner !== undefined) {
     const codeowners = read('.github/CODEOWNERS');
     if (!codeowners.includes(TEMPLATE_OWNER))
