@@ -6,7 +6,9 @@ import { MAX_EMAIL_LENGTH } from '../limits.ts';
 // uit limits.ts (test in auth.test.ts).
 export const loginInput = z
   .object({
-    email: z.email('Vul een geldig e-mailadres in.'),
+    email: z
+      .email('Vul een geldig e-mailadres in.')
+      .max(MAX_EMAIL_LENGTH, `Hooguit ${String(MAX_EMAIL_LENGTH)} tekens.`),
     password: z.string().min(1, 'Vul je wachtwoord in.').max(MAX_PASSWORD_LENGTH),
   })
   .strict();
