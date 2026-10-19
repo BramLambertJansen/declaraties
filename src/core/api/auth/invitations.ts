@@ -21,13 +21,23 @@ export class AccountNotFoundError extends Error {
   }
 }
 
-// beforeMail draait tussen aanmaken en mailen (bijv. de rol toekennen): faalt die stap, dan gaat er geen mail weg en
-// verdwijnt het account weer.
+export interface InvitationLifecycle {
+  readonly afterCommit: (effect: () => Promise<unknown>) => void;
+  readonly afterRollback: (effect: () => Promise<unknown>) => void;
+}
+
+interface InvitationSetup extends Partial<InvitationLifecycle> {
+  readonly beforeMail: (userId: string) => Promise<void>;
+}
+
+// Routes registreren mail na commit en compensatie na rollback (geen delete die op hun eigen FK-lock wacht).
+// Rechtstreekse aanroepen zonder app-transactie blijven synchroon, met cleanup bij iedere fout vóór succes.
 export async function inviteUser(
   auth: Auth,
   input: { name: string; email: string },
-  beforeMail: (userId: string) => Promise<void> = () => Promise.resolve(),
+  setup: InvitationSetup | ((userId: string) => Promise<void>) = () => Promise.resolve(),
 ): Promise<{ userId: string }> {
+  const steps: InvitationSetup = typeof setup === 'function' ? { beforeMail: setup } : setup;
   const context = await auth.$context;
   const email = input.email.toLowerCase();
   if ((await context.internalAdapter.findUserByEmail(email)) !== null) throw new AccountExistsError();
@@ -36,14 +46,17 @@ export async function inviteUser(
     { name: input.name, email, emailVerified: false },
     { method: 'admin' },
   );
+  const cleanup = () => context.internalAdapter.deleteUser(user.id);
+  steps.afterRollback?.(cleanup);
   try {
-    await beforeMail(user.id);
+    await steps.beforeMail(user.id);
+    const send = () => auth.api.requestPasswordReset({ body: { email: user.email } });
+    if (steps.afterCommit === undefined) await send();
+    else steps.afterCommit(send);
   } catch (error) {
-    // Geen half account (zonder rol, zonder mail) dat een nieuwe uitnodiging met ALREADY_EXISTS blokkeert.
-    await context.internalAdapter.deleteUser(user.id);
+    if (steps.afterRollback === undefined) await cleanup();
     throw error;
   }
-  await auth.api.requestPasswordReset({ body: { email: user.email } });
   return { userId: user.id };
 }
 

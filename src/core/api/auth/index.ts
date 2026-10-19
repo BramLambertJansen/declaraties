@@ -13,6 +13,7 @@ export {
   AccountNotFoundError,
   inviteUser,
   reinviteUser,
+  type InvitationLifecycle,
 } from './invitations.ts';
 export type { Invitation } from './options.ts';
 export {

@@ -15,6 +15,7 @@ import {
   type Auth,
   type OwnSession,
   type SessionOwner,
+  type InvitationLifecycle,
 } from '#core/api/auth/index.ts';
 import { AppError } from '#core/api/errors.ts';
 
@@ -25,6 +26,7 @@ export interface AppServices {
     readonly invite: (
       input: { readonly name: string; readonly email: string },
       beforeMail: (userId: string) => Promise<void>,
+      lifecycle?: InvitationLifecycle,
     ) => Promise<{ userId: string }>;
     readonly reinvite: (userId: string) => Promise<void>;
   };
@@ -68,8 +70,8 @@ function translated<T>(work: Promise<T>): Promise<T> {
 export function createServices(auth: Auth): AppServices {
   return {
     invitations: {
-      invite: (input, beforeMail) =>
-        inviteUser(auth, input, beforeMail).catch((error: unknown) => {
+      invite: (input, beforeMail, lifecycle) =>
+        inviteUser(auth, input, { beforeMail, ...lifecycle }).catch((error: unknown) => {
           throw translate(error);
         }),
       reinvite: (userId) =>

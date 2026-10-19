@@ -32,7 +32,12 @@ const accountRow = z.object({
 type Sort = (typeof ACCOUNT_SORTS)[number];
 
 // De cursor hoort bij één sortering: [sort, sleutel, id]. Een cursor van een andere sortering geeft VALIDATION.
-const cursorKey = (sort: Sort) => z.tuple([z.literal(sort), z.string(), z.string()]);
+const cursorKey = (sort: Sort) =>
+  z.tuple([
+    z.literal(sort),
+    sort === 'nieuwste' || sort === 'oudste' ? z.iso.datetime({ offset: true }) : z.string(),
+    z.string(),
+  ]);
 
 function after(cursor: string | undefined, sort: Sort): readonly [string, string, string] | null {
   if (cursor === undefined) return null;
@@ -110,12 +115,16 @@ export const accountsListRoute = defineRoute(accountsListContract, async ({ inpu
 });
 
 // De rol en de auditregel gaan in de transactie van de admin (app.assign_role en app.audit_account_action eisen een admin met
-// MFA); pas daarna gaat de mail weg. Een fout in beforeMail laat inviteUser het account weer verwijderen (spec audit-log, OV-C2).
-export const inviteRoute = defineRoute(inviteContract, async ({ input, tx, services }) => {
-  const { userId } = await services.invitations.invite({ name: input.naam, email: input.email }, async (id) => {
-    await tx.execute(sql`select app.assign_role(${id}, ${input.rol})`);
-    await tx.execute(sql`select app.audit_account_action('core.account.invite', ${id})`);
-  });
+// MFA); mail pas na commit, een half auth-account opruimen pas na rollback (spec audit-log, OV-C2).
+export const inviteRoute = defineRoute(inviteContract, async ({ input, tx, services, afterCommit, afterRollback }) => {
+  const { userId } = await services.invitations.invite(
+    { name: input.naam, email: input.email },
+    async (id) => {
+      await tx.execute(sql`select app.assign_role(${id}, ${input.rol})`);
+      await tx.execute(sql`select app.audit_account_action('core.account.invite', ${id})`);
+    },
+    { afterCommit, afterRollback },
+  );
   return { id: userId };
 });
 
@@ -127,12 +136,10 @@ export const reinviteRoute = defineRoute(reinviteContract, async ({ input, tx, s
 });
 
 // Blokkeren (ADR 0026, besluit 7): de functie in de transactie van de admin (NOT_FOUND, OWN_ACCOUNT, ACCOUNT_INVITED en
-// LAST_ADMIN komen als P0001 uit de database), daarna de sessies opruimen. Core geeft een handler geen hook na de commit,
-// dus dat opruimen draait vóór de commit (afwijking van besluit 7); faalt het, dan weigert getSession de sessies toch.
-// `/api/auth/*` loopt niet via getSession: daar blijft een geblokkeerde sessie bruikbaar tot het opruimen gelukt is.
-export const blockRoute = defineRoute(blockContract, async ({ input, tx, services }) => {
+// LAST_ADMIN komen als P0001 uit de database), sessies opruimen na commit. Een opruimfout draait de blokkade niet terug.
+export const blockRoute = defineRoute(blockContract, async ({ input, tx, services, afterCommit }) => {
   await tx.execute(sql`select app.set_account_blocked(${input.id}, true)`);
-  await services.sessions.revokeAll(input.id);
+  afterCommit(() => services.sessions.revokeAll(input.id));
   return null;
 });
 

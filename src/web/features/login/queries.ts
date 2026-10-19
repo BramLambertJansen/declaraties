@@ -8,7 +8,7 @@ export function useFinishLogin(redirect: string | undefined) {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   return async () => {
-    queryClient.removeQueries({ queryKey: meQuery.queryKey });
+    queryClient.clear();
     const me = await queryClient.query(meQuery);
     const target = safeRedirect(redirect);
     await (target === null ? navigate({ to: homeFor(me.rol) }) : navigate({ href: target }));

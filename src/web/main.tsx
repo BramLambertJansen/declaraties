@@ -8,7 +8,7 @@ import { ErrorTextsProvider } from '#core/web/ui/error-texts.tsx';
 import { ToastProvider } from '#core/web/ui/toast.tsx';
 import { errorTexts } from '#web/copy/errors.ts';
 import { createAppRouter } from '#web/lib/router.ts';
-import { hadSession } from '#web/lib/session.ts';
+import { expireSession } from '#web/lib/session.ts';
 import './styles/app.css';
 
 // Compositie-root van de frontend (ADR 0008): query-client, router, foutteksten.
@@ -16,7 +16,7 @@ const queryClient = createQueryClient({
   // 401 uit een query of mutatie → inloggen met de terugweg (framework §5). Alleen als er in dit tabblad een sessie was:
   // dan is hij verlopen (spec: "Je sessie is verlopen."); bij een eerste bezoek stuurt de guard al door.
   onUnauthenticated: () => {
-    if (!hadSession(queryClient)) return;
+    if (!expireSession(queryClient)) return;
     void router.navigate({ to: '/login', search: { redirect: router.state.location.href, sessie: 'verlopen' } });
   },
 });

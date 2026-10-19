@@ -31,6 +31,9 @@ export interface RouteContext<Input, Services = unknown, Audit extends AuditActi
   readonly audit: AuditFn<Audit>;
   // De headers van het verzoek, voor een aanroep van Better Auth namens deze gebruiker (auth.api.* leest de sessie eruit).
   readonly headers: Headers;
+  // Externe gevolgen pas na commit; compensatie pas na rollback en vrijgeven van de verbinding.
+  readonly afterCommit: (effect: () => Promise<unknown>) => void;
+  readonly afterRollback: (effect: () => Promise<unknown>) => void;
 }
 
 export interface RouteDef<C extends Contract = Contract, Services = unknown> {

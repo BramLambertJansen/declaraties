@@ -48,7 +48,7 @@ function useCombobox(props: ComboboxProps) {
     assert(input.current !== null, 'Combobox input must be mounted');
     return input.current;
   });
-  useEffect(close, [value, props.disabled, resetKey]);
+  useEffect(close, [value, props.disabled, props.readOnly, resetKey]);
   useEffect(() => {
     const outside = (event: PointerEvent) => {
       if (event.target instanceof Node && !root.current?.contains(event.target)) close();
@@ -61,15 +61,16 @@ function useCombobox(props: ComboboxProps) {
   const query = search?.trim().toLocaleLowerCase('nl') ?? '';
   const filtered = options.filter((option) => option.label.toLocaleLowerCase('nl').includes(query));
   const enabled = filtered.filter((option) => !option.disabled);
-  const current = open && !props.disabled ? enabled.find((option) => option.value === active) : undefined;
+  const locked = props.disabled === true || props.readOnly === true;
+  const current = open && !locked ? enabled.find((option) => option.value === active) : undefined;
   const choose = (value: string) => {
-    if (props.disabled) return;
+    if (locked) return;
     onValueChange(value);
     close();
   };
   const keyboard = (event: KeyboardEvent<HTMLInputElement>) => {
     props.onKeyDown?.(event);
-    if (props.disabled || event.defaultPrevented || composing.current || event.nativeEvent.isComposing) return;
+    if (locked || event.defaultPrevented || composing.current || event.nativeEvent.isComposing) return;
     if (event.key === 'Escape' && open) {
       event.preventDefault();
       event.stopPropagation();
@@ -93,7 +94,7 @@ function useCombobox(props: ComboboxProps) {
     clearable,
     clearLabel,
     emptyText,
-    open: open && !props.disabled,
+    open: open && !locked,
     setOpen,
     search,
     setSearch,
@@ -195,14 +196,14 @@ export function Combobox(props: ComboboxProps) {
           onKeyDown={state.keyboard}
           onFocus={(event) => {
             props.onFocus?.(event);
-            if (!props.disabled) state.setOpen(true);
+            if (!props.disabled && !props.readOnly) state.setOpen(true);
           }}
           onClick={(event) => {
             props.onClick?.(event);
-            if (!props.disabled) state.setOpen(true);
+            if (!props.disabled && !props.readOnly) state.setOpen(true);
           }}
           onChange={(event) => {
-            if (props.disabled) return;
+            if (props.disabled || props.readOnly) return;
             state.setSearch(event.currentTarget.value);
             state.setActive(null);
             state.setOpen(true);
@@ -219,7 +220,7 @@ export function Combobox(props: ComboboxProps) {
         {state.clearable && props.value !== '' ? (
           <Button
             variant="outline"
-            disabled={props.disabled}
+            disabled={props.disabled || props.readOnly}
             aria-label={state.clearLabel}
             onClick={() => {
               state.choose('');

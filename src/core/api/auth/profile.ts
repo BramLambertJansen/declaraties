@@ -41,9 +41,12 @@ export class EmailLinkInvalidError extends Error {
 // Nieuwste eerst. Sessies ouder dan de absolute duur weigert authGateway.getSession al, dus ze staan er niet in.
 export async function listOwnSessions(auth: Auth, who: SessionOwner, now: number = Date.now()): Promise<OwnSession[]> {
   const { internalAdapter } = await auth.$context;
-  const sessions = await internalAdapter.listSessions(who.userId);
+  const sessions = await internalAdapter.listSessions(who.userId, { onlyActiveSessions: true });
   return sessions
-    .filter((session) => now - session.createdAt.getTime() <= SESSION_ABSOLUTE_SECONDS * 1000)
+    .filter(
+      (session) =>
+        session.expiresAt.getTime() > now && now - session.createdAt.getTime() <= SESSION_ABSOLUTE_SECONDS * 1000,
+    )
     .toSorted((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
     .map((session) => ({
       id: session.id,

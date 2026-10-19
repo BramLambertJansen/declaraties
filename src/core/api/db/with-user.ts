@@ -1,6 +1,7 @@
 import { drizzle } from 'drizzle-orm/node-postgres';
 import type { Pool, PoolClient } from 'pg';
 import { AppError, translateDatabaseError } from '../errors.ts';
+import { watchClient } from './client-lease.ts';
 
 import type { Actor, ActorRole, RateLimit, WithUser } from './types.ts';
 
@@ -78,26 +79,32 @@ export function createWithUser(pool: Pool): WithUser {
     checkActor(actor);
     checkRequestId(requestId);
     const client = await pool.connect();
+    const lease = watchClient(client);
     let destroy = false;
     try {
-      if (rateLimit !== undefined) {
-        const retryAfter = await transaction(client, 'begin', async () => {
-          await enterActor(client, actor, requestId);
-          return consumeRateLimit(client, rateLimit);
+      return await lease.run(async () => {
+        if (rateLimit !== undefined) {
+          const retryAfter = await transaction(client, 'begin', async () => {
+            await enterActor(client, actor, requestId);
+            return consumeRateLimit(client, rateLimit);
+          });
+          if (retryAfter > 0) throw rateLimited(retryAfter);
+        }
+        return transaction(client, options.readOnly === true ? 'begin read only' : 'begin', async () => {
+          const role = await enterActor(client, actor, requestId);
+          return lease.run(() => work(drizzle({ client }), role));
         });
-        if (retryAfter > 0) throw rateLimited(retryAfter);
-      }
-      return await transaction(client, options.readOnly === true ? 'begin read only' : 'begin', async () =>
-        work(drizzle({ client }), await enterActor(client, actor, requestId)),
-      );
-    } catch (error) {
-      destroy = error instanceof LeakedConnectionError;
-      await client.query('rollback').catch(() => {
-        destroy = true;
       });
+    } catch (error) {
+      destroy = lease.broken() || error instanceof LeakedConnectionError;
+      if (!destroy) {
+        await client.query('rollback').catch(() => {
+          destroy = true;
+        });
+      }
       throw translateDatabaseError(error);
     } finally {
-      client.release(destroy);
+      lease.release(destroy);
     }
   };
 }

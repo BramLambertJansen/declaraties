@@ -6,6 +6,10 @@ Hier staan wijzigingen die van belang zijn bij het gebruiken of bijwerken van de
 
 ### Opgelost
 
+- Verbindingsverlies tijdens een API-handler stopt de request gecontroleerd in plaats van het hele proces. Geblokkeerde accounts blijven geblokkeerd als sessie-opruiming faalt; uitnodigingsmail volgt pas na commit en een half auth-account wordt na rollback opgeruimd (`src/core/api/db/with-user.ts`, `src/core/api/http/route-effects.ts`, `src/core/api/auth/invitations.ts`).
+- Gelijktijdig hetzelfde account blokkeren of deblokkeren schrijft slechts één auditregel per statusovergang (migratie `20261019070000_account_audit_idempotency.sql`).
+- De sessielijst verbergt ook sessies waarvan de idle-termijn verstreken is. Een 401 wist gecachete accountgegevens voordat de app naar inloggen navigeert (`src/core/api/auth/profile.ts`, `src/web/lib/session.ts`).
+- Browser-terugnavigatie tijdens het zoeken annuleert achterhaalde invoer; een `readOnly` Combobox laat geen wijzigingen toe. Ongeldige datumcursors geven een validatiefout met behoud van microseconden in geldige cursors (`src/core/web/ui/list-toolbar.tsx`, `src/core/web/ui/combobox.tsx`, `src/api/routes/accounts.ts`).
 - Formulieren sturen onbekende foutcodes zoals `constructor` niet meer ten onrechte naar een veld; ze tonen de algemene formuliermelding (`src/core/web/ui/form.tsx`).
 - De bestandsserver weigert ook directory-indexen die via een symlink buiten de buildmap wijzen. Een onveilige hoofdindex wordt bij opstart geweigerd; symlinks binnen de buildmap blijven werken (`src/core/api/http/web.ts`).
 - De server ruimt de shutdowntimer ook op als het sluiten van bronnen synchroon of asynchroon faalt (`src/core/api/http/serve.ts`).

@@ -34,14 +34,24 @@ const DEBOUNCE_MS = 300;
 const CLEAR_LABEL = 'Filters wissen';
 
 // Het veld toont direct wat de gebruiker typt; de URL volgt na DEBOUNCE_MS stilte. Een nieuwe `query`-prop (wissen, Terug)
-// overschrijft het veld, maar niet zolang er een timer loopt of als de prop alleen de getrimde vorm van het veld is
-// (anders verdwijnt de spatie na "ada " weer).
+// annuleert achterhaalde invoer. De bevestiging van onze eigen invoer laat verder typen en afsluitende spaties staan.
 function useDebouncedQuery(query: string, onQueryChange: (q: string) => void) {
   const [value, setValue] = useState(query);
   const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const previous = useRef(query);
+  const submitted = useRef<string | undefined>(undefined);
   useEffect(() => {
-    if (timer.current === undefined && query !== value.trim()) setValue(query);
-  }, [query, value]);
+    if (previous.current === query) return;
+    previous.current = query;
+    if (submitted.current === query) {
+      submitted.current = undefined;
+      return;
+    }
+    clearTimeout(timer.current);
+    timer.current = undefined;
+    submitted.current = undefined;
+    setValue((current) => (query === current.trim() ? current : query));
+  }, [query]);
   useEffect(
     () => () => {
       clearTimeout(timer.current);
@@ -57,11 +67,13 @@ function useDebouncedQuery(query: string, onQueryChange: (q: string) => void) {
     cancel();
     timer.current = setTimeout(() => {
       timer.current = undefined;
+      submitted.current = next.trim();
       onQueryChange(next);
     }, DEBOUNCE_MS);
   };
   const reset = () => {
     cancel();
+    submitted.current = undefined;
     setValue('');
   };
   return { value, change, reset };

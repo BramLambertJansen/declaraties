@@ -241,8 +241,8 @@ CREATE FUNCTION app.set_account_blocked(p_user_id text, p_blocked boolean) RETUR
       raise exception 'NOT_FOUND';
     end if;
     if not p_blocked then
-      if v_blocked_at is not null then
-        update better_auth."user" set blocked_at = null where id = p_user_id;
+      update better_auth."user" set blocked_at = null where id = p_user_id and blocked_at is not null;
+      if found then
         insert into app.audit_log (actor_id, action, target_type, target_id, request_id, details)
           values (app.current_user_id(), 'core.account.unblock', 'account', p_user_id, app.request_id(), '{}'::jsonb);
       end if;
@@ -261,6 +261,9 @@ CREATE FUNCTION app.set_account_blocked(p_user_id text, p_blocked boolean) RETUR
     end if;
     perform pg_catalog.pg_advisory_xact_lock(pg_catalog.hashtext('public.user_roles:last_admin'));
     update better_auth."user" set blocked_at = pg_catalog.now() where id = p_user_id and blocked_at is null;
+    if not found then
+      return;
+    end if;
     if not exists (
       select 1
       from public.user_roles r

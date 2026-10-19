@@ -44,6 +44,13 @@ export function hadSession(queryClient: QueryClient): boolean {
   return queryClient.getQueryData(meQuery.queryKey) !== undefined;
 }
 
+// Een vastgestelde 401 mag nooit via een verse actorcache terug naar de app sturen. Wis ook data van het vorige account.
+export function expireSession(queryClient: QueryClient): boolean {
+  if (!hadSession(queryClient)) return false;
+  queryClient.clear();
+  return true;
+}
+
 export const guard = createGuard({
   permissions,
   loadActor: async ({ queryClient }: RouterContext) => actorFromMe(await queryClient.query(meQuery)),

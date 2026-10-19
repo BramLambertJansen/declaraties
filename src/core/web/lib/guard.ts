@@ -42,10 +42,12 @@ interface BeforeLoad<Context> {
 export function createGuard<Permission extends string, Context>(config: GuardConfig<Permission, Context>) {
   return (permission: Permission) =>
     async ({ context, location }: BeforeLoad<Context>): Promise<void> => {
+      // Een 401 kan de actorcache tijdens loadActor wissen; onthoud daarvoor al of de sessie verlopen was.
+      const loginSearch = config.loginSearch?.(context);
       const decision = config.permissions.check(await actorOrNull(config.loadActor, context), permission);
       if (decision.ok) return;
       if (decision.code === 'FORBIDDEN') throw new ForbiddenError();
-      const search = new URLSearchParams({ redirect: location.href, ...config.loginSearch?.(context) });
+      const search = new URLSearchParams({ redirect: location.href, ...loginSearch });
       // href in plaats van to: core kent de getypte routes van de app niet. throw: true laat de router de redirect gooien.
       redirect({ href: `${config.loginPath}?${search.toString()}`, throw: true });
     };

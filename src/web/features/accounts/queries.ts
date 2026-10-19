@@ -29,7 +29,8 @@ export function useInvite() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (input: z.input<typeof inviteInput>) => api.call('POST /accounts/invite', input),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: accountKeys.all }),
+    // Een fout na commit kan al een zichtbaar account hebben gemaakt: ook dan de werkelijke lijst ophalen.
+    onSettled: () => queryClient.invalidateQueries({ queryKey: accountKeys.all }),
   });
 }
 
@@ -46,7 +47,8 @@ export function useBlock() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (id: string) => api.call('POST /accounts/:id/block', { id }),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: accountKeys.all }),
+    // Sessies opruimen kan na de gecommitteerde blokkade falen.
+    onSettled: () => queryClient.invalidateQueries({ queryKey: accountKeys.all }),
   });
 }
 

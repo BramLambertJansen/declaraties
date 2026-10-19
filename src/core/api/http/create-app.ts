@@ -22,6 +22,7 @@ import { createAuditFn } from '../db/audit.ts';
 import { isRouteDef, type RouteDef } from '../route/kit.ts';
 import { csrf } from './csrf.ts';
 import type { Readiness } from './readiness.ts';
+import { createRouteEffects } from './route-effects.ts';
 
 // Dev-login (spec accountbeheer, framework §3: limitatieve uitzondering, ADR 0014): logt echt in als het seed-account van de
 // rol en geeft de set-cookie-regels terug. Alleen meegeven bij APP_ENV=local; zonder bestaat /api/dev/login-as niet (404).
@@ -96,32 +97,37 @@ function routeHandler<Services>(
     if (facts !== undefined) facts.userId = session.userId;
     const raw = await readRawInput(c, contract.method);
     const actor = { userId: session.userId, sessionStrength: session.sessionStrength };
-    const output = await timeDatabase(facts, () =>
-      withUser(
-        actor,
-        async (tx, { role }) => {
-          // Eerst de input (VALIDATION vóór FORBIDDEN), dan de rol: geen rol in user_roles = geen toegang (framework §6).
-          const parsed = contract.input.safeParse(parseInput(raw, c.req.param()));
-          if (!parsed.success) throw new AppError('VALIDATION');
-          if (role === null) throw new AppError('FORBIDDEN');
-          const decision = route.check({ role, sessionStrength: session.sessionStrength });
-          if (!decision.ok) throw new AppError(decision.code);
-          const services = unsafeCast<Services>(
-            config.services,
-            'AppConfig eist services zodra Services geen undefined toelaat; anders is undefined een geldige waarde',
-          );
-          const result = await route.handler({
-            input: parsed.data,
-            actor: { ...session, role },
-            tx,
-            services,
-            audit: createAuditFn(tx, route.audit),
-            headers: c.req.raw.headers,
-          });
-          // Een output die niet bij het contract past, is een bug: INTERNAL_ERROR, nooit de data.
-          return contract.output.parse(result);
-        },
-        { readOnly: contract.method === 'GET', rateLimit, requestId: c.get('requestId') },
+    const effects = createRouteEffects();
+    const output = await effects.run(() =>
+      timeDatabase(facts, () =>
+        withUser(
+          actor,
+          async (tx, { role }) => {
+            // Eerst de input (VALIDATION vóór FORBIDDEN), dan de rol: geen rol in user_roles = geen toegang (framework §6).
+            const parsed = contract.input.safeParse(parseInput(raw, c.req.param()));
+            if (!parsed.success) throw new AppError('VALIDATION');
+            if (role === null) throw new AppError('FORBIDDEN');
+            const decision = route.check({ role, sessionStrength: session.sessionStrength });
+            if (!decision.ok) throw new AppError(decision.code);
+            const services = unsafeCast<Services>(
+              config.services,
+              'AppConfig eist services zodra Services geen undefined toelaat; anders is undefined een geldige waarde',
+            );
+            const result = await route.handler({
+              input: parsed.data,
+              actor: { ...session, role },
+              tx,
+              services,
+              audit: createAuditFn(tx, route.audit),
+              headers: c.req.raw.headers,
+              afterCommit: effects.afterCommit,
+              afterRollback: effects.afterRollback,
+            });
+            // Een output die niet bij het contract past, is een bug: INTERNAL_ERROR, nooit de data.
+            return contract.output.parse(result);
+          },
+          { readOnly: contract.method === 'GET', rateLimit, requestId: c.get('requestId') },
+        ),
       ),
     );
     return c.json(output);
