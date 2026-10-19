@@ -1,5 +1,5 @@
 ---
-status: goedgekeurd
+status: voorstel # voorstel | goedgekeurd | gebouwd | vervallen — alleen de eigenaar zet goedgekeurd; gebouwd: # #<PR>; gevalideerd: <sha> (pnpm docs:status)
 namespace: jobs
 model: opus
 modelreden: nieuwe databaserol en security definer-functies app.purge_expired en app.retention_targets (ADR 0025 punt 3d), gelijktijdigheid via advisory locks en de stopvolgorde (punt 3a), en wijzigingen in src/core (db, auth, nieuwe map jobs; punt 3c)
@@ -27,6 +27,11 @@ geaccepteerd ADR", `docs/operations/agent-doorloop.md:141`, spoor 1):
 - ADR 0021 punt 6 en Tests ("`delete` van een rij binnen de termijn faalt voor iedereen", ook voor `app_migrator`): onder FORCE RLS filtert
   `audit_log_definer_delete` zo'n rij weg vóór de trigger, dus de `delete` slaagt met 0 rijen in plaats van te falen; de trigger weigert alleen
   wie RLS omzeilt (jobs/AC-6, AC-7).
+- ADR 0018 punt 2 en Gevolgen (specwijziging 2026-10-19, OV-C4): `pingDatabase()` controleert naast `select 1` als `api_user` ook een
+  tweede eigen verbinding als `app_jobs` (`JOBS_DATABASE_URL`); readiness is dus pas 200 als beide slagen, en elke instantie heeft twee
+  extra verbindingen in plaats van één. ADR 0018 punt 4 ("ready raakt de database hooguit één keer per seconde") wordt: hooguit één
+  controle per seconde, met twee verbindingen (één als `api_user`, één als `app_jobs`). De rest van ADR 0018 (200/503 zonder data, 900 ms
+  per stap, 2 s, cache 1 s, single-flight) blijft.
 
 ## Doel
 
@@ -42,7 +47,7 @@ Vier PR's, in deze volgorde; elk deel heeft eigen acceptatiecriteria en begint p
 |---|---|---|---|---|
 | **A — bewaarcatalogus** | 5 | migratie `app.retention`, `app.retention_cutoff(regclass)`, een rij per bestaande tabel, delete-policy en rij-trigger op `app.audit_log`, restrictieve delete-policy op `app.rate_limits`, invariant, generator-template | — (audit log is gebouwd) | AC-1 t/m AC-10 |
 | **B — rol `app_jobs`** | 6 | `db/init/01-roles.sql`, migratie met `usage`, verplichte env `JOBS_DATABASE_URL` met demo-wachtwoord, klasse `job` in de functiecatalogus, invarianten, runbook voor alle rollen, framework §6 | A | AC-11 t/m AC-18 |
-| **C — runner** | 7 | `src/core/api/jobs/` (register, `startJobs`, `runJobsOnce`), `withJob()` (try- en wachtende variant) in `src/core/api/db`, stopvolgorde in `src/api/server.ts`, exportlijsten | B, wijzigings-ADR | AC-19 t/m AC-29 |
+| **C — runner** | 7 | `src/core/api/jobs/` (register, `startJobs`, `runJobsOnce`), `withJob()` (try- en wachtende variant) in `src/core/api/db`, readiness met de jobs-verbinding, stopvolgorde in `src/api/server.ts`, exportlijsten | B, wijzigings-ADR | AC-19 t/m AC-29, AC-44, AC-45 |
 | **D — opruimen** | 8 | migratie `app.purge_expired` en `app.retention_targets` (klasse `job`), `purgeExpired()` in `src/core/api/auth`, `AUTH_RATE_LIMIT_WINDOW_SECONDS` en `AUTH_RATE_LIMIT_KEEP_SECONDS`, de twee core-taken | A, C | AC-30 t/m AC-43 |
 
 ## Rollen en wie wat ziet
@@ -146,6 +151,22 @@ Vier PR's, in deze volgorde; elk deel heeft eigen acceptatiecriteria en begint p
   Geen `set_config` van een actor: `app.current_user_id()` is null, dus elke functie van klasse `client` weigert. `closeDatabase()` sluit
   ook deze pool (`src/core/api/db/index.ts:18`). Export via `index.ts`, dus de exportlijst wordt `withUser()`, `withJob()`, `pingDatabase()`,
   `closeDatabase()` (plus `audit.ts` en `testing.ts`).
+- **Readiness met de jobs-verbinding** (`src/core/api/db/index.ts:16`, OV-C4): de pool van `withJob` verbindt pas bij de eerste taak, dus
+  zonder deze stap blijft `GET /api/ready` 200 bij verkeerde `JOBS_DATABASE_URL`-gegevens of een storing die alleen `app_jobs` raakt, terwijl
+  elke taak (en later elke mail) faalt. Daarom:
+  - `createPing(connectionString, timeoutMs, options?)` (`src/core/api/db/pool.ts:46`) krijgt een optioneel derde argument
+    `{ applicationName, role }`: `applicationName` (standaard `'readiness'`, zoals nu) en `role`; met `role` is de query
+    `select session_user` en faalt de ping als die niet gelijk is aan `role` (een URL met de gegevens van een andere rol telt als niet klaar).
+    Zonder `options` blijft het gedrag exact zoals nu (`select 1`).
+  - `index.ts` maakt een tweede ping `createPing(jobsDatabaseUrl, PING_TIMEOUT_MS, { applicationName: 'readiness-jobs', role: 'app_jobs' })`;
+    `pingDatabase()` is `pingAll([ping, jobsPing])`: een nieuwe helper `pingAll(pings)` in `pool.ts` (via `testing.ts` te testen) draait
+    de pings tegelijk met `Promise.allSettled`: hij wacht op **beide** uitkomsten en faalt pas daarna als één faalde. Zo eindigt een
+    controle nooit terwijl een ping nog loopt: een snel falende jobs-ping laat de API-ping (pool met max 1) niet achter als lopende
+    verbinding waar de volgende controle op wacht, en de single-flight van `createReadiness` (`checking`) blijft gelden voor beide pings.
+    De export blijft `pingDatabase(): Promise<void>`:
+    `src/api/server.ts` en `createReadiness` wijzigen niet, de exportlijst van `src/core/api/db` ook niet. `closeDatabase()` sluit ook deze ping.
+  - Beide pings zijn elk begrensd op 900 ms en lopen parallel, dus samen blijven ze binnen de 2 s van ADR 0018 punt 3; cache en single-flight
+    gelden voor het geheel (`src/core/api/http/readiness.ts`).
 - **`src/core/api/jobs/`**: `defineJobs`-register (naam, nummer, interval, `run`), `startJobs({ jobs, … })` → `{ stop }`, en
   `runJobsOnce()` (één ronde, voor adapters van hosts die naar nul schalen, ADR 0020 punt 7; de template levert geen adapter).
   Constante `JOB_LOCK_NAMESPACE` (één vaste `int4`) en taaknummers 1–99 voor core, vanaf 100 voor de app (OV-C2). Interval standaard
@@ -273,6 +294,15 @@ uit de functies zijn fouten in de servercode.
   daarna worden de pools gesloten; een `withUser` of `withJob` na het stoppen faalt.
 - **jobs/AC-28** — `runJobsOnce()` draait elke geregistreerde taak precies één ronde en wacht tot alle klaar zijn.
 - **jobs/AC-29** — Een fixture-app registreert een eigen taak zonder `src/core` te wijzigen; die draait via `startJobs` en `runJobsOnce`.
+- **jobs/AC-44** — Readiness met de jobs-verbinding: de ping met `{ role: 'app_jobs' }` slaagt met `JOBS_DATABASE_URL` (direct), en faalt bij
+  een geweigerde login (wachtwoord met één teken erbij) en bij een URL met de gegevens van `api_user` (`session_user` ≠ `app_jobs`); de ping
+  zonder `options` gedraagt zich als voorheen (bestaande asserts in `test/datapad/ping.int.test.ts` blijven groen).
+- **jobs/AC-45** — `pingAll` (de vorm van `pingDatabase()`) faalt als alleen de jobs-ping faalt en als alleen de API-ping faalt, en slaagt
+  als beide slagen (unit met nep-pings); faalt de ene ping direct en loopt de andere nog, dan settled `pingAll` pas als ook die klaar is
+  (unit met een uitgestelde nep-ping). Integratie: na `await pingDatabase()` is er in `pg_stat_activity` een verbinding met `usename =
+  'app_jobs'` en `application_name = 'readiness-jobs'` (en een met `'readiness'` als `api_user`), zodat een `index.ts` die alleen de API-ping
+  bedraadt rood is. `GET /api/ready` geeft daardoor 503 als alleen `app_jobs` niet kan verbinden, en de bestaande readiness-tests
+  (`src/core/api/http/readiness.test.ts`, timeout 2 s, cache 1 s) blijven ongewijzigd groen.
 
 ### Deel D — opruimen
 
@@ -315,6 +345,8 @@ uit de functies zijn fouten in de servercode.
 | Wachtende variant en de lock blijft bezet | wacht tot de `statement_timeout` (5 s), dan fout en rollback; gelogd | — |
 | Proces crasht midden in een batch | transactie rolt terug, lock vervalt met de verbinding; volgende ronde doet het opnieuw (idempotent) | — |
 | Database onbereikbaar | taak faalt, gelogd; volgende ronde opnieuw; readiness geeft 503 (ADR 0018) | — |
+| Alleen `app_jobs` kan niet verbinden (verkeerde `JOBS_DATABASE_URL`, wachtwoord niet geroteerd, verbindingslimiet van de rol) | taak faalt, gelogd; readiness geeft 503 via de jobs-ping, ook als `api_user` wel verbindt (AC-44, AC-45) | — |
+| `JOBS_DATABASE_URL` met de gegevens van een andere rol | jobs-ping faalt op `session_user`; readiness 503; `withJob` weigert al op de rolcontrole (AC-19) | — |
 | SIGTERM tijdens een batch | runner maakt de batch af, start niets nieuws, daarna pools dicht; na `SHUTDOWN_TIMEOUT_MS` afgebroken (rollback) | — |
 | Migratie voegt een tabel toe zonder rij in `app.retention` | `pnpm test:db` faalt op de invariant | — |
 | App verkort de termijn van de audit log onder 1 jaar | invariant regel 5 faalt; vraagt review van de eigenaar | — |
@@ -345,11 +377,16 @@ Beschermde paden (framework §10; eigenaarakkoord nodig, label `gate-wijziging` 
   checkout start anders niet), en rol `app_jobs` lokaal aanmaken of het databasevolume opnieuw maken.
 - **Wijzigings-ADR (vóór deel C):** nieuw ADR (volgende vrije nummer uit `node scripts/kit/feiten.mjs`, status `voorgesteld`) dat ADR 0020
   punt 1/2 (inclusief "langste venster" = 60 s) en context, ADR 0021 punt 6 en Tests (delete binnen de termijn: 0 rijen onder FORCE RLS) en
-  ADR 0022 punt 5 wijzigt zoals onder "Afwijkingen van de ADR's"; de tekst van 0020, 0021 en 0022 blijft (spoor 1).
+  ADR 0022 punt 5, en ADR 0018 punt 2, punt 4 en Gevolgen (readiness met de jobs-verbinding, OV-C4) wijzigt zoals onder "Afwijkingen van de ADR's";
+  de tekst van 0018, 0020, 0021 en 0022 blijft (spoor 1).
 - **Deel C:** `src/core/api/db/{index,pool}.ts` en nieuw `with-job.ts`, nieuw `src/core/api/jobs/`; `src/core/shared/limits.ts`
   (`JOBS_INTERVAL_SECONDS`); `src/api/server.ts`; de exportlijst van `src/core/api/db` (nu met `withJob()`, ook de wachtende variant) in
   `AGENTS.md` (sectie Lagen), `docs/framework.md` §1 (`:11`) en §2 (tabel, `:42`), en `.claude/rules/database.md:44`;
-  mogelijk `.dependency-cruiser.mjs:73` (`db-alleen-via-index` als `with-job.ts` niet via `index.ts` loopt).
+  mogelijk `.dependency-cruiser.mjs:73` (`db-alleen-via-index` als `with-job.ts` niet via `index.ts` loopt). Readiness (OV-C4):
+  `src/core/api/db/pool.ts` (`createPing` met `options`) en `index.ts` (tweede ping, `closeDatabase()`), `test/datapad/ping.int.test.ts`
+  (nieuwe asserts erbij; bestaande blijven), `src/core/api/db/testing.ts` (export `pingAll`), nieuw `src/core/api/db/ping-all.test.ts`, en
+  de notitie in `CHANGELOG.md` (readiness wordt 503 zonder werkende `app_jobs`). Framework §1/§2 en de exportlijsten noemen `pingDatabase()`
+  alleen als readiness; daar wijzigt niets.
 - **Deel D:** `src/core/api/auth/` (nieuw `purge.ts`, `index.ts`, `options.ts:171`), `src/core/shared/limits.ts` (`MAX_PURGE_BATCH`,
   `MAX_PURGE_BATCHES_PER_ROUND`, `AUTH_RATE_LIMIT_WINDOW_SECONDS`, `AUTH_RATE_LIMIT_KEEP_SECONDS`), `db/tests/functies.sql` (`app.purge_expired(regclass, integer)` en
   `app.retention_targets()`, beide `job`), nieuw `db/tests/purge_expired.sql`.
@@ -368,6 +405,20 @@ een nieuwe kolom het vraagt, `CHANGELOG.md`, `docs/roadmap.md` ST-03/ST-05 (stan
 - Een scherm of metriek voor taken (ST-10).
 
 ## Open vragen voor de eigenaar
+
+**Specwijziging 2026-10-19 na Codex-review op #209:** de readiness met de jobs-verbinding (deel C, OV-C4, jobs/AC-44 en AC-45, de afwijking
+van ADR 0018 en twee randgevallen) is een aanpassing van de architect/hoofdsessie ter beoordeling door de eigenaar met de merge; geen
+eigenaarbesluit, behalve dat de eigenaar vroeg de Codex-reviews op te pakken. Voor OV-C4 geldt bij merge (a); de eigenaar kan in de PR (b)
+of (c) kiezen, dan vervalt AC-45 en de afwijking van ADR 0018.
+
+- **OV-C4 — Readiness en de jobs-verbinding (bij merge geldt (a), zie hierboven).** Codex-review op #209: `src/api/server.ts:41` geeft alleen
+  `pingDatabase` (pool van `DATABASE_URL`) aan readiness; de pool van `withJob` is lui, dus bij een fout die alleen `app_jobs` raakt blijft
+  readiness 200 en blijft uitnodigen slagen terwijl elke mail blijft hangen. (a) `pingDatabase()` controleert ook `app_jobs` (voorstel in
+  deel C): een instantie zonder werkende jobs-verbinding krijgt geen verkeer, maar een storing die alleen `app_jobs` raakt haalt dan **alle**
+  instanties uit de rotatie, ook voor routes die geen taak nodig hebben; (b) een aparte controle bij opstart (één verbinding als `app_jobs`
+  vóór `startServer`; faalt → proces stopt): vangt verkeerde gegevens bij de uitrol, niet een latere storing; (c) alleen een logregel per
+  mislukte ronde (bestaand, AC-26) en alarmering (ST-10). Voorstel: (a); kiest de eigenaar (b) of (c), dan vervallen AC-45 en de afwijking
+  van ADR 0018, en blijft AC-44 alleen voor de opstartcontrole (b).
 
 **Besluit van de eigenaar, 2026-10-19 (in de sessie, herkomst: opdracht "neem aanbevelingen over"):** alle vragen hieronder zijn beantwoord
 met de aanbeveling of, waar een vraag alleen een voorstel noemt (OV-C3), met dat voorstel. De alternatieven blijven staan als herkomst
@@ -436,6 +487,9 @@ Bewijsmatrix (tester schrijft rood vóór de developer; bij een migratie één `
 | `withJob`: rol, commit, try-race, wachtende variant met timeout, geen botsing met hashtext-lock, rollback | integratie (twee verbindingen) | `test/jobs/with-job.int.test.ts` | AC-19 t/m AC-23 |
 | register, nummerbereik, geen overlap, fout gelogd, `runJobsOnce`, fixture-app | unit (nep-`withJob`) | `src/core/api/jobs/*.test.ts` | AC-24 t/m AC-26, AC-28, AC-29 |
 | stopvolgorde met lopende batch | integratie | `test/jobs/shutdown.int.test.ts` | AC-27 |
+| jobs-ping: slaagt als `app_jobs`, faalt bij geweigerde login en bij een andere rol; ping zonder `options` ongewijzigd | integratie | `test/datapad/ping.int.test.ts` | AC-44 |
+| `pingAll` faalt als één van de pings faalt, slaagt als alle slagen, settled pas na beide; bestaande readiness-tests groen | unit (nep-pings) + bestaande unit | `src/core/api/db/ping-all.test.ts`, `src/core/api/http/readiness.test.ts` | AC-45 |
+| `pingDatabase()` opent een verbinding als `app_jobs` met `application_name = 'readiness-jobs'` (`pg_stat_activity`) | integratie | `test/datapad/ping.int.test.ts` | AC-45 |
 | `app.retention_targets`, `app.purge_expired`: termijn, batch, weigeringen, rechten | pgTAP | `db/tests/purge_expired.sql` | AC-30 t/m AC-33 |
 | `MAX_PURGE_BATCH` gelijk aan de grens in `app.purge_expired` | integratie | `test/jobs/purge.int.test.ts` | AC-40 |
 | `purgeExpired()`: sessies (beide regels), verificaties, rateLimit, 1001 rijen in twee batches, race | integratie | `test/jobs/purge-auth.int.test.ts` | AC-34, AC-35, AC-37 (integratiedeel), AC-38 |

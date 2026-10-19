@@ -148,7 +148,7 @@
     },
     {
       "file": "docs/specs/achtergrondtaken.md",
-      "digest": "76c37b691d0066f67fdacc932a48b7c874ee5ca85048ba5672af9ff9917d5555",
+      "digest": "8c258e9aa18cc1c3b49ac42473806d7198497b911f2c977032f01a43a4fb7fa8",
       "repository": "BramLambertJansen/template",
       "branch": "feat/jobs-role",
       "status": "goedgekeurd",
@@ -156,7 +156,7 @@
     },
     {
       "file": "docs/specs/achtergrondtaken.md",
-      "digest": "76c37b691d0066f67fdacc932a48b7c874ee5ca85048ba5672af9ff9917d5555",
+      "digest": "8c258e9aa18cc1c3b49ac42473806d7198497b911f2c977032f01a43a4fb7fa8",
       "repository": "BramLambertJansen/template",
       "branch": "feat/jobs-runner",
       "status": "goedgekeurd",
@@ -164,7 +164,7 @@
     },
     {
       "file": "docs/specs/achtergrondtaken.md",
-      "digest": "76c37b691d0066f67fdacc932a48b7c874ee5ca85048ba5672af9ff9917d5555",
+      "digest": "8c258e9aa18cc1c3b49ac42473806d7198497b911f2c977032f01a43a4fb7fa8",
       "repository": "BramLambertJansen/template",
       "branch": "feat/jobs-purge",
       "status": "goedgekeurd",
@@ -172,7 +172,7 @@
     },
     {
       "file": "docs/specs/mail-outbox.md",
-      "digest": "def8c0ce259d20eeff67de7d08abcfc8f623a2cdf95336746a1810af9e42a85c",
+      "digest": "084e14589eb8ee78535036b0519059d7c2f0ac9c4cf9d20434e7c869ddd702bd",
       "repository": "BramLambertJansen/template",
       "branch": "feat/outbox-db",
       "status": "goedgekeurd",
@@ -180,7 +180,7 @@
     },
     {
       "file": "docs/specs/mail-outbox.md",
-      "digest": "def8c0ce259d20eeff67de7d08abcfc8f623a2cdf95336746a1810af9e42a85c",
+      "digest": "084e14589eb8ee78535036b0519059d7c2f0ac9c4cf9d20434e7c869ddd702bd",
       "repository": "BramLambertJansen/template",
       "branch": "feat/outbox-worker",
       "status": "goedgekeurd",
@@ -188,7 +188,7 @@
     },
     {
       "file": "docs/specs/mail-outbox.md",
-      "digest": "def8c0ce259d20eeff67de7d08abcfc8f623a2cdf95336746a1810af9e42a85c",
+      "digest": "084e14589eb8ee78535036b0519059d7c2f0ac9c4cf9d20434e7c869ddd702bd",
       "repository": "BramLambertJansen/template",
       "branch": "feat/outbox-status",
       "status": "goedgekeurd",

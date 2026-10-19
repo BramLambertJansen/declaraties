@@ -23,8 +23,8 @@ laatste uitnodiging in de rij staat, verstuurd is of mislukt.
 
 | Deel | Inhoud | Wacht op | AC's |
 |---|---|---|---|
-| **A — database** | migratie `app.mail_outbox`, `app.enqueue_mail` (client), claim/markeer-functies (klasse `job`), rij in `app.retention`, kolom `invitation` in `app.accounts`; pgTAP | achtergrondtaken A t/m D | AC-1 t/m AC-14 |
-| **B — worker en uitnodigen omzetten** | mail-taak in het register, verzenden via `src/core/api/auth` met zichtbare SMTP-fout, `inviteUser`/`reinviteUser` en de routes enqueuen; bestaande mail-tests wachten op de worker; herstelrunbook | A | AC-15 t/m AC-28, AC-34 |
+| **A — database** | migratie `app.mail_outbox`, `app.enqueue_mail` (client), claim/markeer-functies (klasse `job`), rij in `app.retention`, kolom `invitation` in `app.accounts`; pgTAP | achtergrondtaken A t/m D | AC-1 t/m AC-14, AC-35, AC-36 |
+| **B — worker en uitnodigen omzetten** | mail-taak in het register, verzenden via `src/core/api/auth` met zichtbare SMTP-fout, `inviteUser`/`reinviteUser` en de routes enqueuen; bestaande mail-tests wachten op de worker; herstelrunbook | A | AC-15 t/m AC-28, AC-34, AC-37, AC-38 |
 | **C — status voor de admin** | veld `uitnodiging` in het lijstcontract, tekst in de accountlijst, nieuwe meldingstekst | B | AC-29 t/m AC-33 |
 
 ## Rollen en wie wat ziet
@@ -85,11 +85,21 @@ overload; `execute` alleen aan `app_authenticated`; klasse `client`. Volgorde:
 - `app.claim_mail(p_limit integer, p_lease_seconds integer) returns table (id bigint, kind text, user_id text, recipient text, attempts integer)`:
   rijen met `sent_at`/`failed_at` null, `send_after <= now()`, `locked_until` null of verstreken; `order by send_after, id`,
   `for update skip locked`, `limit p_limit`; zet `locked_until = now() + lease`, `attempts = attempts + 1`. Ongeldige parameters → 22023.
-- `app.mark_mail_sent(p_id bigint) returns void`: `sent_at = now()`, `recipient = null`, `locked_until = null`, alleen als `sent_at` en
-  `failed_at` null zijn (idempotent).
-- `app.mark_mail_failed(p_id bigint, p_error text, p_max_attempts integer, p_backoff_seconds integer) returns void`: `last_error = p_error`;
-  `attempts >= p_max_attempts` of `p_error in ('ALREADY_ACTIVE', 'NOT_FOUND')` → `failed_at = now()`, `recipient = null`; anders
-  `send_after = now() + p_backoff_seconds`, `locked_until = null`.
+- **Claim-identiteit** (specwijziging 2026-10-19, OV-12): een claim is `(id, attempts)` zoals `app.claim_mail` die teruggeeft; `attempts`
+  stijgt bij elke claim en verandert nergens anders (ook niet in `app.enqueue_mail`, stap 5). Beide markeer-functies krijgen die waarde mee
+  als `p_attempt` en wijzigen de rij alleen als de claim nog van de aanroeper is: `id = p_id and attempts = p_attempt and locked_until > now()
+  and sent_at is null and failed_at is null`. Anders (lease verlopen, intussen opnieuw geclaimd, al gemarkeerd) wijzigen ze niets, zonder
+  fout, en geven `false`. Zo kan een trage eerste poging (SMTP-aanroep langer dan de lease) de uitkomst van een nieuwere poging niet
+  overschrijven, en telt een verlopen lease als "niet verstuurd" (de rij gaat opnieuw: at-least-once; nooit "verstuurd" bij een link die een
+  herinvite intussen ongeldig maakte).
+- `app.mark_mail_sent(p_id bigint, p_attempt integer) returns boolean`: met geldige claim `sent_at = now()`, `recipient = null`,
+  `locked_until = null` en `true`; anders niets en `false` (dus ook idempotent).
+- `app.mark_mail_failed(p_id bigint, p_attempt integer, p_error text, p_max_attempts integer, p_backoff_seconds integer) returns boolean`: met
+  geldige claim `last_error = p_error`; `attempts >= p_max_attempts` of `p_error in ('ALREADY_ACTIVE', 'NOT_FOUND')` → `failed_at = now()`,
+  `recipient = null`; anders `send_after = now() + p_backoff_seconds`, `locked_until = null`; `true`. Zonder geldige claim niets en `false`
+  (ook `last_error` blijft). Volgorde: eerst de parameters, dan pas de claim. Ongeldige parameters (`p_max_attempts` < 1,
+  `p_backoff_seconds` < 0) → 22023, en `p_error` buiten de lijst van `last_error` → 23514, ook zonder geldige claim (de functie controleert
+  `p_error` zelf tegen dezelfde lijst als de CHECK, zodat een fout in de servercode niet stil `false` geeft).
 
 **`app.accounts`** (`create or replace view`, zelfde opties, eigenaar en actorfilter; `db/migrations/20261009214212_accounts_view.sql`):
 nieuwe laatste kolom `invitation` = van de nieuwste `core.invitation`-rij van de gebruiker (op `created_at`, `id`): `'failed'` als
@@ -104,6 +114,17 @@ kolom toe aan `src/api/db/schema.ts`.
   (`better-auth/dist/api/routes/password.mjs:82`, `context/create-context.mjs:215`). `src/core/api/auth` zet daarom rond elke aanroep een
   `AsyncLocalStorage`-context (`node:async_hooks`, geen nieuwe dependency); de `sendResetPassword` uit `src/core/api/auth/options.ts:151`
   legt een fout van `sendInvitation` daarin vast, en `sendCoreMail` gooit na `requestPasswordReset` een `MailSendError` als er een fout ligt.
+- **Geen ruwe SMTP-fout in de log van Better Auth** (specwijziging 2026-10-19, OV-13): `runInBackgroundOrAwait` logt elke fout die de
+  callback gooit volledig met `logger.error("Failed to run background task:", e)` (`better-auth/dist/context/create-context.mjs:215`–`:225`, logregels `:219` en `:223`;
+  zonder `logger`-optie naar de console). Een SMTP-afwijzing van nodemailer draagt in `message`/`response` vaak het ontvangersadres of de
+  envelop. Daarom vangt de `sendResetPassword`-callback zelf elke fout van `sendInvitation` af en **gooit niet**: binnen een
+  `AsyncLocalStorage`-context legt hij alleen vast dat er een fout was (geen `message`, geen `cause`, geen fout-object) en lost op, zodat
+  Better Auth niets logt; buiten een context (geen enkel pad in de template, maar een app zou `requestPasswordReset` direct kunnen aanroepen)
+  gooit hij een nieuwe `MailSendError` zonder `cause` en zonder tekst van de SMTP-server, zodat Better Auth hooguit die vaste melding logt.
+  De oorspronkelijke fout verlaat de callback nooit. Plaats: een nieuwe helper `src/core/api/auth/mail-outcome.ts` (de
+  `AsyncLocalStorage`-context, `runWithMailOutcome(work)` voor `sendCoreMail` en `captureMailError(send)` die de fout afvangt en vastlegt);
+  de `sendResetPassword` in `src/core/api/auth/options.ts:151` roept alleen `captureMailError(() => config.sendInvitation(…))` aan. Geen `logger`-optie in `src/core/api/auth/options.ts` (alternatief, niet gekozen: een
+  eigen `logger.log` die alle meldingen van Better Auth saneert, grijpt breder in dan dit pad).
 - **`src/core/api/auth`**: `inviteUser(auth, input, inTransaction)` maakt het account en roept `inTransaction(userId)` aan (rol, auditregel,
   enqueue); bij een fout verwijdert hij het account weer (bestaand gedrag, `src/core/api/auth/invitations.ts:43`); **geen**
   `requestPasswordReset` meer (`:46`). `reinviteUser(auth, userId)` controleert bestaan en niet-actief en verwijdert de oude reset-tokens
@@ -115,8 +136,9 @@ kolom toe aan `src/api/db/schema.ts`.
 - **Mail-taak** `core.mail` in het register (`src/core/api/jobs/`), interval `MAIL_JOBS_INTERVAL_SECONDS`: (1) claimen met
   `withJob({ name: 'core.mail', key }, …)` (try-variant: een andere instantie die net claimt, laat deze ronde overslaan); (2) per rij
   `sendCoreMail` buiten elke transactie; (3) markeren met `withJob(…, { wait: true })` (wachtende variant uit achtergrondtaken deel C,
-  OV-2 a), zodat markeren nooit wordt overgeslagen; faalt markeren toch (timeout, database weg), dan verloopt de lease en gaat de mail opnieuw
-  (at-least-once). Uitkomsten als foutcode uit de vaste lijst (OV-11).
+  OV-2 a), zodat markeren nooit wordt overgeslagen, met de `attempts` uit de claim als `p_attempt` (OV-12); faalt markeren toch (timeout,
+  database weg), dan verloopt de lease en gaat de mail opnieuw (at-least-once). Geeft markeren `false` (lease verlopen of vervangen), dan
+  logt de taak alleen de uitkomst `lease_lost` (geen adres, geen fout) en doet verder niets. Uitkomsten als foutcode uit de vaste lijst (OV-11).
 - **`src/api/server.ts`**: geeft `sendCoreMail` met de `auth` aan de runner; `sendInvitation`/SMTP blijven in `createAuth` (`:22`).
 - **Runbook** `docs/operations/mail-outbox.md` (nieuw): mislukte uitnodigingen vinden (accountlijst), herstellen ("Opnieuw uitnodigen"),
   SMTP-storing, at-least-once (een mail kan twee keer gaan; alleen de nieuwste link werkt).
@@ -182,13 +204,22 @@ Een SMTP-fout bereikt de route niet meer: de route faalt alleen als de transacti
   een geclaimde rij wordt pas na `locked_until` opnieuw geclaimd; een rij met `send_after` in de toekomst niet.
 - **outbox/AC-9** — `app.mark_mail_sent` zet `sent_at` en maakt `recipient` leeg; twee keer aanroepen verandert niets meer.
 - **outbox/AC-10** — `app.mark_mail_failed` met `SMTP_ERROR` onder `p_max_attempts` zet `send_after` vooruit met `p_backoff_seconds`; op
-  `p_max_attempts`, of met `ALREADY_ACTIVE`/`NOT_FOUND`, zet hij `failed_at` en maakt `recipient` leeg; `last_error` buiten de lijst faalt (23514).
+  `p_max_attempts`, of met `ALREADY_ACTIVE`/`NOT_FOUND`, zet hij `failed_at` en maakt `recipient` leeg; `p_error` buiten de lijst faalt
+  (23514), getoetst met een geldige claim én met een verlopen claim (de parametercontrole gaat vóór de claimcontrole); `p_max_attempts` 0 en
+  `p_backoff_seconds` −1 falen (22023), ook zonder geldige claim.
 - **outbox/AC-11** — Claim/markeer-functies: klasse `job`, alleen uitvoerbaar voor `app_jobs`; `app.enqueue_mail` klasse `client`.
 - **outbox/AC-12** — Verwijderen van `better_auth."user"` neemt de outbox-rijen van die gebruiker mee (cascade).
 - **outbox/AC-13** — `app.accounts.invitation` is `queued`, `sent` of `failed` volgens de nieuwste `core.invitation`-rij, null voor een actief
   account en zonder rij; de view toont niets aan een `user` of admin zonder MFA (bestaande asserts blijven groen).
 - **outbox/AC-14** — `pnpm check:secdef`, `pnpm check:snapshot` groen; `check-policies` vindt elke policy op naam; de invariant
   bewaarcatalogus en jobs/AC-3 kennen de nieuwe rij.
+- **outbox/AC-35** — Vervangen claim: rij geclaimd met `attempts` 1, lease kunstmatig verlopen, opnieuw geclaimd (`attempts` 2). Dan geven
+  `app.mark_mail_sent(id, 1)` en `app.mark_mail_failed(id, 1, 'SMTP_ERROR', …)` `false` en blijft de rij exact gelijk (`sent_at`, `failed_at`,
+  `last_error`, `send_after`, `locked_until`, `recipient`); `app.mark_mail_sent(id, 2)` geeft `true` en zet `sent_at`. Ook met
+  `p_max_attempts` 1 zet de oude poging geen `failed_at`.
+- **outbox/AC-36** — Verlopen claim zonder nieuwe claim: na het verlopen van `locked_until` geven beide markeer-functies met de oude `attempts`
+  `false` en wijzigen niets; de volgende `app.claim_mail` claimt de rij opnieuw. Met een geldige claim geven ze `true` (AC-9, AC-10); een
+  tweede `app.mark_mail_sent` geeft `false`.
 
 ### Deel B — worker en uitnodigen
 
@@ -214,11 +245,21 @@ Een SMTP-fout bereikt de route niet meer: de route faalt alleen als de transacti
   geen account (bestaand: `inviteUser` verwijdert het).
 - **outbox/AC-24** — Een rij voor een account dat intussen actief is of niet meer bestaat: geen mail, `failed_at` met `ALREADY_ACTIVE` resp.
   `NOT_FOUND`, geen nieuwe poging.
-- **outbox/AC-25** — Geen enkele rij of logregel van de worker bevat een e-mailadres, link of token (controle op tabel en log na AC-15 t/m AC-17).
+- **outbox/AC-25** — Geen enkele rij of logregel van de worker of van Better Auth bevat een e-mailadres, link of token (controle op tabel en
+  log na AC-15 t/m AC-17; de SMTP-tekst zelf: AC-38).
 - **outbox/AC-26** — `user` en admin zonder MFA op invite en reinvite: `FORBIDDEN` resp. `MFA_REQUIRED`, geen rij.
 - **outbox/AC-27** — E2E: uitnodigen → mail komt binnen enkele seconden (interval 5 s) → wachtwoord instellen werkt (bestaande flow in
   `e2e/accounts.spec.ts`).
 - **outbox/AC-28** — `docs/operations/mail-outbox.md` beschrijft vinden, herstellen en at-least-once.
+- **outbox/AC-37** — Race met verlopen lease (twee runners, nep-mailer met instelbare vertraging en uitkomst; de lease verloopt in de test door een korte `p_lease_seconds` of door `locked_until` in het verleden te zetten): runner A
+  claimt, zijn verzending duurt langer dan de lease; runner B claimt dezelfde rij en verstuurt met succes; daarna faalt A met `SMTP_ERROR`.
+  De rij blijft `sent` (B), zonder `last_error` en zonder backoff; A logt `lease_lost`. Omgekeerd (B faalt, A slaagt laat) blijft de
+  uitkomst van B staan (backoff op basis van `attempts` 2), en de rij wordt daarna opnieuw verstuurd.
+- **outbox/AC-38** — Een SMTP-afwijzing waarvan de tekst het ontvangersadres bevat (nep-mailer die gooit met `550 <adres>: rejected`) leidt
+  tot `last_error = 'SMTP_ERROR'` (AC-16), en noch de log van Better Auth (`console` en `logger`, opgevangen in de test) noch die van de worker
+  bevat het adres, de link, het token of de tekst van de SMTP-server; Better Auth logt geen "Failed to run background task" voor deze
+  aanroep. Unit naast de helper (`src/core/api/auth/mail-outcome.test.ts`): binnen een context lost `captureMailError` op en is de fout
+  vastgelegd zonder tekst; buiten een context gooit hij een `MailSendError` zonder `cause` en zonder de SMTP-tekst.
 
 ### Deel C — status voor de admin
 
@@ -237,6 +278,9 @@ Een SMTP-fout bereikt de route niet meer: de route faalt alleen als de transacti
 |---|---|---|
 | SMTP onbereikbaar bij uitnodigen | route slaagt; worker probeert opnieuw na 1, 5, 15, 60 min; na 5 pogingen `failed` | — (200) |
 | Worker crasht tussen versturen en markeren | lease (5 min) verloopt, opnieuw verstuurd; alleen de nieuwste link werkt | — |
+| SMTP-aanroep duurt langer dan de lease; een andere runner claimt de rij opnieuw | de markering van de trage poging wijzigt niets (`false`, `lease_lost` gelogd); de uitkomst van de nieuwere poging blijft (AC-35, AC-37) | — |
+| Lease verlopen, nog niet opnieuw geclaimd, trage poging slaagt | markeren geeft `false`; de rij wordt opnieuw geclaimd en verstuurd (at-least-once, AC-36) | — |
+| SMTP-server weigert met een tekst die het adres bevat | `SMTP_ERROR`; de tekst komt in geen enkele log, ook niet die van Better Auth (AC-38) | — |
 | Twee keer opnieuw uitnodigen terwijl de rij wacht | tweede enqueue voegt geen rij toe; één mail | — |
 | Opnieuw uitnodigen terwijl de rij in backoff staat (`send_after` tot 60 min vooruit) | geen nieuwe rij; `send_after` wordt now, de mail gaat bij de volgende ronde (≤ 5 s), zodat "staat klaar om te versturen" klopt (AC-34) | — |
 | Opnieuw uitnodigen terwijl de worker die rij verstuurt | de lopende link wordt ongeldig, er komt een nieuwe rij (de geclaimde rij telt niet als wachtend); de admin ziet `wachtrij` tot die verstuurd is (AC-22) | — |
@@ -244,7 +288,7 @@ Een SMTP-fout bereikt de route niet meer: de route faalt alleen als de transacti
 | Account verwijderd terwijl een rij in de rij staat | cascade verwijdert de rij (ADR 0022 punt 2) | — |
 | Account intussen actief (eerdere link gebruikt) | geen mail, `failed_at` met `ALREADY_ACTIVE`; lijst toont geen uitnodigingsstatus (actief) | — |
 | Commit van de route faalt na `createUser` | account zonder rol; geen rij (bestaand gat, ADR 0021 OV-7) | `INTERNAL_ERROR` |
-| Better Auth vangt de SMTP-fout zelf af | de `AsyncLocalStorage`-context legt hem vast; worker markeert `SMTP_ERROR` (AC-16) | — |
+| Better Auth vangt de SMTP-fout zelf af | de callback vangt hem eerder en gooit niet; de `AsyncLocalStorage`-context legt vast dat er een fout was; worker markeert `SMTP_ERROR` (AC-16, AC-38) | — |
 | Rij ouder dan 30 dagen | opgeruimd; status in de lijst wordt null ("Uitgenodigd") | — |
 | Uitnodigingslink na 7 dagen verlopen | ongewijzigd: `INVITATION_INVALID`; herstel via opnieuw uitnodigen | `INVITATION_INVALID` |
 | Host die naar nul schaalt | mail gaat pas bij de volgende `runJobsOnce()` (adapter, buiten scope) | — |
@@ -257,11 +301,12 @@ enqueue"); (d) markeren alleen als het token nog bestaat: vraagt tokenkennis in 
 ## Raakt ook
 
 Beschermde paden (eigenaarakkoord):
-- **Deel A:** `db/tests/functies.sql` (`app.enqueue_mail` `client`; `app.claim_mail`, `app.mark_mail_sent`, `app.mark_mail_failed` `job`), nieuw
+- **Deel A:** `db/tests/functies.sql` (`app.enqueue_mail` `client`; `app.claim_mail`, `app.mark_mail_sent(bigint, integer)`,
+  `app.mark_mail_failed(bigint, integer, text, integer, integer)` `job`), nieuw
   `db/tests/mail_outbox.sql`, `db/tests/accounts.sql` (kolom erbij: bestaande test met reden in de PR), `db/tests/retention.sql` en de
   invariant bewaarcatalogus in `db/tests/invarianten.sql` (jobs/AC-3 "precies de rijen" krijgt `app.mail_outbox`; bestaande test, met reden),
   en de test van `app.retention_targets()` (jobs/AC-30) die `app.mail_outbox` erbij krijgt.
-- **Deel B:** `src/core/api/auth/{invitations,options,index}.ts` en nieuw `mail.ts`, `src/core/api/jobs/`, `src/core/shared/limits.ts`, `src/api/server.ts`.
+- **Deel B:** `src/core/api/auth/{invitations,options,index}.ts` en nieuw `mail.ts`, `mail-outcome.ts` en `mail-outcome.test.ts`, `src/core/api/jobs/`, `src/core/shared/limits.ts`, `src/api/server.ts`.
   De wachtende variant van `withJob` komt uit achtergrondtaken deel C; de exportlijst van `src/core/api/db` (`AGENTS.md` Lagen,
   `docs/framework.md` §1 `:11` en §2 `:42`, `.claude/rules/database.md:44`) wordt daar bijgewerkt; controleer in dit deel dat hij de variant noemt.
   Bestaande tests die direct na uitnodigen een mail verwachten (`test/api/accounts.int.test.ts`, `test/api/accounts-audit.int.test.ts`,
@@ -296,6 +341,27 @@ Dit besluit geeft geen akkoord op de beschermde paden uit "Raakt ook"; dat volgt
   herinvite tijdens verzenden een nieuwe rij geeft (randgeval "opnieuw uitnodigen tijdens verzenden", AC-22; alternatieven onder Randgevallen).
   Reden: met de index ziet de admin "verstuurd" bij een dode link. Kiest de eigenaar toch (a), dan vervallen AC-22 en het tweede deel van AC-7.
 
+**Specwijziging 2026-10-19 na Codex-review op #209:** OV-12 (claim-identiteit in de markeer-functies, AC-35 t/m AC-37) en OV-13 (geen ruwe
+SMTP-fout in de log van Better Auth, AC-38, AC-25 aangescherpt) zijn aanpassingen van de architect/hoofdsessie ter beoordeling door de
+eigenaar met de merge; geen eigenaarbesluit, behalve dat de eigenaar vroeg de Codex-reviews op te pakken. Open voor de eigenaar: de
+SMTP-timeouts (OV-12) en het lek bij een e-mailwijziging (OV-13, `better-auth/dist/api/routes/update-user.mjs:484`). Zonder antwoord geldt:
+OV-12 volstaat (geen wijziging aan `createSmtpMailer`); `src/core/api/auth/mailing.ts` en de e-mailwijziging blijven buiten scope, voor een
+eigen spec. Het besluitregister (`.claude/decisions.json`) staat al per bouwbranch klaar; na de merge van deze wijziging kan een agent de
+status per deel administratief op `goedgekeurd` zetten met `pnpm docs:status` (ADR 0027), zonder de inhoud te wijzigen.
+
+- **OV-12 — Markeren na een verlopen lease (agentvoorstel).** Codex-review: duurt een SMTP-aanroep langer dan de lease, dan claimt een andere
+  runner de rij (`attempts` + 1), en een markering op alleen `p_id` laat de trage poging de uitkomst van de nieuwere overschrijven. Voorstel:
+  claim = `(id, attempts)`; markeren alleen met een geldige, eigen claim (`locked_until > now()`), anders `false` zonder fout (deel A).
+  Alternatieven, niet gekozen: een apart claim-token (uuid-kolom; meer schema, zelfde effect) of alleen `attempts` zonder leasecontrole
+  (dan kan een verlopen poging "verstuurd" zetten na een herinvite die de link al ongeldig maakte). Open: nodemailer heeft standaard een
+  `socketTimeout` van 10 minuten, langer dan de lease van 5 minuten (`src/core/api/mail/smtp.ts` zet geen timeouts). Moeten de
+  SMTP-timeouts onder `MAIL_LEASE_SECONDS` komen (wijzigt `createSmtpMailer`, ook voor de mails van een e-mailwijziging), of volstaat OV-12?
+- **OV-13 — Ruwe SMTP-fout in de log van Better Auth (agentvoorstel).** Codex-review: `runInBackgroundOrAwait` logt de fout van de callback
+  volledig, dus AC-25 werd geschonden ook al logt de worker alleen `SMTP_ERROR`. Voorstel: de callback gooit de oorspronkelijke fout nooit
+  door (deel B). Open, buiten deze spec: de mails van een e-mailwijziging (`src/core/api/auth/mailing.ts`; de bevestiging via
+  `better-auth/dist/api/routes/update-user.mjs:484`) en het huidige synchrone uitnodigen hebben hetzelfde lek; een eigen spec, of een
+  sanerende `logger`-optie voor heel Better Auth?
+
 - **OV-1 — Better Auth slikt een SMTP-fout.** `requestPasswordReset` roept `sendResetPassword` aan via `runInBackgroundOrAwait`, dat elke fout
   vangt en alleen logt (`better-auth/dist/api/routes/password.mjs:82`, `context/create-context.mjs:215`). De worker ziet een SMTP-fout dus niet,
   en ADR 0020 punt 3 (opnieuw proberen, `failed_at`) werkt dan niet; ook het huidige synchrone pad faalt niet bij een SMTP-fout. (a) de mailfunctie
@@ -329,6 +395,7 @@ Dit besluit geeft geen akkoord op de beschermde paden uit "Raakt ook"; dat volgt
 | tabel, grants, policies op naam, cascade, retention en purge | pgTAP + `check-policies` | `db/tests/mail_outbox.sql` | AC-1 t/m AC-3, AC-12 |
 | `app.enqueue_mail`: allowlist, actor, MFA, rollback, dubbel (ook gelijktijdig) | pgTAP + integratie (twee verbindingen) | idem, `test/jobs/mail-enqueue.int.test.ts` | AC-4 t/m AC-7 |
 | claim-race, lease, backoff, failed, idempotent markeren | pgTAP + integratie (twee verbindingen) | idem, `test/jobs/mail-claim.int.test.ts` | AC-8 t/m AC-10 |
+| markeren met vervangen of verlopen claim: `false`, rij ongewijzigd | pgTAP (lease verlopen door `locked_until` in het verleden te zetten, in een teruggedraaide transactie) | `db/tests/mail_outbox.sql` | AC-35, AC-36 |
 | functiecatalogus | pgTAP | `db/tests/functies.sql` | AC-11 |
 | view-kolom en filter | pgTAP | `db/tests/accounts.sql` | AC-13 |
 | secdef, snapshot, catalogus | `pnpm check:secdef`, `pnpm check:snapshot`, `pnpm test:db` | — | AC-14 |
@@ -336,6 +403,8 @@ Dit besluit geeft geen akkoord op de beschermde paden uit "Raakt ook"; dat volgt
 | SMTP-uitval (onbereikbare SMTP-URL), 5 pogingen, herstel | integratie | idem | AC-16, AC-17 |
 | crash na claim, twee runners, herinvite tijdens verzenden | integratie | idem | AC-18, AC-20, AC-22, AC-34 |
 | actief/verwijderd account, geen PII in rij of log | integratie | idem | AC-24, AC-25 |
+| race met verlopen lease (trage runner A, runner B slaagt of faalt) | integratie (twee runners, nep-mailer met vertraging, verlopen lease) | `test/jobs/mail-lease-race.int.test.ts` | AC-37 |
+| SMTP-afwijzing met adres: geen tekst in de log van Better Auth of worker; callback binnen en buiten context | integratie + unit | `test/api/mail-outbox.int.test.ts`, `src/core/api/auth/mail-outcome.test.ts` | AC-38 |
 | e2e uitnodigen tot wachtwoord | e2e | `e2e/accounts.spec.ts` | AC-27 |
 | runbook | review | `docs/operations/mail-outbox.md` | AC-28 |
 | contract, scherm met drie toestanden, melding, axe | integratie + e2e | `test/api/accounts.int.test.ts`, `e2e/mail-outbox.spec.ts` | AC-29 t/m AC-33 |
