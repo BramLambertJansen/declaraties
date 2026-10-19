@@ -63,6 +63,14 @@ Voor ST-09 geldt: een geslaagde setup is **checkpoint 1**, niet een geslaagde he
 
 ## Hoe je dit document gebruikt vóórdat de app bestaat
 
+**Minimale bootstrap voor de eerste agentsessie:** een coding agent kan zijn eigen CLI niet installeren voordat hij gestart is. Zorg eerst voor een werkende Ubuntu-terminal (native of WSL2) en een geïnstalleerde Claude Code CLI. Bij een nog niet geïnstalleerde CLI voert de eigenaar in die Ubuntu-terminal eenmalig de installatiestap uit die ook in fase 3.2 van het setup-playbook staat:
+
+```bash
+curl -fsSL https://claude.ai/install.sh | bash
+```
+
+Daarna moet `claude` vanuit die terminal kunnen starten. Voor Windows zonder werkende WSL2 is installatie van Ubuntu/WSL eerst een eigenaarstap; de overige toolchain, GitHub-inlog, Docker/Poorten en de repo worden daarna door de agent **gecontroleerd of via gerichte overdracht** volgens het playbook behandeld. Claim geen volledig agent-gestuurde nul-installatie. Dit onderscheid tussen *agent kunnen starten* en *app kunnen starten* hoort in het setupverslag.
+
 De eigenaar kan deze **publieke** instructie en het actuele playbook in een Bash-/Ubuntu-/WSL-omgeving klaarzetten:
 
 ```bash
