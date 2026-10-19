@@ -135,4 +135,94 @@ describe('renderSchema', () => {
     expect(() => renderSchema(at('timestamp'), {})).toThrow('gebruik timestamptz');
     expect(() => renderSchema(at('bytea'), {})).toThrow('type bytea wordt niet ondersteund');
   });
+
+  test('regclass wordt text (tabelnaam als tekst), ook als primary key en nullable', () => {
+    const catalog = {
+      columns: [
+        column('r', 'table_name', 'regclass', { schema: 'app' }),
+        column('r', 'other', 'regclass', { schema: 'app', nullable: true }),
+        column('r', 'third', 'regclass', { schema: 'app' }),
+      ],
+      primaryKeys: { 'app.r': ['table_name'] },
+      foreignKeys: [],
+    };
+    const source = renderSchema(catalog, {});
+
+    expect(source).toContain("tableName: text('table_name').primaryKey(),");
+    expect(source).toContain("other: text('other'),");
+    expect(source).toContain("third: text('third').notNull(),");
+    expect(source).not.toContain('regclass');
+    expect(source).toMatch(/import \{[^}]*\btext\b[^}]*\} from 'drizzle-orm\/pg-core';/);
+  });
+
+  test('interval wordt interval(name) zonder opties, nullable en not null, met default als sql', () => {
+    const catalog = {
+      columns: [
+        column('t', 'keep', 'interval', { nullable: true }),
+        column('t', 'ttl', 'interval'),
+        column('t', 'grace', 'interval', { defaultExpr: "'1 day'::interval" }),
+      ],
+      primaryKeys: {},
+      foreignKeys: [],
+    };
+    const source = renderSchema(catalog, {});
+
+    expect(source).toContain("keep: interval('keep'),");
+    expect(source).toContain("ttl: interval('ttl').notNull(),");
+    expect(source).toContain("grace: interval('grace').notNull().default(sql`'1 day'::interval`),");
+  });
+
+  test('de importregel bevat interval alleen als een interval-kolom voorkomt', () => {
+    const importLine = (source: string) =>
+      source.split('\n').find((line) => line.includes('drizzle-orm/pg-core')) ?? '';
+    const without = renderSchema(userRoles, {});
+    const withInterval = renderSchema(
+      { columns: [column('t', 'keep', 'interval')], primaryKeys: {}, foreignKeys: [] },
+      {},
+    );
+
+    expect(importLine(without)).not.toMatch(/\binterval\b/);
+    expect(importLine(withInterval)).toMatch(/\binterval\b/);
+  });
+
+  test('onbekende types (point, regproc) falen nog steeds met "wordt niet ondersteund"', () => {
+    const at = (udt: string) => ({ columns: [column('t', 'x', udt)], primaryKeys: {}, foreignKeys: [] });
+
+    expect(() => renderSchema(at('point'), {})).toThrow('type point wordt niet ondersteund');
+    expect(() => renderSchema(at('regproc'), {})).toThrow('type regproc wordt niet ondersteund');
+  });
+
+  test('app.retention wordt volledig gerenderd (regclass-PK, nullable interval)', () => {
+    const catalog = {
+      columns: [
+        column('retention', 'table_name', 'regclass', { schema: 'app' }),
+        column('retention', 'time_column', 'text', { schema: 'app', nullable: true }),
+        column('retention', 'keep', 'interval', { schema: 'app', nullable: true }),
+        column('retention', 'purger', 'text', { schema: 'app' }),
+        column('retention', 'reason', 'text', { schema: 'app' }),
+      ],
+      primaryKeys: { 'app.retention': ['table_name'] },
+      foreignKeys: [],
+    };
+    const source = renderSchema(catalog, {});
+
+    expect(source).toBe(
+      [
+        '// GEGENEREERD door `pnpm db:generate` (scripts/db-introspect.mjs) uit de gemigreerde database. Niet bewerken.',
+        "import { interval, pgSchema, text } from 'drizzle-orm/pg-core';",
+        '',
+        "const appSchema = pgSchema('app');",
+        '',
+        "export const appRetention = appSchema.table('retention', {",
+        "  tableName: text('table_name').primaryKey(),",
+        "  timeColumn: text('time_column'),",
+        "  keep: interval('keep'),",
+        "  purger: text('purger').notNull(),",
+        "  reason: text('reason').notNull(),",
+        '});',
+        '',
+      ].join('\n'),
+    );
+    expect(source).toContain("import { interval, pgSchema, text } from 'drizzle-orm/pg-core';");
+  });
 });

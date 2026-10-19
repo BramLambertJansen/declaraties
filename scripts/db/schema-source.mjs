@@ -91,6 +91,12 @@ function baseType(column) {
       return ['timestamp', `timestamp(${name}, { withTimezone: true, mode: 'string' })`];
     case 'date':
       return ['date', `date(${name}, { mode: 'string' })`];
+    // regclass (bijv. app.retention.table_name) is een tabelverwijzing; Drizzle kent het niet, tekst volstaat.
+    // De tekstvorm volgt de search_path ('app.retention' of 'retention'): vergelijk in SQL, niet in TypeScript.
+    case 'regclass':
+      return ['text', `text(${name})`];
+    case 'interval':
+      return ['interval', `interval(${name})`];
     default:
       throw new Error(
         `${column.schema}.${column.table}.${column.name}: type ${column.udt} wordt niet ondersteund` +
