@@ -12,7 +12,9 @@ export function NavLink({ href, className, onClick, ...props }: ComponentProps<'
   const follow = (event: MouseEvent<HTMLAnchorElement>) => {
     onClick?.(event);
     const modified = event.metaKey || event.ctrlKey || event.shiftKey || event.altKey || event.button !== 0;
-    if (event.defaultPrevented || modified) return;
+    const target = event.currentTarget.target;
+    const native = (target !== '' && target.toLowerCase() !== '_self') || event.currentTarget.hasAttribute('download');
+    if (event.defaultPrevented || modified || native) return;
     event.preventDefault();
     void router.navigate({ href });
   };

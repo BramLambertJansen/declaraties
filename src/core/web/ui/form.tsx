@@ -59,7 +59,8 @@ export function Form<Input extends FieldValues, Output>(props: FormProps<Input, 
     try {
       await onSubmit(values);
     } catch (error) {
-      const field = fieldForCode?.[codeOf(error) ?? ''];
+      const code = codeOf(error) ?? '';
+      const field = fieldForCode !== undefined && Object.hasOwn(fieldForCode, code) ? fieldForCode[code] : undefined;
       if (field === undefined) setFormError(errorText(error));
       else form.setError(field, { type: 'server', message: errorText(error) }, { shouldFocus: true });
     }

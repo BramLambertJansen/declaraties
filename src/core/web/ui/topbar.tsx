@@ -9,8 +9,8 @@ export function initials(name: string): string {
     .trim()
     .split(/\s+/)
     .filter((word) => word !== '');
-  const first = words[0]?.[0] ?? '?';
-  const last = words.length > 1 ? (words.at(-1)?.[0] ?? '') : '';
+  const first = Array.from(words[0] ?? '')[0] ?? '?';
+  const last = words.length > 1 ? (Array.from(words.at(-1) ?? '')[0] ?? '') : '';
   return `${first}${last}`.toUpperCase();
 }
 

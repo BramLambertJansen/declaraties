@@ -1,4 +1,4 @@
-import { existsSync, realpathSync } from 'node:fs';
+import { existsSync, realpathSync, statSync } from 'node:fs';
 import path from 'node:path';
 import { serveStatic } from '@hono/node-server/serve-static';
 import { Hono } from 'hono';
@@ -27,13 +27,20 @@ function isServable(root: string, requestPath: string): boolean {
   const file = path.join(root, requestPath);
   if (!existsSync(file)) return true;
   const real = realpathSync(file);
-  return real === root || real.startsWith(root + path.sep);
+  if (real !== root && !real.startsWith(root + path.sep)) return false;
+  if (!statSync(real).isDirectory()) return true;
+  const index = path.join(real, 'index.html');
+  if (!existsSync(index)) return true;
+  return realpathSync(index).startsWith(root + path.sep);
 }
 
 export function createWebApp(api: App, webDir: string): App {
   const root = realpathSync(path.resolve(webDir));
   if (!existsSync(path.join(root, 'index.html'))) {
     throw new Error(`createWebApp: ${root}/index.html ontbreekt; draai eerst pnpm build`);
+  }
+  if (!isServable(root, '/index.html')) {
+    throw new Error(`createWebApp: ${root}/index.html ligt buiten de build`);
   }
   const headers = securityHeaders();
   const app = new Hono();

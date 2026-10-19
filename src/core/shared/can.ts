@@ -35,7 +35,7 @@ export function definePermissions<const Table extends Record<string, PermissionR
   const table: Readonly<Record<string, PermissionRule>> = { ...CORE_PERMISSIONS, ...appTable };
   const check = (actor: CanActor | null, permission: string): Decision => {
     if (actor === null) return { ok: false, code: 'UNAUTHENTICATED' };
-    const rule = table[permission];
+    const rule = Object.hasOwn(table, permission) ? table[permission] : undefined;
     if (rule === undefined || !rule.roles.includes(actor.role)) return { ok: false, code: 'FORBIDDEN' };
     if (actor.role === 'admin' && actor.sessionStrength !== 'mfa') return { ok: false, code: 'MFA_REQUIRED' };
     return { ok: true };

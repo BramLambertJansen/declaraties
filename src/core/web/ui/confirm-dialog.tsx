@@ -31,8 +31,12 @@ const RETRY_AFTER_MS = 500;
 function useConfirmOnce(open: boolean, busy: boolean) {
   const confirmed = useRef(false);
   const busyNow = useRef(busy);
+  const retryTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   useEffect(() => {
     if (open) confirmed.current = false;
+    return () => {
+      clearTimeout(retryTimer.current);
+    };
   }, [open]);
   useEffect(() => {
     if (busyNow.current && !busy) confirmed.current = false;
@@ -41,7 +45,8 @@ function useConfirmOnce(open: boolean, busy: boolean) {
   return (onConfirm: () => void) => {
     if (busyNow.current || confirmed.current) return;
     confirmed.current = true;
-    setTimeout(() => {
+    clearTimeout(retryTimer.current);
+    retryTimer.current = setTimeout(() => {
       if (!busyNow.current) confirmed.current = false;
     }, RETRY_AFTER_MS);
     onConfirm();

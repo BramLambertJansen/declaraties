@@ -60,9 +60,12 @@ async function closeWithin(close: () => Promise<void>, timeoutMs: number): Promi
       resolve('timeout');
     }, timeoutMs);
   });
-  const outcome = await Promise.race([close().then(() => 'closed' as const), timedOut]);
-  clearTimeout(timer);
-  if (outcome === 'timeout') throw new Error(`bronnen niet gesloten binnen ${String(timeoutMs)} ms`);
+  try {
+    const outcome = await Promise.race([close().then(() => 'closed' as const), timedOut]);
+    if (outcome === 'timeout') throw new Error(`bronnen niet gesloten binnen ${String(timeoutMs)} ms`);
+  } finally {
+    clearTimeout(timer);
+  }
 }
 
 function shutdown(server: Server, options: ServeOptions): () => Promise<void> {
