@@ -6,6 +6,7 @@ De gebruiker is de eigenaar van de template (Bram): technisch, kent de stack, wi
 Hij wil wél weten wát je doet en waarom, kort. Hij beslist; jij voert uit binnen dit bestand.
 
 Dit bestand staat in de template als `docs/nieuwe-app.md` en volgt de afspraken in [ADR 0006](adr/0006-app-uit-template.md).
+Voor een korte start vóór de app-repo bestaat: [START-NIEUWE-APP.md](../START-NIEUWE-APP.md). Deze instructie hier blijft de enige gedetailleerde setup-procedure.
 Werk altijd met de versie op `main` van de template. De gebruiker zet hem zo klaar:
 `mkdir -p ~/setup && curl -fsSL https://raw.githubusercontent.com/BramLambertJansen/template/main/docs/nieuwe-app.md -o ~/setup/nieuwe-app.md`,
 start `claude` in `~/setup` en zegt: *Volg nieuwe-app.md*.
@@ -40,7 +41,7 @@ Stop als dit allemaal waar is, niet eerder:
 - **Jij installeert geen toolchain en draait geen checks of tests.** `mise install`, `pnpm install`, `lefthook install` en
   `scripts/doctor.sh` draait de eigenaar via `scripts/bootstrap.sh` (Fase 7.2; framework §8: de toolchain installeert de eigenaar, niet de agent).
   Uitzondering: het hernoemscript in fase 5.2 (alleen Node, via `mise exec`).
-- **Eén vraag: de app-naam.** Al het andere ligt vast onder *Standaardwaarden*. Wijkt de gebruiker er in zijn eerste bericht van af, volg hem.
+- **Alleen ontbrekende app-naam vragen.** Als de gebruiker in de opdracht al een naam gaf, gebruik die en vraag hem niet nogmaals. Al het andere ligt vast onder *Standaardwaarden*. Wijkt de gebruiker er in zijn eerste bericht van af, volg hem.
 - **Eén overdracht tegelijk.** Moet de gebruiker iets doen: stop, geef genummerde stappen, wacht.
 - **Faalt iets:** lees de fout, kijk in de tabel onderaan, zeg in één zin wat je nu probeert. Na twee mislukte pogingen voor hetzelfde: stoppen en melden.
 
@@ -61,7 +62,7 @@ commando's, paden, productnamen (Use this template, Settings → Rules → Rules
 | Poorten | `54322` (Postgres), `54324` (Mailpit UI), `54325` (SMTP); bezet → +10 tot alle drie vrij zijn |
 | Git-identiteit | bestaande `git config --global`; ontbreekt die: naam en `<id>+<login>@users.noreply.github.com` uit `gh api user` |
 
-Slug: kebab-case van de app-naam, alleen `a-z0-9-`, maximaal 40 tekens. Bestaat `~/code/<slug>` of `<owner>/<slug>` al: meld het en vraag een andere naam.
+Slug: kebab-case van de app-naam, alleen `a-z0-9-`, begint met een letter, maximaal **50** tekens (zoals `scripts/kit/app-init.mjs`). Bestaat `~/code/<slug>` of `<owner>/<slug>` al: controleer eerst of dit een eerder begonnen, aantoonbaar juiste setup uit `SETUP-PROGRESS.md` is. Hervat alleen na verificatie van origin, branch, naam en laatste fase; anders stop en vraag de eigenaar hoe verder. Nooit een repo of map overschrijven.
 
 ## Omgeving herkennen
 
@@ -113,12 +114,14 @@ Herschrijf het na elke fase:
 
 ## Fase 1 — Naam vragen
 
-Stuur precies dit (vertaald naar de toon van de gebruiker) en wacht:
+Staat de appnaam al in de opdracht (bijvoorbeeld **Meldpunt** bij ST-09), gebruik die meteen. Toon kort de naam → slug en noteer de keuze in het voortgangsbestand, zonder opnieuw te vragen.
+
+Ontbreekt de appnaam, vraag alleen dit en wacht:
 
 > Hoe heet de app? Ik maak er de repo-naam van (kebab-case) en zet hem in `package.json` en de README.
-> Alles verder ligt vast in het setup-bestand; wil je afwijken (owner, public, andere map), zeg het nu.
+> Alles verder ligt vast onder *Standaardwaarden*; wil je afwijken (owner, public, andere map), zeg het nu.
 
-Maak de slug, toon naam → slug in één regel, schrijf het voortgangsbestand.
+Maak de slug en schrijf het voortgangsbestand.
 
 ## Fase 2 — Windows (alleen bij WSL)
 
@@ -275,12 +278,22 @@ Controle: `git log --oneline` toont één commit; `ls` toont `AGENTS.md`, `compo
 git remote add template https://github.com/BramLambertJansen/template.git
 git remote set-url --push template DISABLED   # nooit per ongeluk naar de template pushen
 git fetch template
+# Harde voorwaarde: de nieuwe repo en template/main moeten exact dezelfde Git-tree hebben.
+# Als de template sinds 'Use this template' is gewijzigd, zou -s ours dat verschil stilzwijgend verbergen.
+created_tree=$(git rev-parse 'HEAD^{tree}')
+template_tree=$(git rev-parse 'template/main^{tree}')
+if [ "$created_tree" != "$template_tree" ]; then
+  echo 'STOP: broninhoud van de nieuwe repo wijkt af van template/main; koppel nog niet.' >&2
+  echo "App-tree: $created_tree; template-tree: $template_tree" >&2
+  exit 1
+fi
+# Alleen bij overeenkomende tree en een nieuwe, nog niet gekoppelde repo:
 git merge --allow-unrelated-histories -s ours template/main \
   -m "chore: link to template ($(git rev-parse --short template/main))"
 ```
 
 `-s ours` houdt de inhoud van de app en registreert de template als voorouder. Daarna haalt `git merge template/main` alleen nieuwe template-commits binnen.
-Controle: `git log --oneline --graph -5` toont een merge met twee ouders; `git diff HEAD~1 --stat` is leeg.
+Controle: noteer de gekoppelde volledige `template/main` SHA en beide tree-ID's in het voortgangsbestand. `git log --oneline --graph -5` toont een merge met twee ouders; `git diff HEAD~1 --stat` is leeg. **Bij een treeverschil:** niet mergen, niet de inhoud weggooien en niet heimelijk de templateversie als verwerkt markeren. Leg de mismatch vast en vraag een gerichte herstelbeslissing (bijvoorbeeld gecontroleerd opnieuw genereren als de nieuwe repo nog geen eigen werk bevat).
 
 ### 5.2 Hernoemen
 
