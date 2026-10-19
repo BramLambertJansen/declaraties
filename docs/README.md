@@ -10,6 +10,7 @@ Deze template is bedoeld om webapps met code-agents te bouwen. De documentatie h
 | De lokale omgeving starten | [Lokaal draaien](../README.md#lokaal-draaien) |
 | Een cloudomgeving voor Claude Code inrichten of herstellen | [Cloudomgeving](ENVIRONMENT.md) |
 | Een nieuwe app laten aanmaken | [Setup-playbook](nieuwe-app.md); dit is een uitvoerinstructie voor Claude Code |
+| De template met een echte app beproeven | [ST-09 praktijkproef Meldpunt](operations/st-09-praktijkproef.md): stappen, testmatrix en bewijsregistratie |
 | Een feature bouwen | [Gouden pad](gouden-pad.md), daarna de bijbehorende featurespec |
 | UI-componenten vinden en uitproberen | [UI-catalogus](design-system-catalogue.md) |
 | Tabellen, tabs, galerijen en filters gebruiken | [Gegevensweergave en navigatie](ui-data-display.md) |
