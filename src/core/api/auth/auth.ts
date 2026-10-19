@@ -1,9 +1,9 @@
 import { betterAuth } from 'better-auth';
 import pg from 'pg';
 import { UserId } from '../../shared/ids.ts';
-import { SESSION_ABSOLUTE_SECONDS } from '../../shared/limits.ts';
 import { createMailing } from './mailing.ts';
 import { AUTH_BASE_PATH, type AuthConfig, createAuthOptions, DISABLED_PREFIXES } from './options.ts';
+import { sessionRejection } from './session-policy.ts';
 
 export interface CreateAuthConfig extends AuthConfig {
   // AUTH_DATABASE_URL: de rol auth_service (framework §3, uitzondering op "alleen src/core/api/db raakt pg").
@@ -72,13 +72,14 @@ export function authGateway(auth: Auth, now: () => number = Date.now): AuthGatew
       const setCookie = responseHeaders.getSetCookie();
       if (response === null) return { session: null, setCookie };
       const { session, user } = response;
+      const rejection = sessionRejection(response, now());
       // Absoluut 7 dagen na inloggen (ADR 0003), ook als de sessie actief bleef: intrekken en als uitgelogd behandelen.
-      if (now() - session.createdAt.getTime() > SESSION_ABSOLUTE_SECONDS * 1000) {
+      if (rejection === 'expired') {
         await (await auth.$context).internalAdapter.deleteSession(session.token);
         return { session: null, setCookie };
       }
       // ADR 0026: een geblokkeerd account heeft geen sessie, ook niet een die na het blokkeren ontstond (AC-22).
-      if ('blockedAt' in user && user.blockedAt !== null && user.blockedAt !== undefined) {
+      if (rejection === 'blocked') {
         await (await auth.$context).internalAdapter.deleteUserSessions(user.id);
         return { session: null, setCookie };
       }

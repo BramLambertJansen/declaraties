@@ -2,6 +2,7 @@ import { APIError, createAuthMiddleware, getSessionFromCtx } from 'better-auth/a
 import { z } from 'zod';
 import { SESSION_FRESH_SECONDS } from '../../shared/limits.ts';
 import type { Mailing } from './mailing.ts';
+import { dropRejectedSession, SESSION_RECOVERY_PATHS } from './session-guard.ts';
 
 // Hooks rond Better Auth (ADR 0013, ADR 0021, ADR 0024; spec eigen-account). Elke regel heeft een integratietest
 // (test/auth/*.int.test.ts, test/api/eigen-account*.int.test.ts). session_strength: 'password' bij inloggen; 'mfa' na TOTP;
@@ -78,6 +79,12 @@ async function answerTakenAddress(ctx: HookContext, facts: SessionFacts, mailing
 
 export function createHooks(mailing: Mailing | null, now: () => number = Date.now) {
   const before = createAuthMiddleware(async (ctx) => {
+    if (ctx.path !== '/get-session' && !SESSION_RECOVERY_PATHS.has(ctx.path)) {
+      if (await dropRejectedSession(ctx, now())) {
+        // Een fout uit een before-hook neemt Set-Cookie alleen mee als de headers op de APIError staan.
+        throw new APIError('UNAUTHORIZED', { code: 'UNAUTHENTICATED', message: 'Geen sessie' }, ctx.responseHeaders);
+      }
+    }
     if (ctx.path === '/two-factor/verify-totp' && isTrustDeviceRequested(ctx.body)) {
       fail('BAD_REQUEST', 'TRUST_DEVICE_DISABLED', 'trustDevice staat uit (ADR 0013)');
     }
@@ -100,6 +107,7 @@ export function createHooks(mailing: Mailing | null, now: () => number = Date.no
   });
 
   const after = createAuthMiddleware(async (ctx) => {
+    if (ctx.path === '/get-session' && (await dropRejectedSession(ctx, now()))) return ctx.json(null);
     if (ctx.path === '/change-password') return afterChangePassword(ctx);
     const session = ctx.context.newSession?.session;
     if (session === undefined) return;

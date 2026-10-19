@@ -10,6 +10,7 @@ Hier staan wijzigingen die van belang zijn bij het gebruiken of bijwerken van de
 
 ### Opgelost
 
+- Directe authenticatieroutes weigeren nu ook geblokkeerde accounts en sessies ouder dan zeven dagen. Sessie-opvragingen geven dan geen gegevens terug en de browsercookie wordt gewist, ook als het opruimen van de sessierijen faalt. Geldige sessies en opnieuw inloggen blijven werken (`src/core/api/auth/hooks.ts`, `test/auth/session-policy.int.test.ts`).
 - Verbindingsverlies tijdens een API-handler stopt de request gecontroleerd in plaats van het hele proces. Geblokkeerde accounts blijven geblokkeerd als sessie-opruiming faalt; uitnodigingsmail volgt pas na commit en een half auth-account wordt na rollback opgeruimd (`src/core/api/db/with-user.ts`, `src/core/api/http/route-effects.ts`, `src/core/api/auth/invitations.ts`).
 - Gelijktijdig hetzelfde account blokkeren of deblokkeren schrijft slechts één auditregel per statusovergang (migratie `20261019070000_account_audit_idempotency.sql`).
 - De sessielijst verbergt ook sessies waarvan de idle-termijn verstreken is. Een 401 wist gecachete accountgegevens voordat de app naar inloggen navigeert (`src/core/api/auth/profile.ts`, `src/web/lib/session.ts`).

@@ -26,8 +26,8 @@ afrondt, wordt een daarna geregistreerde compensatie alsnog uitgevoerd.
 
 Een fout in een callback na commit geeft een foutrespons, maar draait gecommitteerde data nooit terug. Daarom kan
 een beheerder na een uitnodigingsfout het reeds zichtbare account opnieuw uitnodigen. Na een opruimfout blijft
-`authGateway.getSession` een geblokkeerd account weigeren. De ruwe Better Auth-endpoints gebruiken die gatewaycontrole
-niet; sessie-opruiming blijft daar relevant.
+`authGateway.getSession` een geblokkeerd account weigeren. De destijds resterende omzeiling via directe Better
+Auth-endpoints wordt gedicht in de [vervolgfix voor sessiebeleid](2026-10-19-auth-session-policy.md).
 
 De accountlijst wordt na uitnodigen en blokkeren ook bij een fout geïnvalideerd: de server kan al gecommit hebben.
 `src/web/features/accounts/mutation-invalidation.test.tsx` bewaakt dat de UI de werkelijke serverstatus opnieuw ophaalt.
