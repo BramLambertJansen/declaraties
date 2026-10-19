@@ -38,6 +38,9 @@ optioneel defaultValue. Left/Right/Home/End verplaatsen focus; Enter/Space activ
 maar hidden, zodat invoer bewaard blijft. Een paneel met eigen focusbare inhoud krijgt geen extra Tab-stop.
 Onbekende expliciete waarden worden niet vervangen; de eerste enabled tab blijft bereikbaar. Verdwijnt een actieve
 uncontrolled tab, dan herstelt de eerste enabled tab zonder wijzigingscallback. Focusherstel steelt geen externe focus.
+Ook als tabs later geladen worden of na een lege/volledig uitgeschakelde tussenstand terugkomen, wordt de eerste enabled
+tab actief. Die keuze blijft daarna bij herschikken behouden. Een onbekende expliciete waarde wordt ook dan niet vervangen
+(`src/core/web/ui/tabs-empty-recovery.test.tsx`).
 Na bewust verlaten van een zichtbaar, bereikbaar veld wordt ook een blur zonder volgend focusdoel gerespecteerd
 (`src/core/web/ui/tabs.tsx:87`); een latere ouderwissel trekt focus dan niet terug.
 
@@ -73,7 +76,7 @@ bleef in `gate:slow` falen. Component, voorbeeld en tests zijn verwijderd; een l
 | AC-1 exports/types/defaultcompatibiliteit | typecheck, check:catalogus, list-toolbar-filters.test.tsx |
 | AC-2 tabel/sortering/ids | data-table.test.tsx, e2e/ui-data-display.spec.ts |
 | AC-3 selectie/busy/leeg/meer laden | data-table.test.tsx, e2e/ui-data-display.spec.ts |
-| AC-4 tabs/keyboard/staat/focus | tabs.test.tsx, tabs-blur.test.tsx, e2e/ui-data-display.spec.ts |
+| AC-4 tabs/keyboard/staat/focus | tabs.test.tsx, tabs-blur.test.tsx, tabs-empty-recovery.test.tsx, e2e/ui-data-display.spec.ts |
 | AC-5 gallery/fout/preview | gallery.test.tsx, e2e/ui-data-display.spec.ts |
 | AC-6 toolbar/adaptatie/chips/debounce | list-toolbar-filters.test.tsx, bestaande list-toolbar.test.tsx, e2e/ui-data-display.spec.ts |
 | AC-7 carousel/controlled/swipe | vervallen (Carousel uit deze tranche gehaald) |

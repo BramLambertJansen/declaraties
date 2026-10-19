@@ -18,11 +18,11 @@ function useTabs(props: TabsProps) {
   const root = useRef<HTMLDivElement>(null);
   const base = useId();
   const first = props.items.find((item) => item.disabled !== true)?.id;
-  const [local, setLocal] = useState(props.defaultValue ?? first ?? '');
+  const [local, setLocal] = useState(props.defaultValue ?? first);
   const [roving, setRoving] = useState<string | undefined>(undefined);
   const previousItems = useRef(props.items);
   const tracked = useRef<HTMLElement | null>(null);
-  const requested = props.value ?? local;
+  const requested = props.value ?? local ?? first;
   const active = props.items.find((item) => item.id === requested && item.disabled !== true)?.id;
   const structural =
     props.value === undefined &&
@@ -35,7 +35,7 @@ function useTabs(props: TabsProps) {
   const trigger = (id: string) => `${base}-tab-${encodeURIComponent(id)}`;
   const panel = (id: string) => `${base}-panel-${encodeURIComponent(id)}`;
   useLayoutEffect(() => {
-    if (structural) setLocal(first ?? '');
+    if (structural || (props.value === undefined && local === undefined && first !== undefined)) setLocal(first);
     previousItems.current = props.items;
     const focused = tracked.current;
     if (focused === null || (document.activeElement !== focused && document.activeElement !== document.body)) return;
