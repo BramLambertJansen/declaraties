@@ -27,5 +27,13 @@ create policy __tabel___update_own on public.__tabel__
 create policy __tabel___delete_own on public.__tabel__
   for delete to app_authenticated using (owner_id = (select app.current_user_id()));
 
+-- Bewaarcatalogus (spec achtergrondtaken, OV-A5; invariant in db/tests/invarianten.sql): de tabel verdwijnt met het account.
+-- app.retention staat onder FORCE RLS zonder insert-policy; FORCE gaat alleen binnen deze migratietransactie uit.
+alter table app.retention no force row level security;
+insert into app.retention values (
+  'public.__tabel__', null, null, 'app', 'verdwijnt met het account (owner_id, on delete cascade)'
+);
+alter table app.retention force row level security;
+
 -- migrate:down
 -- Append-only: geen down-migraties (docs/framework.md §10).

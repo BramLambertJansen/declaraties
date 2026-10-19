@@ -40,7 +40,7 @@ paths:
   `src/api/db/schema.ts`; commit beide met de migratie, nooit met de hand bewerken. Een kolom `id` of `*_id` zonder
   foreign key naar een gebrande kolom: zet hem in `db/ids.json` met een ID gemaakt met `brandedId()` uit `src/core/shared/ids.ts`, of `null` met reden.
   Een kolomtype dat de generator niet kent (of `timestamp` zonder tijdzone) laat hem falen.
-- `app.request_id()` leest `app.request_id`, gezet door `withUser()` uit de `requestId` van de server (nooit van de client); `app.audit_log` is append-only, schrijven via `app.audit`/`app.audit_account_action` en door `app.assign_role` en `app.set_account_blocked`.
+- `app.request_id()` leest `app.request_id`, gezet door `withUser()` uit de `requestId` van de server (nooit van de client); `app.audit_log` is append-only, behalve verwijderen na de termijn (`app.retention_cutoff`), schrijven via `app.audit`/`app.audit_account_action` en door `app.assign_role` en `app.set_account_blocked`.
 - `src/core/api/db` exporteert alleen `withUser()`, `pingDatabase()` (alleen voor readiness, vanuit `src/api/server.ts`), `closeDatabase()` (alleen bij het stoppen, vanuit `src/api/server.ts`) en `testing.ts` (alleen voor testbestanden); `audit.ts` (`createAuditFn`, alleen voor `ctx.audit` in de route kit) is het enige andere toegestane bestand buiten index, testing en types. Die controleert aan het begin
   van elke transactie `current_user = session_user`, zet de rol, `app.user_id` en `app.session_strength` (`password` of `mfa`; elke
   andere waarde weigert hij) en vertaalt fouten. Buiten `withUser()` geeft `app.session_strength()` `none`.

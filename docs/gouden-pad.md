@@ -13,7 +13,7 @@ draait hem; `--dry-run` toont het plan zonder te schrijven, en bestaat een doel 
 2. **Spec `goedgekeurd`:** `pnpm new:resource <naam> --rollen user,admin` maakt werkstraat-stap 2 (contract, handlers die 501
    geven), zonder tests:
    - nieuw: `src/shared/contracts/<naam>.ts`, `db/migrations/<tijdstempel>_<naam>.sql` (tabelpatroon uit
-     [de security-review](reviews/2026-10-10-tabelpatroon.md); een naam met `-` wordt `_` in SQL), `src/api/routes/<naam>.ts`,
+     [de security-review](reviews/2026-10-10-tabelpatroon.md); een naam met `-` wordt `_` in SQL; de migratie registreert de tabel ook in `app.retention`, framework §6), `src/api/routes/<naam>.ts`,
      `src/web/features/<naam>/queries.ts`, `src/web/features/<naam>/<naam>-page.tsx`, `src/web/routes/_app/<naam>.tsx`
      (en `src/web/routeTree.gen.ts` opnieuw);
    - gewijzigd: `src/shared/contracts/index.ts`, `src/shared/ids.ts` (aangemaakt als hij ontbreekt) en `db/ids.json` (brand `<Naam>Id`), `src/shared/limits.ts`

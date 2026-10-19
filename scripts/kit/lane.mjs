@@ -72,6 +72,13 @@ export function isMiniSpec(text) {
   return lines[0] === '---' && end > 0 && lines.slice(1, end).includes('sjabloon: mini');
 }
 
+const RETENTION_INSERT = /(?:^|;)\s*insert\s+into\s+app\.retention\s+values\s*\([^;]*$/i;
+
+/** Een tekstwaarde wordt `?`; alleen een kale naam (`public.notes`, `app`) in een insert op `app.retention` blijft letterlijk. @param {string} inhoud @param {string} tot */
+function waarde(inhoud, tot) {
+  return /^[a-z0-9_.]+$/i.test(inhoud) && RETENTION_INSERT.test(tot) ? `'${inhoud}'` : '?';
+}
+
 /**
  * Splitst SQL in statements, zonder commentaar en met tekstwaarden vervangen door `?`. Quotes worden gevolgd, zodat `--` of `;`
  * in een tekst geen statement verbergt. Dollar-quotes, blokcommentaar en E-strings (backslash-escapes) zijn niet te volgen en
@@ -92,7 +99,7 @@ function statementsVan(sql) {
       while (einde < sql.length && !(sql[einde] === teken && sql[einde + 1] !== teken))
         einde += sql[einde] === teken ? 2 : 1;
       if (einde >= sql.length) return null;
-      uit += teken === "'" ? '?' : sql.slice(i, einde + 1);
+      uit += teken === "'" ? waarde(sql.slice(i + 1, einde), uit) : sql.slice(i, einde + 1);
       i = einde;
     } else uit += teken;
   }
@@ -100,6 +107,7 @@ function statementsVan(sql) {
 }
 
 const NAAM = '((?:[a-z_][a-z0-9_]*|"[^"]+")(?:\\.(?:[a-z_][a-z0-9_]*|"[^"]+"))?)';
+const NAAM_ZONDER_QUOTES = '([a-z_][a-z0-9_]*\\.[a-z_][a-z0-9_]*)';
 const ROLLEN = '(?:app_[a-z_]+)(?:, app_[a-z_]+)*';
 const REGELS = [
   { patroon: new RegExp(`^create table ${NAAM} \\(.*\\)$`), doel: 'maak' },
@@ -108,11 +116,32 @@ const REGELS = [
   { patroon: new RegExp(`^grant [a-z_, ()]+ on (?:table )?${NAAM} to ${ROLLEN}$`), doel: 'op' },
   { patroon: new RegExp(`^create policy [a-z0-9_]+ on ${NAAM} `), doel: 'op' },
 ];
+const RETENTION_FORCE = /^alter table app\.retention (?:no )?force row level security$/;
+const RETENTION_RIJ = new RegExp(
+  `^insert into app\\.retention values\\s*\\(\\s*'${NAAM_ZONDER_QUOTES}'\\s*,\\s*null\\s*,\\s*null\\s*,\\s*'app'\\s*,\\s*(?:\\?|'[a-z0-9_.]+')\\s*\\)$`,
+);
 const NIET_IN_TABEL = /\b(?:inherits|partition|like)\b/;
 
 /** Het eerste deel van een migratie: dbmate leest `-- migrate:down` als regel met eventueel tekst erachter. @param {string} tekst */
 function upDeel(tekst) {
   return tekst.replaceAll('\r\n', '\n').split(/^--[ \t]*migrate:down(?:[ \t]*$|[ \t]+\S)/m)[0] ?? '';
+}
+
+/** Mag dit statement? Eigen nieuwe tabel via REGELS, plus de smalle bewaarcatalogus-uitzondering (alleen `no force`/`force` op `app.retention` en een rij voor een eigen tabel). @param {string} deel @param {Set<string>} gemaakt */
+function toegestaan(deel, gemaakt) {
+  if (RETENTION_FORCE.test(deel)) return true;
+  const rij = RETENTION_RIJ.exec(deel)?.[1];
+  if (rij !== undefined) return gemaakt.has(rij);
+  if (NIET_IN_TABEL.test(deel) && deel.startsWith('create table')) return false;
+  const regel = REGELS.find(({ patroon }) => patroon.test(deel));
+  const naam = regel?.patroon.exec(deel)?.[1];
+  return regel !== undefined && naam !== undefined && gemaakt.has(naam);
+}
+
+/** Laat de migratie `app.retention` met `no force` achter? Dan is de laatste toggle geen `force`. @param {string[]} statements */
+function eindigtOpNoForce(statements) {
+  const toggles = statements.filter((deel) => RETENTION_FORCE.test(deel));
+  return toggles.at(-1)?.includes(' no force ') === true;
 }
 
 /**
@@ -126,13 +155,10 @@ export function migratieOvertreding(tekst) {
   if (statements === null) return 'migratie met dollar-quotes, blokcommentaar of E-strings is niet te beoordelen';
   const gevuld = statements.filter((deel) => deel !== '');
   const gemaakt = new Set(gevuld.flatMap((deel) => REGELS[0]?.patroon.exec(deel)?.[1] ?? []));
-  const fout = gevuld.find((deel) => {
-    if (NIET_IN_TABEL.test(deel) && deel.startsWith('create table')) return true;
-    const regel = REGELS.find(({ patroon }) => patroon.test(deel));
-    const naam = regel?.patroon.exec(deel)?.[1];
-    return regel === undefined || naam === undefined || !gemaakt.has(naam);
-  });
+  const fout = gevuld.find((deel) => !toegestaan(deel, gemaakt));
   if (gemaakt.size === 0) return 'migratie maakt geen nieuwe tabel';
+  if (fout === undefined && eindigtOpNoForce(gevuld))
+    return 'migratie laat app.retention met `no force row level security` achter: de laatste toggle moet `force` zijn';
   return fout === undefined ? null : `migratie bevat meer dan een nieuwe tabel: "${fout.slice(0, 60)}"`;
 }
 

@@ -6,7 +6,8 @@ Hier staan wijzigingen die van belang zijn bij het gebruiken of bijwerken van de
 
 ### Toegevoegd
 
-- Bewaarcatalogus `app.retention` met `app.retention_cutoff()` (migratie `20261019120000_retention.sql`): elke tabel in `public` en `app` krijgt een termijn, een invariant bewaakt dat. Verlopen regels in `app.audit_log` (ouder dan 1 jaar) en `app.rate_limits` mogen door `app_definer` worden verwijderd; update en truncate op de audit log blijven geweigerd. Bij een update: een nieuwe eigen tabel heeft een rij in `app.retention` nodig; de generator die dat voor `pnpm new:resource` doet, volgt in een eigen PR.
+- Bewaarcatalogus `app.retention` met `app.retention_cutoff()` (migratie `20261019120000_retention.sql`): elke tabel in `public` en `app` krijgt een termijn, een invariant bewaakt dat. Verlopen regels in `app.audit_log` (ouder dan 1 jaar) en `app.rate_limits` mogen door `app_definer` worden verwijderd; update en truncate op de audit log blijven geweigerd. Bij een update: een nieuwe eigen tabel heeft een rij in `app.retention` nodig.
+- `pnpm new:resource` registreert voortaan de nieuwe tabel in de bewaarcatalogus `app.retention` (migratie-template); de feature-lane laat die rij en de tijdelijke FORCE-toggle toe (de laatste toggle moet `force` zijn). Bij een update: bestaande eigen migraties van nieuwe tabellen hebben een rij in `app.retention` nodig (zie `scripts/kit/templates/migratie.sql.tmpl`).
 
 ### Opgelost
 

@@ -1,7 +1,10 @@
-import { readFileSync } from 'node:fs';
+import { cpSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import path from 'node:path';
 import { describe, expect, test } from 'vitest';
 import { loadConfig } from '../../rails/hooks/lib/rolhek.mjs';
 import { laneVan, migratieOvertreding, recordAlleenBesluit } from '../../scripts/kit/lane.mjs';
+import { plan } from '../../scripts/kit/new-resource.mjs';
 
 // ADR 0029 punt 7: lane-herkenning. `laneVan({ changes, besluiten, mini, config })` is puur.
 //   changes   — de name-status-wijzigingen van de PR ({ status: 'A' | 'M' | 'D' | 'R' | 'C', pad, van? })
@@ -10,6 +13,20 @@ import { laneVan, migratieOvertreding, recordAlleenBesluit } from '../../scripts
 //   config    — de gates uit .claude/gates.json op main
 // Resultaat: { lane: 'feature' | 'framework' | null, reden: string }.
 const config = loadConfig(readFileSync('.claude/gates.json', 'utf8'));
+// De bestanden die fase 2 van new:resource leest (zoals new-resource.test.ts), in een tijdelijke map.
+const NODIG = [
+  '.prettierrc.json',
+  'db/ids.json',
+  'db/migrations',
+  'src/shared/permissions.ts',
+  'src/shared/permissions.test.ts',
+  'src/shared/contracts/index.ts',
+  'src/shared/limits.ts',
+  'src/api/app.ts',
+  'src/web/copy/ui.ts',
+  'src/web/lib/nav.ts',
+  'src/web/routes.test.tsx',
+];
 const SPEC = 'docs/specs/demo.md';
 const ADR = 'docs/adr/0099-demo.md';
 
@@ -188,6 +205,204 @@ describe('migratieOvertreding: alleen een nieuwe tabel', () => {
     ['geen nieuwe tabel', 'create index i on public.notes (id);'],
   ])('%s: overtreding', (_naam, sql) => {
     expect(typeof migratieOvertreding(`-- migrate:up\n${sql}\n`)).toBe('string');
+  });
+});
+
+describe('migratieOvertreding: bewaarcatalogus (AC-10)', () => {
+  const MAAK = 'create table public.notes (id uuid primary key);';
+  const NO_FORCE = 'alter table app.retention no force row level security;';
+  const FORCE = 'alter table app.retention force row level security;';
+  const RIJ = "insert into app.retention values ('public.notes', null, null, 'app', 'verdwijnt met het account');";
+  const migratie = (...delen: string[]) => `-- migrate:up\n${delen.join('\n')}\n-- migrate:down\n`;
+
+  test.each([
+    ['de drie statements om de eigen tabel', [MAAK, NO_FORCE, RIJ, FORCE]],
+    [
+      'hoofdletters, witruimte en regelafbreking',
+      [
+        MAAK,
+        'ALTER TABLE app.retention\n  NO FORCE ROW LEVEL SECURITY;',
+        "INSERT INTO app.retention VALUES (\n  'public.notes', null, null, 'app', 'reden'\n);",
+        'ALTER TABLE APP.RETENTION FORCE ROW LEVEL SECURITY;',
+      ],
+    ],
+    [
+      'een reden met puntkomma en -- erin',
+      [MAAK, NO_FORCE, "insert into app.retention values ('public.notes', null, null, 'app', 'a; b -- c');", FORCE],
+    ],
+    [
+      'een eigen tabel in een ander schema',
+      [
+        'create table app.things (id uuid primary key);',
+        NO_FORCE,
+        "insert into app.retention values ('app.things', null, null, 'app', 'reden');",
+        FORCE,
+      ],
+    ],
+    [
+      'twee eigen tabellen, elk met eigen rij',
+      [
+        MAAK,
+        'create table public.more (id uuid primary key);',
+        NO_FORCE,
+        RIJ,
+        "insert into app.retention values ('public.more', null, null, 'app', 'reden');",
+        FORCE,
+      ],
+    ],
+  ])('%s: geen overtreding', (_naam, delen) => {
+    expect(migratieOvertreding(migratie(...delen))).toBeNull();
+  });
+
+  test.each([
+    [
+      'rij voor een andere tabel dan de eigen nieuwe',
+      [MAAK, NO_FORCE, "insert into app.retention values ('public.other', null, null, 'app', 'reden');", FORCE],
+    ],
+    [
+      'rij voor dezelfde naam in een ander schema',
+      [MAAK, NO_FORCE, "insert into app.retention values ('app.notes', null, null, 'app', 'reden');", FORCE],
+    ],
+    [
+      'rij voor een bestaande app-tabel',
+      [MAAK, NO_FORCE, "insert into app.retention values ('app.audit_log', null, null, 'app', 'reden');", FORCE],
+    ],
+    [
+      'twee rijen waarvan een vreemde',
+      [
+        MAAK,
+        NO_FORCE,
+        "insert into app.retention values ('public.notes', null, null, 'app', 'a'), ('public.other', null, null, 'app', 'b');",
+        FORCE,
+      ],
+    ],
+    [
+      'rij uit een select',
+      [MAAK, NO_FORCE, "insert into app.retention select 'public.notes', null, null, 'app', 'reden';", FORCE],
+    ],
+    [
+      'rij met een andere purger dan app',
+      [MAAK, NO_FORCE, "insert into app.retention values ('public.notes', null, null, 'job', 'reden');", FORCE],
+    ],
+    [
+      'rij met een bewaartermijn in plaats van null',
+      [
+        MAAK,
+        NO_FORCE,
+        "insert into app.retention values ('public.notes', 'created_at', interval '1 day', 'app', 'reden');",
+        FORCE,
+      ],
+    ],
+    ['insert in app.audit_log', [MAAK, 'insert into app.audit_log values (1);']],
+    ['insert in app.rate_limits', [MAAK, 'insert into app.rate_limits values (1);']],
+    ['insert in de eigen nieuwe tabel', [MAAK, 'insert into public.notes values (gen_random_uuid());']],
+    ['insert in een bestaande tabel', [MAAK, 'insert into public.accounts values (1);']],
+    ['app.retention: disable row level security', [MAAK, 'alter table app.retention disable row level security;']],
+    ['app.retention: enable row level security', [MAAK, 'alter table app.retention enable row level security;']],
+    ['app.retention: drop', [MAAK, 'drop table app.retention;']],
+    ['app.retention: add column', [MAAK, 'alter table app.retention add column x int;']],
+    ['app.retention: rename', [MAAK, 'alter table app.retention rename to r;']],
+    ['app.retention: update', [MAAK, 'update app.retention set keep = null where true;']],
+    ['app.retention: delete', [MAAK, 'delete from app.retention;']],
+    ['app.retention: truncate', [MAAK, 'truncate app.retention;']],
+    ['truncate van de eigen tabel', [MAAK, 'truncate public.notes;']],
+    ['no force op app.audit_log', [MAAK, 'alter table app.audit_log no force row level security;']],
+    ['no force op een bestaande tabel', [MAAK, 'alter table public.accounts no force row level security;']],
+    ['no force op de eigen nieuwe tabel', [MAAK, 'alter table public.notes no force row level security;']],
+    ['force op een bestaande tabel', [MAAK, 'alter table public.accounts force row level security;']],
+  ])('%s: overtreding', (_naam, delen) => {
+    expect(typeof migratieOvertreding(migratie(...delen))).toBe('string');
+  });
+
+  // Een cijfer in de tabelnaam (controleerNaam staat dat toe, bijv. invoices2) mag de rij niet doen afwijzen.
+  test.each([
+    ['public.invoices2', 'eindigt op een cijfer'],
+    ['app.things2', 'eindigt op een cijfer in app'],
+    ['public.line_items_v2', 'heeft een cijfer middenin'],
+  ])('tabel %s (%s): geen overtreding', (tabel) => {
+    const delen = [
+      `create table ${tabel} (id uuid primary key);`,
+      NO_FORCE,
+      `insert into app.retention values ('${tabel}', null, null, 'app', 'reden');`,
+      FORCE,
+    ];
+    expect(migratieOvertreding(migratie(...delen))).toBeNull();
+  });
+
+  test.each([
+    [
+      'rij voor invoices3 terwijl invoices2 wordt aangemaakt',
+      [
+        'create table public.invoices2 (id uuid primary key);',
+        NO_FORCE,
+        "insert into app.retention values ('public.invoices3', null, null, 'app', 'reden');",
+        FORCE,
+      ],
+    ],
+    [
+      'rij met cijfer in een ander schema dan aangemaakt',
+      [
+        'create table public.invoices2 (id uuid primary key);',
+        NO_FORCE,
+        "insert into app.retention values ('app.invoices2', null, null, 'app', 'reden');",
+        FORCE,
+      ],
+    ],
+  ])('%s: overtreding', (_naam, delen) => {
+    expect(typeof migratieOvertreding(migratie(...delen))).toBe('string');
+  });
+
+  test('de migratie die new:resource voor invoices2 genereert: geen overtreding', async () => {
+    const root = mkdtempSync(path.join(tmpdir(), 'lane-test-'));
+    for (const pad of NODIG) cpSync(pad, path.join(root, pad), { recursive: true });
+    mkdirSync(path.join(root, 'docs/specs'), { recursive: true });
+    writeFileSync(
+      path.join(root, 'docs/specs/invoices2.md'),
+      '---\nstatus: goedgekeurd\nnamespace: invoices2\n---\n\n# invoices2\n',
+    );
+    const p = await plan(root, 'invoices2', { rollen: ['user'], nu: new Date('2000-01-01T00:00:00Z') });
+    const sql = p.bestanden.find(({ pad }) => /^db\/migrations\/\d{14}_invoices2\.sql$/.test(pad))?.inhoud ?? '';
+
+    expect(sql).toContain("insert into app.retention values (\n  'public.invoices2'");
+    expect(migratieOvertreding(sql)).toBeNull();
+  });
+
+  // De laatste toggle van app.retention moet `force` zijn: anders blijft FORCE RLS uit na de migratie.
+  test.each([
+    ['no force zonder daaropvolgende force', [MAAK, NO_FORCE, RIJ]],
+    ['force voor no force, zonder afsluitende force', [MAAK, FORCE, NO_FORCE, RIJ]],
+    ['twee no force zonder force ertussen, eindigend op no force', [MAAK, NO_FORCE, RIJ, NO_FORCE]],
+    ['alleen no force', [MAAK, NO_FORCE]],
+  ])('%s: overtreding (de laatste toggle is niet force)', (_naam, delen) => {
+    expect(typeof migratieOvertreding(migratie(...delen))).toBe('string');
+  });
+
+  test.each([
+    ['no force, insert, force', [MAAK, NO_FORCE, RIJ, FORCE]],
+    [
+      'no force, twee inserts voor eigen tabellen, force',
+      [
+        MAAK,
+        'create table public.more (id uuid primary key);',
+        NO_FORCE,
+        RIJ,
+        "insert into app.retention values ('public.more', null, null, 'app', 'reden');",
+        FORCE,
+      ],
+    ],
+    ['geen toggle en geen insert, tabel met cijfers', ['create table public.invoices2 (id uuid primary key);']],
+    ['no force, force, no force, force', [MAAK, NO_FORCE, FORCE, NO_FORCE, RIJ, FORCE]],
+  ])('%s: geen overtreding (de laatste toggle is force)', (_naam, delen) => {
+    expect(migratieOvertreding(migratie(...delen))).toBeNull();
+  });
+
+  // De reden: een kale waarde met cijfer en een tekst met spaties of leestekens (wordt `?`) zijn beide toegestaan.
+  test.each([
+    ['een kale reden met cijfer', "'v2'"],
+    ['een reden met spaties en leestekens', "'verdwijnt met het account (owner_id), v2!'"],
+  ])('%s in de insert van een eigen tabel: geen overtreding', (_naam, reden) => {
+    const rij = `insert into app.retention values ('public.notes', null, null, 'app', ${reden});`;
+    expect(migratieOvertreding(migratie(MAAK, NO_FORCE, rij, FORCE))).toBeNull();
   });
 });
 
