@@ -20,6 +20,7 @@ zijn optioneel. Een bestaand script of ADR bewijst niet dat de capability comple
 Hooguit drie open items (`check:roadmap`); nummer 1 is bewijs vóór uitbreiding (P1).
 
 - [ ] **ST-09 (P1) — proef-app met template-update** (fase 1, stuk 6). Doel: bewijzen dat de template als basis voor een app werkt, vóór verdere uitbreiding.
+  **Uitvoeringsopdracht:** [ST-09 praktijkproef Meldpunt](operations/st-09-praktijkproef.md) beschrijft de gekozen app, testmatrix, doorlopende bewijsregistratie, nulmeting en updateproef.
   **Werk:** kies met de eigenaar één kleine echte app met een owner-scoped resource en een adminactie. Start via `docs/nieuwe-app.md`, bouw een
   complete verticale flow en registreer elke handmatige stap, onduidelijke instructie, ontbrekende component en core-aanpassing; houd het
   app-domein buiten deze template. Neem daarna één echte template-update over (`git merge template/main`) via een PR (ADR 0006).
