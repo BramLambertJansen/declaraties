@@ -1,7 +1,7 @@
 import type { Role } from '#core/shared/can.ts';
 
-// Zichtbare teksten van de schermen, letterlijk uit de spec accountbeheer (ook de rij "Aanvullend": toegankelijke namen
-// en validatie).
+// Nederlandse schermteksten, inclusief toegankelijke namen en validatie. Specs en featurebeschrijvingen leggen het
+// bijbehorende gedrag vast.
 // Naam per rol: Record<Role, …>, dus een nieuwe rol in ROLES zonder naam is een typefout (accounts, rolwisselaar).
 export const roleLabels = { user: 'Gebruiker', admin: 'Beheerder' } as const satisfies Record<Role, string>;
 
@@ -10,6 +10,7 @@ export const copy = {
     title: 'Inloggen',
     email: 'E-mailadres',
     passwordLabel: 'Wachtwoord',
+    visibilityLabel: 'Wachtwoord tonen',
     submit: 'Inloggen',
     passwordSet: 'Je wachtwoord is ingesteld. Log in om verder te gaan.',
     sessionExpired: 'Je sessie is verlopen. Log opnieuw in.',

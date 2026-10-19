@@ -19,6 +19,7 @@ export interface LoginPageProps {
 
 function Credentials({ onStep, finish }: { onStep: (step: Step) => void; finish: () => Promise<void> }) {
   const form = useZodForm(loginInput, { email: '', password: '' });
+  const [showPassword, setShowPassword] = useState(false);
   const submit = async ({ email, password }: { email: string; password: string }) => {
     if ((await auth.signIn(email, password)) === 'totp') {
       onStep({ kind: 'totp' });
@@ -38,7 +39,30 @@ function Credentials({ onStep, finish }: { onStep: (step: Step) => void; finish:
         {(field) => <Input {...field} type="email" autoComplete="username" autoFocus />}
       </FormField>
       <FormField form={form} name="password" label={copy.login.passwordLabel}>
-        {(field) => <Input {...field} type="password" autoComplete="current-password" />}
+        {(field) => (
+          <>
+            <Input
+              {...field}
+              type={showPassword ? 'text' : 'password'}
+              autoComplete="current-password"
+              autoCapitalize="none"
+              autoCorrect="off"
+              spellCheck={false}
+            />
+            <Button
+              type="button"
+              variant={showPassword ? 'secondary' : 'outline'}
+              className="self-start"
+              aria-pressed={showPassword}
+              aria-controls={field.id}
+              onClick={() => {
+                setShowPassword((visible) => !visible);
+              }}
+            >
+              {copy.login.visibilityLabel}
+            </Button>
+          </>
+        )}
       </FormField>
     </Form>
   );
