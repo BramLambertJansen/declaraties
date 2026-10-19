@@ -137,6 +137,62 @@
       "branch": "docs/adr-0029-agent-merge",
       "status": "geaccepteerd",
       "paths": []
+    },
+    {
+      "file": "docs/specs/achtergrondtaken.md",
+      "digest": "76c37b691d0066f67fdacc932a48b7c874ee5ca85048ba5672af9ff9917d5555",
+      "repository": "BramLambertJansen/template",
+      "branch": "feat/jobs-retention",
+      "status": "goedgekeurd",
+      "paths": []
+    },
+    {
+      "file": "docs/specs/achtergrondtaken.md",
+      "digest": "76c37b691d0066f67fdacc932a48b7c874ee5ca85048ba5672af9ff9917d5555",
+      "repository": "BramLambertJansen/template",
+      "branch": "feat/jobs-role",
+      "status": "goedgekeurd",
+      "paths": []
+    },
+    {
+      "file": "docs/specs/achtergrondtaken.md",
+      "digest": "76c37b691d0066f67fdacc932a48b7c874ee5ca85048ba5672af9ff9917d5555",
+      "repository": "BramLambertJansen/template",
+      "branch": "feat/jobs-runner",
+      "status": "goedgekeurd",
+      "paths": []
+    },
+    {
+      "file": "docs/specs/achtergrondtaken.md",
+      "digest": "76c37b691d0066f67fdacc932a48b7c874ee5ca85048ba5672af9ff9917d5555",
+      "repository": "BramLambertJansen/template",
+      "branch": "feat/jobs-purge",
+      "status": "goedgekeurd",
+      "paths": []
+    },
+    {
+      "file": "docs/specs/mail-outbox.md",
+      "digest": "def8c0ce259d20eeff67de7d08abcfc8f623a2cdf95336746a1810af9e42a85c",
+      "repository": "BramLambertJansen/template",
+      "branch": "feat/outbox-db",
+      "status": "goedgekeurd",
+      "paths": []
+    },
+    {
+      "file": "docs/specs/mail-outbox.md",
+      "digest": "def8c0ce259d20eeff67de7d08abcfc8f623a2cdf95336746a1810af9e42a85c",
+      "repository": "BramLambertJansen/template",
+      "branch": "feat/outbox-worker",
+      "status": "goedgekeurd",
+      "paths": []
+    },
+    {
+      "file": "docs/specs/mail-outbox.md",
+      "digest": "def8c0ce259d20eeff67de7d08abcfc8f623a2cdf95336746a1810af9e42a85c",
+      "repository": "BramLambertJansen/template",
+      "branch": "feat/outbox-status",
+      "status": "goedgekeurd",
+      "paths": []
     }
   ]
 }
