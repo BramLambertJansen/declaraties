@@ -19,7 +19,10 @@ insert into catalogus values
   ('app.request_id()', 'intern', 'alleen gelezen door security definer-functies van de audit log'),
   ('app.audit_log_guard()', 'intern', 'triggerfunctie van app.audit_log'),
   ('app.audit(text, text, text, jsonb)', 'client', null),
-  ('app.audit_account_action(text, text)', 'client', null);
+  ('app.audit_account_action(text, text)', 'client', null),
+  -- Bewaarcatalogus (spec achtergrondtaken, deel A, AC-5 en AC-7).
+  ('app.retention_cutoff(regclass)', 'intern', 'gelezen door policies en triggers met een termijn'),
+  ('app.audit_log_guard_delete()', 'intern', 'triggerfunctie van app.audit_log');
 
 -- Functies van extensies tellen niet mee (pgTAP staat in schema tap).
 create temp view functies as

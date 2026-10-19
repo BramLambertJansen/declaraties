@@ -1,5 +1,5 @@
 -- app.audit_log en wie erin schrijft (spec audit-log, deel A en B: AC-5 t/m AC-20; ADR 0021): tabel, CHECKs, grants,
--- exact drie policies op naam, de guard-trigger (append-only), app.request_id(), app.audit, app.audit_account_action en de
+-- exact vier policies op naam, de guard-triggers (append-only, behalve verwijderen na de termijn), app.request_id(), app.audit, app.audit_account_action en de
 -- regels van app.assign_role en app.set_account_blocked. Alles in één transactie die terugdraait.
 -- Alles wat de nieuwe objecten raakt staat als tekst in een assert of in een hulpfunctie die fouten vangt, zodat een
 -- ontbrekende migratie als falende assert verschijnt en niet als afgebroken script.
@@ -7,7 +7,7 @@
 -- als app_definer of app_authenticated aangeroepen.
 begin;
 set search_path = tap, public;
-select plan(80);
+select plan(93);
 
 -- Zet de actor zoals withUser() hem zet (set_config met is_local = true), inclusief de requestId van de server.
 create procedure pg_temp.act(p_user text, p_strength text, p_request text) language sql as $$
@@ -152,8 +152,8 @@ select results_eq(
     cross join lateral pg_catalog.aclexplode(coalesce(c.relacl, pg_catalog.acldefault('r', c.relowner))) a
     left join pg_catalog.pg_roles g on g.oid = a.grantee
     where c.oid = to_regclass('app.audit_log') and a.grantee <> c.relowner order by 1, 2$$,
-  $$values ('app_authenticated', 'SELECT'), ('app_definer', 'SELECT')$$,
-  'app.audit_log: tabelgrants zijn alleen select voor app_authenticated en app_definer (AC-5)'
+  $$values ('app_authenticated', 'SELECT'), ('app_definer', 'DELETE'), ('app_definer', 'SELECT')$$,
+  'app.audit_log: tabelgrants zijn select voor app_authenticated en select en delete voor app_definer (AC-5, jobs/AC-7)'
 );
 select results_eq(
   $$select g.rolname::text collate "default", a.privilege_type::text, att.attname::text collate "default"
@@ -169,17 +169,17 @@ select results_eq(
 select results_eq(
   $$select p.policyname::text collate "default", p.cmd::text collate "default", p.roles::text collate "default"
     from pg_catalog.pg_policies p where p.schemaname = 'app' and p.tablename = 'audit_log' order by 1$$,
-  $$values ('audit_log_definer_insert', 'INSERT', '{app_definer}'), ('audit_log_definer_select', 'SELECT', '{app_definer}'),
-           ('audit_log_select_admin', 'SELECT', '{app_authenticated}')$$,
-  'app.audit_log: precies drie policies (audit_log_definer_insert, audit_log_definer_select, audit_log_select_admin)'
+  $$values ('audit_log_definer_delete', 'DELETE', '{app_definer}'), ('audit_log_definer_insert', 'INSERT', '{app_definer}'),
+           ('audit_log_definer_select', 'SELECT', '{app_definer}'), ('audit_log_select_admin', 'SELECT', '{app_authenticated}')$$,
+  'app.audit_log: precies vier policies (audit_log_definer_delete, audit_log_definer_insert, audit_log_definer_select, audit_log_select_admin; jobs/AC-7)'
 );
 select results_eq(
   $$select t.tgname::text collate "default", t.tgtype::integer, t.tgenabled::text collate "default",
            t.tgfoid::regproc::text collate "default"
     from pg_catalog.pg_trigger t where t.tgrelid = to_regclass('app.audit_log') and not t.tgisinternal order by 1$$,
-  $$values ('audit_log_no_delete', 10, 'O', 'app.audit_log_guard'), ('audit_log_no_truncate', 34, 'O', 'app.audit_log_guard'),
+  $$values ('audit_log_delete_expired_only', 11, 'O', 'app.audit_log_guard_delete'), ('audit_log_no_truncate', 34, 'O', 'app.audit_log_guard'),
            ('audit_log_no_update', 18, 'O', 'app.audit_log_guard')$$,
-  'app.audit_log: guard-triggers before update, delete en truncate op statement-niveau, aan, met app.audit_log_guard'
+  'app.audit_log: guard-triggers before update en truncate op statement-niveau (app.audit_log_guard) en before delete per rij (app.audit_log_guard_delete), aan (jobs/AC-7)'
 );
 select results_eq(
   $$select p.proowner::regrole::text, p.prosecdef, p.proconfig @> array['search_path=""'], p.prorettype::regtype::text
@@ -368,7 +368,8 @@ select is(
   (select count(*)::integer
    from (values ('app_authenticated'), ('app_definer')) r (rolname)
    cross join (values ('update'), ('delete'), ('truncate'), ('references'), ('trigger')) p (recht)
-   where coalesce(pg_catalog.has_table_privilege(r.rolname, to_regclass('app.audit_log'), p.recht), true)
+   where not (r.rolname = 'app_definer' and p.recht = 'delete') -- sinds jobs/AC-6 mag app_definer verwijderen (binnen de termijn-policy)
+     and coalesce(pg_catalog.has_table_privilege(r.rolname, to_regclass('app.audit_log'), p.recht), true)
       or (p.recht = 'update' and coalesce(pg_catalog.has_any_column_privilege(r.rolname, to_regclass('app.audit_log'), 'update'), true))),
   0,
   'app_authenticated en app_definer: geen update, delete, truncate, references of trigger op app.audit_log (AC-9)'
@@ -382,10 +383,10 @@ select results_eq(
       ($s$update app.audit_log set action = 'a.b'$s$), ($s$update app.audit_log set action = 'a.b' where false$s$),
       ($s$delete from app.audit_log$s$), ($s$delete from app.audit_log where false$s$), ($s$truncate app.audit_log$s$)
     ) p (stmt) order by 2$$,
-  $$values ('app_definer', 'delete from app.audit_log', '42501'), ('app_definer', 'delete from app.audit_log where false', '42501'),
+  $$values ('app_definer', 'delete from app.audit_log', '00000'), ('app_definer', 'delete from app.audit_log where false', '00000'),
            ('app_definer', 'truncate app.audit_log', '42501'), ('app_definer', 'update app.audit_log set action = ''a.b''', '42501'),
            ('app_definer', 'update app.audit_log set action = ''a.b'' where false', '42501')$$,
-  'app_definer: update, delete en truncate op app.audit_log falen met 42501, ook met where false (AC-10)'
+  'app_definer: update en truncate op app.audit_log falen met 42501, ook met where false; delete raakt 0 rijen zolang geen regel verlopen is (AC-10, jobs/AC-6)'
 );
 select results_eq(
   $$select p.stmt, pg_temp.try_as('app_migrator', p.stmt)
@@ -393,12 +394,12 @@ select results_eq(
       ($s$update app.audit_log set action = 'a.b'$s$), ($s$update app.audit_log set action = 'a.b' where false$s$),
       ($s$delete from app.audit_log$s$), ($s$delete from app.audit_log where false$s$), ($s$truncate app.audit_log$s$)
     ) p (stmt) order by 1$$,
-  $$values ('delete from app.audit_log', '42501|audit log is append-only'),
-           ('delete from app.audit_log where false', '42501|audit log is append-only'),
+  $$values ('delete from app.audit_log', '00000'),
+           ('delete from app.audit_log where false', '00000'),
            ('truncate app.audit_log', '42501|audit log is append-only'),
            ('update app.audit_log set action = ''a.b''', '42501|audit log is append-only'),
            ('update app.audit_log set action = ''a.b'' where false', '42501|audit log is append-only')$$,
-  'app_migrator (eigenaar): update, delete en truncate falen met 42501 door de guard-trigger, ook met where false (AC-10)'
+  'app_migrator (eigenaar): update en truncate falen met 42501 door de guard-trigger, ook met where false; delete raakt 0 rijen onder FORCE RLS (AC-10, jobs/AC-6)'
 );
 
 -- AC-11: app.assign_role door een admin met MFA, user -> admin.
@@ -593,6 +594,77 @@ select is(
   pg_temp.query_as('app_definer', $$select count(*)::text from app.audit_log where request_id = 'req-15'$$),
   '0',
   'app.set_account_blocked: een mislukte blokkade laat geen regel achter (AC-15)'
+);
+
+
+-- jobs/AC-6 (spec achtergrondtaken, deel A): audit_log_definer_delete. Regels met een eigen tijdstip zet de eigenaar erin;
+-- app_definer mag de kolom at niet invoegen. app_migrator valt als lid van app_definer onder dezelfde policy (FORCE RLS).
+select lives_ok(
+  $$insert into app.audit_log (at, action, request_id) values
+      (pg_catalog.now() - interval '2 years', 'ret.old', 'ret-old'),
+      (pg_catalog.now() - interval '364 days', 'ret.nearly', 'ret-364'),
+      (pg_catalog.now(), 'ret.new', 'ret-new')$$,
+  'voorbereiding: een regel van 2 jaar, een van 364 dagen en een van vandaag'
+);
+select is(
+  pg_temp.query_as('app_migrator', $$with d as (delete from app.audit_log where request_id = 'ret-new' returning 1) select count(*)::text from d$$),
+  '0',
+  'audit_log_definer_delete: als app_migrator (lid van app_definer, onder FORCE RLS) raakt delete van een regel van vandaag 0 rijen'
+);
+select is(
+  pg_temp.query_as('app_definer', $$with d as (delete from app.audit_log where request_id = 'ret-new' returning 1) select count(*)::text from d$$),
+  '0',
+  'audit_log_definer_delete: als app_definer raakt delete van een regel van vandaag 0 rijen'
+);
+select is(
+  pg_temp.query_as('app_definer', $$with d as (delete from app.audit_log where request_id = 'ret-364' returning 1) select count(*)::text from d$$),
+  '0',
+  'audit_log_definer_delete: als app_definer blijft een regel van 364 dagen oud staan'
+);
+select is(
+  pg_temp.query_as('app_definer', $$with d as (delete from app.audit_log where request_id = 'ret-old' returning 1) select count(*)::text from d$$),
+  '1',
+  'audit_log_definer_delete: als app_definer verwijdert delete een regel met at ouder dan 1 jaar'
+);
+select is(
+  pg_temp.query_as('app_definer', $$select count(*)::text from app.audit_log where request_id like 'ret-%'$$),
+  '2',
+  'audit_log_definer_delete: na de deletes staan alleen de regel van 364 dagen en die van vandaag nog in de tabel'
+);
+
+-- jobs/AC-7: audit_log_delete_expired_only. Wie RLS omzeilt (de eigenaar na no force) komt tegen de rij-trigger aan. Alles
+-- binnen deze teruggedraaide transactie.
+select lives_ok($$alter table app.audit_log no force row level security$$, 'voorbereiding: FORCE RLS uit als eigenaar, alleen in deze transactie');
+select is(
+  pg_temp.try_as('app_migrator', $$delete from app.audit_log where request_id = 'ret-new'$$) ~ '^42501\|',
+  true,
+  'audit_log_delete_expired_only: zonder FORCE weigert de rij-trigger het verwijderen van een regel van vandaag met 42501'
+);
+select is(
+  pg_temp.try_as('app_migrator', $$delete from app.audit_log where request_id = 'ret-364'$$) ~ '^42501\|',
+  true,
+  'audit_log_delete_expired_only: ook een regel van 364 dagen (binnen de termijn) wordt geweigerd'
+);
+select lives_ok(
+  $$insert into app.audit_log (at, action, request_id) values (pg_catalog.now() - interval '366 days', 'ret.expired', 'ret-366')$$,
+  'voorbereiding: een regel van 366 dagen'
+);
+select is(
+  pg_temp.query_as('app_migrator', $$with d as (delete from app.audit_log where request_id = 'ret-366' returning 1) select count(*)::text from d$$),
+  '1',
+  'audit_log_delete_expired_only: een regel van 366 dagen mag wel weg (zonder FORCE, via de trigger)'
+);
+select results_eq(
+  $$select p.stmt, pg_temp.try_as('app_migrator', p.stmt)
+    from (values ($s$update app.audit_log set action = 'a.b'$s$), ($s$truncate app.audit_log$s$)) p (stmt) order by 1$$,
+  $$values ('truncate app.audit_log', '42501|audit log is append-only'),
+           ('update app.audit_log set action = ''a.b''', '42501|audit log is append-only')$$,
+  'audit_log_delete_expired_only: update en truncate blijven ook zonder FORCE geweigerd voor de eigenaar (42501)'
+);
+select is(
+  pg_temp.query_as('app_migrator', $$select count(*)::text from app.audit_log where request_id in ('ret-364', 'ret-new')$$),
+  '2',
+  'audit_log_delete_expired_only: de geweigerde regels staan er nog'
 );
 
 select * from finish();

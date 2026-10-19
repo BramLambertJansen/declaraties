@@ -3,7 +3,7 @@
 -- de query hem vangt. Alles in één transactie die terugdraait.
 begin;
 set search_path = tap, public;
-select plan(26);
+select plan(53);
 
 -- Elke tabel in public en app: RLS aan én geforceerd (uitzondering: public.schema_migrations van dbmate).
 create function pg_temp.zonder_rls() returns setof text language sql stable as $$
@@ -129,17 +129,17 @@ create function pg_temp.eigenaartabellen() returns setof text language sql stabl
   order by regel collate "C"
 $$;
 
--- app.audit_log (spec audit-log AC-5, ADR 0021 punt 6): precies de drie policies van deel B, alleen select (en insert op
--- kolommen voor app_definer) en de drie guard-triggers aan. De tabel zelf valt al onder de algemene invarianten hierboven.
+-- app.audit_log (spec audit-log AC-5, ADR 0021 punt 6; spec achtergrondtaken jobs/AC-7): precies de vier policies van
+-- ADR 0021 punt 6, alleen select (en insert op kolommen en delete voor app_definer) en de drie guard-triggers aan. De tabel zelf valt al onder de algemene invarianten hierboven.
 create function pg_temp.audit_log_afwijkingen() returns setof text language sql stable as $$
   with t as (select to_regclass('app.audit_log') as oid)
   select 'app.audit_log ontbreekt' from t where t.oid is null
   union all
   select 'extra policy: ' || p.polname from pg_catalog.pg_policy p join t on p.polrelid = t.oid
-  where p.polname not in ('audit_log_definer_insert', 'audit_log_select_admin', 'audit_log_definer_select')
+  where p.polname not in ('audit_log_definer_insert', 'audit_log_select_admin', 'audit_log_definer_select', 'audit_log_definer_delete')
   union all
   select 'ontbrekende policy: ' || v.naam from t
-  cross join (values ('audit_log_definer_insert'), ('audit_log_select_admin'), ('audit_log_definer_select')) v (naam)
+  cross join (values ('audit_log_definer_insert'), ('audit_log_select_admin'), ('audit_log_definer_select'), ('audit_log_definer_delete')) v (naam)
   where t.oid is not null
     and not exists (select 1 from pg_catalog.pg_policy p where p.polrelid = t.oid and p.polname = v.naam)
   union all
@@ -149,7 +149,7 @@ create function pg_temp.audit_log_afwijkingen() returns setof text language sql 
   left join pg_catalog.pg_roles g on g.oid = a.grantee
   where a.grantee <> c.relowner
     and (coalesce(g.rolname, 'PUBLIC')::text, a.privilege_type::text)
-        not in (('app_authenticated', 'SELECT'), ('app_definer', 'SELECT'))
+        not in (('app_authenticated', 'SELECT'), ('app_definer', 'SELECT'), ('app_definer', 'DELETE'))
   union all
   select format('extra kolomgrant: %s %s op %s', g.rolname, a.privilege_type, att.attname)
   from t join pg_catalog.pg_attribute att on att.attrelid = t.oid
@@ -160,13 +160,87 @@ create function pg_temp.audit_log_afwijkingen() returns setof text language sql 
                      and att.attname in ('actor_id', 'action', 'target_type', 'target_id', 'request_id', 'details'), false)
   union all
   select format('guard-trigger %s staat niet aan', v.naam) from t
-  cross join (values ('audit_log_no_update'), ('audit_log_no_delete'), ('audit_log_no_truncate')) v (naam)
+  cross join (values ('audit_log_no_update'), ('audit_log_delete_expired_only'), ('audit_log_no_truncate')) v (naam)
   where t.oid is not null
     and not exists (
       select 1 from pg_catalog.pg_trigger g where g.tgrelid = t.oid and g.tgname = v.naam and g.tgenabled = 'O'
     )
   order by 1
 $$;
+
+-- Bewaarcatalogus (spec achtergrondtaken, deel A, ADR 0022 punt 5): elke tabel in public en app heeft een rij in
+-- app.retention (behalve public.schema_migrations), elke rij een tabel, de purger past bij het schema, en een tabel die
+-- app.purge_expired opruimt (purger app, keep niet null) heeft een timestamptz-kolom, select en delete voor app_definer en
+-- een delete-policy die app.retention_cutoff aanroept (of een restrictieve die dat doet); de audit log bewaart minstens 1 jaar.
+-- plpgsql, zodat het ontbreken van app.retention een regel is en geen afgebroken script.
+create function pg_temp.bewaarcatalogus() returns setof text language plpgsql stable as $$
+begin
+  if to_regclass('app.retention') is null then
+    return next 'app.retention ontbreekt';
+    return;
+  end if;
+  return query
+  select v.regel from (
+    -- Regel 1: een tabel zonder rij.
+    select 'geen rij: ' || format('%I.%I', n.nspname, c.relname) as regel
+    from pg_catalog.pg_class c join pg_catalog.pg_namespace n on n.oid = c.relnamespace
+    where c.relkind in ('r', 'p') and n.nspname in ('public', 'app')
+      and not (n.nspname = 'public' and c.relname = 'schema_migrations')
+      and not exists (select 1 from app.retention r where r.table_name = c.oid)
+    union all
+    -- Regel 2: een rij voor een tabel die niet (meer) bestaat.
+    select 'rij zonder tabel: ' || r.table_name::oid::text
+    from app.retention r
+    where not exists (select 1 from pg_catalog.pg_class c where c.oid = r.table_name)
+    union all
+    -- Regel 3: purger app in public of app, purger auth in better_auth.
+    select format('purger %s past niet bij het schema: %I.%I', r.purger, n.nspname, c.relname)
+    from app.retention r
+    join pg_catalog.pg_class c on c.oid = r.table_name join pg_catalog.pg_namespace n on n.oid = c.relnamespace
+    where (r.purger = 'app' and n.nspname not in ('public', 'app')) or (r.purger = 'auth' and n.nspname <> 'better_auth')
+    union all
+    -- Regel 4a: time_column is een kolom van type timestamptz.
+    select 'time_column geen timestamptz: ' || format('%I.%I', n.nspname, c.relname)
+    from app.retention r
+    join pg_catalog.pg_class c on c.oid = r.table_name join pg_catalog.pg_namespace n on n.oid = c.relnamespace
+    where r.purger = 'app' and r.keep is not null
+      and not exists (
+        select 1 from pg_catalog.pg_attribute a
+        where a.attrelid = c.oid and a.attname = r.time_column and a.attnum > 0 and not a.attisdropped
+          and a.atttypid = 'pg_catalog.timestamptz'::regtype
+      )
+    union all
+    -- Regel 4b: app_definer heeft select en delete.
+    select 'app_definer mist select of delete: ' || format('%I.%I', n.nspname, c.relname)
+    from app.retention r
+    join pg_catalog.pg_class c on c.oid = r.table_name join pg_catalog.pg_namespace n on n.oid = c.relnamespace
+    where r.purger = 'app' and r.keep is not null
+      and not (pg_catalog.has_table_privilege('app_definer', c.oid, 'SELECT') and pg_catalog.has_table_privilege('app_definer', c.oid, 'DELETE'))
+    union all
+    -- Regel 4c: elke permissieve delete-policy to app_definer roept app.retention_cutoff aan, of een restrictieve doet dat.
+    select 'delete-policy zonder app.retention_cutoff: ' || format('%I.%I', n.nspname, c.relname)
+    from app.retention r
+    join pg_catalog.pg_class c on c.oid = r.table_name join pg_catalog.pg_namespace n on n.oid = c.relnamespace
+    where r.purger = 'app' and r.keep is not null
+      and exists (
+        select 1 from pg_catalog.pg_policy p
+        where p.polrelid = c.oid and p.polpermissive and p.polcmd in ('d'::"char", '*'::"char")
+          and ('app_definer'::regrole::oid = any (p.polroles) or 0::oid = any (p.polroles))
+          and coalesce(pg_catalog.pg_get_expr(p.polqual, p.polrelid), '') !~ 'retention_cutoff'
+      )
+      and not exists (
+        select 1 from pg_catalog.pg_policy p
+        where p.polrelid = c.oid and not p.polpermissive and p.polcmd in ('d'::"char", '*'::"char")
+          and ('app_definer'::regrole::oid = any (p.polroles) or 0::oid = any (p.polroles))
+          and coalesce(pg_catalog.pg_get_expr(p.polqual, p.polrelid), '') ~ 'retention_cutoff'
+      )
+    union all
+    -- Regel 5: de audit log bewaart minstens 1 jaar (null = zolang het account bestaat, nooit korter).
+    select 'app.audit_log: keep korter dan 1 jaar'
+    from app.retention r
+    where r.table_name = to_regclass('app.audit_log') and r.keep is not null and r.keep < interval '1 year'
+  ) v order by v.regel collate "C";
+end $$;
 
 select is(array(select pg_temp.zonder_rls()), '{}'::text[], 'elke tabel in public en app heeft RLS aan en geforceerd');
 select is(array(select pg_temp.verboden_rechten()), '{}'::text[], 'geen API-rol heeft TRUNCATE, REFERENCES of TRIGGER');
@@ -175,6 +249,48 @@ select is(array(select pg_temp.rechten_voor_public()), '{}'::text[], 'PUBLIC hee
 select is(array(select pg_temp.eigenaartabellen()), '{}'::text[], 'elke tabel met owner_id volgt het tabelpatroon (kolomrechten, vier policies, index)');
 select is(has_schema_privilege('app_authenticated', 'better_auth', 'usage'), false, 'app_authenticated kan schema better_auth niet gebruiken');
 select is(has_schema_privilege('api_user', 'better_auth', 'usage'), false, 'api_user kan schema better_auth niet gebruiken');
+
+-- Bewaarcatalogus (jobs/AC-4): de invariant is leeg, en elke regel vangt een opzettelijke fout. app.retention staat onder
+-- FORCE RLS met alleen een select-policy; de eigenaar kan er dus niet in schrijven. Voor de controles zetten we FORCE uit
+-- (alleen in deze transactie) en na afloop weer aan. De probetabel gaat voor de controles op de rest van het bestand weg.
+select is(array(select pg_temp.bewaarcatalogus()), '{}'::text[], 'bewaarcatalogus: elke tabel heeft een rij, elke rij een tabel, purger past bij het schema, de termijn is opruimbaar (AC-4)');
+select lives_ok($$alter table app.retention no force row level security$$, 'voorbereiding: FORCE RLS op app.retention uit, alleen in deze transactie');
+
+create table app.retention_probe (id integer, d date, t timestamptz);
+select is(array(select pg_temp.bewaarcatalogus()), array['geen rij: app.retention_probe'], 'controle regel 1: een nieuwe tabel in app zonder rij wordt gevangen (AC-4)');
+select lives_ok($$insert into app.retention values ('app.retention_probe', null, null, 'app', 'probe')$$, 'voorbereiding: een rij voor de probetabel (keep null)');
+select is(array(select pg_temp.bewaarcatalogus()), '{}'::text[], 'controle regel 1: met een rij is de tabel in orde');
+
+select lives_ok($$update app.retention set purger = 'auth' where table_name = 'app.retention_probe'::regclass$$, 'voorbereiding: purger auth op een tabel in app');
+select is(array(select pg_temp.bewaarcatalogus()), array['purger auth past niet bij het schema: app.retention_probe'], 'controle regel 3: purger auth op een tabel in app wordt gevangen (AC-4)');
+select lives_ok($$update app.retention set purger = 'app' where table_name = 'app.retention_probe'::regclass$$, 'voorbereiding: purger weer app');
+
+grant select, delete on app.retention_probe to app_definer;
+select lives_ok($$update app.retention set time_column = 'd', keep = interval '1 year' where table_name = 'app.retention_probe'::regclass$$, 'voorbereiding: time_column van type date');
+select is(array(select pg_temp.bewaarcatalogus()), array['time_column geen timestamptz: app.retention_probe'], 'controle regel 4: purger app met een time_column van type date wordt gevangen (AC-4)');
+
+select lives_ok($$update app.retention set time_column = 't' where table_name = 'app.retention_probe'::regclass$$, 'voorbereiding: time_column van type timestamptz');
+alter table app.retention_probe enable row level security;
+create policy retention_probe_delete on app.retention_probe for delete to app_definer using (true);
+select is(array(select pg_temp.bewaarcatalogus()), array['delete-policy zonder app.retention_cutoff: app.retention_probe'], 'controle regel 4: een permissieve delete-policy to app_definer zonder app.retention_cutoff wordt gevangen (AC-4)');
+create policy retention_probe_cutoff on app.retention_probe as restrictive for delete to app_definer
+  using (t < (select app.retention_cutoff('app.retention_probe')));
+select is(array(select pg_temp.bewaarcatalogus()), '{}'::text[], 'controle regel 4: een restrictieve delete-policy met app.retention_cutoff maakt het goed');
+revoke delete on app.retention_probe from app_definer;
+select is(array(select pg_temp.bewaarcatalogus()), array['app_definer mist select of delete: app.retention_probe'], 'controle regel 4: een ontbrekend delete-recht voor app_definer wordt gevangen');
+
+drop table app.retention_probe;
+select ok(
+  (select count(*) = 1 and bool_and(r ~ '^rij zonder tabel: [0-9]+$') from pg_temp.bewaarcatalogus() r),
+  'controle regel 2: een rij voor een verwijderde tabel wordt gevangen (AC-4)'
+);
+select lives_ok($$delete from app.retention where not exists (select 1 from pg_catalog.pg_class c where c.oid = table_name)$$, 'voorbereiding: de rij van de verwijderde tabel weer weg');
+select is(array(select pg_temp.bewaarcatalogus()), '{}'::text[], 'controle: na het opruimen van de probe is de invariant weer leeg');
+
+select lives_ok($$update app.retention set keep = interval '11 months' where table_name = 'app.audit_log'::regclass$$, 'voorbereiding: de audit log met keep 11 maanden');
+select is(array(select pg_temp.bewaarcatalogus()), array['app.audit_log: keep korter dan 1 jaar'], 'controle regel 5: app.audit_log met keep 11 maanden wordt gevangen (AC-4)');
+select lives_ok($$update app.retention set keep = interval '1 year' where table_name = 'app.audit_log'::regclass$$, 'voorbereiding: de audit log weer 1 jaar');
+select lives_ok($$alter table app.retention force row level security$$, 'voorbereiding: FORCE RLS op app.retention weer aan');
 
 -- Controle: elke invariant vangt een opzettelijke fout.
 create table app.invariant_probe (id integer primary key);
@@ -275,7 +391,7 @@ create index invariant_owner_probe_owner_id_idx on public.invariant_owner_probe 
 select is(array(select pg_temp.eigenaartabellen()), '{}'::text[], 'controle: het tabelpatroon van pnpm new:resource wordt doorgelaten');
 
 -- Controle app.audit_log: een extra policy, een extra grant en een uitgeschakelde guard-trigger worden gevangen.
-select is(array(select pg_temp.audit_log_afwijkingen()), '{}'::text[], 'app.audit_log: exact drie policies, alleen de toegestane grants en de guard-triggers aan (AC-5)');
+select is(array(select pg_temp.audit_log_afwijkingen()), '{}'::text[], 'app.audit_log: exact vier policies, alleen de toegestane grants en de guard-triggers aan (AC-5, jobs/AC-7)');
 select lives_ok($$create policy audit_log_probe on app.audit_log for select to app_authenticated using (true)$$, 'voorbereiding: een extra policy op app.audit_log');
 select is(array(select pg_temp.audit_log_afwijkingen()), array['extra policy: audit_log_probe'], 'controle: een extra policy op app.audit_log wordt gevangen');
 select lives_ok($$drop policy audit_log_probe on app.audit_log$$, 'voorbereiding: de extra policy weer weg');
@@ -285,6 +401,12 @@ select lives_ok($$revoke update on app.audit_log from app_definer$$, 'voorbereid
 select lives_ok($$alter table app.audit_log disable trigger audit_log_no_update$$, 'voorbereiding: de guard-trigger uitzetten');
 select is(array(select pg_temp.audit_log_afwijkingen()), array['guard-trigger audit_log_no_update staat niet aan'], 'controle: een uitgeschakelde guard-trigger wordt gevangen');
 select lives_ok($$alter table app.audit_log enable trigger audit_log_no_update$$, 'voorbereiding: de guard-trigger weer aan');
+select lives_ok($$grant delete on app.audit_log to app_authenticated$$, 'voorbereiding: een delete-grant aan een andere rol dan app_definer');
+select is(array(select pg_temp.audit_log_afwijkingen()), array['extra grant: app_authenticated DELETE'], 'controle: een delete-grant aan een andere rol dan app_definer wordt gevangen (jobs/AC-7)');
+select lives_ok($$revoke delete on app.audit_log from app_authenticated$$, 'voorbereiding: de extra grant weer weg');
+select lives_ok($$alter table app.audit_log disable trigger audit_log_delete_expired_only$$, 'voorbereiding: de rij-trigger uitzetten');
+select is(array(select pg_temp.audit_log_afwijkingen()), array['guard-trigger audit_log_delete_expired_only staat niet aan'], 'controle: een uitgeschakelde rij-trigger audit_log_delete_expired_only wordt gevangen (jobs/AC-7)');
+select lives_ok($$alter table app.audit_log enable trigger audit_log_delete_expired_only$$, 'voorbereiding: de rij-trigger weer aan');
 
 select * from finish();
 rollback;

@@ -135,6 +135,25 @@ CREATE FUNCTION app.audit_log_guard() RETURNS trigger
 ALTER FUNCTION app.audit_log_guard() OWNER TO app_definer;
 
 --
+-- Name: audit_log_guard_delete(); Type: FUNCTION; Schema: app; Owner: app_definer
+--
+
+CREATE FUNCTION app.audit_log_guard_delete() RETURNS trigger
+    LANGUAGE plpgsql
+    SET search_path TO ''
+    AS $$
+  begin
+    if old.at >= app.retention_cutoff('app.audit_log') then
+      raise exception 'audit log is append-only' using errcode = '42501';
+    end if;
+    return old;
+  end
+  $$;
+
+
+ALTER FUNCTION app.audit_log_guard_delete() OWNER TO app_definer;
+
+--
 -- Name: consume_rate_limit(text, integer, integer); Type: FUNCTION; Schema: app; Owner: app_definer
 --
 
@@ -210,6 +229,31 @@ CREATE FUNCTION app.request_id() RETURNS text
 
 
 ALTER FUNCTION app.request_id() OWNER TO app_migrator;
+
+--
+-- Name: retention_cutoff(regclass); Type: FUNCTION; Schema: app; Owner: app_definer
+--
+
+CREATE FUNCTION app.retention_cutoff(p_table regclass) RETURNS timestamp with time zone
+    LANGUAGE plpgsql STABLE SECURITY DEFINER
+    SET search_path TO ''
+    AS $$
+  declare
+    v_keep interval;
+  begin
+    select r.keep into v_keep from app.retention r where r.table_name = p_table;
+    if not found then
+      raise exception 'tabel % staat niet in app.retention', p_table using errcode = '22023';
+    end if;
+    if v_keep is null then
+      return '-infinity'::timestamptz;
+    end if;
+    return pg_catalog.now() - v_keep;
+  end
+  $$;
+
+
+ALTER FUNCTION app.retention_cutoff(p_table regclass) OWNER TO app_definer;
 
 --
 -- Name: session_strength(); Type: FUNCTION; Schema: app; Owner: app_migrator
@@ -455,6 +499,27 @@ ALTER TABLE ONLY app.rate_limits FORCE ROW LEVEL SECURITY;
 ALTER TABLE app.rate_limits OWNER TO app_migrator;
 
 --
+-- Name: retention; Type: TABLE; Schema: app; Owner: app_migrator
+--
+
+CREATE TABLE app.retention (
+    table_name regclass NOT NULL,
+    time_column text,
+    keep interval,
+    purger text NOT NULL,
+    reason text NOT NULL,
+    CONSTRAINT retention_check CHECK (((keep IS NULL) OR (time_column IS NOT NULL))),
+    CONSTRAINT retention_keep_check CHECK ((keep >= '00:00:00'::interval)),
+    CONSTRAINT retention_purger_check CHECK ((purger = ANY (ARRAY['app'::text, 'auth'::text]))),
+    CONSTRAINT retention_reason_check CHECK ((length(btrim(reason)) > 0))
+);
+
+ALTER TABLE ONLY app.retention FORCE ROW LEVEL SECURITY;
+
+
+ALTER TABLE app.retention OWNER TO app_migrator;
+
+--
 -- Name: rateLimit; Type: TABLE; Schema: better_auth; Owner: app_migrator
 --
 
@@ -546,6 +611,14 @@ ALTER TABLE ONLY app.audit_log
 
 ALTER TABLE ONLY app.rate_limits
     ADD CONSTRAINT rate_limits_pkey PRIMARY KEY (key);
+
+
+--
+-- Name: retention retention_pkey; Type: CONSTRAINT; Schema: app; Owner: app_migrator
+--
+
+ALTER TABLE ONLY app.retention
+    ADD CONSTRAINT retention_pkey PRIMARY KEY (table_name);
 
 
 --
@@ -686,10 +759,10 @@ CREATE INDEX verification_identifier_idx ON better_auth.verification USING btree
 
 
 --
--- Name: audit_log audit_log_no_delete; Type: TRIGGER; Schema: app; Owner: app_migrator
+-- Name: audit_log audit_log_delete_expired_only; Type: TRIGGER; Schema: app; Owner: app_migrator
 --
 
-CREATE TRIGGER audit_log_no_delete BEFORE DELETE ON app.audit_log FOR EACH STATEMENT EXECUTE FUNCTION app.audit_log_guard();
+CREATE TRIGGER audit_log_delete_expired_only BEFORE DELETE ON app.audit_log FOR EACH ROW EXECUTE FUNCTION app.audit_log_guard_delete();
 
 
 --
@@ -752,6 +825,13 @@ ALTER TABLE ONLY public.user_roles
 ALTER TABLE app.audit_log ENABLE ROW LEVEL SECURITY;
 
 --
+-- Name: audit_log audit_log_definer_delete; Type: POLICY; Schema: app; Owner: app_migrator
+--
+
+CREATE POLICY audit_log_definer_delete ON app.audit_log FOR DELETE TO app_definer USING ((at < ( SELECT app.retention_cutoff('app.audit_log'::regclass) AS retention_cutoff)));
+
+
+--
 -- Name: audit_log audit_log_definer_insert; Type: POLICY; Schema: app; Owner: app_migrator
 --
 
@@ -783,6 +863,26 @@ ALTER TABLE app.rate_limits ENABLE ROW LEVEL SECURITY;
 --
 
 CREATE POLICY rate_limits_definer_all ON app.rate_limits TO app_definer USING (true) WITH CHECK (true);
+
+
+--
+-- Name: rate_limits rate_limits_definer_delete_expired; Type: POLICY; Schema: app; Owner: app_migrator
+--
+
+CREATE POLICY rate_limits_definer_delete_expired ON app.rate_limits AS RESTRICTIVE FOR DELETE TO app_definer USING ((window_start < ( SELECT app.retention_cutoff('app.rate_limits'::regclass) AS retention_cutoff)));
+
+
+--
+-- Name: retention; Type: ROW SECURITY; Schema: app; Owner: app_migrator
+--
+
+ALTER TABLE app.retention ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: retention retention_definer_select; Type: POLICY; Schema: app; Owner: app_migrator
+--
+
+CREATE POLICY retention_definer_select ON app.retention FOR SELECT TO app_definer USING (true);
 
 
 --
@@ -870,6 +970,13 @@ REVOKE ALL ON FUNCTION app.audit_log_guard() FROM PUBLIC;
 
 
 --
+-- Name: FUNCTION audit_log_guard_delete(); Type: ACL; Schema: app; Owner: app_definer
+--
+
+REVOKE ALL ON FUNCTION app.audit_log_guard_delete() FROM PUBLIC;
+
+
+--
 -- Name: FUNCTION consume_rate_limit(p_bucket text, p_window_seconds integer, p_max integer); Type: ACL; Schema: app; Owner: app_definer
 --
 
@@ -900,6 +1007,13 @@ GRANT ALL ON FUNCTION app.is_mfa_admin() TO app_authenticated;
 
 REVOKE ALL ON FUNCTION app.request_id() FROM PUBLIC;
 GRANT ALL ON FUNCTION app.request_id() TO app_definer;
+
+
+--
+-- Name: FUNCTION retention_cutoff(p_table regclass); Type: ACL; Schema: app; Owner: app_definer
+--
+
+REVOKE ALL ON FUNCTION app.retention_cutoff(p_table regclass) FROM PUBLIC;
 
 
 --
@@ -1008,7 +1122,7 @@ GRANT SELECT ON TABLE app.accounts TO app_authenticated;
 -- Name: TABLE audit_log; Type: ACL; Schema: app; Owner: app_migrator
 --
 
-GRANT SELECT ON TABLE app.audit_log TO app_definer;
+GRANT SELECT,DELETE ON TABLE app.audit_log TO app_definer;
 GRANT SELECT ON TABLE app.audit_log TO app_authenticated;
 
 
@@ -1059,6 +1173,13 @@ GRANT INSERT(details) ON TABLE app.audit_log TO app_definer;
 --
 
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE app.rate_limits TO app_definer;
+
+
+--
+-- Name: TABLE retention; Type: ACL; Schema: app; Owner: app_migrator
+--
+
+GRANT SELECT ON TABLE app.retention TO app_definer;
 
 
 --

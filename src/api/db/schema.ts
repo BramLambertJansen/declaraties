@@ -1,5 +1,5 @@
 // GEGENEREERD door `pnpm db:generate` (scripts/db-introspect.mjs) uit de gemigreerde database. Niet bewerken.
-import { bigint, integer, jsonb, pgSchema, pgTable, text, timestamp } from 'drizzle-orm/pg-core';
+import { bigint, integer, interval, jsonb, pgSchema, pgTable, text, timestamp } from 'drizzle-orm/pg-core';
 import { sql } from 'drizzle-orm';
 import type { UserId } from '#core/shared/ids.ts';
 
@@ -38,6 +38,14 @@ export const appRateLimits = appSchema.table('rate_limits', {
   key: text('key').primaryKey(),
   windowStart: timestamp('window_start', { withTimezone: true, mode: 'string' }).notNull(),
   hits: integer('hits').notNull(),
+});
+
+export const appRetention = appSchema.table('retention', {
+  tableName: text('table_name').primaryKey(),
+  timeColumn: text('time_column'),
+  keep: interval('keep'),
+  purger: text('purger').notNull(),
+  reason: text('reason').notNull(),
 });
 
 export const userRoles = pgTable('user_roles', {

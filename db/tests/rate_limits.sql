@@ -3,7 +3,21 @@
 -- daarin stil, dus het venster laten we verlopen door window_start als app_migrator (lid van app_definer) te verschuiven.
 begin;
 set search_path = tap, public;
-select plan(22);
+select plan(27);
+
+-- Query met één waarde als een rol (zoals de testkit); een fout geeft 'ERROR sqlstate'. pgTAP zelf draait niet als die rol.
+create function pg_temp.query_as(p_role text, p_sql text) returns text language plpgsql as $$
+declare v_result text;
+begin
+  execute format('set local role %I', p_role);
+  begin
+    execute p_sql into v_result;
+  exception when others then
+    v_result := 'ERROR ' || sqlstate;
+  end;
+  reset role;
+  return v_result;
+end $$;
 
 select is(
   (select relpersistence::text from pg_catalog.pg_class where oid = 'app.rate_limits'::regclass),
@@ -82,10 +96,40 @@ select throws_ok(
   $$update app.rate_limits set hits = 0 where key = 't:u-een'$$,
   '23514', null, 'hits is altijd groter dan 0'
 );
+-- jobs/AC-8 (spec achtergrondtaken, deel A): rate_limits_definer_delete_expired, restrictief naast rate_limits_definer_all.
+select results_eq(
+  $$select p.policyname::text collate "default", p.permissive::text collate "default", p.cmd::text collate "default",
+           p.roles::text collate "default"
+    from pg_catalog.pg_policies p
+    where p.schemaname = 'app' and p.tablename = 'rate_limits' and p.policyname = 'rate_limits_definer_delete_expired'$$,
+  $$values ('rate_limits_definer_delete_expired', 'RESTRICTIVE', 'DELETE', '{app_definer}')$$,
+  'rate_limits_definer_delete_expired: een restrictieve delete-policy to app_definer'
+);
+select lives_ok(
+  $$insert into app.rate_limits (key, window_start, hits) values
+      ('ret:oud', pg_catalog.now() - interval '61 seconds', 1),
+      ('ret:nieuw', pg_catalog.now() - interval '30 seconds', 1)$$,
+  'voorbereiding: een rij van 61 s en een van 30 s geleden'
+);
+select is(
+  pg_temp.query_as('app_definer', $$with d as (delete from app.rate_limits where key = 'ret:nieuw' returning 1) select count(*)::text from d$$),
+  '0',
+  'rate_limits_definer_delete_expired: een rij van 30 s geleden blijft staan'
+);
+select is(
+  pg_temp.query_as('app_definer', $$with d as (delete from app.rate_limits where key = 'ret:oud' returning 1) select count(*)::text from d$$),
+  '1',
+  'rate_limits_definer_delete_expired: als app_definer verwijdert delete een rij van 61 s geleden'
+);
+select results_eq(
+  $$select key from app.rate_limits where key like 'ret:%'$$,
+  $$values ('ret:nieuw')$$,
+  'rate_limits_definer_delete_expired: alleen de rij van 30 s geleden is over'
+);
 select is(
   (select count(*)::integer from pg_catalog.pg_policies where schemaname = 'app' and tablename = 'rate_limits'),
-  1,
-  'app.rate_limits heeft alleen de policy rate_limits_definer_all'
+  2,
+  'app.rate_limits heeft precies de policies rate_limits_definer_all en rate_limits_definer_delete_expired'
 );
 
 select * from finish();

@@ -1,5 +1,5 @@
 ---
-status: voorstel # voorstel | goedgekeurd | gebouwd | vervallen — alleen de eigenaar zet goedgekeurd; gebouwd: # #<PR>; gevalideerd: <sha> (pnpm docs:status)
+status: goedgekeurd
 namespace: jobs
 model: opus
 modelreden: nieuwe databaserol en security definer-functies app.purge_expired en app.retention_targets (ADR 0025 punt 3d), gelijktijdigheid via advisory locks en de stopvolgorde (punt 3a), en wijzigingen in src/core (db, auth, nieuwe map jobs; punt 3c)

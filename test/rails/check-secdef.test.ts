@@ -180,6 +180,7 @@ test('de migraties in db/migrations zijn groen, en zonder `owner to app_definer`
     'db/migrations/20261013100000_audit_log.sql:111: app.assign_role',
     'db/migrations/20261013100000_audit_log.sql:139: app.set_account_blocked',
     'db/migrations/20261019070000_account_audit_idempotency.sql:3: app.set_account_blocked',
+    'db/migrations/20261019120000_retention.sql:27: app.retention_cutoff',
   ]);
 });
 
