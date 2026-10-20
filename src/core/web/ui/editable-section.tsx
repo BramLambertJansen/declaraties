@@ -18,8 +18,17 @@ export function EditableSection({ title, editing, editLabel, onEdit, summary, ch
   useEffect(() => {
     if (previous.current === editing) return;
     previous.current = editing;
-    if (editing) heading.current?.focus();
-    else edit.current?.focus();
+    if (editing) {
+      heading.current?.focus();
+      return;
+    }
+    // Sluit een bevestigingsdialoog in dezelfde render, dan zet die de focus nog terug (naar body). Daarom na die effects.
+    const timer = setTimeout(() => {
+      edit.current?.focus();
+    }, 0);
+    return () => {
+      clearTimeout(timer);
+    };
   }, [editing]);
   return (
     <section aria-labelledby={headingId} className="flex min-w-0 flex-col gap-4 rounded-md border p-4">

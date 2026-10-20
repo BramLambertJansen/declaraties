@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, expect, test, vi } from 'vitest';
 import { EditableSection } from './editable-section.tsx';
 import { Button } from './button.tsx';
@@ -27,7 +27,7 @@ function Example() {
     </EditableSection>
   );
 }
-test('wisselt tussen bekijken en bewerken met focus op kop en daarna de bewerkknop', () => {
+test('wisselt tussen bekijken en bewerken met focus op kop en daarna de bewerkknop', async () => {
   render(<Example />);
   expect(screen.queryByRole('button', { name: 'Annuleren' })).toBeNull();
   fireEvent.click(screen.getByRole('button', { name: 'Bewerken' }));
@@ -35,7 +35,9 @@ test('wisselt tussen bekijken en bewerken met focus op kop en daarna de bewerkkn
   expect(document.activeElement).toBe(screen.getByRole('heading', { name: 'Gegevens' }));
   fireEvent.click(screen.getByRole('button', { name: 'Annuleren' }));
   expect(screen.getByText('Samenvatting')).toBeDefined();
-  expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Bewerken' }));
+  await waitFor(() => {
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Bewerken' }));
+  });
 });
 test('controlled: zonder ouderwijziging blijft de samenvatting staan', () => {
   const onEdit = vi.fn();
