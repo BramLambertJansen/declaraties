@@ -3,14 +3,21 @@
 De vier componenten zijn via `src/web/ui/index.ts` beschikbaar. De bereikbare voorbeelden en zoekdoelen staan op
 `/design-system`. Deze uitbreiding voegt geen dependency, API-route, permissie of migratie toe.
 
+`PasswordInput` en `DateInput` combineren een invoerveld met rechts een losse icoonknop: beide 44 px hoog, met 8 px
+tussenruimte. Het invoerveld vult de resterende breedte; de knop behoudt zijn aanraakdoel, ook op smalle schermen.
+
 - `PasswordInput` bouwt op Input en Button. Het veld begint afgeschermd; een vaste knopnaam en `aria-pressed` geven de
   zichtbaarheid aan. `id`, ref, waarde, autocomplete, blur en foutattributen blijven op hetzelfde invoerelement staan.
+  De oogknop krijgt zijn toegankelijke naam via verborgen tekst, zodat het wachtwoordlabel alleen het veld aanwijst.
   `visibilityLabel` kan de standaardtekst “Wachtwoord tonen” vervangen. Disabled schakelt ook de toggle uit.
   De zichtbaarheid is lokaal en verdwijnt bij unmount; formulierreset wist de waarde via RHF. Het inlogscherm gebruikt
   deze component met behoud van het bestaande gedrag (`src/web/features/login/login-page.tsx`).
 - `DateInput` gebruikt Input met `type="date"`. De browser verzorgt de datumweergave en kalender; formulierwaarden zijn
   `YYYY-MM-DD` of een lege string. Er is geen omzetting naar Date, UTC of Europe/Amsterdam. Geef `min`, `max`, `step`,
   disabled en readOnly waar nodig door. Validatie in Form blijft van het zod-schema; native grenzen vervangen die niet.
+  De losse kalenderknop opent de native kalender via `showPicker()`; het ingebouwde kalendericoon is verborgen.
+  Zonder beschikbare picker blijft het veld gefocust en handmatig invulbaar. Disabled en readOnly schakelen de
+  kalenderknop uit. `pickerLabel` kan de toegankelijke standaardnaam “Kalender openen” vervangen.
 - `Breadcrumbs` ontvangt voorouders als `items` met stabiele `id`, `label` en interne `href`, plus `currentPage`.
   NavLink verzorgt de routernavigatie en native modifierklikken. Alleen de huidige pagina heeft `aria-current="page"`
   en is tekst. Zonder voorouders blijft alleen die pagina over. `label` benoemt de navigatie (standaard “Kruimelpad”).
@@ -27,4 +34,6 @@ aanraakdoelen en kleuren volgen Input, Button en NavLink. Bronnen: `src/core/web
 Gedragstests staan naast de componenten; `input-utilities-form.test.tsx` controleert de echte RHF-binding, payload,
 validatie, foutfocus en reset. `e2e/input-utilities.spec.ts` controleert de echte stack op 375/1280 px, licht/donker,
 native invoer, klembord, routernavigatie, CSP en axe. De bestaande `e2e/login-password-visibility.spec.ts` blijft
-ongewijzigd als regressiecontrole. Testdekking is geen geslaagde checkuitslag; die staat in de oplevering.
+ongewijzigd als regressiecontrole. `compound-input-controls.test.tsx` dekt de wachtwoordselectie, kalenderknop, vergrendeling en terugval;
+`e2e/compound-input-controls.spec.ts` meet hoogte, uitlijning en tussenruimte op beide schermbreedtes en in beide thema's.
+Testdekking is geen geslaagde checkuitslag; die staat in de oplevering.
