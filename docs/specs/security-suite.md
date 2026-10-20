@@ -44,7 +44,7 @@ De suite ziet alleen testgebruikers; ze toont niets aan eindgebruikers.
 | `adminMfa` | `admin`, na TOTP-verificatie (`session_strength = mfa`) | `account('admin')` + `enableTotp()` |
 | `adminZonderMfa` | `admin`, alleen wachtwoord | `account('admin')` |
 | `zonderRol` | ingelogd, geen rij in `user_roles` | `inviteUser` zonder `app.assign_role` |
-| `verlopen` | sessie die absoluut (> 7 dagen) of idle (> 12 uur) is verlopen | `ageSession()` uit dezelfde harness, op de sessierij van een `A`-achtige gebruiker |
+| `verlopen` | twee varianten: absoluut verlopen (`createdAt` > 7 dagen terug) en idle verlopen (`expiresAt` in het verleden) | absoluut: `ageSession()` uit dezelfde harness; idle: nieuwe helper `expireSession(token)` in `test/security/fixtures.ts` die `expiresAt` in het verleden zet. `ageSession()` verschuift alleen `createdAt`/`updatedAt` (`test/api/account-harness.ts:91-95`), terwijl Better Auth de idle-termijn afdwingt via `expiresAt` (`expiresIn`, `src/core/api/auth/options.ts:156-159`); de harness blijft ongewijzigd |
 | `geenSessie` | request zonder cookie | geen cookie |
 
 - Voor databasetests op rijniveau (H2, H3): `asUser('user')` en `asUser('admin')` uit `src/core/api/db/testing.ts`
@@ -58,14 +58,27 @@ Geen migratie en geen nieuwe tabel in `public`, `app` of `better_auth`.
 
 Wel tijdelijk, binnen een testtransactie die terugdraait: een **probe-resource** die de suite zelf opbouwt uit
 `scripts/kit/templates/migratie.sql.tmpl` (naam `security_probes`), zodat de suite iets heeft om op te bijten en het generatorpatroon
-zelf onder de suite valt. Voor de API-laag een **probe-app** in de testcode: `createApp` met routes uit `defineRoute` op de probetabel,
-`asUser(...).auth` als sessie, echte database en RLS. Niets wordt gemockt; de probe-routes zijn testfixtures, geen app-code.
+zelf onder de suite valt. Het sjabloon geeft bewust alleen `select, delete` en stelt de insert/update-grants uit tot de velden uit de
+spec (`migratie.sql.tmpl:15-18`). De probe voegt daarom, zoals een vervolgmigratie van een app, één veld toe met kolomgrants:
+`label text not null`, `grant insert (label), update (label) on public.security_probes to app_authenticated`. Zo kan `A` legitiem een rij
+maken, terwijl `id`, `owner_id` en `created_at` zonder kolomrecht blijven.
+
+Voor de API-laag een **probe-app** in de testcode: `createApp` met routes uit `defineRoute` op de probetabel, echte database en RLS.
+De probetabel bestaat alleen binnen de testtransactie die terugdraait, dus een verbinding van Better Auth of van de echte `withUser`-pool
+ziet haar niet. De probe-app gebruikt daarom voor de sessie de test-gateway van `asUser(...).auth` (`gatewayFor`,
+`src/core/api/db/test-transaction.ts:90-95`): een vaste sessie, geen Better Auth. Dat is het enige deel van de suite zonder Better Auth,
+en het is afgebakend: het sessie- en authpad zelf (geen, verlopen, ontbrekende rol of MFA) bewijst AC-2 t/m AC-5 over het echte register
+met echte Better Auth-sessies. Heeft een app eigen `eigenaar`-routes in `routes`, dan draait AC-9 daarop met echte accounts en cookies
+uit `test/api/account-harness.ts`. Database en RLS worden nergens gemockt; de probe-routes zijn testfixtures, geen app-code.
 
 Nieuw pgTAP-bestand `db/tests/security.sql` (geen wijziging in `invarianten.sql`, zodat geen bestaande test verandert) met extra
 catalogusinvarianten, elk met een probe die bewijst dat hij vangt (zoals `invarianten.sql:295-391`):
 
-- **C1 owner-tabel breder gedetecteerd.** Elke tabel in `public` of `app` met een kolom die naar `better_auth."user"(id)` verwijst, is
-  owner-tabel of staat op een uitzonderingenlijst met reden (`user_roles`, `app.audit_log`, ...). Zo valt een tabel met `user_id` of in `app` er niet buiten.
+- **C1 owner-tabel breder gedetecteerd.** Een tabel in `public` of `app` is kandidaat-owner-tabel als ze een kolom heeft die naar
+  `better_auth."user"(id)` verwijst, óf een eigenaarvormige kolom (`owner_id`, `user_id`, of een naam op `_user_id`), ook zonder foreign key.
+  Elke kandidaat is owner-tabel of staat op een uitzonderingenlijst met reden (`user_roles`, `app.audit_log`, ...). Een eigenaarvormige
+  kolom zonder foreign key naar `better_auth."user"(id)` is zelf een overtreding met de naam van tabel en kolom. Zo valt een tabel met
+  `user_id`, in `app`, of met een vergeten foreign key er niet buiten.
 - **C2 predicaat.** Een policy `to app_authenticated` heeft `app.current_user_id()` alleen als `(select app.current_user_id())`; geen
   `auth.uid()`, geen `using (true)` of `with check (true)` voor een API-rol, tenzij op een uitzonderingenlijst met reden.
 - **C3 grants.** Elke grant aan `app_authenticated`, `api_user` of `auth_service` op een tabel in `public` of `app` staat op een allowlist
@@ -88,10 +101,12 @@ Geen nieuwe route, geen nieuwe permissie, geen nieuwe foutcode. De suite gebruik
 - **Routes:** `routes` uit `src/api/app.ts` (de enige weg, want `createApp` weigert alles buiten `defineRoute`, `create-app.ts`). Per route
   komen `method`, `path`, `input` (zod), `permission` en `rateLimit` uit `route.contract`. De suite telt mee: `iteraties === routes.length`.
 - **Tabellen:** `pg_class`/`pg_attribute`/`pg_policy` van de gemigreerde database, zoals `invarianten.sql`.
-- **Verwachte uitkomst per route en actor:** uit de data van de permissietabel (`roles` per permissie) plus de MFA-regel uit framework §6
-  (`admin` ⇒ `mfa`), **niet** door `check()` aan te roepen: anders test de suite de implementatie met zichzelf.
-  Valt dat in de praktijk niet los van `check()` te halen (de regels zitten in `src/core/shared/can.ts`), dan valt de suite terug op de
-  handgeschreven verwachtingstabel van `permissions.test.ts:7-15`, geëxporteerd naar een gedeeld testhulpbestand. Dat besluit ik in stap 2 en noem het in de PR.
+- **Verwachte uitkomst per route en actor:** uit een eigen, handgeschreven oracle in `test/security/fixtures.ts` (per permissie de
+  toegestane rollen, letterlijk uit de specs) plus de MFA-regel uit framework §6 (`admin` ⇒ `mfa`), **niet** door `check()` aan te roepen:
+  anders test de suite de implementatie met zichzelf. `Permissions` geeft alleen `names`, `check` en `can` (`src/core/shared/can.ts:25-29`),
+  dus de rollen zijn niet uit de implementatie te lezen; de tabel in `permissions.test.ts:7-15` is lokaal en blijft ongewijzigd. De suite
+  is rood als de sleutels van de oracle niet gelijk zijn aan `permissions.names`, zodat een nieuwe permissie er niet buiten valt. De
+  dubbeling met `permissions.test.ts` is bewust: twee onafhankelijke verwachtingen, beide in testpaden.
 - **Alleen weigeringen worden aangeroepen.** Een toegestane aanroep zou de handler uitvoeren (mail, Better Auth); dat is de
   acceptatietest van de resource zelf. Elke generieke aanroep eindigt vóór de handler: 401, 403, 400 of 413.
 - **Geldige voorbeeldinput** (nodig, want `VALIDATION` komt vóór `FORBIDDEN`): afgeleid uit het zod-schema (string met `min`, enum eerste waarde,
@@ -142,7 +157,7 @@ Bestanden: `test/security/*.int.test.ts` (draaien in `pnpm test:db`, dus in `gat
 
 - **security/AC-1** — Gegeven het routeregister, wanneer de suite draait, dan wordt elke route uit `routes` geïtereerd en faalt de suite als het aantal iteraties niet gelijk is aan `routes.length`; een nieuwe `defineRoute` in `src/api/app.ts` doet zonder wijziging in de suite mee.
 - **security/AC-2** — Gegeven geen sessie (geen cookie), wanneer elke route wordt aangeroepen, dan is het antwoord `401 UNAUTHENTICATED` met precies `{ code, requestId }`.
-- **security/AC-3** — Gegeven een sessie die absoluut (> 7 dagen) of idle (> 12 uur) is verlopen, wanneer elke route wordt aangeroepen, dan is het antwoord `401 UNAUTHENTICATED` en is er niets gewijzigd.
+- **security/AC-3** — Gegeven een sessie die absoluut (> 7 dagen, `ageSession`) of idle (`expiresAt` verstreken, `expireSession`) is verlopen, wanneer elke route wordt aangeroepen, dan is het antwoord `401 UNAUTHENTICATED` en is er niets gewijzigd.
 - **security/AC-4** — Gegeven elke route, wanneer een actor wordt gebruikt die volgens de permissietabel niet is toegestaan (`user` voor een admin-permissie, `zonderRol` voor elke route), dan is het antwoord `403 FORBIDDEN` en is de handler niet uitgevoerd.
 - **security/AC-5** — Gegeven elke route waarvan de permissie aan `admin` is toegekend, wanneer `adminZonderMfa` haar aanroept, dan is het antwoord `403 MFA_REQUIRED`; met `adminMfa` is dat antwoord het niet (alleen gecontroleerd op routes zonder bijwerking, zie Randgevallen).
 - **security/AC-6** — Gegeven elke route met input, wanneer een onbekend veld, een ontbrekend verplicht veld, een verkeerd type per veld, kapotte JSON of een arraybody wordt gestuurd, dan is het antwoord `400 VALIDATION` en is de handler niet uitgevoerd; een body boven `MAX_BODY_BYTES` geeft `413 PAYLOAD_TOO_LARGE`.
@@ -153,7 +168,7 @@ Bestanden: `test/security/*.int.test.ts` (draaien in `pnpm test:db`, dus in `gat
 - **security/AC-11** — Gegeven een route die niet in `routeClassificatie` staat, een `eigenaar`-route zonder `resources`-regel of een owner-tabel zonder `resources`-regel, wanneer de suite draait, dan is ze rood met de naam van het ontbrekende item (fail-closed, nooit overslaan).
 - **security/AC-12** — Gegeven `db/tests/security.sql`, wanneer de catalogus een overtreding van C1, C2 of C3 bevat, dan faalt de test met de naam van tabel of policy; voor elke invariant is bewezen met een probe dat hij een opzettelijke fout vangt en de goede variant doorlaat.
 - **security/AC-13** — Gegeven de probe-resource uit de generatorsjabloon, wanneer ze door de volledige suite gaat, dan is ze groen; met een bewust gebroken variant (policy weg, kolomrecht op `owner_id`, `using (true)`, route zonder strict input) is de suite rood op de bijbehorende AC.
-- **security/AC-14** — Gegeven `pnpm gate:slow`, wanneer de suite draait, dan draait ze tegen de echte lokale stack (Postgres, Better Auth, Mailpit), zonder mocks, zonder `skip` of `todo`, en valt ze binnen de bestaande runner (ADR 0009).
+- **security/AC-14** — Gegeven `pnpm gate:slow`, wanneer de suite draait, dan draait ze tegen de echte lokale stack (Postgres, Better Auth, Mailpit), zonder gemockte API of database, zonder `skip` of `todo`; de enige afwijking is de sessie van de probe-app via de test-gateway van `asUser` (zie "Datawijzigingen"), en valt ze binnen de bestaande runner (ADR 0009).
 - **security/AC-15** — Gegeven de PR, wanneer ze klaar is, dan staan de relevante docs erin bijgewerkt met `bestand:regel` (framework §4 Tests en §8, `docs/gouden-pad.md`, `docs/dod.md` Beveiliging, één regel in `AGENTS.md`, `CHANGELOG.md`).
 
 ## Randgevallen
@@ -220,7 +235,7 @@ of tabel doet mee zonder iets te doen, en wat niet af te leiden is, laat de suit
 
 - Toevoegen mag en raakt geen bestaand bestand: `docs/specs/security-suite.md`, `test/security/**`, `db/tests/security.sql`.
 - Raakt wel (eigenaarakkoord, `voorReview` of gate): `docs/framework.md`, `docs/dod.md`, `AGENTS.md` (een regel), `scripts/kit/new-resource.mjs` met sjablonen (`scripts/**`, `voorReview`), eventueel `package.json` alleen als de eigenaar een apart `test:security`-script wil (voorstel: niet nodig; de suite loopt in `pnpm test:db`).
-- Geen wijziging in: `src/core/**`, `vitest.config.ts`, `db/migrations/**`, `.github/**`, `.claude/**` (behalve het besluitrecord in `.claude/decisions.json` in PR 1). Een gedeeld oracle-bestand uit `permissions.test.ts` zou een bestaande test raken; liever niet (zie Routes).
+- Geen wijziging in: `src/core/**`, `vitest.config.ts`, `db/migrations/**`, `.github/**`, `.claude/**` (behalve het besluitrecord in `.claude/decisions.json` in PR 1). De permissie-oracle staat in `test/security/fixtures.ts`; `permissions.test.ts` en `test/api/account-harness.ts` blijven ongewijzigd (zie Routes en Rollen).
 - Geen bestaande test wordt gewijzigd.
 
 **Nieuwe dependencies:** geen. Bestaand en genoeg: `vitest`, `pg`, `zod` (v4-introspectie zoals `contract.ts:40`), `drizzle-orm` (probe-handlers met `sql`).

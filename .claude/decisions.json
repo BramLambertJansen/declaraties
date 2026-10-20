@@ -196,7 +196,7 @@
     },
     {
       "file": "docs/specs/security-suite.md",
-      "digest": "3903455a74e92cdc57a29a022cf888a22f4644b6acd3c65a7e726b772341a5dd",
+      "digest": "2792fa1c65828b65b8ca354074c23c70440b793db3dc21a093039f7dc621d0f8",
       "repository": "BramLambertJansen/template",
       "branch": "test/security-route-suite",
       "status": "goedgekeurd",
@@ -204,7 +204,7 @@
     },
     {
       "file": "docs/specs/security-suite.md",
-      "digest": "3903455a74e92cdc57a29a022cf888a22f4644b6acd3c65a7e726b772341a5dd",
+      "digest": "2792fa1c65828b65b8ca354074c23c70440b793db3dc21a093039f7dc621d0f8",
       "repository": "BramLambertJansen/template",
       "branch": "test/security-ownership",
       "status": "goedgekeurd",
@@ -212,7 +212,7 @@
     },
     {
       "file": "docs/specs/security-suite.md",
-      "digest": "3903455a74e92cdc57a29a022cf888a22f4644b6acd3c65a7e726b772341a5dd",
+      "digest": "2792fa1c65828b65b8ca354074c23c70440b793db3dc21a093039f7dc621d0f8",
       "repository": "BramLambertJansen/template",
       "branch": "feat/new-resource-security-declaration",
       "status": "goedgekeurd",
