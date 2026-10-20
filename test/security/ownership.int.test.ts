@@ -57,7 +57,7 @@ describe('security/AC-9: eigenaarschap via de API', { timeout: LANG }, () => {
     expect(await eigenaarApiProblemen(ep.opzet())).toStrictEqual([]);
   });
 
-  test('security/AC-9: een cursor die naar de rij van A wijst, geeft B niets van A', async () => {
+  test('security/AC-9: een cursor vóór de rij van A (alle rijen komen erna) geeft B niets van A', async () => {
     const opzet = ep.opzet();
     const maak = await opzet.zend('A', {
       method: 'POST',
@@ -71,7 +71,7 @@ describe('security/AC-9: eigenaarschap via de API', { timeout: LANG }, () => {
       method: 'GET',
       pad: '/probes',
       params: {},
-      invoer: { cursor: encodeCursor({ id: aId }), limit: 100 },
+      invoer: { cursor: encodeCursor({ id: '00000000-0000-4000-8000-000000000000' }), limit: 100 },
     });
 
     expect(maak.status, maak.tekst).toBe(200);
@@ -97,6 +97,7 @@ describe('security/AC-9: eigenaarschap via de API', { timeout: LANG }, () => {
       };
 
       expect(await eigenaarApiProblemen(opzet)).toStrictEqual([]);
+      expect(await spoofApiProblemen(opzet)).toStrictEqual([]);
     } finally {
       await t.close();
     }
@@ -146,6 +147,17 @@ describe('security/AC-11: fail-closed classificatie', { timeout: LANG }, () => {
     expect(problemen).toStrictEqual([
       "route 'GET /nieuw/:id' staat niet in routeClassificatie (test/security/resources.ts)",
     ]);
+  });
+
+  test('security/AC-11: een verouderde regel in routeClassificatie (route niet in het register) is rood', () => {
+    const problemen = classificatieProblemen({
+      routes: labels,
+      classificatie: { ...routeClassificatie, 'GET /weg': { scope: 'admin' } },
+      resources,
+      eigenaarTabellen: [],
+    });
+
+    expect(problemen).toStrictEqual(["routeClassificatie bevat 'GET /weg', maar die route staat niet in het register"]);
   });
 
   test('security/AC-11: een eigenaar-route naar een niet-gedeclareerde resource is rood met de naam van route en resource', () => {

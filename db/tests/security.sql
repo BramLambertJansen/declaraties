@@ -226,7 +226,8 @@ select is(array(select pg_temp.c2_predicaat()), '{}'::text[], 'C2: na het opruim
 -- C3 grants. Elke grant (tabel- of kolomrecht, rechtstreeks) aan app_authenticated, api_user of auth_service op een tabel of
 -- view in public of app staat op de allowlist per tabel en recht. Op een owner-tabel (C1) zijn tabelbreed select en delete en
 -- kolomrechten voor insert en update de regel: dat hoeft niet per tabel op de lijst, een tabelbrede insert of update is een
--- overtreding, en elk ander recht ook. (PUBLIC, TRUNCATE/REFERENCES/TRIGGER en better_auth staan in invarianten.sql.)
+-- overtreding, en elk ander recht ook. Die vrijstelling geldt alleen voor app_authenticated; api_user en auth_service
+-- vallen overal onder de allowlist. (PUBLIC, TRUNCATE/REFERENCES/TRIGGER en better_auth staan in invarianten.sql.)
 -- ---------------------------------------------------------------------------------------------------------------------
 create temp table grant_allowlist (tabel text, rol text, recht text, reden text);
 insert into grant_allowlist values
@@ -252,13 +253,13 @@ create function pg_temp.c3_grants() returns setof text language sql stable as $$
     where c.relkind in ('r', 'p', 'v', 'm', 'f') and n.nspname in ('public', 'app')
   ),
   rechten as (
-    select r.tabel, r.is_owner, g.rolname::text as rol, a.privilege_type::text as recht, null::text as kolom
+    select r.tabel, (r.is_owner and g.rolname = 'app_authenticated') as is_owner, g.rolname::text as rol, a.privilege_type::text as recht, null::text as kolom
     from rel r
     cross join lateral pg_catalog.aclexplode(coalesce(r.relacl, pg_catalog.acldefault('r', r.relowner))) a
     join pg_catalog.pg_roles g on g.oid = a.grantee
     where g.rolname in ('app_authenticated', 'api_user', 'auth_service')
     union all
-    select r.tabel, r.is_owner, g.rolname::text, a.privilege_type::text, att.attname::text
+    select r.tabel, (r.is_owner and g.rolname = 'app_authenticated'), g.rolname::text, a.privilege_type::text, att.attname::text
     from rel r
     join pg_catalog.pg_attribute att on att.attrelid = r.oid and att.attacl is not null and not att.attisdropped
     cross join lateral pg_catalog.aclexplode(att.attacl) a
@@ -322,7 +323,7 @@ select is(
     'public.c3_owner_probe: app_authenticated heeft tabelbrede INSERT op een owner-tabel (alleen kolomrechten)',
     'public.c3_owner_probe: app_authenticated heeft tabelbrede UPDATE op een owner-tabel (alleen kolomrechten)',
     'public.c3_owner_probe: app_authenticated heeft TRUNCATE op een owner-tabel, niet toegestaan',
-    'public.c3_owner_probe: auth_service heeft REFERENCES op kolom notitie van een owner-tabel, niet toegestaan',
+    'public.c3_owner_probe: auth_service heeft REFERENCES op kolom notitie, niet op de allowlist',
     'public.c3_probe: app_authenticated heeft SELECT, niet op de allowlist',
     'public.c3_probe: app_authenticated heeft INSERT, niet op de allowlist',
     'public.c3_probe: api_user heeft UPDATE op kolom notitie, niet op de allowlist'
@@ -340,7 +341,7 @@ select is(
     'public.c3_owner_probe: app_authenticated heeft tabelbrede INSERT op een owner-tabel (alleen kolomrechten)',
     'public.c3_owner_probe: app_authenticated heeft tabelbrede UPDATE op een owner-tabel (alleen kolomrechten)',
     'public.c3_owner_probe: app_authenticated heeft TRUNCATE op een owner-tabel, niet toegestaan',
-    'public.c3_owner_probe: auth_service heeft REFERENCES op kolom notitie van een owner-tabel, niet toegestaan',
+    'public.c3_owner_probe: auth_service heeft REFERENCES op kolom notitie, niet op de allowlist',
     'public.c3_probe: app_authenticated heeft INSERT, niet op de allowlist',
     'public.c3_probe: api_user heeft UPDATE op kolom notitie, niet op de allowlist',
     'public.c3_probe: allowlist-regel zonder reden (app_authenticated INSERT)'

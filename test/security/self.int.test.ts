@@ -37,14 +37,16 @@ async function metProbe<T>(voorbereiding: readonly string[], werk: (ep: Eigenaar
 
 describe('security/AC-13: de suite test zichzelf', { timeout: LANG }, () => {
   test('security/AC-13: de goede probe-resource is groen voor elke controle van AC-8 t/m AC-11', async () => {
-    const problemen = await metProbe([], async (ep) => ({
-      tabel: await tabelEigenaarProblemen(ep.spelers, resources),
-      spoofDb: await spoofDbProblemen(ep.spelers, resources),
-      api: await eigenaarApiProblemen(ep.opzet()),
-      spoofApi: await spoofApiProblemen(ep.opzet()),
-      classificatie: probeClassificatieProblemen(await eigenaarTabellen(ep.spelers)),
+    // Elke controle krijgt een eigen terugdraaiende transactie: ze maken allemaal rijen met hetzelfde sample, en de unieke
+    // index (owner_id, label) laat dat maar één keer per transactie toe.
+    const problemen = {
+      tabel: await metProbe([], (ep) => tabelEigenaarProblemen(ep.spelers, resources)),
+      spoofDb: await metProbe([], (ep) => spoofDbProblemen(ep.spelers, resources)),
+      api: await metProbe([], (ep) => eigenaarApiProblemen(ep.opzet())),
+      spoofApi: await metProbe([], (ep) => spoofApiProblemen(ep.opzet())),
+      classificatie: await metProbe([], async (ep) => probeClassificatieProblemen(await eigenaarTabellen(ep.spelers))),
       strict: strictProblemen(EIGENAAR_ROUTES),
-    }));
+    };
 
     expect(problemen).toStrictEqual({ tabel: [], spoofDb: [], api: [], spoofApi: [], classificatie: [], strict: [] });
   });
@@ -69,6 +71,20 @@ describe('security/AC-13: de suite test zichzelf', { timeout: LANG }, () => {
     expect(problemen).toContain('public.security_probes: B raakt via select 1 rij(en) van A');
   });
 
+  test('security/AC-13: using (true) op de select-policy maakt AC-9 rood: B ziet de rij van A in de lijst en bij lezen', async () => {
+    const voorbereiding = [
+      `drop policy ${SELECT_POLICY} on public.security_probes`,
+      `create policy ${SELECT_POLICY} on public.security_probes for select to app_authenticated using (true)`,
+    ];
+
+    const problemen = await metProbe(voorbereiding, (ep) => eigenaarApiProblemen(ep.opzet()));
+
+    expect(
+      problemen.some((probleem) => probleem.includes('de lijst van B') && probleem.includes('bevat een rij van A')),
+    ).toBe(true);
+    expect(problemen.some((probleem) => probleem.includes('B read op een rij van A gaf 200'))).toBe(true);
+  });
+
   test('security/AC-13: een kolomrecht op owner_id maakt AC-10 rood: A kan de eigen owner_id kiezen', async () => {
     const voorbereiding = ['grant insert (owner_id), update (owner_id) on public.security_probes to app_authenticated'];
 
@@ -85,7 +101,9 @@ describe('security/AC-13: de suite test zichzelf', { timeout: LANG }, () => {
     }));
 
     expect(problemen.strict).toStrictEqual(["route 'POST /probes': input is niet strict"]);
-    expect(problemen.api.some((probleem) => probleem.includes('create met velden (label, owner_id)'))).toBe(true);
+    expect(problemen.api.some((probleem) => probleem.includes('create met velden (label, owner_id) gaf 200'))).toBe(
+      true,
+    );
   });
 
   test('security/AC-13: een route buiten routeClassificatie maakt AC-11 rood', () => {

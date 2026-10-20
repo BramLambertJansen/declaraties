@@ -222,7 +222,10 @@ export function classificatieProblemen(inventaris: Inventaris): string[] {
   const zonderRegel = inventaris.eigenaarTabellen
     .filter((tabel) => regelVoor(resources, tabel) === undefined)
     .map((tabel) => `owner-tabel '${tabel}' heeft geen regel in resources (test/security/resources.ts)`);
-  return [...ontbreekt, ...zonderResource, ...zonderRegel];
+  const verouderd = Object.keys(classificatie)
+    .filter((label) => !inventaris.routes.includes(label))
+    .map((label) => `routeClassificatie bevat '${label}', maar die route staat niet in het register`);
+  return [...ontbreekt, ...verouderd, ...zonderResource, ...zonderRegel];
 }
 
 // Een route zonder strict input laat een onbekend veld (owner_id!) stilletjes door: createApp en defineContract weigeren dat bij
@@ -418,10 +421,13 @@ async function rijenVanA(ctx: Context): Promise<unknown[]> {
 async function resourceProblemen(o: EigenaarOpzet, naam: string): Promise<string[]> {
   const ctx = await bereid(o, naam);
   const voor = await rijenVanA(ctx);
+  const problemen: string[] = [];
   if (voor.length !== ctx.ids.A.length) {
-    throw new Error(`${naam}: A ziet ${String(voor.length)} van zijn ${String(ctx.ids.A.length)} rijen in de lijst`);
+    problemen.push(
+      `${naam}: A ziet ${String(voor.length)} rijen in de lijst maar maakte er ${String(ctx.ids.A.length)}`,
+    );
   }
-  const problemen = [...(await idProblemen(ctx)), ...(await lijstProblemen(ctx))];
+  problemen.push(...(await idProblemen(ctx)), ...(await lijstProblemen(ctx)));
   if (!isDeepStrictEqual(voor, await rijenVanA(ctx))) problemen.push(`${naam}: de rijen van A zijn veranderd door B`);
   return problemen;
 }
@@ -449,6 +455,14 @@ export async function eigenaarApiProblemen(o: EigenaarOpzet): Promise<string[]> 
   return problemen;
 }
 
+// Een geldige create-input met een eigen waarde voor de eerste tekst (de unieke index op owner_id en label): zo faalt een
+// spoof alleen op het onbekende veld, en een route die dat veld toelaat geeft 200 in plaats van 409.
+function uniek(invoer: Readonly<Record<string, unknown>>, soort: string): Record<string, unknown> {
+  const eerste = Object.entries(invoer).find(([, waarde]) => typeof waarde === 'string');
+  if (eerste === undefined) return { ...invoer };
+  return { ...invoer, [eerste[0]]: `${String(eerste[1])}-spoof-${soort}` };
+}
+
 async function verwachtValidatie(ctx: Context, wie: Wie, poging: Parameters<typeof stuur>[2]): Promise<string[]> {
   const antwoord = await stuur(ctx, wie, poging);
   if (antwoord.status === 400 && codeVan(antwoord) === 'VALIDATION') return [];
@@ -465,7 +479,7 @@ async function spoofResourceProblemen(o: EigenaarOpzet, naam: string): Promise<s
   const waarden = { owner_id: o.gebruikers.B, id: randomUUID(), created_at: new Date().toISOString() };
   const problemen: string[] = [];
   for (const [veld, waarde] of Object.entries(waarden)) {
-    const invoer = { ...ctx.regel.sample.create, [veld]: waarde };
+    const invoer = { ...uniek(ctx.regel.sample.create, veld), [veld]: waarde };
     problemen.push(...(await verwachtValidatie(ctx, 'A', { actie: 'create', invoer })));
     if (aId === undefined || !ctx.kaart.has('update') || veld === 'id') continue;
     const wijziging = { ...ctx.regel.sample.update, [veld]: waarde };
