@@ -1,6 +1,8 @@
+import { Eye, EyeOff } from 'lucide-react';
 import { useId, useState, type ComponentProps } from 'react';
 import { uiTexts } from '../copy/ui.ts';
 import { Button } from './button.tsx';
+import { cn } from './cn.ts';
 import { Input } from './input.tsx';
 
 export type PasswordInputProps = Omit<ComponentProps<'input'>, 'type'> & {
@@ -10,6 +12,7 @@ export type PasswordInputProps = Omit<ComponentProps<'input'>, 'type'> & {
 export function PasswordInput({
   id,
   disabled,
+  className,
   visibilityLabel = uiTexts.visibilityToggle,
   ...props
 }: PasswordInputProps) {
@@ -17,11 +20,12 @@ export function PasswordInput({
   const inputId = id ?? generatedId;
   const [visible, setVisible] = useState(false);
   return (
-    <div className="flex min-w-0 flex-col gap-2">
+    <div className="flex min-w-0 items-center gap-2">
       <Input
         {...props}
         id={inputId}
         disabled={disabled}
+        className={cn('h-control min-w-0 flex-1', className)}
         type={visible ? 'text' : 'password'}
         autoCapitalize="none"
         autoCorrect="off"
@@ -30,15 +34,18 @@ export function PasswordInput({
       <Button
         type="button"
         variant={visible ? 'secondary' : 'outline'}
-        className="self-start"
+        size="icon"
+        className="h-control shrink-0"
         disabled={disabled}
+        aria-label={visibilityLabel}
+        title={visibilityLabel}
         aria-pressed={visible}
         aria-controls={inputId}
         onClick={() => {
           setVisible((current) => !current);
         }}
       >
-        {visibilityLabel}
+        {visible ? <EyeOff aria-hidden="true" /> : <Eye aria-hidden="true" />}
       </Button>
     </div>
   );

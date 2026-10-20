@@ -15,6 +15,7 @@ export const uiTexts = {
   darkTheme: 'Donker thema',
   skipToContent: 'Naar de inhoud',
   visibilityToggle: 'Wachtwoord tonen',
+  openCalendar: 'Kalender openen',
   breadcrumbs: 'Kruimelpad',
   copy: 'Kopiëren',
   copied: 'Gekopieerd.',
