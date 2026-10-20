@@ -11,7 +11,8 @@ const SCRIPT = path.join(ROOT, 'scripts/github-ruleset.sh');
 const WORKFLOWS = path.join(ROOT, '.github/workflows');
 // Geen verplichte check tot de GitHub App er is (ADR 0017, guard.yml). `document-status` komt in `requiredChecks` van
 // .claude/decisions.json (pr:verify) na de gh api-verificatie van de eigenaar (ADR 0031 PR 2); in de ruleset staat hij nog niet.
-const NIET_VERPLICHT = ['diff-guard', 'document-status'];
+// `check-core` (ADR 0008) ook nog niet: verplicht maken in de app-ruleset is een eigenaarbesluit.
+const NIET_VERPLICHT = ['diff-guard', 'document-status', 'check-core'];
 const GITHUB_ACTIONS = 15368;
 const OPDRACHT = [
   'gate:fast',
