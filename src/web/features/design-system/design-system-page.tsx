@@ -346,6 +346,12 @@ export function DesignSystemPage() {
       <ComboboxExamples />
       <CollectionExamples />
       <DataDisplayExamples />
+      <EditableDetailsExample />
+      <RefreshExample />
+      <BulkActionsExample />
     </div>
   );
 }
+import { EditableDetailsExample } from './editable-details-example.tsx';
+import { BulkActionsExample } from './bulk-actions-example.tsx';
+import { RefreshExample } from './refresh-example.tsx';
