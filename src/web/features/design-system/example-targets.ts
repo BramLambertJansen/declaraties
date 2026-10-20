@@ -1,6 +1,17 @@
 // Eén vindplaats per bestaand kitonderdeel; de bronindex blijft de inventaris bepalen.
 const groups = [
   {
+    names: ['PasswordInput', 'DateInput'],
+    id: 'example-input-utilities',
+    text: 'Toon en verberg een wachtwoord, vul een native datumveld in en probeer validatie en reset.',
+  },
+  {
+    names: ['Breadcrumbs'],
+    id: 'example-breadcrumbs',
+    text: 'Navigeer naar een bovenliggende pagina; de huidige pagina is tekst.',
+  },
+  { names: ['CopyButton'], id: 'example-copy-button', text: 'Kopieer het zichtbare voorbeeldadres naar het klembord.' },
+  {
     names: ['DataTable', 'DataTableHeading'],
     id: 'example-data-table',
     text: 'Zoek, filter, sorteer, selecteer en laad lokale rijen.',
