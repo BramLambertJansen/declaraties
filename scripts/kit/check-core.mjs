@@ -3,6 +3,7 @@
 // een gewone commit laat `src/core` gelijk aan zijn ouder; een merge die `src/core` verandert, telt alleen als zijn tweede
 // ouder P2 een voorouder is van `template/main` (opgehaald van TEMPLATE_URL) of al op main staat (een `git merge origin/main`
 // in de branch), en `src/core` in de merge gelijk is aan dat in P2 (geen eigen wijziging in de merge zelf).
+// Een commit zonder ouder (orphan) faalt altijd.
 // In de template zelf staat de check uit: daar staat `onderhoud.repository` in de vertrouwde `.claude/gates.json` (ADR 0033;
 // `pnpm app:init` haalt die regel in een app weg). Onleesbare geschiedenis of template telt als fout.
 import { execFileSync } from 'node:child_process';
@@ -73,8 +74,10 @@ function commitFout(root, refs, commit) {
   const ouders = git(root, ['rev-list', '--parents', '-n', '1', commit]).split(' ').slice(1);
   const eigen = coreTree(root, commit);
   const [eerste, tweede] = ouders;
-  if (eerste === undefined || eigen === coreTree(root, eerste)) return undefined;
   const kort = commit.slice(0, 12);
+  // Een root-commit (orphan) in de PR heeft geen ouder om mee te vergelijken; die hoort nooit in een app-PR.
+  if (eerste === undefined) return `${kort} is een commit zonder ouder (orphan); die kan ${CORE}/ ongezien vervangen`;
+  if (eigen === coreTree(root, eerste)) return undefined;
   if (tweede === undefined || ouders.length > 2) return `${kort} wijzigt ${CORE}/ buiten een template-merge`;
   const vertrouwd = isVoorouder(root, tweede, refs.template) || isVoorouder(root, tweede, refs.base);
   if (!vertrouwd)
@@ -90,15 +93,14 @@ function commitFout(root, refs, commit) {
  * @returns {string[]}
  */
 export function coreFouten(root, refs) {
-  let splitsing;
   try {
-    splitsing = git(root, ['merge-base', refs.base, refs.head]);
-    git(root, ['rev-parse', '--verify', `${refs.template}^{commit}`]);
+    for (const ref of [refs.base, refs.head, refs.template]) git(root, ['rev-parse', '--verify', `${ref}^{commit}`]);
   } catch {
     return [`base, head of template/main (${refs.template}) is niet te lezen; haal de geschiedenis volledig op`];
   }
-  // Commits van de template zelf (meegekomen met een template-merge) tellen niet: alleen wat de app toevoegt.
-  const commits = git(root, ['rev-list', '--reverse', `${splitsing}..${refs.head}`, `^${refs.template}`])
+  // Alleen wat de app toevoegt: niet wat al op main staat (ook bij meerdere merge-bases) en niet de commits van de
+  // template zelf, die met een template-merge meekomen.
+  const commits = git(root, ['rev-list', '--reverse', refs.head, `^${refs.base}`, `^${refs.template}`])
     .split('\n')
     .filter(Boolean);
   return commits.map((commit) => commitFout(root, refs, commit)).filter((fout) => fout !== undefined);
@@ -124,7 +126,15 @@ function main() {
     meld('check-core: uit in de template zelf (onderhoud.repository, ADR 0008)');
     return;
   }
-  git('.', ['fetch', '--no-tags', '--quiet', TEMPLATE_URL, `+refs/heads/main:${TEMPLATE_REF}`]);
+  try {
+    git('.', ['fetch', '--no-tags', '--quiet', TEMPLATE_URL, `+refs/heads/main:${TEMPLATE_REF}`]);
+  } catch {
+    // Faalt dicht: zonder template/main is geen merge te beoordelen. De template moet zonder credentials op te halen zijn.
+    meld(`✗ check-core: ${TEMPLATE_URL} is niet op te halen (privé of onbereikbaar); zonder template/main faalt de check`);
+    console.log(`::error title=check-core::${TEMPLATE_URL} is niet op te halen`);
+    process.exitCode = 1;
+    return;
+  }
   // De workflow haalt de PR en main op als refs/guard/{head,base} en controleert ze (zoals voor de diff-guard).
   const fouten = coreFouten('.', { base: 'refs/guard/base', head: 'refs/guard/head', template: TEMPLATE_REF });
   if (fouten.length === 0) {

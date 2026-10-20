@@ -154,3 +154,51 @@ test('in deze template staat check-core uit (onderhoud.repository in .claude/gat
 
   expect(isTemplateRepo(gates, 'BramLambertJansen/template')).toBe(true);
 });
+
+test('een orphan-commit met eigen src/core, daarna gemerged met main, faalt', () => {
+  const root = repo();
+  git(root, 'switch', '-q', '--orphan', 'los');
+  schrijf(root, 'src/core/a.ts', 'export const a = 66;\n');
+  schrijf(root, 'src/web/app.ts', 'export const app = 1;\n');
+  commit(root, 'orphan');
+  git(root, 'merge', '-q', '--no-edit', '--allow-unrelated-histories', '-s', 'ours', 'main');
+  git(root, 'branch', '-q', '-f', 'werk', 'HEAD');
+
+  const fouten = coreFouten(root, REFS);
+  expect(fouten.some((fout) => fout.includes('zonder ouder'))).toBe(true);
+});
+
+test('een octopus-merge die src/core wijzigt faalt', () => {
+  const root = repo();
+  templateUpdate(root);
+  git(root, 'switch', '-q', '-c', 'derde', 'main');
+  schrijf(root, 'src/web/derde.ts', 'export const d = 1;\n');
+  commit(root, 'derde');
+  git(root, 'switch', '-q', 'werk');
+  schrijf(root, 'src/web/app.ts', 'export const app = 6;\n');
+  commit(root, 'app');
+  git(root, 'merge', '-q', '--no-edit', 'tmpl', 'derde');
+
+  const fouten = coreFouten(root, REFS);
+  expect(fouten.some((fout) => fout.includes('buiten een template-merge'))).toBe(true);
+});
+
+test('src/core verwijderen faalt', () => {
+  const root = repo();
+  git(root, 'rm', '-q', '-r', 'src/core');
+  commit(root, 'core weg');
+
+  expect(coreFouten(root, REFS)).toHaveLength(1);
+});
+
+test('een merge met omgedraaide ouders (template eerst) en een schone app-branch is groen', () => {
+  const root = repo();
+  schrijf(root, 'src/web/app.ts', 'export const app = 5;\n');
+  commit(root, 'app');
+  templateUpdate(root);
+  git(root, 'switch', '-q', '-c', 'omgedraaid', 'tmpl');
+  git(root, 'merge', '-q', '--no-edit', 'werk');
+  git(root, 'branch', '-q', '-f', 'werk', 'HEAD');
+
+  expect(coreFouten(root, REFS)).toStrictEqual([]);
+});
