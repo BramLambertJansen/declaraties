@@ -455,14 +455,6 @@ export async function eigenaarApiProblemen(o: EigenaarOpzet): Promise<string[]> 
   return problemen;
 }
 
-// Een geldige create-input met een eigen waarde voor de eerste tekst (de unieke index op owner_id en label): zo faalt een
-// spoof alleen op het onbekende veld, en een route die dat veld toelaat geeft 200 in plaats van 409.
-function uniek(invoer: Readonly<Record<string, unknown>>, soort: string): Record<string, unknown> {
-  const eerste = Object.entries(invoer).find(([, waarde]) => typeof waarde === 'string');
-  if (eerste === undefined) return { ...invoer };
-  return { ...invoer, [eerste[0]]: `${String(eerste[1])}-spoof-${soort}` };
-}
-
 async function verwachtValidatie(ctx: Context, wie: Wie, poging: Parameters<typeof stuur>[2]): Promise<string[]> {
   const antwoord = await stuur(ctx, wie, poging);
   if (antwoord.status === 400 && codeVan(antwoord) === 'VALIDATION') return [];
@@ -472,18 +464,34 @@ async function verwachtValidatie(ctx: Context, wie: Wie, poging: Parameters<type
   ];
 }
 
+// De basislijn van de spoof-controle: dezelfde input zonder spoof-veld moet gewoon lukken (200). Anders zou een 400 op een
+// ander veld (enum, formaat, max) de controle vals groen maken terwijl de route owner_id wel aanneemt.
+async function geldigeBasis(ctx: Context, doel: Parameters<typeof stuur>[2]): Promise<string[]> {
+  const antwoord = await stuur(ctx, 'A', doel);
+  if (antwoord.status === 200) return [];
+  return [
+    `${ctx.naam}: ${doel.actie} zonder spoof-veld gaf ${String(antwoord.status)} ${codeVan(antwoord) ?? '?'}; sample.spoof/sample.update moet een geldige input zijn (test/security/resources.ts)`,
+  ];
+}
+
 async function spoofResourceProblemen(o: EigenaarOpzet, naam: string): Promise<string[]> {
   const ctx = await bereid(o, naam);
-  const voor = await rijenVanA(ctx);
+  const { spoof } = ctx.regel.sample;
+  const update = ctx.regel.sample.update ?? {};
+  if (spoof === undefined)
+    throw new Error(`${naam}: sample.spoof ontbreekt, een geldige en unieke create-input (test/security/resources.ts)`);
   const [aId] = ctx.ids.A;
+  const metUpdate = aId !== undefined && ctx.kaart.has('update');
+  const problemen = await geldigeBasis(ctx, { actie: 'create', invoer: spoof });
+  if (metUpdate) problemen.push(...(await geldigeBasis(ctx, { actie: 'update', id: aId, invoer: update })));
+  const voor = await rijenVanA(ctx);
   const waarden = { owner_id: o.gebruikers.B, id: randomUUID(), created_at: new Date().toISOString() };
-  const problemen: string[] = [];
   for (const [veld, waarde] of Object.entries(waarden)) {
-    const invoer = { ...uniek(ctx.regel.sample.create, veld), [veld]: waarde };
-    problemen.push(...(await verwachtValidatie(ctx, 'A', { actie: 'create', invoer })));
-    if (aId === undefined || !ctx.kaart.has('update') || veld === 'id') continue;
-    const wijziging = { ...ctx.regel.sample.update, [veld]: waarde };
-    problemen.push(...(await verwachtValidatie(ctx, 'A', { actie: 'update', id: aId, invoer: wijziging })));
+    problemen.push(...(await verwachtValidatie(ctx, 'A', { actie: 'create', invoer: { ...spoof, [veld]: waarde } })));
+    if (!metUpdate || veld === 'id') continue;
+    problemen.push(
+      ...(await verwachtValidatie(ctx, 'A', { actie: 'update', id: aId, invoer: { ...update, [veld]: waarde } })),
+    );
   }
   if (!isDeepStrictEqual(voor, await rijenVanA(ctx)))
     problemen.push(`${naam}: een spoof via de input heeft een rij van A gewijzigd of toegevoegd`);

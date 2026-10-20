@@ -23,6 +23,9 @@ export interface ResourceRegel {
     readonly create: Readonly<Record<string, unknown>>;
     // Een tweede, andere geldige rij: B en A krijgen er twee, zodat paginering via cursor echt meer dan één pagina geeft.
     readonly createTweede?: Readonly<Record<string, unknown>>;
+    // Een geldige, van create en createTweede verschillende (unieke) create-input voor de spoof-controle (AC-10): die voegt er een
+    // onbekend veld aan toe en eist 400 VALIDATION. Verplicht zodra er een create-route is; ontbreekt hij, dan is de suite rood.
+    readonly spoof?: Readonly<Record<string, unknown>>;
     // Geldige velden voor de update-route; verplicht zodra er een update-route is.
     readonly update?: Readonly<Record<string, unknown>>;
     // De kolommen voor een directe insert, als de veldnamen van de API afwijken van de kolomnamen.
@@ -55,6 +58,7 @@ export const resources: Readonly<Record<string, ResourceRegel>> = {
     sample: {
       create: { label: 'beveiligingstest-a' },
       createTweede: { label: 'beveiligingstest-b' },
+      spoof: { label: 'beveiligingstest-spoof' },
       update: { label: 'beveiligingstest-gewijzigd' },
     },
     lijst: 'GET /probes',

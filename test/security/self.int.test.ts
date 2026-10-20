@@ -101,9 +101,30 @@ describe('security/AC-13: de suite test zichzelf', { timeout: LANG }, () => {
     }));
 
     expect(problemen.strict).toStrictEqual(["route 'POST /probes': input is niet strict"]);
-    expect(problemen.api.some((probleem) => probleem.includes('create met velden (label, owner_id) gaf 200'))).toBe(
-      true,
-    );
+    expect(problemen.api.some((probleem) => probleem.includes('create met velden (label, owner_id) gaf'))).toBe(true);
+  });
+
+  test('security/AC-13: een ongeldige sample.spoof maakt AC-10 rood, niet groen door een validatiefout op een ander veld', async () => {
+    const problemen = await metProbe([], (ep) => {
+      const opzet = ep.opzet();
+      const regel = resources.security_probes;
+      if (regel === undefined) throw new Error('resources.security_probes ontbreekt');
+      const ongeldig = { ...regel, sample: { ...regel.sample, spoof: { label: '' } } };
+      return spoofApiProblemen({ ...opzet, resources: { security_probes: ongeldig } });
+    });
+
+    expect(problemen.some((probleem) => probleem.includes('create zonder spoof-veld gaf 400'))).toBe(true);
+  });
+
+  test('security/AC-13: zonder sample.spoof is AC-10 via de API rood met een aanwijzing (fail-closed)', async () => {
+    const problemen = await metProbe([], (ep) => {
+      const regel = resources.security_probes;
+      if (regel === undefined) throw new Error('resources.security_probes ontbreekt');
+      const zonderSpoof = { create: regel.sample.create };
+      return spoofApiProblemen({ ...ep.opzet(), resources: { security_probes: { ...regel, sample: zonderSpoof } } });
+    });
+
+    expect(problemen.some((probleem) => probleem.includes('sample.spoof ontbreekt'))).toBe(true);
   });
 
   test('security/AC-13: een route buiten routeClassificatie maakt AC-11 rood', () => {
