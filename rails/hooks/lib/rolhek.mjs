@@ -2,7 +2,7 @@
 // verboden is (deny). Puur: alles wat van de schijf of git komt, zit in `ctx`, zodat test/hooks/rolhek.test.ts elke regel
 // met echte payloads kan bewijzen. De stdin/stdout-kant staat in rails/hooks/rolhek.mjs.
 import path from 'node:path';
-import { gitSubcommand, parseCommands, splitCommand, writeTargets } from './shell.mjs';
+import { gitSubcommand, parseCommands, programName, splitCommand, writeTargets } from './shell.mjs';
 import { documentInfo } from './document-state.mjs';
 import { canRecordStatus, canWriteProtected } from './task-authority.mjs';
 import { automaticRunner } from './runner-authority.mjs';
@@ -427,9 +427,9 @@ function gitMapMelding(file) {
  */
 function decideBash({ command, role }, ctx, decision) {
   for (const parsed of parseCommands(command)) {
-    const { assignments, argv } = splitCommand(parsed.words);
+    const { assignments, argv, pathWrappers } = splitCommand(parsed.words);
     forbidden({ assignments, argv }, { role, ctx }, decision);
-    if (role === 'reviewer' && !reviewerMay(argv, parsed.redirects))
+    if (role === 'reviewer' && (pathWrappers.length > 0 || !reviewerMay(argv, parsed.redirects)))
       decision.deny.push(`reviewer: alleen lezen (\`${argv.slice(0, 3).join(' ')}\` mag niet; framework §8)`);
     const targets = writeTargets(parsed);
     for (const target of targets.writes) bashTarget({ file: target, kind: 'write', role }, ctx, decision);
@@ -488,7 +488,8 @@ function isNewResource(program, args) {
  * @param {Decision} decision
  */
 function forbidden({ assignments, argv }, { role, ctx }, decision) {
-  const [program = '', ...args] = argv;
+  const [word = '', ...args] = argv;
+  const program = programName(word);
   const lefthook = [...assignments, ...(program === 'export' ? args : [])].find((word) => /^LEFTHOOK(?:_\w+)?=/.test(word));
   if (lefthook !== undefined) decision.deny.push(`${lefthook}: git-hooks overslaan is verboden (AGENTS.md)`);
   if ([...assignments, ...(program === 'export' ? args : [])].some((word) => /^CI=/.test(word)))
