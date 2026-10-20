@@ -427,9 +427,9 @@ function gitMapMelding(file) {
  */
 function decideBash({ command, role }, ctx, decision) {
   for (const parsed of parseCommands(command)) {
-    const { assignments, argv } = splitCommand(parsed.words);
+    const { assignments, argv, pathWrappers } = splitCommand(parsed.words);
     forbidden({ assignments, argv }, { role, ctx }, decision);
-    if (role === 'reviewer' && !reviewerMay(argv, parsed.redirects))
+    if (role === 'reviewer' && (pathWrappers.length > 0 || !reviewerMay(argv, parsed.redirects)))
       decision.deny.push(`reviewer: alleen lezen (\`${argv.slice(0, 3).join(' ')}\` mag niet; framework §8)`);
     const targets = writeTargets(parsed);
     for (const target of targets.writes) bashTarget({ file: target, kind: 'write', role }, ctx, decision);

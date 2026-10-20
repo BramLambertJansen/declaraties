@@ -50,8 +50,32 @@ describe('V-13: een volledig pad naar het programma ontloopt de weigering niet',
     expect(verdict('/bin/rm src/api/routes/a.test.ts', 'developer')).toBe('deny');
   });
 
-  test('reviewer: een programma met pad dat gh heet, is geen toegestaan leescommando', () => {
-    expect(verdict('/tmp/x/gh pr view 1', 'reviewer')).toBe('deny');
+  test.each([
+    { name: 'een programma met pad dat gh heet', command: '/tmp/x/gh pr view 1' },
+    { name: 'een omhulsel met pad dat env heet', command: './env git status' },
+    { name: '/usr/bin/env voor een leescommando', command: '/tmp/x/env gh pr view 1' },
+  ])('reviewer: $name geeft geen leescommando vrij', ({ command }) => {
+    expect(verdict(command, 'reviewer')).toBe('deny');
+  });
+
+  test.each([
+    { name: 'gh.exe pr merge (WSL)', command: '/mnt/c/tools/gh.exe pr merge 1' },
+    { name: 'git.exe push --force (WSL)', command: 'git.exe push --force origin feat' },
+    { name: "'/usr/bin/gh' pr merge", command: "'/usr/bin/gh' pr merge 1" },
+    { name: '\\gh pr merge', command: '\\gh pr merge 1' },
+  ])('hoofdsessie: $name → deny', ({ command }) => {
+    expect(verdict(command)).toBe('deny');
+  });
+
+  test.each([
+    { name: '/usr/bin/pnpm pr:label-gate', command: '/usr/bin/pnpm pr:label-gate 1' },
+    { name: '/usr/bin/node new-resource', command: '/usr/bin/node scripts/kit/new-resource.mjs notes' },
+  ])('developer: $name → deny (alleen de hoofdsessie)', ({ command }) => {
+    expect(verdict(command, 'developer')).toBe('deny');
+  });
+
+  test('reviewer: gh pr view zonder pad blijft toegestaan', () => {
+    expect(verdict('gh pr view 1', 'reviewer')).toBe('allow');
   });
 
   test.each([

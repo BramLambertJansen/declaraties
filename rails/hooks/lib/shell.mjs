@@ -169,29 +169,34 @@ const WRAPPERS = new Set(['sudo', 'env', 'command', 'time', 'nohup', 'exec', 'ni
 
 /**
  * De programmanaam zonder pad: `/usr/bin/gh` en `./gh` zijn voor een weigering gewoon `gh` (V-13). Alleen voor wat het
- * rolhek weigert of als schrijfdoel ziet; een toestemming (zoals de leescommando's van de reviewer) kijkt naar het woord zelf.
+ * rolhek weigert of als schrijfdoel ziet (ook `gh.exe` onder WSL); een toestemming (zoals de leescommando's van de reviewer) kijkt
+ * naar het woord zelf, en `pathWrappers` meldt omhulsels met pad, zodat `./env` geen leescommando vrijgeeft.
  * @param {string} word
  */
 export function programName(word) {
-  return word.slice(word.lastIndexOf('/') + 1);
+  return word.slice(word.lastIndexOf('/') + 1).replace(/\.exe$/i, '');
 }
 
 /**
  * De woorden van het eigenlijke commando: zonder voorafgaande variabelen (`A=1 cmd`) en omhulsels (`env`, `sudo`).
+ * `pathWrappers`: weggehaalde omhulsels met een pad (`/usr/bin/env`, `./env`); dat kan elk programma zijn.
  * @param {readonly string[]} words
- * @returns {{ assignments: string[], argv: string[] }}
+ * @returns {{ assignments: string[], argv: string[], pathWrappers: string[] }}
  */
 export function splitCommand(words) {
   let index = 0;
   /** @type {string[]} */
   const assignments = [];
+  /** @type {string[]} */
+  const pathWrappers = [];
   while (index < words.length) {
     const word = words[index] ?? '';
     if (/^[A-Za-z_][A-Za-z0-9_]*=/.test(word)) assignments.push(word);
     else if (!WRAPPERS.has(programName(word))) break;
+    else if (programName(word) !== word) pathWrappers.push(word);
     index += 1;
   }
-  return { assignments, argv: words.slice(index) };
+  return { assignments, argv: words.slice(index), pathWrappers };
 }
 
 /** @typedef {{ writes: string[], deletes: string[] }} Targets */
