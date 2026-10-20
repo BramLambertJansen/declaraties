@@ -33,7 +33,10 @@ waarvan P2 niet in `template/main` maar op main staat. En "in de template zelf" 
 5. **"In de template zelf uit"** = `onderhoud.repository` in `.claude/gates.json` van main is gelijk aan de repository
    (ADR 0033; `check-core.mjs:57`, `:124`–`:128`). `pnpm app:init` haalt die regel in een app weg (`scripts/kit/app-init.mjs:122`).
 6. **Plaats.** Job `check-core` in `.github/workflows/guard.yml` (`pull_request_target`, scripts uit `BASE_SHA` van main), naast
-   `diff-guard` en `document-status`. Nog **geen** verplichte check in `scripts/github-ruleset.sh` (zie Open punten).
+   `diff-guard` en `document-status`. Verplichte check in de app-ruleset (`scripts/github-ruleset.sh`, #236; eigenaarbesluit
+   2026-10-21): in de template is hij altijd groen, dus hij blokkeert daar niets.
+7. **Downgrade-gat aanvaard** (eigenaarbesluit 2026-10-21). Het gat uit Gevolgen blijft voorlopig open; de aanscherping uit
+   Alternatieven is een vervolgitem op de roadmap (#236).
 
 Ongewijzigd: punt 2 van 0008, de vaste template-URL, en dat een core-fout in de template wordt opgelost.
 
@@ -42,7 +45,7 @@ Ongewijzigd: punt 2 van 0008, de vaste template-URL, en dat een core-fout in de 
 - **Tekst van 0008 letterlijk volgen**: punt 3 laat elke template-merge falen op de meegekomen template-commits; zonder besluit 2
   faalt elke `git merge origin/main` na een template-update. Niet bruikbaar.
 - **Downgrade-aanscherping** (zie Bekende gaten): core van head moet gelijk zijn aan die van base of van een `template/main`-commit
-  die niet ouder is dan de core op main. Niet gebouwd; keuze aan de eigenaar.
+  die niet ouder is dan de core op main. Niet nu (besluit 7); vervolgitem op de roadmap.
 
 ## Gevolgen
 
@@ -55,9 +58,8 @@ Ongewijzigd: punt 2 van 0008, de vaste template-URL, en dat een core-fout in de 
   - *Vals alarm.* Merget een zijbranch zelf `template/main` en wordt die zijbranch daarna in de PR-branch gemerged, dan staat P2
     niet in template of main en faalt de check. Zeldzaam; omweg: merge `template/main` direct in de PR-branch.
 
-## Open punten voor de eigenaar
+## Besluit van de eigenaar
 
-1. **Downgrade-gat**: nu aanvaarden en de aanscherping als roadmap-vervolg opnemen, of vóór merge van #236 bouwen?
-2. **Verplichte check**: `check-core` opnemen in de app-ruleset (`scripts/github-ruleset.sh:26`–`:27`), en wanneer
-   (nu, of samen met `diff-guard` na de GitHub App, ADR 0017)?
-3. **Besluit 2 en 4** verruimen resp. beperken wat 0008 toeliet (merge van main; publieke template-URL vereist). Akkoord?
+In de sessie van 2026-10-21: besluit 2 en 4 akkoord (merge van main telt; de template-URL moet zonder credentials op te halen
+zijn, dus een privé-template laat `check-core` altijd falen), check verplicht (besluit 6), downgrade-gat aanvaard met vervolg
+(besluit 7), ADR akkoord.
