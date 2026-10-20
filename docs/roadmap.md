@@ -153,7 +153,8 @@ Open werk dat niet geparkeerd is, grofweg in volgorde. Wat nog een spec of eigen
   aanleiding: `.claude/settings.json` (onbewezen sinds stuk 5; `test/rails/sandbox-settings.test.ts` dekt de spiegel, niet de sandbox)
 - [ ] **`gate:fast` definitief** (stuk 4): vastleggen welke checks de definitieve `gate:fast` bevat (nu een groeiende lijst in `scripts/kit/gates.mjs`); `gate:slow` is gebouwd (#38), squawk staat onder Geparkeerd.
   aanleiding: `scripts/kit/gates.mjs`
-- [ ] **`check-core`** (stuk 4; `.claude/rules/core.md` noemt hem nog niet gebouwd): een app wijzigt `src/core` niet. Met fixture die bewijst dat hij faalt.
+- [x] **`check-core`** (stuk 4): een app wijzigt `src/core` niet. Met fixture die bewijst dat hij faalt. Job `check-core` in
+  `.github/workflows/guard.yml` met `scripts/kit/check-core.mjs` (regels uit ADR 0008, in de template uit); bewijs `test/rails/check-core.test.ts`.
   aanleiding: `.claude/rules/core.md`
 - [ ] **Fout die in een app doorglipt wordt eerst een check of regel in de template** (met fixture), daarna gerepareerd in de app (fase 2; doorlopend, P5).
   aanleiding: `docs/adr/0029-snellere-beslisroute.md` (P5)
