@@ -23,8 +23,9 @@ case "${2:-}" in
 esac
 (($# <= 2)) || usage
 
-# Job-namen zoals ze op een PR staan. De diff-guard (guard.yml) is tot de GitHub App geen verplichte check (ADR 0017).
-checks=(gate:fast gate:slow secrets image check:new-resource osv-scanner)
+# Job-namen zoals ze op een PR staan. De diff-guard (guard.yml) is tot de GitHub App geen verplichte check (ADR 0017);
+# check-core (guard.yml, ADR 0037) wel: in een app bewaakt hij src/core, in de template is hij altijd groen.
+checks=(gate:fast gate:slow secrets image check:new-resource check-core osv-scanner)
 $codeql && checks+=("codeql (actions)" "codeql (javascript-typescript)")
 
 # 15368 = GitHub Actions: een status van een andere bron telt niet (anders is hij te vervalsen).

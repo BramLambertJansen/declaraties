@@ -6,7 +6,7 @@ paths:
 # Regels voor `src/core`
 
 - `src/core` is van de template (ADR 0008). In een app wijzig je het niet: updates komen alleen via `git merge template/main`,
-  en `check-core` (nog niet gebouwd, zie onderaan) laat een andere wijziging falen. In de template zelf mag het met eigenaarakkoord, ook door de developer binnen een exact taakmandaat uit main (ADR 0027).
+  en `check-core` (job in `guard.yml`, `scripts/kit/check-core.mjs`, regels in ADR 0008 en 0037; in de template zelf uit) laat een andere wijziging falen. In de template zelf mag het met eigenaarakkoord, ook door de developer binnen een exact taakmandaat uit main (ADR 0027).
 - Core importeert nooit uit `src/api`, `src/web` of `src/shared`. Wat core van de app nodig heeft, krijgt het als argument van een
   compositie-root (`src/api/app.ts`, `src/api/kit.ts`, `src/web/lib/api.ts`). Geen globale registratie, geen mutable singleton.
 - Elke uitbreidingsplek (permissies, foutcodes, limieten, env, componentvarianten) heeft in core een test die bewijst dat een app
@@ -20,6 +20,6 @@ paths:
 
 Gebouwd: `src/core/api/{env.ts,db,http,auth,mail}`, en in `src/core/shared`: `errors.ts` (`defineErrorCodes`), `can.ts` (`definePermissions`,
 MFA-eis voor admin), `limits.ts`, `assert.ts`, `unsafe-cast.ts`, `ids.ts` (`brandedId`), `money.ts` (`Cents`), `cursor.ts`; de API-client;
-de dependency-cruiser-regel core → app.
-Nog niet: `check-core` en de rest van core (roadmap fase 1).
+de dependency-cruiser-regel core → app; `check-core`.
+Nog niet: de rest van core (roadmap fase 1).
 Bouw een core-onderdeel alleen in het stuk van de roadmap waar het hoort.
