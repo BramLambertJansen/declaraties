@@ -134,6 +134,8 @@ dependency-cruiser); checks op de database lezen de catalogus van de lokale data
   geïnjecteerde transactie gebruiken (savepoint per test); per feature één test die echt commit.
 - Races: elke mutatie met een uniekheidsregel of geld krijgt een test met twee gelijktijdige requests; precies één slaagt.
 - E2E (Playwright) altijd tegen de echte lokale stack, nooit met gemockte API of database; inloggen per rol, één kernflow per feature, CSP aan.
+- Securitysuite (spec [security-suite](specs/security-suite.md)) in `test/security/`, draait in `pnpm test:db`: elke route uit het
+  register en elke owner-tabel uit `test/security/resources.ts` krijgt de generieke controles (rechten per rol, A-tegen-B, spoof).
 
 ## 5. Vaste patronen
 
@@ -191,6 +193,8 @@ Ankers: OWASP Top 10:2025, OWASP API Security Top 10, ASVS 5.0 niveau 1 (checkli
   `revoke all on database/schema public from public`); elke tabel expliciete grants in de migratie; een pgTAP-invariant eist dat geen
   API-rol TRUNCATE, REFERENCES of TRIGGER heeft en dat elke tabel in `public` en `app` RLS aan én geforceerd heeft
   (uitzondering: `public.schema_migrations`); schema `better_auth` heeft geen grants behalve aan `auth_service`, plus de kolom-allowlist van `app_definer` voor de view `app.accounts` (ADR 0014) en `update (blocked_at)` voor `app.set_account_blocked` (ADR 0026).
+  Daarnaast gelden C1–C3 uit `db/tests/security.sql` voor elke tabel en policy: owner-tabellen breed gedetecteerd, het predicaat
+  van de policies en een allowlist van grants per tabel en recht.
 - **FORCE RLS werkt alleen voor niet-superusers**: daarom is `app_migrator` eigenaar en geen superuser, lokaal én in productie.
   Datamigraties die alle rijen moeten zien, lopen via een gereviewde `security definer`-functie van `app_definer`; omdat FORCE RLS
   ook voor `app_definer` geldt, krijgt de tabel daarvoor een eigen policy `to app_definer` met pgTAP-test.
@@ -286,7 +290,8 @@ volgende vrije migratie- en ADR-nummer), niet met wat in proza staat.
    `pnpm docs:status` (ADR 0027). Een goedgekeurde spec heeft een ingevulde sectie "Hergebruik en UX" (`check-docs`).
 2. **Contract**: zod-schema's en routes die `501` teruggeven wanneer de wijziging een API-contract toevoegt.
 3. **Tester-agent** schrijft acceptatietests tegen het contract; ze compileren en falen op hun asserties. Schrijft alleen in testpaden;
-   per permissie en per policy ook de negatieve test.
+   per permissie en per policy ook de negatieve test. Bij een nieuwe resource neemt hij de declaratie die `pnpm new:resource` afdrukt
+   over in `test/security/resources.ts` en vult de samples in (`INVULLEN`); tot dan is de securitysuite rood.
 4. **Developer** (hoofdsessie of developer-agent) bouwt tot groen; gate-paden in `voorReview` alleen binnen een geldig exact
    taakmandaat uit main (ADR 0027); een ander gate-pad mag, met de melding "noem het in de PR" (ADR 0029 punt 9). Mag tests toevoegen. Een bestaande test wijzigen mag alleen als de spec of opdracht het geteste
    gedrag verandert; elke gewijzigde test staat met reden in de PR. Verwijderen of skippen alleen met akkoord van de eigenaar.

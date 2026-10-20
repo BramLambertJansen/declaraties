@@ -66,6 +66,7 @@ vangen het later toch, en dan is het werk verloren. Uitzonderingen staan limitat
   reden in de PR. Verwijderen of skippen alleen met akkoord van de eigenaar. Lijkt een test fout, leg het de eigenaar voor.
 - Unit `*.test.ts(x)` naast de code; integratie `*.int.test.ts` (via `pnpm test:db`); e2e in `e2e/`.
 - E2E en integratietests draaien tegen de echte lokale stack, nooit met gemockte API of database.
+- Een nieuwe resource staat in `test/security/resources.ts` (declaratie uit `pnpm new:resource`, samples door de tester).
 
 **Repo en grenzen** — zodat de kaders zelf niet ongemerkt verschuiven.
 - Bewerk geen gegenereerde bestanden en geen `.env*`; `.env.example` is beschermd (de demo-waarden zijn een securityregel).

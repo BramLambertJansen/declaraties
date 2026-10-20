@@ -17,6 +17,7 @@ De reviewer bepaalt eerst welke fase uit `docs/roadmap.md` bij het werk hoort: d
 
 - [ ] Nieuwe routes gebruiken `defineRoute` met permissie en hebben een test per verboden rol. Nieuwe foutcodes hebben een tekst in `src/web/copy/errors.ts`.
 - [ ] Nieuwe tabellen hebben RLS aan en geforceerd, expliciete grants en een pgTAP-test per policy.
+- [ ] De securitysuite (`test/security/`, `db/tests/security.sql`) is groen in `pnpm test:db`; een nieuwe resource staat in `test/security/resources.ts` met ingevulde samples.
 - [ ] Nieuwe `unsafeCast`-aanroepen hebben een reden.
 - [ ] Een wijziging aan de CSRF-middleware heeft de testmatrix uit ADR 0007 als tests.
 
