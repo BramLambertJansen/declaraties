@@ -193,6 +193,37 @@
       "branch": "feat/outbox-status",
       "status": "goedgekeurd",
       "paths": []
+    },
+    {
+      "file": "docs/specs/security-suite.md",
+      "digest": "3903455a74e92cdc57a29a022cf888a22f4644b6acd3c65a7e726b772341a5dd",
+      "repository": "BramLambertJansen/template",
+      "branch": "test/security-route-suite",
+      "status": "goedgekeurd",
+      "paths": []
+    },
+    {
+      "file": "docs/specs/security-suite.md",
+      "digest": "3903455a74e92cdc57a29a022cf888a22f4644b6acd3c65a7e726b772341a5dd",
+      "repository": "BramLambertJansen/template",
+      "branch": "test/security-ownership",
+      "status": "goedgekeurd",
+      "paths": []
+    },
+    {
+      "file": "docs/specs/security-suite.md",
+      "digest": "3903455a74e92cdc57a29a022cf888a22f4644b6acd3c65a7e726b772341a5dd",
+      "repository": "BramLambertJansen/template",
+      "branch": "feat/new-resource-security-declaration",
+      "status": "goedgekeurd",
+      "paths": [
+        "scripts/kit/new-resource.mjs",
+        "docs/framework.md",
+        "docs/gouden-pad.md",
+        "docs/dod.md",
+        "AGENTS.md",
+        "CHANGELOG.md"
+      ]
     }
   ]
 }
