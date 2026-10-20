@@ -37,7 +37,6 @@ export function PasswordInput({
         size="icon"
         className="h-control shrink-0"
         disabled={disabled}
-        aria-label={visibilityLabel}
         title={visibilityLabel}
         aria-pressed={visible}
         aria-controls={inputId}
@@ -46,6 +45,7 @@ export function PasswordInput({
         }}
       >
         {visible ? <EyeOff aria-hidden="true" /> : <Eye aria-hidden="true" />}
+        <span className="sr-only">{visibilityLabel}</span>
       </Button>
     </div>
   );

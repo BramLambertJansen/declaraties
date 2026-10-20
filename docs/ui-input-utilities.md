@@ -8,6 +8,7 @@ tussenruimte. Het invoerveld vult de resterende breedte; de knop behoudt zijn aa
 
 - `PasswordInput` bouwt op Input en Button. Het veld begint afgeschermd; een vaste knopnaam en `aria-pressed` geven de
   zichtbaarheid aan. `id`, ref, waarde, autocomplete, blur en foutattributen blijven op hetzelfde invoerelement staan.
+  De oogknop krijgt zijn toegankelijke naam via verborgen tekst, zodat het wachtwoordlabel alleen het veld aanwijst.
   `visibilityLabel` kan de standaardtekst “Wachtwoord tonen” vervangen. Disabled schakelt ook de toggle uit.
   De zichtbaarheid is lokaal en verdwijnt bij unmount; formulierreset wist de waarde via RHF. Het inlogscherm gebruikt
   deze component met behoud van het bestaande gedrag (`src/web/features/login/login-page.tsx`).
@@ -33,6 +34,6 @@ aanraakdoelen en kleuren volgen Input, Button en NavLink. Bronnen: `src/core/web
 Gedragstests staan naast de componenten; `input-utilities-form.test.tsx` controleert de echte RHF-binding, payload,
 validatie, foutfocus en reset. `e2e/input-utilities.spec.ts` controleert de echte stack op 375/1280 px, licht/donker,
 native invoer, klembord, routernavigatie, CSP en axe. De bestaande `e2e/login-password-visibility.spec.ts` blijft
-ongewijzigd als regressiecontrole. `compound-input-controls.test.tsx` dekt de kalenderknop, vergrendeling en terugval;
+ongewijzigd als regressiecontrole. `compound-input-controls.test.tsx` dekt de wachtwoordselectie, kalenderknop, vergrendeling en terugval;
 `e2e/compound-input-controls.spec.ts` meet hoogte, uitlijning en tussenruimte op beide schermbreedtes en in beide thema's.
 Testdekking is geen geslaagde checkuitslag; die staat in de oplevering.

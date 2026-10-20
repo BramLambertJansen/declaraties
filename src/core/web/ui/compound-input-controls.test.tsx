@@ -2,8 +2,19 @@ import { createRef } from 'react';
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, expect, test, vi } from 'vitest';
 import { DateInput } from './date-input.tsx';
+import { PasswordInput } from './password-input.tsx';
 
 afterEach(cleanup);
+
+test('het wachtwoordlabel blijft het invoerveld vinden naast de toegankelijke oogknop', () => {
+  render(<PasswordInput aria-label="Wachtwoord" />);
+  const input = screen.getByLabelText('Wachtwoord', { exact: false });
+  const toggle = screen.getByRole('button', { name: 'Wachtwoord tonen' });
+  expect(input.getAttribute('type')).toBe('password');
+  fireEvent.click(toggle);
+  expect(input.getAttribute('type')).toBe('text');
+  expect(toggle.getAttribute('aria-pressed')).toBe('true');
+});
 
 test('de losse kalenderknop opent alleen zijn eigen datumveld en verstuurt het formulier niet', () => {
   const first = createRef<HTMLInputElement>();
