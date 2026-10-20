@@ -109,6 +109,18 @@ describe('security/AC-13: de suite test zichzelf', { timeout: LANG }, () => {
     );
   });
 
+  test('security/AC-13: een sample.update met een kolom zonder update-recht maakt AC-8 rood met een aanwijzing', async () => {
+    const regel = resources.security_probes;
+    if (regel === undefined) throw new Error('resources.security_probes ontbreekt');
+    const ongeldig = {
+      security_probes: { ...regel, sample: { ...regel.sample, update: { created_at: '2020-01-01T00:00:00Z' } } },
+    };
+
+    const problemen = await metProbe([], (ep) => tabelEigenaarProblemen(ep.spelers, ongeldig));
+
+    expect(problemen.some((probleem) => probleem.includes('kies een updatebare kolom in sample.update'))).toBe(true);
+  });
+
   test('security/AC-13: een kolomrecht op owner_id maakt AC-10 rood: A kan de eigen owner_id kiezen', async () => {
     const voorbereiding = ['grant insert (owner_id), update (owner_id) on public.security_probes to app_authenticated'];
 

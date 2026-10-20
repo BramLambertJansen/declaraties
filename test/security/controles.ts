@@ -96,25 +96,38 @@ function idUit(poging: Poging): string | undefined {
 // B mag niets zien of raken: 0 rijen, of "geen recht" (42501). Een andere fout betekent dat de controle niets bewijst.
 // Update en delete lopen zonder where en returning: die lezen geen kolommen, dus alleen de update- en delete-policy beslissen
 // (een where of returning haalt de select-policy erbij, en die zou een te ruime update- of delete-policy maskeren). B heeft
-// zelf geen rijen, dus elke geraakte rij is van A.
+// zelf geen rijen, dus elke geraakte rij is van A. Een 42501 bij update telt niet als weigering: B heeft het kolomrecht (dat is
+// vooraf gecontroleerd), dus een 42501 betekent dat de policy de rij van A wel liet matchen en pas de with check weigerde.
 async function bRaaktNiets(
   spelers: Spelers,
   tabel: string,
-  doel: { id: string; kolom: string; waarde: unknown },
+  doel: { kolom: string; waarde: unknown },
 ): Promise<string[]> {
+  const recht = await probeer(
+    spelers.db,
+    spelers.B,
+    sql`select has_column_privilege(${tabel}::text, ${doel.kolom}::text, 'UPDATE') as ok`,
+  );
+  const mag = z.object({ ok: z.boolean() }).safeParse(recht.rijen[0]);
+  const problemen: string[] = [];
+  const magUpdaten = mag.success && mag.data.ok;
+  if (!magUpdaten) {
+    problemen.push(
+      `${tabel}: B heeft geen UPDATE-recht op '${doel.kolom}': kies een updatebare kolom in sample.update (test/security/resources.ts)`,
+    );
+  }
   const nieuw = typeof doel.waarde === 'string' ? `${doel.waarde}-door-b` : doel.waarde;
   const pogingen = [
-    ['select', sql`select id from ${sql.raw(tabel)} where id = ${doel.id}`],
-    ['select zonder where', sql`select id from ${sql.raw(tabel)}`],
+    ['select', sql`select id from ${sql.raw(tabel)}`],
     ['update', sql`update ${sql.raw(tabel)} set ${sql.identifier(doel.kolom)} = ${nieuw}`],
     ['delete', sql`delete from ${sql.raw(tabel)}`],
   ] as const;
-  const problemen: string[] = [];
   for (const [actie, statement] of pogingen) {
+    if (actie === 'update' && !magUpdaten) continue;
     const poging = await probeer(spelers.db, spelers.B, statement);
     if (poging.aantal > 0) {
       problemen.push(`${tabel}: B raakt via ${actie} ${String(poging.aantal)} rij(en) van A`);
-    } else if (poging.bericht !== undefined && poging.pg !== '42501') {
+    } else if (poging.bericht !== undefined && (poging.pg !== '42501' || actie === 'update')) {
       problemen.push(`${tabel}: B ${actie} gaf een onverwachte fout: ${poging.bericht}`);
     }
   }
@@ -123,8 +136,12 @@ async function bRaaktNiets(
 
 async function eigenTabelProblemen(spelers: Spelers, tabel: string, regel: ResourceRegel): Promise<string[]> {
   const rij = regel.sample.rij ?? regel.sample.create;
-  const kolom = Object.keys(rij)[0];
-  if (kolom === undefined) return [`${tabel}: sample heeft geen kolommen (test/security/resources.ts)`];
+  const [kolom, waarde] = Object.entries(regel.sample.update ?? {})[0] ?? [];
+  if (kolom === undefined) {
+    return [
+      `${tabel}: sample.update ontbreekt of is leeg: kies een updatebare kolom in sample.update (test/security/resources.ts)`,
+    ];
+  }
   const gemaakt = await probeer(spelers.db, spelers.A, insertSql(tabel, rij));
   const id = idUit(gemaakt);
   if (id === undefined) {
@@ -133,7 +150,7 @@ async function eigenTabelProblemen(spelers: Spelers, tabel: string, regel: Resou
   const voor = await probeer(spelers.db, spelers.A, rijSql(tabel, id));
   if (voor.rijen.length !== 1)
     return [`${tabel}: A ziet de eigen rij niet terug (select-policy ontbreekt of is te streng)`];
-  const problemen = await bRaaktNiets(spelers, tabel, { id, kolom, waarde: rij[kolom] });
+  const problemen = await bRaaktNiets(spelers, tabel, { kolom, waarde });
   const na = await probeer(spelers.db, spelers.A, rijSql(tabel, id));
   if (!isDeepStrictEqual(voor.rijen, na.rijen)) problemen.push(`${tabel}: de rij van A is veranderd door B`);
   return problemen;

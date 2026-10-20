@@ -33,6 +33,11 @@ create function pg_temp.c1_eigenaar() returns setof text language sql stable as 
              select 1 from pg_catalog.pg_constraint k
              where k.conrelid = c.oid and k.contype = 'f'
                and k.confrelid = 'better_auth."user"'::regclass and a.attnum = any (k.conkey)
+           ) as verwijst_user,
+           exists (
+             select 1 from pg_catalog.pg_constraint k
+             where k.conrelid = c.oid and k.contype = 'f'
+               and k.confrelid = 'better_auth."user"'::regclass and a.attnum = any (k.conkey)
                and exists (select 1 from pg_catalog.pg_attribute u where u.attrelid = k.confrelid and u.attname = 'id' and u.attnum = k.confkey[1])
            ) as heeft_fk
     from pg_catalog.pg_class c
@@ -50,6 +55,11 @@ create function pg_temp.c1_eigenaar() returns setof text language sql stable as 
       and not k.heeft_fk
       and k.tabel not in (select tabel from toegestaan)
     union all
+    select format('%s.%s: verwijst niet naar better_auth."user"(id)', k.tabel, k.kolom)
+    from kol k
+    where k.verwijst_user and not k.heeft_fk
+      and not (k.kolom = 'owner_id' or k.kolom ~ '(^|_)user_id$')
+      and k.tabel not in (select tabel from toegestaan)
     select format('%s: verwijst naar better_auth."user"(id) maar is geen owner-tabel (public, kolom owner_id)', t.tabel)
     from (select distinct tabel from kol where heeft_fk) t
     where not exists (
@@ -84,7 +94,9 @@ create table public.c1_probe_owner (id integer primary key, owner_id text);
 create table public.c1_probe_invited (id integer primary key, invited_user_id text);
 create table public.c1_probe_auteur (id integer primary key, auteur text references better_auth."user" (id));
 create table app.c1_probe_app (id integer primary key, owner_id text references better_auth."user" (id));
--- Een foreign key telt alleen als hij naar de kolom id wijst: dit is er een naar email.
+-- Een foreign key telt alleen als hij naar de kolom id wijst: dit is er een naar email. Een andere kolom met een foreign key
+-- naar een andere kolom van de gebruiker (auteur_email) verwijst ook naar een gebruiker en is dus ook een overtreding.
+create table public.c1_probe_auteur_email (id integer primary key, auteur_email text references better_auth."user" (email));
 create table public.c1_probe_email (id integer primary key, owner_id text references better_auth."user" (email));
 select is(
   array(select pg_temp.c1_eigenaar()),
@@ -92,6 +104,7 @@ select is(
     'app.c1_probe_user.user_id: eigenaarvormige kolom zonder foreign key naar better_auth."user"(id)',
     'public.c1_probe_owner.owner_id: eigenaarvormige kolom zonder foreign key naar better_auth."user"(id)',
     'public.c1_probe_email.owner_id: eigenaarvormige kolom zonder foreign key naar better_auth."user"(id)',
+    'public.c1_probe_auteur_email.auteur_email: verwijst niet naar better_auth."user"(id)',
     'public.c1_probe_invited.invited_user_id: eigenaarvormige kolom zonder foreign key naar better_auth."user"(id)',
     'public.c1_probe_auteur: verwijst naar better_auth."user"(id) maar is geen owner-tabel (public, kolom owner_id)',
     'app.c1_probe_app: verwijst naar better_auth."user"(id) maar is geen owner-tabel (public, kolom owner_id)'
@@ -110,6 +123,7 @@ select is(
   pg_temp.gs(array[
     'public.c1_probe_owner.owner_id: eigenaarvormige kolom zonder foreign key naar better_auth."user"(id)',
     'public.c1_probe_email.owner_id: eigenaarvormige kolom zonder foreign key naar better_auth."user"(id)',
+    'public.c1_probe_auteur_email.auteur_email: verwijst niet naar better_auth."user"(id)',
     'public.c1_probe_owner: uitzondering zonder reden',
     'public.c1_probe_invited.invited_user_id: eigenaarvormige kolom zonder foreign key naar better_auth."user"(id)',
     'public.c1_probe_auteur: verwijst naar better_auth."user"(id) maar is geen owner-tabel (public, kolom owner_id)',
@@ -119,7 +133,7 @@ select is(
   'C1: een uitzondering met reden laat de tabel door; zonder reden, of voor een tabel die niet bestaat, is ze zelf een overtreding'
 );
 
-drop table public.c1_probe_goed, app.c1_probe_user, public.c1_probe_owner, public.c1_probe_invited, public.c1_probe_auteur, app.c1_probe_app, public.c1_probe_email;
+drop table public.c1_probe_goed, app.c1_probe_user, public.c1_probe_owner, public.c1_probe_invited, public.c1_probe_auteur, app.c1_probe_app, public.c1_probe_email, public.c1_probe_auteur_email;
 delete from owner_uitzonderingen where tabel like '%c1_probe%';
 select is(array(select pg_temp.c1_eigenaar()), '{}'::text[], 'C1: na het opruimen van de probes is de invariant weer leeg');
 
@@ -323,6 +337,10 @@ grant references (notitie) on public.c3_owner_probe to auth_service;
 create table public.c3_probe (id integer primary key, notitie text);
 grant select, insert on public.c3_probe to app_authenticated;
 grant update (notitie) on public.c3_probe to api_user;
+-- Een foreign key naar email is geen owner-tabel (alleen naar id telt): de grants moeten dan op de allowlist.
+create table public.c3_email_probe (id integer primary key, owner_id text references better_auth."user" (email));
+grant select, delete on public.c3_email_probe to app_authenticated;
+grant insert (owner_id) on public.c3_email_probe to app_authenticated;
 select is(
   array(select pg_temp.c3_grants()),
   pg_temp.gs(array[
@@ -332,6 +350,9 @@ select is(
     'public.c3_owner_probe: auth_service heeft REFERENCES op kolom notitie, niet op de allowlist',
     'public.c3_probe: app_authenticated heeft SELECT, niet op de allowlist',
     'public.c3_probe: app_authenticated heeft INSERT, niet op de allowlist',
+    'public.c3_email_probe: app_authenticated heeft SELECT, niet op de allowlist',
+    'public.c3_email_probe: app_authenticated heeft DELETE, niet op de allowlist',
+    'public.c3_email_probe: app_authenticated heeft INSERT op kolom owner_id, niet op de allowlist',
     'public.c3_probe: api_user heeft UPDATE op kolom notitie, niet op de allowlist'
   ]),
   'C3: een tabelbrede insert of update en een ander recht op een owner-tabel, en een grant op een andere tabel buiten de allowlist (tabel- en kolomrecht) worden gevangen'
@@ -349,13 +370,16 @@ select is(
     'public.c3_owner_probe: app_authenticated heeft TRUNCATE op een owner-tabel, niet toegestaan',
     'public.c3_owner_probe: auth_service heeft REFERENCES op kolom notitie, niet op de allowlist',
     'public.c3_probe: app_authenticated heeft INSERT, niet op de allowlist',
+    'public.c3_email_probe: app_authenticated heeft SELECT, niet op de allowlist',
+    'public.c3_email_probe: app_authenticated heeft DELETE, niet op de allowlist',
+    'public.c3_email_probe: app_authenticated heeft INSERT op kolom owner_id, niet op de allowlist',
     'public.c3_probe: api_user heeft UPDATE op kolom notitie, niet op de allowlist',
     'public.c3_probe: allowlist-regel zonder reden (app_authenticated INSERT)'
   ]),
   'C3: een allowlist-regel met reden laat het recht door; zonder reden blijft de overtreding en is de regel zelf er een'
 );
 
-drop table public.c3_owner_probe, public.c3_probe;
+drop table public.c3_owner_probe, public.c3_probe, public.c3_email_probe;
 delete from grant_allowlist where tabel like '%c3_%probe%';
 select is(array(select pg_temp.c3_grants()), '{}'::text[], 'C3: na het opruimen van de probes is de invariant weer leeg');
 
