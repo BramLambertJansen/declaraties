@@ -84,7 +84,15 @@ export function Form<Input extends FieldValues, Output>(props: FormProps<Input, 
       {children}
       <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
         {secondaryAction}
-        <Button type="submit" disabled={form.formState.isSubmitting}>
+        <Button
+          type="submit"
+          disabled={form.formState.isSubmitting}
+          onPointerDown={(event) => {
+            // Blurvalidatie kan fouttekst invoegen tussen pointerdown en click, waardoor de knop onder de pointer wegschuift.
+            // Houd het veld gefocust tot de click echt verzendt; het foutenoverzicht verzorgt daarna de foutfocus.
+            if (errorSummary !== undefined && event.button === 0) event.preventDefault();
+          }}
+        >
           {form.formState.isSubmitting ? uiTexts.busy : submitLabel}
         </Button>
       </div>
