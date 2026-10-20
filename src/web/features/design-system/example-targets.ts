@@ -12,6 +12,16 @@ const groups = [
   },
   { names: ['CopyButton'], id: 'example-copy-button', text: 'Kopieer het zichtbare voorbeeldadres naar het klembord.' },
   {
+    names: ['FormErrorSummary', 'FormChanges', 'UnsavedChangesGuard', 'EditableSection'],
+    id: 'example-editable-details',
+    text: 'Bewerk contactgegevens, verstuur ongeldige invoer, wis wijzigingen of probeer de pagina te verlaten.',
+  },
+  {
+    names: ['BulkActions'],
+    id: 'example-bulk-actions',
+    text: 'Selecteer rijen, verwerk ze en kies Afronden; mislukte rijen blijven geselecteerd.',
+  },
+  {
     names: ['DataTable', 'DataTableHeading'],
     id: 'example-data-table',
     text: 'Zoek, filter, sorteer, selecteer en laad lokale rijen.',

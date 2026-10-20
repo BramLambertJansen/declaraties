@@ -54,3 +54,8 @@ export {
 export { Tabs, type TabsProps, type TabItem } from '#core/web/ui/tabs.tsx';
 export { Gallery, type GalleryProps, type GalleryItem } from '#core/web/ui/gallery.tsx';
 export type { ListToolbarProps, ListToolbarFilter } from '#core/web/ui/list-toolbar.tsx';
+export { FormErrorSummary, type FormErrorSummaryOptions } from '#core/web/ui/form-error-summary.tsx';
+export { FormChanges } from '#core/web/ui/form-changes.tsx';
+export { UnsavedChangesGuard, type UnsavedChangesGuardProps } from '#core/web/ui/unsaved-changes-guard.tsx';
+export { EditableSection, type EditableSectionProps } from '#core/web/ui/editable-section.tsx';
+export { BulkActions, type BulkActionsProps } from '#core/web/ui/bulk-actions.tsx';
