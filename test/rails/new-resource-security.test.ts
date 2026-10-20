@@ -254,20 +254,17 @@ describe('resources: één regel voor de tabel', () => {
     expect(tekstVan(eigenschap(klasse, 'resource'))).toBe('invoices');
   });
 
-  test('de sleutel en tabel volgen de afgeleide tabelnaam (time-entries wordt time_entries, route /time-entries)', async () => {
-    const uit = await bereken('time-entries');
-    const regel = objectVan(eigenschap(letterlijkVan(uit.na, 'resources'), 'time_entries'));
+  test('de sleutel en tabel volgen de afgeleide tabelnaam (work-items wordt work_items, route /work-items)', async () => {
+    const uit = await bereken('work-items');
+    const regel = objectVan(eigenschap(letterlijkVan(uit.na, 'resources'), 'work_items'));
 
-    expect(tekstVan(eigenschap(regel, 'tabel'))).toBe('public.time_entries');
-    expect(tekstVan(eigenschap(regel, 'lijst'))).toBe('GET /time-entries');
+    expect(tekstVan(eigenschap(regel, 'tabel'))).toBe('public.work_items');
+    expect(tekstVan(eigenschap(regel, 'lijst'))).toBe('GET /work-items');
     expect(
       tekstVan(
-        eigenschap(
-          objectVan(eigenschap(letterlijkVan(uit.na, 'routeClassificatie'), 'POST /time-entries')),
-          'resource',
-        ),
+        eigenschap(objectVan(eigenschap(letterlijkVan(uit.na, 'routeClassificatie'), 'POST /work-items')), 'resource'),
       ),
-    ).toBe('time_entries');
+    ).toBe('work_items');
   });
 
   test('elke eigenaar-route wijst naar een sleutel die in resources staat (anders is de suite rood)', () => {
