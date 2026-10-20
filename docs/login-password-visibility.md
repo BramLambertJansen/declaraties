@@ -5,6 +5,7 @@ activeren schermt het weer af. Het veld begint afgeschermd en behoudt bij wissel
 Automatische hoofdletters, autocorrectie en spellingcontrole staan voor dit veld uit, ook bij zichtbare invoer.
 
 De bestaande Button is een toggle met een vaste naam, `aria-pressed` voor de toestand en `aria-controls` naar het veld.
+Deze combinatie zit in de gedeelde PasswordInput (`src/core/web/ui/password-input.tsx`), zie [gebruik](ui-input-utilities.md).
 De actieve variant maakt de toestand ook visueel herkenbaar. De knop werkt met muis, Enter en Spatie en verstuurt het
 formulier niet. Enter in het wachtwoordveld blijft inloggen, ook wanneer de tekens zichtbaar zijn.
 

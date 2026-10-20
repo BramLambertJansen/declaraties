@@ -3,7 +3,17 @@ import { ApiError } from '#core/web/lib/api-client.ts';
 import { loginInput, totpInput } from '#shared/schemas/auth.ts';
 import { copy } from '#web/copy/ui.ts';
 import { auth } from '#web/lib/auth.ts';
-import { Button, CenteredCard, Form, FormField, Input, Notice, QrCode, useZodForm } from '#web/ui/index.ts';
+import {
+  Button,
+  CenteredCard,
+  Form,
+  FormField,
+  Input,
+  PasswordInput,
+  Notice,
+  QrCode,
+  useZodForm,
+} from '#web/ui/index.ts';
 import { useFinishLogin } from './queries.ts';
 
 // Inloggen (spec accountbeheer) in stappen binnen één route: wachtwoord → code (admin met TOTP) of instellen (admin zonder
@@ -19,7 +29,6 @@ export interface LoginPageProps {
 
 function Credentials({ onStep, finish }: { onStep: (step: Step) => void; finish: () => Promise<void> }) {
   const form = useZodForm(loginInput, { email: '', password: '' });
-  const [showPassword, setShowPassword] = useState(false);
   const submit = async ({ email, password }: { email: string; password: string }) => {
     if ((await auth.signIn(email, password)) === 'totp') {
       onStep({ kind: 'totp' });
@@ -40,28 +49,7 @@ function Credentials({ onStep, finish }: { onStep: (step: Step) => void; finish:
       </FormField>
       <FormField form={form} name="password" label={copy.login.passwordLabel}>
         {(field) => (
-          <>
-            <Input
-              {...field}
-              type={showPassword ? 'text' : 'password'}
-              autoComplete="current-password"
-              autoCapitalize="none"
-              autoCorrect="off"
-              spellCheck={false}
-            />
-            <Button
-              type="button"
-              variant={showPassword ? 'secondary' : 'outline'}
-              className="self-start"
-              aria-pressed={showPassword}
-              aria-controls={field.id}
-              onClick={() => {
-                setShowPassword((visible) => !visible);
-              }}
-            >
-              {copy.login.visibilityLabel}
-            </Button>
-          </>
+          <PasswordInput {...field} autoComplete="current-password" visibilityLabel={copy.login.visibilityLabel} />
         )}
       </FormField>
     </Form>
