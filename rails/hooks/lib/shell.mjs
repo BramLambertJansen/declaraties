@@ -174,7 +174,10 @@ const WRAPPERS = new Set(['sudo', 'env', 'command', 'time', 'nohup', 'exec', 'ni
  * @param {string} word
  */
 export function programName(word) {
-  return word.slice(word.lastIndexOf('/') + 1).replace(/\.exe$/i, '');
+  return word
+    .slice(word.lastIndexOf('/') + 1)
+    .replace(/\.exe$/i, '')
+    .toLowerCase();
 }
 
 /**

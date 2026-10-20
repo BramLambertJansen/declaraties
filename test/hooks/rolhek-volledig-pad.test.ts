@@ -53,7 +53,7 @@ describe('V-13: een volledig pad naar het programma ontloopt de weigering niet',
   test.each([
     { name: 'een programma met pad dat gh heet', command: '/tmp/x/gh pr view 1' },
     { name: 'een omhulsel met pad dat env heet', command: './env git status' },
-    { name: '/usr/bin/env voor een leescommando', command: '/tmp/x/env gh pr view 1' },
+    { name: 'een omhulsel /tmp/x/env voor een leescommando', command: '/tmp/x/env gh pr view 1' },
   ])('reviewer: $name geeft geen leescommando vrij', ({ command }) => {
     expect(verdict(command, 'reviewer')).toBe('deny');
   });
@@ -61,6 +61,7 @@ describe('V-13: een volledig pad naar het programma ontloopt de weigering niet',
   test.each([
     { name: 'gh.exe pr merge (WSL)', command: '/mnt/c/tools/gh.exe pr merge 1' },
     { name: 'git.exe push --force (WSL)', command: 'git.exe push --force origin feat' },
+    { name: 'GH.EXE pr merge (WSL, hoofdletters)', command: '/mnt/c/tools/GH.EXE pr merge 1' },
     { name: "'/usr/bin/gh' pr merge", command: "'/usr/bin/gh' pr merge 1" },
     { name: '\\gh pr merge', command: '\\gh pr merge 1' },
   ])('hoofdsessie: $name → deny', ({ command }) => {
@@ -74,8 +75,8 @@ describe('V-13: een volledig pad naar het programma ontloopt de weigering niet',
     expect(verdict(command, 'developer')).toBe('deny');
   });
 
-  test('reviewer: gh pr view zonder pad blijft toegestaan', () => {
-    expect(verdict('gh pr view 1', 'reviewer')).toBe('allow');
+  test.each(['gh pr view 1', 'env git status'])('reviewer: %s (zonder pad) blijft toegestaan', (command) => {
+    expect(verdict(command, 'reviewer')).toBe('allow');
   });
 
   test.each([
