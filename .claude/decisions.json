@@ -224,6 +224,22 @@
         "AGENTS.md",
         "CHANGELOG.md"
       ]
+    },
+    {
+      "file": "docs/adr/0035-statusakkoord-in-de-sessie.md",
+      "digest": "bf6aa68c6da126494d39f06d5a95b75e98f6095c1064adc064dc13c61150bf92",
+      "repository": "BramLambertJansen/template",
+      "branch": "docs/adr-0035-geaccepteerd",
+      "status": "geaccepteerd",
+      "paths": []
+    },
+    {
+      "file": "docs/adr/0036-achtergrondtaken-correcties.md",
+      "digest": "55704d46ab01b867b2c02bf1a7ef75636534a624d0aef21aeef5434a9d6498f9",
+      "repository": "BramLambertJansen/template",
+      "branch": "docs/adr-0036-geaccepteerd",
+      "status": "geaccepteerd",
+      "paths": []
     }
   ]
 }
