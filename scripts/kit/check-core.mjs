@@ -130,7 +130,9 @@ function main() {
     git('.', ['fetch', '--no-tags', '--quiet', TEMPLATE_URL, `+refs/heads/main:${TEMPLATE_REF}`]);
   } catch {
     // Faalt dicht: zonder template/main is geen merge te beoordelen. De template moet zonder credentials op te halen zijn.
-    meld(`✗ check-core: ${TEMPLATE_URL} is niet op te halen (privé of onbereikbaar); zonder template/main faalt de check`);
+    meld(
+      `✗ check-core: ${TEMPLATE_URL} is niet op te halen (privé of onbereikbaar); zonder template/main faalt de check`,
+    );
     console.log(`::error title=check-core::${TEMPLATE_URL} is niet op te halen`);
     process.exitCode = 1;
     return;
