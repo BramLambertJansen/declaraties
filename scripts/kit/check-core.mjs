@@ -1,5 +1,5 @@
 // check-core (ADR 0008 "Afdwingen", .claude/rules/core.md): een PR in een app wijzigt `src/core/` niet; core-updates komen
-// alleen via `git merge template/main`. Draait in guard.yml met de scripts van main. Per commit in de PR (afsplitsing..head):
+// alleen via `git merge template/main`. Draait in guard.yml met de scripts van main. Per commit in de PR (head zonder wat al op main of template/main staat):
 // een gewone commit laat `src/core` gelijk aan zijn ouder; een merge die `src/core` verandert, telt alleen als zijn tweede
 // ouder P2 een voorouder is van `template/main` (opgehaald van TEMPLATE_URL) of al op main staat (een `git merge origin/main`
 // in de branch), en `src/core` in de merge gelijk is aan dat in P2 (geen eigen wijziging in de merge zelf).
