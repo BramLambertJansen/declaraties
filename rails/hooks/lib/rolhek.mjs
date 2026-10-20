@@ -2,7 +2,7 @@
 // verboden is (deny). Puur: alles wat van de schijf of git komt, zit in `ctx`, zodat test/hooks/rolhek.test.ts elke regel
 // met echte payloads kan bewijzen. De stdin/stdout-kant staat in rails/hooks/rolhek.mjs.
 import path from 'node:path';
-import { gitSubcommand, parseCommands, splitCommand, writeTargets } from './shell.mjs';
+import { gitSubcommand, parseCommands, programName, splitCommand, writeTargets } from './shell.mjs';
 import { documentInfo } from './document-state.mjs';
 import { canRecordStatus, canWriteProtected } from './task-authority.mjs';
 import { automaticRunner } from './runner-authority.mjs';
@@ -488,7 +488,8 @@ function isNewResource(program, args) {
  * @param {Decision} decision
  */
 function forbidden({ assignments, argv }, { role, ctx }, decision) {
-  const [program = '', ...args] = argv;
+  const [word = '', ...args] = argv;
+  const program = programName(word);
   const lefthook = [...assignments, ...(program === 'export' ? args : [])].find((word) => /^LEFTHOOK(?:_\w+)?=/.test(word));
   if (lefthook !== undefined) decision.deny.push(`${lefthook}: git-hooks overslaan is verboden (AGENTS.md)`);
   if ([...assignments, ...(program === 'export' ? args : [])].some((word) => /^CI=/.test(word)))

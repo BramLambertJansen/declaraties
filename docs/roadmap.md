@@ -170,7 +170,9 @@ Open werk dat niet geparkeerd is, grofweg in volgorde. Wat nog een spec of eigen
   Spec: `docs/specs/agent-merge.md`. PR A: `scripts/check-github.mjs`, `.github/settings/main-protection.json`, sleutel `merge`, lane-uitslag in de diff-guard;
   PR B: rolhek, `.claude/settings.json`, skill `opleveren` en docs (eigenaar); PR C: `merge` op `"feature-lane"` zetten (eigenaar).
   aanleiding: `docs/adr/0029-snellere-beslisroute.md` (punt 14–17)
-- [ ] **Volledig pad naar `gh` in het rolhek** (V-13): `/usr/bin/gh pr merge …` valt buiten het rolhek (`program === "gh"`) en de settings-patronen; dicht het gat of leg vast waarom het kan blijven.
+- [x] **Volledig pad naar `gh` in het rolhek** (V-13): `/usr/bin/gh pr merge …` viel buiten het rolhek (`program === "gh"`) en de settings-patronen.
+  Weigeringen en schrijfdoelen kijken nu naar de naam zonder pad (`programName` in `rails/hooks/lib/shell.mjs`), ook voor `git`, `rm` en `sed`;
+  bewijs `test/hooks/rolhek-volledig-pad.test.ts`. De `deny`-patronen in `.claude/settings.json` vangen de vorm met pad niet (gemak, geen grens; framework §8).
   aanleiding: `rails/hooks/lib/rolhek.mjs` (spec `agent-merge`, Bekende gaten)
 
 ## Geparkeerd

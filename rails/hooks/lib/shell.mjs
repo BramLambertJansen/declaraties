@@ -168,6 +168,15 @@ function findParen(script, from) {
 const WRAPPERS = new Set(['sudo', 'env', 'command', 'time', 'nohup', 'exec', 'nice']);
 
 /**
+ * De programmanaam zonder pad: `/usr/bin/gh` en `./gh` zijn voor een weigering gewoon `gh` (V-13). Alleen voor wat het
+ * rolhek weigert of als schrijfdoel ziet; een toestemming (zoals de leescommando's van de reviewer) kijkt naar het woord zelf.
+ * @param {string} word
+ */
+export function programName(word) {
+  return word.slice(word.lastIndexOf('/') + 1);
+}
+
+/**
  * De woorden van het eigenlijke commando: zonder voorafgaande variabelen (`A=1 cmd`) en omhulsels (`env`, `sudo`).
  * @param {readonly string[]} words
  * @returns {{ assignments: string[], argv: string[] }}
@@ -179,7 +188,7 @@ export function splitCommand(words) {
   while (index < words.length) {
     const word = words[index] ?? '';
     if (/^[A-Za-z_][A-Za-z0-9_]*=/.test(word)) assignments.push(word);
-    else if (!WRAPPERS.has(word)) break;
+    else if (!WRAPPERS.has(programName(word))) break;
     index += 1;
   }
   return { assignments, argv: words.slice(index) };
@@ -195,8 +204,8 @@ export function splitCommand(words) {
  */
 export function writeTargets(command) {
   const { argv } = splitCommand(command.words);
-  const [program = '', ...args] = argv;
-  const targets = fileTargets(program, args);
+  const [word = '', ...args] = argv;
+  const targets = fileTargets(programName(word), args);
   return { writes: [...command.redirects, ...targets.writes], deletes: targets.deletes };
 }
 
