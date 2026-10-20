@@ -1,4 +1,5 @@
 import { DataDisplayExamples } from './data-display-examples.tsx';
+import { InputUtilitiesExamples } from './input-utilities-examples.tsx';
 import { ComboboxExamples } from './combobox-examples.tsx';
 import { CollectionExamples } from './collection-examples.tsx';
 import { Bell } from 'lucide-react';
@@ -349,6 +350,7 @@ export function DesignSystemPage() {
       <EditableDetailsExample />
       <RefreshExample />
       <BulkActionsExample />
+      <InputUtilitiesExamples />
     </div>
   );
 }
