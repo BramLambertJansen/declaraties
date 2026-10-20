@@ -9,6 +9,7 @@ en met werkende voorbeelden op `/design-system`. Geen nieuwe API-route, permissi
   RHF-veldfouten als FormField, FormCheckboxField, FormRadioGroupField en FormComboboxField. Pas na een verzendpoging
   verschijnt het overzicht; elke foutknop focust het geregistreerde veld. Een nieuwe mislukte verzendpoging focust het
   overzicht; typen en blur stelen geen focus. Zonder deze optie blijft het bestaande formuliergedrag intact.
+  De overzichtfocus volgt de uitgestelde veldfocus van RHF; een unmount of gewijzigde foutselectie annuleert de timer.
   Bij pointerbediening van de verzendknop houdt het veld tot de klik zijn focus: blurvalidatie mag de knop niet tussen
   indrukken en loslaten verplaatsen. Pointerdown alleen verzendt niets; toetsenbordbediening blijft native.
 - `FormChanges` toont bij gewijzigde invoer een status en een wisactie die RHF terugzet naar de opgeslagen defaultValues.

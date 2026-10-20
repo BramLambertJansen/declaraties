@@ -23,7 +23,15 @@ export function FormErrorSummary<Input extends FieldValues, Output>({
   useEffect(() => {
     if (handledSubmit.current === state.submitCount) return;
     handledSubmit.current = state.submitCount;
-    if (errors.length > 0) summary.current?.focus();
+    if (errors.length === 0) return;
+    // RHF plant zelf nog een veldfocus vóór submitCount wijzigt. Onze focus volgt die timer, ook als React
+    // effects vóór de timers uitvoert. Unmount of nieuwe invoer annuleert de geplande focus.
+    const timer = setTimeout(() => {
+      summary.current?.focus();
+    }, 0);
+    return () => {
+      clearTimeout(timer);
+    };
   }, [errors.length, state.submitCount]);
   if (state.submitCount === 0 || errors.length === 0) return null;
   return (
