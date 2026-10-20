@@ -13,6 +13,7 @@ import { routeLabel } from './fixtures.ts';
 import {
   EIGENAAR_ROUTES,
   EIGENAAR_ROUTES_LOS,
+  EIGENAAR_ROUTES_ONEINDIG,
   openEigenaarProbe,
   probeClassificatieProblemen,
   type EigenaarProbe,
@@ -83,6 +84,29 @@ describe('security/AC-13: de suite test zichzelf', { timeout: LANG }, () => {
       problemen.some((probleem) => probleem.includes('de lijst van B') && probleem.includes('bevat een rij van A')),
     ).toBe(true);
     expect(problemen.some((probleem) => probleem.includes('B read op een rij van A gaf 200'))).toBe(true);
+  });
+
+  test.each(['update', 'delete'] as const)(
+    'security/AC-13: alleen de %s-policy met using (true) maakt AC-8 rood: B raakt de rij van A',
+    async (actie) => {
+      const naam = `security_probes_${actie}_own`;
+      const voorbereiding = [
+        `drop policy ${naam} on public.security_probes`,
+        `create policy ${naam} on public.security_probes for ${actie} to app_authenticated using (true)${actie === 'update' ? ' with check (true)' : ''}`,
+      ];
+
+      const problemen = await metProbe(voorbereiding, (ep) => tabelEigenaarProblemen(ep.spelers, resources));
+
+      expect(problemen).toContain(`public.security_probes: B raakt via ${actie} 1 rij(en) van A`);
+    },
+  );
+
+  test('security/AC-13: een lijst met een cursor die nooit eindigt maakt AC-9 rood in plaats van stil te stoppen', async () => {
+    const problemen = await metProbe([], (ep) => eigenaarApiProblemen(ep.opzet(EIGENAAR_ROUTES_ONEINDIG)));
+
+    expect(problemen.some((probleem) => probleem.includes('controle afgebroken') && probleem.includes('cursor'))).toBe(
+      true,
+    );
   });
 
   test('security/AC-13: een kolomrecht op owner_id maakt AC-10 rood: A kan de eigen owner_id kiezen', async () => {

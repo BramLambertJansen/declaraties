@@ -6,7 +6,16 @@ import { routes } from '../../src/api/app.ts';
 import type { TestDb, TestUser } from '../../src/core/api/db/testing.ts';
 import type { Contract, Method } from '../../src/core/shared/contract.ts';
 import { routeLabel, type Antwoord, type SecurityFixtures } from './fixtures.ts';
-import { codeVan, foutTekst, padParameters, pgCode, rijenVan, splitsLabel, zonderRequestId } from './hulp.ts';
+import {
+  codeVan,
+  foutTekst,
+  padParameters,
+  pgCode,
+  rijenVan,
+  splitsLabel,
+  uitvoerVan,
+  zonderRequestId,
+} from './hulp.ts';
 import type { Actie, ResourceRegel, RouteKlasse } from './resources.ts';
 
 // De controlefuncties van de eigenaarschapssuite (spec security-suite, AC-8 t/m AC-11). Elke functie geeft de problemen als
@@ -62,6 +71,7 @@ const rijSql = (tabel: string, id: string): SQL =>
 
 interface Poging {
   readonly rijen: Record<string, unknown>[];
+  readonly aantal: number;
   readonly pg: string | undefined;
   readonly bericht: string | undefined;
 }
@@ -69,10 +79,10 @@ interface Poging {
 // Eén statement als deze gebruiker (een savepoint, dus een fout laat de rest van de testtransactie heel).
 async function probeer(db: TestDb, wie: TestUser, statement: SQL): Promise<Poging> {
   try {
-    const rijen = await db.withUser(wie.actor, (tx) => rijenVan(tx, statement));
-    return { rijen, pg: undefined, bericht: undefined };
+    const { rijen, aantal } = await db.withUser(wie.actor, (tx) => uitvoerVan(tx, statement));
+    return { rijen, aantal, pg: undefined, bericht: undefined };
   } catch (error) {
-    return { rijen: [], pg: pgCode(error), bericht: foutTekst(error) };
+    return { rijen: [], aantal: 0, pg: pgCode(error), bericht: foutTekst(error) };
   }
 }
 
@@ -84,19 +94,26 @@ function idUit(poging: Poging): string | undefined {
 }
 
 // B mag niets zien of raken: 0 rijen, of "geen recht" (42501). Een andere fout betekent dat de controle niets bewijst.
-async function bRaaktNiets(spelers: Spelers, tabel: string, doel: { id: string; kolom: string }): Promise<string[]> {
-  const kolom = sql.identifier(doel.kolom);
+// Update en delete lopen zonder where en returning: die lezen geen kolommen, dus alleen de update- en delete-policy beslissen
+// (een where of returning haalt de select-policy erbij, en die zou een te ruime update- of delete-policy maskeren). B heeft
+// zelf geen rijen, dus elke geraakte rij is van A.
+async function bRaaktNiets(
+  spelers: Spelers,
+  tabel: string,
+  doel: { id: string; kolom: string; waarde: unknown },
+): Promise<string[]> {
+  const nieuw = typeof doel.waarde === 'string' ? `${doel.waarde}-door-b` : doel.waarde;
   const pogingen = [
     ['select', sql`select id from ${sql.raw(tabel)} where id = ${doel.id}`],
     ['select zonder where', sql`select id from ${sql.raw(tabel)}`],
-    ['update', sql`update ${sql.raw(tabel)} set ${kolom} = ${kolom} where id = ${doel.id} returning id`],
-    ['delete', sql`delete from ${sql.raw(tabel)} where id = ${doel.id} returning id`],
+    ['update', sql`update ${sql.raw(tabel)} set ${sql.identifier(doel.kolom)} = ${nieuw}`],
+    ['delete', sql`delete from ${sql.raw(tabel)}`],
   ] as const;
   const problemen: string[] = [];
   for (const [actie, statement] of pogingen) {
     const poging = await probeer(spelers.db, spelers.B, statement);
-    if (poging.rijen.length > 0) {
-      problemen.push(`${tabel}: B raakt via ${actie} ${String(poging.rijen.length)} rij(en) van A`);
+    if (poging.aantal > 0) {
+      problemen.push(`${tabel}: B raakt via ${actie} ${String(poging.aantal)} rij(en) van A`);
     } else if (poging.bericht !== undefined && poging.pg !== '42501') {
       problemen.push(`${tabel}: B ${actie} gaf een onverwachte fout: ${poging.bericht}`);
     }
@@ -116,7 +133,7 @@ async function eigenTabelProblemen(spelers: Spelers, tabel: string, regel: Resou
   const voor = await probeer(spelers.db, spelers.A, rijSql(tabel, id));
   if (voor.rijen.length !== 1)
     return [`${tabel}: A ziet de eigen rij niet terug (select-policy ontbreekt of is te streng)`];
-  const problemen = await bRaaktNiets(spelers, tabel, { id, kolom });
+  const problemen = await bRaaktNiets(spelers, tabel, { id, kolom, waarde: rij[kolom] });
   const na = await probeer(spelers.db, spelers.A, rijSql(tabel, id));
   if (!isDeepStrictEqual(voor.rijen, na.rijen)) problemen.push(`${tabel}: de rij van A is veranderd door B`);
   return problemen;
@@ -339,6 +356,7 @@ async function bereid(o: EigenaarOpzet, naam: string): Promise<Context> {
 // Alle pagina's van de lijst als deze gebruiker, via de cursor (limit 1 laat de paginering echt werken).
 async function lijstItems(ctx: Context, wie: Wie, extra: Readonly<Record<string, unknown>>): Promise<unknown[][]> {
   const paginas: unknown[][] = [];
+  const gezien = new Set<string>();
   let cursor: string | undefined;
   do {
     const invoer = { limit: 1, ...extra, ...(cursor === undefined ? {} : { cursor }) };
@@ -349,7 +367,11 @@ async function lijstItems(ctx: Context, wie: Wie, extra: Readonly<Record<string,
     }
     paginas.push(gelezen.data.items);
     cursor = gelezen.data.nextCursor ?? undefined;
+    if (cursor !== undefined && gezien.has(cursor))
+      throw new Error(`${ctx.naam}: de lijst herhaalt een cursor (niet-terminerende paginering)`);
+    if (cursor !== undefined) gezien.add(cursor);
   } while (cursor !== undefined && paginas.length < MAX_PAGINAS);
+  if (cursor !== undefined) throw new Error(`${ctx.naam}: de lijst eindigt niet na ${String(MAX_PAGINAS)} pagina's`);
   return paginas;
 }
 

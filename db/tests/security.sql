@@ -33,6 +33,7 @@ create function pg_temp.c1_eigenaar() returns setof text language sql stable as 
              select 1 from pg_catalog.pg_constraint k
              where k.conrelid = c.oid and k.contype = 'f'
                and k.confrelid = 'better_auth."user"'::regclass and a.attnum = any (k.conkey)
+               and exists (select 1 from pg_catalog.pg_attribute u where u.attrelid = k.confrelid and u.attname = 'id' and u.attnum = k.confkey[1])
            ) as heeft_fk
     from pg_catalog.pg_class c
     join pg_catalog.pg_namespace n on n.oid = c.relnamespace
@@ -83,11 +84,14 @@ create table public.c1_probe_owner (id integer primary key, owner_id text);
 create table public.c1_probe_invited (id integer primary key, invited_user_id text);
 create table public.c1_probe_auteur (id integer primary key, auteur text references better_auth."user" (id));
 create table app.c1_probe_app (id integer primary key, owner_id text references better_auth."user" (id));
+-- Een foreign key telt alleen als hij naar de kolom id wijst: dit is er een naar email.
+create table public.c1_probe_email (id integer primary key, owner_id text references better_auth."user" (email));
 select is(
   array(select pg_temp.c1_eigenaar()),
   pg_temp.gs(array[
     'app.c1_probe_user.user_id: eigenaarvormige kolom zonder foreign key naar better_auth."user"(id)',
     'public.c1_probe_owner.owner_id: eigenaarvormige kolom zonder foreign key naar better_auth."user"(id)',
+    'public.c1_probe_email.owner_id: eigenaarvormige kolom zonder foreign key naar better_auth."user"(id)',
     'public.c1_probe_invited.invited_user_id: eigenaarvormige kolom zonder foreign key naar better_auth."user"(id)',
     'public.c1_probe_auteur: verwijst naar better_auth."user"(id) maar is geen owner-tabel (public, kolom owner_id)',
     'app.c1_probe_app: verwijst naar better_auth."user"(id) maar is geen owner-tabel (public, kolom owner_id)'
@@ -105,6 +109,7 @@ select is(
   array(select pg_temp.c1_eigenaar()),
   pg_temp.gs(array[
     'public.c1_probe_owner.owner_id: eigenaarvormige kolom zonder foreign key naar better_auth."user"(id)',
+    'public.c1_probe_email.owner_id: eigenaarvormige kolom zonder foreign key naar better_auth."user"(id)',
     'public.c1_probe_owner: uitzondering zonder reden',
     'public.c1_probe_invited.invited_user_id: eigenaarvormige kolom zonder foreign key naar better_auth."user"(id)',
     'public.c1_probe_auteur: verwijst naar better_auth."user"(id) maar is geen owner-tabel (public, kolom owner_id)',
@@ -114,7 +119,7 @@ select is(
   'C1: een uitzondering met reden laat de tabel door; zonder reden, of voor een tabel die niet bestaat, is ze zelf een overtreding'
 );
 
-drop table public.c1_probe_goed, app.c1_probe_user, public.c1_probe_owner, public.c1_probe_invited, public.c1_probe_auteur, app.c1_probe_app;
+drop table public.c1_probe_goed, app.c1_probe_user, public.c1_probe_owner, public.c1_probe_invited, public.c1_probe_auteur, app.c1_probe_app, public.c1_probe_email;
 delete from owner_uitzonderingen where tabel like '%c1_probe%';
 select is(array(select pg_temp.c1_eigenaar()), '{}'::text[], 'C1: na het opruimen van de probes is de invariant weer leeg');
 
@@ -246,6 +251,7 @@ create function pg_temp.c3_grants() returns setof text language sql stable as $$
              select 1 from pg_catalog.pg_attribute a
              join pg_catalog.pg_constraint k on k.conrelid = c.oid and k.contype = 'f'
                and k.confrelid = 'better_auth."user"'::regclass and a.attnum = any (k.conkey)
+               and exists (select 1 from pg_catalog.pg_attribute u where u.attrelid = k.confrelid and u.attname = 'id' and u.attnum = k.confkey[1])
              where a.attrelid = c.oid and a.attname = 'owner_id' and not a.attisdropped
            )) as is_owner
     from pg_catalog.pg_class c

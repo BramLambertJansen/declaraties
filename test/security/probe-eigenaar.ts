@@ -73,30 +73,35 @@ function cursorId(cursor: string): string {
   }
 }
 
-const lijst = defineRoute(
-  defineContract({
-    method: 'GET',
-    path: '/probes',
-    input: z
-      .object({
-        q: z.string().trim().max(MAX_SEARCH_LENGTH).optional(),
-        cursor: z.string().max(500).optional(),
-        limit: z.coerce.number().int().min(1).max(MAX_PAGE_SIZE).default(DEFAULT_PAGE_SIZE),
-      })
-      .strict(),
-    output: pageSchema(rijSchema),
-    permission: 'app.use',
-  }),
-  async ({ tx, input }) => {
-    const na = input.cursor === undefined ? sql`` : sql`and p.id > ${cursorId(input.cursor)}::uuid`;
-    const zoek = input.q === undefined ? sql`` : sql`and position(lower(${input.q}) in lower(p.label)) > 0`;
-    const rijen = await rijenVan(tx, sql`${SELECTEER} where true ${na} ${zoek} order by p.id limit ${input.limit + 1}`);
-    const items = rijen.slice(0, input.limit).map((rij) => rijSchema.parse(rij));
-    const laatste = items.at(-1);
-    const nextCursor = rijen.length > input.limit && laatste !== undefined ? encodeCursor({ id: laatste.id }) : null;
-    return { items, nextCursor };
-  },
-);
+const lijstContract = defineContract({
+  method: 'GET',
+  path: '/probes',
+  input: z
+    .object({
+      q: z.string().trim().max(MAX_SEARCH_LENGTH).optional(),
+      cursor: z.string().max(500).optional(),
+      limit: z.coerce.number().int().min(1).max(MAX_PAGE_SIZE).default(DEFAULT_PAGE_SIZE),
+    })
+    .strict(),
+  output: pageSchema(rijSchema),
+  permission: 'app.use',
+});
+
+const lijst = defineRoute(lijstContract, async ({ tx, input }) => {
+  const na = input.cursor === undefined ? sql`` : sql`and p.id > ${cursorId(input.cursor)}::uuid`;
+  const zoek = input.q === undefined ? sql`` : sql`and position(lower(${input.q}) in lower(p.label)) > 0`;
+  const rijen = await rijenVan(tx, sql`${SELECTEER} where true ${na} ${zoek} order by p.id limit ${input.limit + 1}`);
+  const items = rijen.slice(0, input.limit).map((rij) => rijSchema.parse(rij));
+  const laatste = items.at(-1);
+  const nextCursor = rijen.length > input.limit && laatste !== undefined ? encodeCursor({ id: laatste.id }) : null;
+  return { items, nextCursor };
+});
+
+// Bewust gebroken: de lijst geeft elke pagina dezelfde cursor, zodat de paginering nooit eindigt (alleen voor de zelftest, AC-13).
+const lijstOneindig = defineRoute(lijstContract, () => ({
+  items: [],
+  nextCursor: encodeCursor({ id: '00000000-0000-4000-8000-000000000000' }),
+}));
 
 const lees = defineRoute(
   defineContract({
@@ -144,6 +149,7 @@ const verwijder = defineRoute(
 );
 
 export const EIGENAAR_ROUTES = [create, lijst, lees, wijzig, verwijder] as const;
+export const EIGENAAR_ROUTES_ONEINDIG = [create, lijstOneindig, lees, wijzig, verwijder] as const;
 export const EIGENAAR_ROUTES_LOS = [createLos, lijst, lees, wijzig, verwijder] as const;
 
 export const labelsVan = (

@@ -14,6 +14,16 @@ export async function rijenVan(tx: Tx, statement: SQL): Promise<Record<string, u
   return rijenSchema.parse(result.rows);
 }
 
+// Rijen én het aantal geraakte rijen (rowCount): een update of delete zonder returning geeft alleen het aantal.
+export async function uitvoerVan(
+  tx: Tx,
+  statement: SQL,
+): Promise<{ readonly rijen: Record<string, unknown>[]; readonly aantal: number }> {
+  const result = await tx.execute(statement);
+  const rijen = rijenSchema.parse(result.rows);
+  return { rijen, aantal: result.rowCount ?? rijen.length };
+}
+
 const PG_CODE = /^[0-9A-Z]{5}$/;
 
 // De SQLSTATE van een databasefout, ook als de testkit hem in een AppError of Drizzle-fout heeft verpakt.
