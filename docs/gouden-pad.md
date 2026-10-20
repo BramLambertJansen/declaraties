@@ -21,8 +21,12 @@ draait hem; `--dry-run` toont het plan zonder te schrijven, en bestaat een doel 
      `src/shared/permissions.ts` (`<naam>:read` en `<naam>:write`) en `src/api/app.ts` (de routes); die twee zijn geen
      gate meer (ADR 0029 punt 18), het risico-overzicht van de diff-guard noemt de nieuwe permissie en routes;
    - bestaande tests, als afgedrukte wijziging die de hoofdsessie met Edit zet: `src/shared/permissions.test.ts` en
-     `src/web/routes.test.tsx` (menu per rol). Noem de twee testwijzigingen met reden in de PR.
-3. Daarna de werkstraat: de tester schrijft de tests (pgTAP per policy, integratie, e2e), de developer voegt de velden toe in
+     `src/web/routes.test.tsx` (menu per rol). Noem de twee testwijzigingen met reden in de PR;
+   - de declaratie voor de securitysuite, als afgedrukte wijziging (`--- test/security/resources.ts`): één regel per route in
+     `routeClassificatie` (scope `eigenaar`) en één regel in `resources`, met de samples als `INVULLEN`. De generator schrijft
+     dit bestand niet (`scripts/kit/new-resource.mjs`, `declaratieInhoud`).
+3. Daarna de werkstraat: de tester schrijft de tests (pgTAP per policy, integratie, e2e), zet de declaratie in
+   `test/security/resources.ts` en vult de samples in (tot dan is `pnpm test:db` rood), de developer voegt de velden toe in
    een nieuwe migratie met kolomgrants en bouwt de handlers. De stappen hieronder gelden dan per bestand.
 
 `pnpm check:new-resource` bewijst in een tijdelijke kopie dat de uitvoer `pnpm gate:fast` haalt (eigen job in CI).
