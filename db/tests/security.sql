@@ -60,6 +60,7 @@ create function pg_temp.c1_eigenaar() returns setof text language sql stable as 
     where k.verwijst_user and not k.heeft_fk
       and not (k.kolom = 'owner_id' or k.kolom ~ '(^|_)user_id$')
       and k.tabel not in (select tabel from toegestaan)
+    union all
     select format('%s: verwijst naar better_auth."user"(id) maar is geen owner-tabel (public, kolom owner_id)', t.tabel)
     from (select distinct tabel from kol where heeft_fk) t
     where not exists (

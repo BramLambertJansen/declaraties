@@ -103,15 +103,29 @@ async function bRaaktNiets(
   tabel: string,
   doel: { kolom: string; waarde: unknown },
 ): Promise<string[]> {
+  const bestaat = await probeer(
+    spelers.db,
+    spelers.B,
+    sql`select exists (
+      select 1 from pg_catalog.pg_attribute a
+      where a.attrelid = ${tabel}::regclass and a.attname = ${doel.kolom}::name and a.attnum > 0 and not a.attisdropped
+    ) as ok`,
+  );
   const recht = await probeer(
     spelers.db,
     spelers.B,
     sql`select has_column_privilege(${tabel}::text, ${doel.kolom}::text, 'UPDATE') as ok`,
   );
-  const mag = z.object({ ok: z.boolean() }).safeParse(recht.rijen[0]);
+  const ok = z.object({ ok: z.boolean() });
+  const bestaatKolom = ok.safeParse(bestaat.rijen[0]);
+  const mag = ok.safeParse(recht.rijen[0]);
   const problemen: string[] = [];
   const magUpdaten = mag.success && mag.data.ok;
-  if (!magUpdaten) {
+  if (!bestaatKolom.success || !bestaatKolom.data.ok) {
+    problemen.push(
+      `${tabel}: kolom ${doel.kolom} uit sample.update bestaat niet in ${tabel}; gebruik de kolomnaam (test/security/resources.ts)`,
+    );
+  } else if (!magUpdaten) {
     problemen.push(
       `${tabel}: B heeft geen UPDATE-recht op '${doel.kolom}': kies een updatebare kolom in sample.update (test/security/resources.ts)`,
     );
