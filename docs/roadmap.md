@@ -148,8 +148,9 @@ Open werk dat niet geparkeerd is, grofweg in volgorde. Wat nog een spec of eigen
 - [ ] **`/.well-known/security.txt` en `LICENSE`** (eigendom, geen open-source-licentie): beide wachten op een waarde van de eigenaar
   (contactadres per app; licentietekst).
   aanleiding: `docs/reviews/2026-10-15-principes-inventaris.md` (B-11)
-- [ ] **`.claude/settings.json` bewezen** (stuk 5): de sandbox start op Ubuntu/WSL2 (bubblewrap, socat) en de deny-regels zijn getest, ook
-  `Read(!.env.example)` en `cat .env`.
+- [x] **`.claude/settings.json` bewezen** (stuk 5): de sandbox start op Ubuntu/WSL2 (bubblewrap, socat) en de deny-regels zijn getest, ook
+  `Read(!.env.example)` en `cat .env`. Bewijs #239 (`docs/operations/sandbox-bewijs.md`), met twee beperkingen: een bestand dat
+  hetzelfde commando aanmaakt is leesbaar, en `~/.ssh`/`~/.aws` bestonden niet op de proefmachine.
   aanleiding: `.claude/settings.json` (onbewezen sinds stuk 5; `test/rails/sandbox-settings.test.ts` dekt de spiegel, niet de sandbox)
 - [ ] **`gate:fast` definitief** (stuk 4): vastleggen welke checks de definitieve `gate:fast` bevat (nu een groeiende lijst in `scripts/kit/gates.mjs`); `gate:slow` is gebouwd (#38), squawk staat onder Geparkeerd.
   aanleiding: `scripts/kit/gates.mjs`
