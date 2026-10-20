@@ -101,7 +101,9 @@ describe('security/AC-13: de suite test zichzelf', { timeout: LANG }, () => {
     }));
 
     expect(problemen.strict).toStrictEqual(["route 'POST /probes': input is niet strict"]);
-    expect(problemen.api.some((probleem) => probleem.includes('create met velden (label, owner_id) gaf'))).toBe(true);
+    expect(
+      problemen.api.some((probleem) => probleem.includes('create met velden (label, owner_id) gaf 409 ALREADY_EXISTS')),
+    ).toBe(true);
   });
 
   test('security/AC-13: een ongeldige sample.spoof maakt AC-10 rood, niet groen door een validatiefout op een ander veld', async () => {
