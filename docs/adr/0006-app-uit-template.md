@@ -1,6 +1,6 @@
 # 0006 — Een app uit de template: koppeling, updates en start
 
-Status: geaccepteerd (2026-10-09) — voorgesteld door de agent, geaccepteerd door de eigenaar.
+Status: vervangen door 0040
 
 ## Context
 

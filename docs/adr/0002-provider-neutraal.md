@@ -1,6 +1,6 @@
 # 0002 — Template is provider-neutraal
 
-Status: geaccepteerd (2026-10-09)
+Status: vervangen door 0039
 
 ## Context
 

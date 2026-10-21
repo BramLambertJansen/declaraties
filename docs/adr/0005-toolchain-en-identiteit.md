@@ -1,6 +1,6 @@
 # 0005 — Toolchain, bot-identiteit en toon van de regels
 
-Status: geaccepteerd (2026-10-09) — gekozen door de agent op verzoek van de eigenaar. Herzien via een nieuwe ADR.
+Status: vervangen door 0039
 
 ## Besluit
 
