@@ -62,4 +62,5 @@ formulier-content-types; een JSON-POST glipt erdoor.
   [0012](0012-datapad.md)).
 - De seed gaat via de auth-API (wachtwoordhashes), met een vast TOTP-geheim voor de lokale admin (was 0003).
 - Clients zonder beide headers (curl, server-naar-server) worden geweigerd; zulke clients bestaan niet voor deze API (was 0007).
-- De testmatrix van de CSRF-middleware staat rij voor rij in `src/core/api/http/csrf.test.ts` (was 0007).
+- De testmatrix is verplicht voor de CSRF-middleware en geldt als haar acceptatiecriteria; hij staat rij voor rij in
+  `src/core/api/http/csrf.test.ts` (was 0007).

@@ -34,32 +34,52 @@ Een app ontstaat met **Use this template**: nieuwe geschiedenis, geen instelling
 9. **Richting** (was 0008). App mag core importeren; core importeert nooit app. Wat core van de app nodig heeft (permissies,
    foutcodes, routes, contracten, env-uitbreiding), krijgt het als argument van een compositie-root in de app. Geen globale
    registratie, geen mutable singleton.
-10. **Uitbreiden zonder edit** (was 0008). Elk uitbreidingspunt heeft een core-plek en een app-plek; de lijst per onderdeel
-    staat in `docs/framework.md` §2 en §11a. Permissies via `definePermissions` en `createRouteKit({ permissions })`; elke
-    permissie die de rol `admin` heeft, eist `mfa`, en dat kan de app niet uitzetten. Foutcodes via `defineErrorCodes`, met
-    teksten die TypeScript compleet houdt. Een app-limiet boven een harde grens uit core weigert `createApp` bij opstart.
+10. **Plaats per onderdeel** (was 0008, tabel). Paden onder `src/`; "—" betekent: de app breidt dit niet uit.
+
+    | Onderdeel | Core (template) | App (uitbreiding, zonder core te wijzigen) |
+    |---|---|---|
+    | `defineRoute`, `ctx.actor` | `core/api/route/` (`createRouteKit({ permissions })`) | `api/kit.ts`; routes in `api/routes/<resource>.ts` |
+    | `withUser`, pool, foutvertaling | `core/api/db/` (exports: [0042](0042-database-en-datapad.md) punt 9) | — (gegenereerd Drizzle-schema en `ids.ts` in `api/db/`) |
+    | Auth (Better Auth, sessie, `session_strength`) | `core/api/auth/` | Alleen via ADR: extra plugin of veld |
+    | CSRF, `bodyLimit`, `secureHeaders`, `onError` | `core/api/http/` (`createApp(config)`, vaste volgorde) | `api/app.ts` geeft config, binnen de harde grens uit core |
+    | Logging | `core/api/obs/` | Velden via `createApp`-config |
+    | Env | `core/api/env.ts` (enige `process.env`), `core/web/lib/env.ts` (enige `import.meta.env`) | `api/env.ts`, `web/lib/env.ts`: alleen het eigen schema |
+    | API-client | `core/web/lib/api-client.ts` (enige `fetch(`) | `web/lib/api.ts`: maakt de client |
+    | Auth-client | `core/web/lib/auth.ts` (enige `better-auth/react`) | — |
+    | `AsyncView`, `Form`, `format`, `assert`, `unsafeCast`, `Cents`, cursor | `core/web/ui/`, `core/web/lib/format.ts`, `core/shared/` | — |
+    | UI-kit, tokens | `core/web/ui/` (basis en variantkaarten), `core/web/styles/` | `web/ui/` (eigen componenten en barrel), `web/styles/theme.css` |
+    | Branded IDs | `core/shared/ids.ts` (`brand()`, `UserId`) | `shared/ids.ts` |
+    | Foutcodes | `core/shared/errors.ts`, `core/web/copy/errors.ts` | `shared/errors.ts`, `web/copy/errors.ts` |
+    | Permissies, `can()` | `core/shared/can.ts` (engine, MFA-eis voor `admin`, permissie `app.use`) | `shared/permissions.ts` (tabel) |
+    | Limieten | `core/shared/limits.ts` (harde grenzen) | `shared/limits.ts` |
+
+11. **Uitbreiden zonder edit** (was 0008). Permissies via `definePermissions` en `createRouteKit({ permissions })`; elke
+    permissie die de rol `admin` heeft, eist `mfa`, en dat kan de app niet uitzetten; de RLS-helper kijkt naar dezelfde rol.
+    Foutcodes via `defineErrorCodes`, met teksten die TypeScript compleet houdt; een basistekst overschrijven mag. Een
+    app-limiet boven een harde grens uit core weigert `createApp` bij opstart.
     Componentvarianten bouwt de app uit de geëxporteerde basis van core; `src/web/ui/index.ts` is de enige importbron voor
     `features/`. Een basiscomponent voor elke app komt via de template in `src/core/web/ui`.
-11. **Contracten** (was 0008 Aanvulling). De API-client is getypt op `src/shared/contracts`; web importeert niets uit
+12. **Contracten** (was 0008 Aanvulling). De API-client is getypt op `src/shared/contracts`; web importeert niets uit
     `src/api`, ook geen types. Server en client lezen hetzelfde zod-schema.
-12. **Startinhoud** (was 0008). Compositie-roots, de referentie-feature en de app-tabellen in `permissions.ts`/`errors.ts`
+13. **Startinhoud** (was 0008). Compositie-roots, de referentie-feature en de app-tabellen in `permissions.ts`/`errors.ts`
     staan in de template in app-paden; na het aanmaken beheert de app ze. Een conflict daar is verwacht.
-13. **Compositie-roots omzeilen de rails niet** (was 0008). `createApp(config)` accepteert alleen routes uit `defineRoute`
+14. **Compositie-roots omzeilen de rails niet** (was 0008). `createApp(config)` accepteert alleen routes uit `defineRoute`
     en geeft alleen `{ fetch }` terug; `hono` alleen in `src/core`; config die beveiliging raakt, alleen binnen een harde
     grens van core.
-14. **Beschermd is niet hetzelfde als core** (was 0008). Beschermd verandert alleen met akkoord van de eigenaar
-    (`docs/framework.md` §10); core wijzigt een app helemaal niet.
+15. **Beschermd is niet hetzelfde als core** (was 0008). Beschermd verandert alleen met akkoord van de eigenaar
+    (`docs/framework.md` §10); core wijzigt een app helemaal niet. Beschermde app-paden: de compositie-roots
+    (`src/api/app.ts`, `kit.ts`, `server.ts`), `src/api/env.ts`, `src/shared/permissions.ts` en `deploy/`.
 
 **Afdwingen** (was 0008, met de correcties van 0037)
 
-15. Dependency-cruiser (core → app verboden), CODEOWNERS en `ask` op `src/core/`, en de job `check-core` in `guard.yml`, met
+16. Dependency-cruiser (core → app verboden), CODEOWNERS en `ask` op `src/core/`, en de job `check-core` in `guard.yml`, met
     de scripts van main. Een app-PR die `src/core/` wijzigt, faalt, tenzij het een vertrouwde merge is: de tweede ouder is een
     voorouder van `template/main` (van de vaste template-URL) of van main (was 0037 punt 2), en core in de merge is gelijk aan
     die ouder (was 0008 punt 2). Alleen commits die de app toevoegt tellen, niet die uit `template/main` (was 0037 punt 1).
-16. Orphan en octopus met core-wijziging falen (was 0037 punt 3). De check faalt dicht; de template moet zonder credentials op
+17. Orphan en octopus met core-wijziging falen (was 0037 punt 3). De check faalt dicht; de template moet zonder credentials op
     te halen zijn (was 0037 punt 4). In de template zelf (`onderhoud.repository` in `.claude/gates.json` van main) is hij
     altijd groen (was 0037 punt 5). Hij is een verplichte check in de app-ruleset (was 0037 punt 6).
-17. Een fout in core die een app raakt, wordt in de template opgelost, niet in de app (was 0008).
+18. Een fout in core die een app raakt, wordt in de template opgelost, niet in de app (was 0008).
 
 ## Alternatieven
 
@@ -79,4 +99,4 @@ Een app ontstaat met **Use this template**: nieuwe geschiedenis, geen instelling
 - Een private repo op een gratis account heeft geen ruleset; de eigenaar kiest Pro, een organisatie met Team, of public (was 0006).
 - Elk uitbreidingspunt heeft een test in core die bewijst dat een app het gebruikt zonder core te wijzigen (was 0008).
 - Aanvaarde gaten in `check-core` (was 0037 punt 7): een merge met een oudere vertrouwde commit kan een oudere core
-  terugbrengen (downgrade); een zijbranch die zelf `template/main` merget, geeft vals alarm.
+  terugbrengen (downgrade), en een heel oude template-commit zonder `src/core/` kan core zelfs verwijderen; een zijbranch die zelf `template/main` merget, geeft vals alarm.
