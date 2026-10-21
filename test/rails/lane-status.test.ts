@@ -778,3 +778,47 @@ describe('ADR 0038 punt 5: de samenvatting noemt elk document dat een eigenaarst
     }
   });
 });
+
+// --- Review van ADR 0038: verwijderen, terugzetten van een spec en het bouwbewijs. ---------------------------------------
+
+/** Een lange, onderscheidende tekst, zodat een verwijderd en een nieuw bestand nooit als rename gelden. */
+const uniek = (prefix: string): string =>
+  Array.from(
+    { length: 12 },
+    (_regel, index) => `${prefix} regel ${String(index)} met eigen woorden ${prefix}${String(index * 7)}.`,
+  ).join('\n');
+
+describe('ADR 0038 punt 2: een ADR met een eigenaarstatus verwijderen is A4', () => {
+  test.each([['geaccepteerd'], ['vervallen'], ['vervangen door 0051']])(
+    'een ADR met Status: %s verwijderen: faalt',
+    (status) => {
+      const fixture = metBasis({ [ADR_OUD]: adrTekst('0050', status), [ADR_NIEUW]: adrTekst('0051', 'geaccepteerd') });
+      git(fixture.root, ['rm', '-q', ADR_OUD]);
+      faalt(fixture, agent(fixture));
+    },
+  );
+
+  test('0017-a.md verwijderen en 0017-b.md met andere inhoud en geaccepteerd toevoegen (geen rename): faalt', () => {
+    const fixture = metBasis({ 'docs/adr/0017-a.md': adrTekst('0017', 'geaccepteerd', uniek('alfa')) });
+    git(fixture.root, ['rm', '-q', 'docs/adr/0017-a.md']);
+    write(fixture.root, 'docs/adr/0017-b.md', adrTekst('0017', 'geaccepteerd', uniek('beta')));
+    faalt(fixture, agent(fixture));
+  });
+
+  test('een voorgesteld ADR verwijderen: slaagt', () => {
+    const fixture = metBasis({ [ADR_OUD]: adrTekst('0050', 'voorgesteld') });
+    git(fixture.root, ['rm', '-q', ADR_OUD]);
+    slaagt(fixture, agent(fixture));
+  });
+});
+
+describe('ADR 0038 punt 2: een spec mag van gebouwd of vervallen terug naar voorstel (geen eigenaarstatus)', () => {
+  test.each([
+    ['gebouwd', BOUWSTATUS],
+    ['vervallen', 'vervallen'],
+  ])('%s naar voorstel: slaagt', (_naam, begin) => {
+    const fixture = metBasis({ [MINI]: spec('demo', begin, false) });
+    zetStatusRegel(fixture.root, MINI, 'status: voorstel');
+    slaagt(fixture, agent(fixture));
+  });
+});

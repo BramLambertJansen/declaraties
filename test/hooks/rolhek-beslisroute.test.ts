@@ -201,3 +201,105 @@ describe('ADR 0038 punt 2: vervallen of vervangen ADR terug naar voorgesteld is 
     });
   });
 });
+
+// --- Review van ADR 0038: A4 tegen main (de vertrouwde basis), niet tegen de werkmap. ---------------------------------------
+// `read` is de werkmap, `authority.trusted` is main. Een ADR die op main nog geen eigenaarstatus heeft, is niet beschermd,
+// ook al staat hij in de werkmap al op `geaccepteerd`; een ADR die op main geaccepteerd is, blijft beschermd, ook als de
+// werkmap afwijkt of het bestand ontbreekt (na `rm`).
+
+function runBasis(payload: unknown, opties: { main: Record<string, string>; werkmap: Record<string, string> }) {
+  const gezag: Authority = {
+    ...authority(),
+    trusted: (file) => opties.main[file] ?? null,
+    working: (file) => opties.werkmap[file] ?? null,
+  };
+  return decide(payload, {
+    root: ROOT,
+    cwd: ROOT,
+    config,
+    read: (rel: string) => opties.werkmap[rel] ?? null,
+    committed: () => false,
+    isDir: () => false,
+    branch: 'feat/x',
+    authority: gezag,
+  });
+}
+
+const NIEUW_PAD = 'docs/adr/0090-nieuw.md';
+const BESLISROLLEN = [
+  ['hoofdsessie', undefined],
+  ['architect', 'architect'],
+] as const;
+const ALLE_ROLLEN = [...BESLISROLLEN, ['developer', 'developer'], ['tester', 'tester'], ['docs', 'docs']] as const;
+
+describe.each(BESLISROLLEN)('A4 tegen main: %s', (_rol, agent) => {
+  test('a. nieuw ADR (niet op main), werkmap al geaccepteerd: inhoud wijzigen is toegestaan', () => {
+    const decision = runBasis(edit(NIEUW_PAD, ['Iets.', 'Iets anders.'], agent), {
+      main: {},
+      werkmap: { [NIEUW_PAD]: adr('0090', 'geaccepteerd') },
+    });
+    expect([decision.deny, decision.ask]).toStrictEqual([[], []]);
+  });
+
+  test('b. nieuw ADR (niet op main), werkmap al geaccepteerd: status terugzetten naar voorgesteld is toegestaan', () => {
+    const decision = runBasis(edit(NIEUW_PAD, ['Status: geaccepteerd', 'Status: voorgesteld'], agent), {
+      main: {},
+      werkmap: { [NIEUW_PAD]: adr('0090', 'geaccepteerd') },
+    });
+    expect([decision.deny, decision.ask]).toStrictEqual([[], []]);
+  });
+
+  test('c. op main voorgesteld, werkmap geaccepteerd: inhoud wijzigen is toegestaan', () => {
+    const decision = runBasis(edit(NIEUW_PAD, ['Iets.', 'Iets anders.'], agent), {
+      main: { [NIEUW_PAD]: adr('0090', 'voorgesteld') },
+      werkmap: { [NIEUW_PAD]: adr('0090', 'geaccepteerd') },
+    });
+    expect([decision.deny, decision.ask]).toStrictEqual([[], []]);
+  });
+});
+
+describe.each(ALLE_ROLLEN)('A4 tegen main: %s', (_rol, agent) => {
+  const nieuweInhoud = adr('0090', 'geaccepteerd', 'Heel andere inhoud.');
+  test.each([
+    ['het bestand ontbreekt in de werkmap (na rm)', {}],
+    ['de werkmap is voorgesteld en afwijkend', { [NIEUW_PAD]: adr('0090', 'voorgesteld', 'Concept.') }],
+    ['de werkmap heeft andere inhoud', { [NIEUW_PAD]: adr('0090', 'geaccepteerd', 'Eerder aangepast.') }],
+  ])(
+    'd. op main geaccepteerd; %s: een Write met nieuwe inhoud en Status: geaccepteerd is geweigerd',
+    (_naam, werkmap) => {
+      const decision = runBasis(write(NIEUW_PAD, nieuweInhoud, agent), {
+        main: { [NIEUW_PAD]: adr('0090', 'geaccepteerd') },
+        werkmap,
+      });
+      expect(decision.deny).not.toHaveLength(0);
+    },
+  );
+});
+
+describe('A4 tegen main: de A4-melding en de terugval zonder authority', () => {
+  test('d. de melding bij een op main geaccepteerd ADR verwijst naar een nieuw ADR dat vervangt', () => {
+    const decision = runBasis(write(NIEUW_PAD, adr('0090', 'geaccepteerd', 'Heel andere inhoud.')), {
+      main: { [NIEUW_PAD]: adr('0090', 'geaccepteerd') },
+      werkmap: {},
+    });
+    const melding = decision.deny.join('\n');
+    expect(melding).toMatch(/nieuw ADR/i);
+    expect(melding).not.toMatch(/heropen/i);
+  });
+
+  test.each(BESLISROLLEN)(
+    'e. %s zonder authority: de werkmap is de terugval; inhoud van een geaccepteerd ADR wijzigen is geweigerd',
+    (_rol, agent) => {
+      const decision = run(edit(ADR_GEACC, ['Iets.', 'Iets anders.'], agent), 'zonder');
+      expect(decision.deny).not.toHaveLength(0);
+    },
+  );
+
+  test.each(BESLISROLLEN)(
+    'e. %s zonder authority: een voorgesteld ADR in de werkmap blijft vrij te wijzigen',
+    (_rol, agent) => {
+      const decision = run(edit(ADR_VOORSTEL, ['Iets.', 'Iets anders.'], agent), 'zonder');
+      expect([decision.deny, decision.ask]).toStrictEqual([[], []]);
+    },
+  );
+});
