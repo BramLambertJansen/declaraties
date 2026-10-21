@@ -33,13 +33,14 @@ tot stand komt (merge is acceptatie, drempel, taakmandaat, CI-lus, merge- en for
    `.claude/hooks/` bevat alleen stubs die de versie van `main` uitpakken en starten. Het anker is de SHA van `main` op de
    remote, niet de lokale `origin/main`. De lader controleert zelf de hashes van commit, trees en bestanden; een vervalst object
    geeft een dichte hook, geen andere code. Het rolhek gebruikt geen netwerk. Rolhek en werkstraat falen dicht (exit 2) als het
-   anker of de hook op `main` ontbreekt; alleen de meethook faalt open. Een hookwijziging werkt pas na de merge, in de volgende
+   anker of de hook op `main` ontbreekt, en het rolhek maakt van elke andere exitcode dan 0 of 2 een 2; alleen de meethook
+   faalt open. Een hookwijziging werkt pas na de merge, in de volgende
    sessie; tests importeren de branchversie. `rails/**` is een gate-pad en `voorReview`.
 4. **Groen vóór klaar** (was 0011 punt 3). SubagentStop voor de developer blokkeert tot `gate:fast` groen is, ook bij een
    schone werkmap.
 5. **Geen zelfreview** (was 0011 punt 4). Lokaal geblokkeerd en in CI zonder effect: reviews, het label `gate-wijziging`,
    statussen en check-runs via `gh`.
-6. **Rollen** (was 0011 punt 8). Architect (spec en ADR), developer, tester, reviewer en een optionele docs-rol. Docs gaan
+6. **Rollen** (was 0011 punt 8, gewijzigd in #94). Architect (spec en ADR), developer, tester, reviewer en een optionele docs-rol. Docs gaan
    mee in de PR van de code; een vaste docs-stap na de merge bestaat niet.
 7. **Developer volgt de hoofdsessie** (was 0032). Op gate-paden buiten `voorReview` krijgt ook de developer-subagent geen deny
    en geen prompt, wel de melding dat het pad eigenaarreview in de PR vraagt. Ongewijzigd: een onbekende subagent krijgt de
@@ -52,12 +53,13 @@ tot stand komt (merge is acceptatie, drempel, taakmandaat, CI-lus, merge- en for
    gelezen uit `main`, nooit uit de werkmap. De modus staat alleen aan als `origin` die repository is (hoofdletterongevoelig);
    een app uit de template heeft een andere origin en dus geen modus. Onleesbaar is uit.
 9. **In `onderhoud`** (was 0033 punt 3–4) is `voorReview` voor hoofdsessie en developer een melding, zoals de overige
-   gate-paden, behalve de lijst `altijdVragen` (CI-workflows, de hook-stubs, `settings.json`, `gates.json`, `decisions.json`,
+   gate-paden, behalve de lijst `altijdVragen` (`.github/**`, de hook-stubs, `settings.json`, `gates.json`, `decisions.json`,
    `package.json` en de lockfile): daar blijft ask voor de hoofdsessie en deny voor een subagent. De Edit-regels in `ask` van
    `.claude/settings.json` zijn gelijk aan `altijdVragen`; buiten de modus vraagt het rolhek zelf en faalt het dicht.
-10. **Ongewijzigd, ook in `onderhoud`** (was 0033 punt 5): deny-regels en verboden `gh`-acties, bestaande tests, gecommitte
-    migraties, gegenereerde bestanden, `.env*`, `jsonGates`, het schrijfrecht van de andere rollen, de diff-guard,
-    `check-document-status` en de merge door de eigenaar.
+10. **Ongewijzigd, ook in `onderhoud`** (was 0033 punt 5): deny-regels en verboden git- en `gh`-acties (push naar `main`,
+    force-push, `--no-verify`, mergen, reviews, het label `gate-wijziging`, check-statussen, `docker`), bestaande tests,
+    gecommitte migraties, gegenereerde bestanden, `.env*`, `jsonGates`, het schrijfrecht van de andere rollen, de diff-guard,
+    `check-document-status` en de merge door de eigenaar. De modus versoepelt de statusregels van 0038 niet.
 11. **Gedeelde Claude Code-permissies** (was 0034, wijzigt 0033 punt 6). `acceptEdits` als standaardmodus en `allow` voor snelle
     checks, pushen naar een featurebranch, PR's aanmaken en lezend `gh`-werk staan in de gedeelde `.claude/settings.json`, niet
     alleen lokaal. Een `allow` heft geen `deny` of `ask` op; sandbox en hooks van `main` blijven gelden.
@@ -75,7 +77,7 @@ tot stand komt (merge is acceptatie, drempel, taakmandaat, CI-lus, merge- en for
 15. **Regel** (was 0011 punt 9). Raakt een PR een gate-pad, `scripts` in `package.json`, of wijzigt hij een bestaande test, dan
     vraagt hij het label `gate-wijziging` én als laatste beslissende review een APPROVED van een goedkeurder die niet de auteur
     is, op exact de head-SHA. Paden NUL-gesplitst. De guard draait uit `main` (`pull_request_target`), de PR alleen als
-    git-data; een stap in de CI van de PR zelf kan hem uitzetten.
+    git-data.
 16. **Gewijzigde test** (was 0017 OV-4) is een testpad met status `M`, `D`, `R` of `T` tegen de merge-base; toevoegen is vrij.
     Het rolhek blijft lokaal fijnmaziger; de guard is grof en onomzeilbaar.
 17. **Overgang** (was 0017 OV-1 en OV-2, 0031 besluit 2). De guard is gebouwd maar niet verplicht tot de agent als GitHub App
@@ -109,7 +111,7 @@ tot stand komt (merge is acceptatie, drempel, taakmandaat, CI-lus, merge- en for
 27. **Release dubbel bewaakt** (was 0011 punt 13). `check-release-ci` vóór en na de build; `check-deployment-schema` faalt dicht
     en weigert een preview tegen de productiedatabase.
 28. **Patronen** (was 0011 punt 14). Idempotente mutaties (request-UUID vóór het netwerk, bonnetabel met payload-hash, advisory
-    lock, tombstone) en clientfouten (allowlist-velden, geen PII, dedupe, build-SHA).
+    lock, tombstone) en clientfouten (allowlist-velden, geen PII, 5 minuten dedupe, build-SHA).
 
 Bewust niet (was 0011): checks op SQL met regex (de template leest de catalogus) en de volledige testset bij elke stop.
 
@@ -118,6 +120,7 @@ Bewust niet (was 0011): checks op SQL met regex (de template leest de catalogus)
 - **Losse hooks per rol met eigen lijsten** (was 0011): lijsten lopen uit elkaar, omzeilingen per hook opnieuw gevonden.
 - **Alleen CI als bewaker** (was 0011): de agent hoort pas na een push dat hij een grens raakte.
 - **Alleen CODEOWNERS met code-owner-review** (was 0017): ziet niet of een bestaande test wijzigt, en werkt pas met de App.
+- **De guard als stap in de CI van de PR** (was 0017): draait de workflow van de PR zelf, die kan hem dan uitzetten.
 - **Guard nu verplicht, of label genoeg** (was 0017): blokkeert elke gate-PR, of de agent zet het label met hetzelfde token zelf.
 - **Eén job of een matrix-job** (was 0031): de checklijst toont de verkeerde naam of het is een rename.
 - **`pr:verify` met `--untracked-files=no`** (was 0031): een vergeten nieuw bestand valt weg, ook een test.
@@ -135,3 +138,4 @@ Bewust niet (was 0011): checks op SQL met regex (de template leest de catalogus)
   `.claude/commands/` laat hem weigeren tot de app kiest (was 0031).
 - In andere runtimes werken de hooks niet; daar zijn CI en GitHub de enige grens (was 0033).
 - Een bouwbewijs voor `gebouwd` eist ook `document-status` op de bron-SHA (was 0031).
+- `check-github`, `check-release-ci` en `check-deployment-schema` (punt 26–27) zijn besloten, maar nog niet gebouwd.
