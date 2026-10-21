@@ -1,6 +1,6 @@
 # 0032 — Developer-subagent volgt de hoofdsessie buiten `voorReview`
 
-Status: geaccepteerd
+Status: vervangen door 0045
 
 Wijzigt [0029](0029-snellere-beslisroute.md) punt 9 (de zin over subagentrollen in het rolhek). Wijzigt verder geen besluit
 uit 0029. De verwijsregel "Gewijzigd door 0032" in 0029 zelf voegt de eigenaar toe bij acceptatie; dit ADR wijzigt 0029 niet.

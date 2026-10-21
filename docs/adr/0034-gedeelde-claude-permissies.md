@@ -1,6 +1,6 @@
 # 0034 — Gedeelde Claude Code-permissies
 
-Status: geaccepteerd
+Status: vervangen door 0045
 
 ## Context
 
