@@ -1,6 +1,6 @@
 # 0020 — Achtergrondtaken: opruimen en mail-outbox
 
-Status: geaccepteerd (agent, onder mandaat van de eigenaar van 2026-10-11; ter herziening door de eigenaar)
+Status: vervangen door 0050
 
 ## Context
 

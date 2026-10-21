@@ -1,6 +1,6 @@
 # 0019 — Productie-image: SPA en API op één origin
 
-Status: geaccepteerd (agent, onder mandaat van de eigenaar van 2026-10-10; ter herziening door de eigenaar)
+Status: vervangen door 0049
 
 ## Context
 
