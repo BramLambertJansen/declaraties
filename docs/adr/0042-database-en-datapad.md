@@ -41,7 +41,7 @@ een pooler in transaction mode zoals beheerde providers die bieden. FORCE RLS we
    rollback (faalt die, dan gaat de verbinding weg). Alles is transactie-lokaal, dus het werkt gelijk direct en via een
    pooler in transaction mode. Andere exports van `src/core/api/db` alleen per ADR; nu zijn dat `pingDatabase()` en
    `closeDatabase()` ([0018](0018-readiness.md), uitgebreid in [0020](0020-achtergrondtaken.md) en
-   [0036](0036-achtergrondtaken-correcties.md)), `createAuditFn()` ([0021](0021-audit-log.md)) en `testing.ts` (punt 12).
+   [0036](0036-achtergrondtaken-correcties.md)), `createAuditFn()` (uitwerking van [0021](0021-audit-log.md) punt 5, gebouwd in #128) en `testing.ts` (punt 12).
 10. **Contract** (was 0012 punt 3): `Actor = { userId: UserId; sessionStrength: 'password' | 'mfa' }`. `none` bestaat alleen
     in de database, buiten `withUser()`.
 11. **`tx` is een Drizzle-transactie** over dezelfde verbinding (was 0012 punt 4).

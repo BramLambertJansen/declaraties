@@ -68,7 +68,8 @@ Een app ontstaat met **Use this template**: nieuwe geschiedenis, geen instelling
     grens van core.
 15. **Beschermd is niet hetzelfde als core** (was 0008). Beschermd verandert alleen met akkoord van de eigenaar
     (`docs/framework.md` §10); core wijzigt een app helemaal niet. Beschermde app-paden: de compositie-roots
-    (`src/api/app.ts`, `kit.ts`, `server.ts`), `src/api/env.ts`, `src/shared/permissions.ts` en `deploy/`.
+    `src/api/kit.ts` en `server.ts`, `src/api/env.ts` en `deploy/`. `src/api/app.ts` en `src/shared/permissions.ts` zijn
+    geen gate meer ([0029](0029-snellere-beslisroute.md) punt 18, behouden door [0038](0038-beslisroute.md) punt 8).
 
 **Afdwingen** (was 0008, met de correcties van 0037)
 
