@@ -4,7 +4,7 @@ Status: geaccepteerd
 
 Vervangt [0025](0025-werkstraat-tot-de-merge.md), [0027](0027-taakmandaat-voor-frameworkwerk.md),
 [0030](0030-ci-lus-en-agent-merge.md) en [0038](0038-beslisroute.md); neemt de delen van [0029](0029-snellere-beslisroute.md)
-over die via 0038 punt 8 nog gelden, en het beslisroutedeel van [0031](0031-guard-en-pr-verify-bruikbaarder.md) besluit 3.
+over die via 0038 punt 8 nog gelden.
 Drempel: A4. Consolidatie zonder inhoudelijke wijziging (eigenaarbesluit 2026-10-21, 0038 Gevolgen).
 
 ## Context
@@ -16,7 +16,7 @@ web-flow-handtekening onderscheidt eigenaar en agent. Dit ADR bundelt de werkstr
 (uitgeschakelde) agent-merge en de beslisroute.
 
 Herkomst van het akkoord: 0025 is door de eigenaar geaccepteerd (besluiten 2026-10-12, E-1..E-4 en W-1..W-7); 0027 met
-eigenaarakkoord in de opdracht (2026-10-13); 0030 punt 1–7 zijn eigenaarbesluiten (2026-10-12 en 2026-10-14). Uit 0029 zijn
+eigenaarakkoord in de opdracht (2026-10-13); 0030 punt 1–7 zijn eigenaarbesluiten (2026-10-14). Uit 0029 zijn
 P1–P7, de mini-spec en de agent-merge in de feature-lane eigenaarbesluiten van 2026-10-15, de mergevorm, prompt en merge-toets van
 2026-10-18. Uit 0038 is alleen de kern van punt 1–4 eigenaarbesluit (2026-10-21); wat daar als agentvoorstel staat, is hieronder
 zo gemarkeerd en is aanvaard met de merge van 0038.
@@ -133,7 +133,7 @@ zo gemarkeerd en is aanvaard met de merge van 0038.
     omgeving, configs; niet app- en testcode, die in de runner draaien), (b) instructies, rechten of hooks van de agent, (c) de
     vertrouwde basis van checks. De roadmap, ADR's, specs, `docs/nieuwe-app.md`, `src/api`, `src/core`, `deploy/**` en testpaden
     horen er niet in. De lijst `voorReview` in `.claude/gates.json` is het besluit over de twijfelgevallen.
-28. **Prompts** (was 0029 punt 9). Het rolhek vraagt de hoofdsessie op een `voorReview`-pad; op de andere gate-paden geeft het een
+28. **Prompts** (was 0029 punt 9). Buiten de onderhoudsmodus vraagt het rolhek de hoofdsessie op een `voorReview`-pad; op de andere gate-paden geeft het een
     melding. Commando-`ask`'s, migraties, gegenereerde bestanden en bestaande tests blijven ongewijzigd; CODEOWNERS blijft `gates` +
     `jsonGates`. Welke Edit-regels `ask` zijn en wat subagentrollen op gate-paden krijgen: zie het ADR dat 0032 en 0033 vervangt.
 29. **Compensatie vóór versoepeling** (was 0029 punt 10). Een versoepeling (punt 28, 30 en 32) komt pas na de P5-checks
