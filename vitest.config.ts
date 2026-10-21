@@ -1,3 +1,4 @@
+import { availableParallelism } from 'node:os';
 import { defineConfig } from 'vitest/config';
 import { catalogusIndex } from './scripts/kit/catalogus-index.ts';
 
@@ -11,6 +12,8 @@ export default defineConfig({
   plugins: [catalogusIndex(import.meta.dirname)],
   ...(runnerCache === undefined ? {} : { cacheDir: runnerCache }),
   test: {
+    // Begrens de gezamenlijke unit-/DOM-belasting, ook op hosts met veel CPU's.
+    maxWorkers: Math.min(4, availableParallelism()),
     projects: [
       {
         test: {
@@ -20,8 +23,8 @@ export default defineConfig({
           include: ['{src,test}/**/*.test.ts'],
           exclude: ['**/*.int.test.ts', 'test/rails/fixtures/**'],
           environment: 'node',
-          // Eén database voor alle bestanden: parallel zien racetests de commits van andere bestanden (roles.int.test.ts).
-          fileParallelism: false,
+          // Unitbestanden hebben eigen fixtures; de gedeelde database hoort bij het seriële int-project.
+          fileParallelism: true,
           setupFiles: [gitEnv],
         },
       },
