@@ -1,6 +1,6 @@
 # 0015 — De componentcatalogus als beveiligde pagina in de app
 
-Status: geaccepteerd (2026-10-10) — voorgesteld door de architect bij de spec [design-system](../specs/design-system.md); de keuzes (OV-1 t/m OV-9) zijn van de
+Status: vervangen door 0048
 eigenaar (2026-10-10, doorgegeven via de coördinator); geaccepteerd door de eigenaar met de spec.
 
 ## Context
