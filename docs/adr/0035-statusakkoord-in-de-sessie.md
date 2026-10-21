@@ -1,6 +1,6 @@
 # 0035 — Statusakkoord in de sessie: de agent zet de statusregel na een chatakkoord
 
-Status: geaccepteerd
+Status: vervangen door 0038
 
 Wijzigt [0029](0029-snellere-beslisroute.md) punt 1 ("De agent zet die regel nooit"), punt 3 (c) en één zin van punt 13,
 [0025](0025-werkstraat-tot-de-merge.md) punt 1 (statusovergangen) en punt 10, en [0031](0031-guard-en-pr-verify-bruikbaarder.md)
