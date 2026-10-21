@@ -1,6 +1,6 @@
 # 0010 — Schema `better_auth` in plaats van `auth`
 
-Status: geaccepteerd (2026-10-09) — voorgesteld door de agent na de review van 2026-10-09, geaccepteerd door de eigenaar. Vervangt de
+Status: vervangen door 0041
 schemanaam `auth` in [ADR 0003](0003-auth-in-de-api.md) en [ADR 0004](0004-database-tooling.md); de rest van die besluiten blijft staan.
 
 ## Context
