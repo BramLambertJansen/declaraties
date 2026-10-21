@@ -1,6 +1,6 @@
 # 0004 — Database: Postgres 17, rollen, dbmate, pgTAP
 
-Status: geaccepteerd (2026-10-09), herzien na review van 2026-10-09. Herzien via een nieuwe ADR. Deels vervangen: schema `auth` door
+Status: vervangen door 0042
 [ADR 0010](0010-schema-better-auth.md) (`better_auth`).
 
 ## Besluit

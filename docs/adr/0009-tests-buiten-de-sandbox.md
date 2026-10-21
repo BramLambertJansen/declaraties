@@ -1,6 +1,6 @@
 # 0009 — Tests buiten de sandbox
 
-Status: geaccepteerd (2026-10-09), optie (a) — voorgesteld door de agent, herzien na de review van 2026-10-09, geaccepteerd door de eigenaar.
+Status: vervangen door 0044
 Gewijzigd door 0025 (punt 4: runner vergelijkt lokaal met origin/main) en [0027](0027-taakmandaat-voor-frameworkwerk.md) (vaste vertrouwde runnerchecks automatisch; CI voor gewijzigde hostcode).
 
 ## Context

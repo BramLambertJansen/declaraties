@@ -1,6 +1,6 @@
 # 0038 — Beslisroute: de merge is de acceptatie
 
-Status: geaccepteerd
+Status: vervangen door 0046
 
 Vervangt [0029](0029-snellere-beslisroute.md) en [0035](0035-statusakkoord-in-de-sessie.md). Wijzigt
 [0025](0025-werkstraat-tot-de-merge.md), [0027](0027-taakmandaat-voor-frameworkwerk.md) en

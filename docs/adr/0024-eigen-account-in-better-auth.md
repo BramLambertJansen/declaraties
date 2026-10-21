@@ -1,6 +1,6 @@
 # 0024 — Eigen account in Better Auth: wachtwoord, sessies en e-mailadres
 
-Status: geaccepteerd (agent, onder mandaat van de eigenaar; ter herziening). Volgt uit de goedgekeurde spec
+Status: vervangen door 0043
 `docs/specs/eigen-account.md` (open vragen volgens de aanbeveling, 2026-10-11). Aanvulling op ADR 0013. Nummer 0024: 0021 en 0022
 zijn bezet door PR #80 (audit log, AVG), 0023 door PR #88 (tokenzuinige werkstraat).
 

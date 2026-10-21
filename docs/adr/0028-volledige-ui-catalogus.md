@@ -1,6 +1,6 @@
 # 0028 — Eén bronindex voor alle UI en verplichte catalogusdekking
 
-Status: geaccepteerd (2026-10-13) — besluit eigenaar in de opdracht: alle UI-elementen herkennen, indexeren voor hergebruik en tonen in het design system; afdwingen met de bestaande rails, zonder uitzonderingen.
+Status: vervangen door 0048
 
 ## Context
 

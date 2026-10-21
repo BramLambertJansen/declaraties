@@ -1,6 +1,6 @@
 # 0036 — Achtergrondtaken: correcties op 0018, 0020, 0021 en 0022
 
-Status: geaccepteerd
+Status: vervangen door 0050
 
 Wijzigt [0020](0020-achtergrondtaken.md) punt 1, punt 2 en de context, [0021](0021-audit-log.md) punt 6 en de sectie Tests,
 [0022](0022-avg.md) punt 5 en [0018](0018-readiness.md) punt 2, punt 4 en Gevolgen. De tekst van die vier ADR's blijft

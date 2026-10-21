@@ -1,6 +1,6 @@
 # 0031 — Diff-guard en pr:verify bruikbaarder maken (overgangsfase)
 
-Status: geaccepteerd
+Status: vervangen door 0045
 
 Vult [0017](0017-diff-guard.md) (OV-2, overgang), [0027](0027-taakmandaat-voor-frameworkwerk.md) (punt 2 en 6) en
 [0030](0030-ci-lus-en-agent-merge.md) (punt 1, CI-lus) aan. Wijzigt geen van hun besluiten. Buiten dit ADR: `diff-guard`
