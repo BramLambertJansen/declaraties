@@ -36,8 +36,9 @@ staat: alleen `src/core/api/db` en `src/core/api/auth` maken databaseverbindinge
    ouder dan de absolute termijn van 7 dagen op `createdAt`, verificaties met `expiresAt` verstreken, en `rateLimit`-rijen ouder
    dan `AUTH_RATE_LIMIT_KEEP_SECONDS` (60 s, het langste vaste venster van de gepinde Better Auth 1.7.7). Die termijn is een eigen
    constante in `limits.ts`, los van `AUTH_RATE_LIMIT_WINDOW_SECONDS` (10 s, expliciet gezet als `rateLimit.window`). Een
-   versietest dwingt bij elke update van Better Auth een nieuwe vaststelling af. De termijnen staan ook in de bewaarcatalogus
-   (0051).
+   versietest dwingt bij elke update van Better Auth een nieuwe vaststelling af; verandert die waarde, dan is dat een nieuw ADR.
+   Blijkt bij het bouwen een regel langer dan 60 s, dan stopt de developer en vraagt het. De termijnen komen uit `limits.ts` en
+   staan ook als rij in de bewaarcatalogus (0051); een integratietest bewijst dat die gelijk zijn.
 4. **Mail-outbox `app.mail_outbox`, zonder token** (was 0020 punt 3). RLS aan en geforceerd. Kolommen voor soort, `user_id` met
    foreign key `on delete cascade`, een optionele `recipient` (alleen voor app-mail naar een adres dat geen account is),
    planning, pogingen, lease, uitkomst en een foutcode zonder adressen; geen payload met link of token.
@@ -80,4 +81,4 @@ staat: alleen `src/core/api/db` en `src/core/api/auth` maken databaseverbindinge
   `src/core/api/auth`; de exportlijst van `src/core/api/db` in `AGENTS.md` en framework §1 en §2 groeit, en framework §3 en §6
   wijzigen: beschermd, akkoord van de eigenaar in de PR die het bouwt.
 - `inviteUser` maakt alleen nog het account; de route zet de mail in de outbox. SMTP en `sendResetPassword` draaien in de worker.
-- Readiness controleert ook de `app_jobs`-verbinding (0049).
+- Readiness controleert ook de `app_jobs`-verbinding, onder de voorwaarde van 0049 punt 3.

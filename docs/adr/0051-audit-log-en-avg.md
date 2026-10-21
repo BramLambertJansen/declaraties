@@ -31,7 +31,8 @@ per app.
 3. **`requestId` van de server, ook in de database** (was 0021 punt 4). `withUser()` zet `app.request_id`; een `X-Request-Id` van
    de client wordt niet overgenomen.
 4. **App-acties registreren zonder core te wijzigen** (was 0021 punt 5): `defineAuditActions` in `src/shared/audit.ts`, getypt
-   `ctx.audit(action, targetId, details)`; een app-actie begint nooit met `core.`.
+   `ctx.audit(action, targetId, details)`; een app-functie van `app_definer` mag ook rechtstreeks `app.audit` aanroepen. Een
+   app-actie begint nooit met `core.`.
 5. **Afgedwongen met triggers, policies en een invariant** (was 0021 punt 6, gecorrigeerd door 0036 punt 5). `update` en
    `truncate` falen altijd. Policies exact: insert, select en delete `to app_definer` (delete alleen voor rijen ouder dan de
    termijn) en select voor een admin met MFA; grants `insert, select, delete` aan `app_definer`, `select` aan
@@ -48,14 +49,17 @@ per app.
 
 **AVG**
 
-10. **Inzage en overdraagbaarheid** (was 0022 punt 1). `GET /api/me/export` geeft de eigen gegevens uit core, via definer-functies
-    die alleen rijen van `app.current_user_id()` geven, met het ID van een andere actor gemaskeerd. Een app registreert exporters
+10. **Inzage en overdraagbaarheid** (was 0022 punt 1 en OV-1). De gebruiker zelf vraagt `GET /api/me/export` (permissie
+    `app.use`) en krijgt in zijn eigen `withUser()` de gegevens uit core: naam, e-mail, aangemaakt, rol, actieve sessies (tijd en
+    user-agent, geen token) en de auditregels met hem als actor of doel. Core leest `better_auth` en de audit log via
+    definer-functies die alleen rijen van `app.current_user_id()` geven, met de kolom-allowlist (ADR 0014, uitgebreid met
+    `session("userId", "createdAt", "userAgent")`); het ID van een andere actor staat gemaskeerd. Een app registreert exporters
     via `createApp({ privacy })`; een exporter filtert expliciet op eigenaar, niet alleen via RLS.
-11. **Verwijderen** (was 0022 punt 2). Een admin met MFA verwijdert een account met `app.delete_account(id)` in één
+11. **Verwijderen** (was 0022 punt 2 en OV-2). Een admin met MFA verwijdert een account met `app.delete_account(id)` in één
     `withUser()`-transactie: niet het eigen account (`CANNOT_DELETE_SELF`), laatste-admin-lock, auditregel, de links in
     `verification`, dan `better_auth."user"` met zijn cascades, dan de verwijderaars van de app (alleen voor data zonder foreign
-    key). Daarvoor krijgt `app_definer` de benodigde rechten op `better_auth`. Echt verwijderen, geen anonimiseren in
-    `better_auth` (was 0022 OV-3).
+    key). Daarvoor krijgt `app_definer` `delete` op `better_auth."user"` en `better_auth.verification` en `select ("value")` op
+    `verification`. Echt verwijderen, geen anonimiseren in `better_auth` (was 0022 OV-3).
 12. **Elke verwijzing kiest** (was 0022 punt 3): een invariant eist `on delete cascade` of `set null` (op een nullable kolom) voor
     elke foreign key naar `better_auth."user"`.
 13. **Audit log na verwijderen** (was 0022 punt 4): regels blijven met het oude ID tot hun termijn; niet herschrijven.
@@ -64,8 +68,10 @@ per app.
     `app` (behalve `public.schema_migrations`). Alleen `app_definer` leest de tabel; `app_jobs` krijgt via
     `app.retention_targets()` (klasse `job`) de tabellen die hij moet opruimen. `app.retention_cutoff(regclass)` geeft de grens
     voor policies en triggers; `app.purge_expired` (klasse `job`) verwijdert alleen verlopen rijen van tabellen met opruimer
-    `app`. `better_auth` staat erin met opruimer `auth` ([0050](0050-achtergrondtaken-en-mail-outbox.md)). Standaarden: audit
-    log 1 jaar, mail-outbox 30 dagen, `user_roles` met het account.
+    `app`. Elke tabel die hij opruimt, geeft `select` en `delete` aan `app_definer` met policies `to app_definer`, de
+    delete-policy met `using (<tijdkolom> < app.retention_cutoff('<tabel>'))`, zodat de functie niets jongers kan raken.
+    `better_auth` staat erin met opruimer `auth` ([0050](0050-achtergrondtaken-en-mail-outbox.md)); een integratietest bewijst
+    dat die rijen gelijk zijn aan `limits.ts`. Standaarden: audit log 1 jaar, mail-outbox 30 dagen, `user_roles` met het account.
 15. **Register en documentatie per app** (was 0022 punt 6–8). De template levert een sjabloon voor het verwerkingsregister; de
     termijnen komen uit `app.retention`. Logging blijft zonder PII. Grondslag, privacyverklaring, DPIA, verwerkers, regio,
     back-up-termijn, eigen termijnen, inactieve accounts en wie een verzoek beantwoordt, zijn per app. Alleen de functionele
@@ -77,6 +83,7 @@ per app.
 - **Alleen de request-log uitbreiden** of **op aanleiding houden** (was 0021): niet in de transactie, of elke app bouwt het opnieuw.
 - **Core-acties via `app.audit` met een uitzondering** (was 0021): dan kan elke route een core-actie schrijven.
 - **Alles per app** (was 0022): elke app vergeet een tabel; de catalogus vangt dat.
+- **De gebruiker verwijdert zelf** (was 0022 OV-2 (b)): niet gekozen; accounts ontstaan door uitnodiging.
 - **Soft delete** (was 0022): geen verwijdering in de zin van art. 17.
 - **Termijn als commentaar of in docs** (was 0022): niet af te dwingen.
 - **Verwijderen via de service als `auth_service`** (was 0022): deadlock op de laatste-admin-lock en niet atomair.
@@ -85,6 +92,7 @@ per app.
 ## Gevolgen
 
 - Het generator-template voegt een rij in `app.retention` toe; elke app-tabel krijgt er een (was 0022).
-- De allowlist van `app_definer` op `better_auth` groeit met de rechten voor export en verwijderen; framework §6 noemt dat:
-  beschermd, akkoord van de eigenaar in de PR die het bouwt (was 0022).
+- De allowlist van `app_definer` op `better_auth` (ADR 0014, `db/tests/invarianten.sql`) groeit met
+  `session("userId", "createdAt", "userAgent")` (export), `delete` op `"user"` en `verification`, en `verification("value")`
+  (verwijderen). ADR 0010 en framework §6 noemen dat: beschermd, akkoord van de eigenaar in de PR die het bouwt (was 0022).
 - Zonder de runner van 0050 bestaat de catalogus wel, maar ruimt niets op.
