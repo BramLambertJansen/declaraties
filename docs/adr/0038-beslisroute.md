@@ -40,16 +40,18 @@ pusht als de eigenaar (overgang, [0017](0017-diff-guard.md)); het anker is diens
    bestaande rijen, rollen/RLS-model, auth of identiteit, provider of nieuwe dependency), A3 (rechten verruimen, of een
    check, hook of gate afzwakken), A4 (geaccepteerd ADR wijzigen of vervangen), en van A1 alleen een wijziging van het
    contract tussen zones. Het ADR noemt welke; een strengere check is geen ADR; anders een regel in `docs/`. Agentvoorstel, de toets: "als de twee mensen die dit besloten morgen weg zijn, weet de rest dan waarom?"
-5. **Guard** (agentvoorstel). `check-document-status` laat in een PR zonder record toe: een nieuw document met elke
-   eigenaarstatus (`gebouwd` alleen met bouwbewijs); `voorstel`/`voorgesteld` naar een eigenaarstatus; `geaccepteerd` naar
+5. **Guard** (agentvoorstel). `check-document-status` laat in een PR zonder record toe: een nieuw document met een
+   eigenaarstatus (`geaccepteerd`, `goedgekeurd`, `vervallen`, `vervangen door NNNN`); `voorstel`/`voorgesteld` naar een
+   eigenaarstatus; `geaccepteerd` naar
    `vervangen door NNNN` (NNNN op main of in de PR) of `vervallen`; een spec van `goedgekeurd` of `gebouwd` naar
-   `vervallen`. Het weigert punt 2 (A4, terugzetten). Inhoud van een goedgekeurde spec wijzigen mag alleen in een
-   besluit-PR, die de eigenaar merget; met code blijft het geweigerd. Een besluit-PR bevat een of meer documenten in
+   `vervallen`. `gebouwd` komt alleen met bouwbewijs. Het weigert punt 2 (A4, terugzetten). Inhoud van een goedgekeurde
+   spec wijzigen mag alleen in een besluit-PR; die is geen bouw-PR, dus de eigenaar merget hem (punt 7); met code blijft
+   het geweigerd. Een besluit-PR bevat een of meer documenten in
    `docs/adr/` en `docs/specs/` met hun records, zonder code; de feature-lane blijft één mini-spec met code. De samenvatting
    noemt elk document dat een eigenaarstatus krijgt.
 6. **Rolhek** (agentvoorstel). Alleen architect en hoofdsessie mogen een eigenaarstatus schrijven, ook zonder record.
-   Andere rollen niet; de developer, die daar wel mag schrijven, houdt alleen `gebouwd` via `docs:status`. De lokale
-   A4-weigering blijft.
+   Zij mogen ook de inhoud van een goedgekeurde spec wijzigen. Andere rollen blijven beide geweigerd; de developer, die
+   daar wel mag schrijven, houdt alleen `gebouwd` via `docs:status`. De lokale A4-weigering blijft.
 7. **Agent-merge** (agentvoorstel; let op). Een PR waarin een document een eigenaarstatus krijgt, ook een feature-lane-PR
    met spec en code, merget altijd de eigenaar. De agent merget alleen een bouw-PR van een mini-spec (`sjabloon: mini`) die
    al goedgekeurd op main staat, met dezelfde inhoudscontrole als de feature-lane nu (migratie alleen een nieuwe tabel,
@@ -61,13 +63,15 @@ pusht als de eigenaar (overgang, [0017](0017-diff-guard.md)); het anker is diens
    de wijzigingen aan 0030; agent-merge zoals punt 7. Vervalt: de webeditorroute, "de agent zet die regel nooit", wat punt 9
    noemt, de herzieningsgrond over een status zonder statuscommit, het zelf-wijzigen van een ADR, en heel 0035.
    0025 punt 1 en 10 en 0027 punt 1: de agent schrijft de status in het voorstel, de merge beslist. 0027 punt 2: het register
-   blijft alleen voor broncodemandaat (`--path`) en `requiredChecks`, met rechten pas na de merge. 0031 besluit 3: spoor 3
-   (niet-normatieve correctie via twee PR's) vervalt; een taalfout verdwijnt bij vervanging.
+   blijft alleen voor broncodemandaat (`--path`) en `requiredChecks`, met rechten pas na de merge. 0031 besluit 3: spoor 1
+   en 2 blijven; spoor 3 (niet-normatieve correctie via twee PR's) vervalt; een taalfout verdwijnt bij vervanging.
 9. **P2-uitzondering** (agentvoorstel; de eigenaar aanvaardt haar met zijn merge). Verloren gaan: de statuscommit-eisen
    (a) alleen statusregels, (b) geen inhoud erna en (c) web-flow; een apart eigenaarspoor in git; in het rolhek voor
    architect en hoofdsessie de weigering van een eigenaarstatus zonder record (ook bij een nieuw bestand) en van
    `goedgekeurd`; de beperking tot één document met eigenaarstatus; de recordeis bij `geaccepteerd` naar `vervangen
-   door`/`vervallen` en bij een spec van `goedgekeurd`/`gebouwd` naar `vervallen`.
+   door`/`vervallen` en bij een spec van `goedgekeurd`/`gebouwd` naar `vervallen`; de weigering van een inhoudswijziging
+   aan een goedgekeurde spec zonder record, in de guard en in het rolhek (voor architect en hoofdsessie). Een `--path`-record
+   van zo'n spec vervalt daardoor (0027 punt 2); het mandaat vraagt een nieuw record.
 
    Anker: de merge door de eigenaar, met de statusregel in de diff. CODEOWNERS op `docs/adr/` en `docs/specs/` dwingt pas
    review af met een eigen identiteit voor de agent (GitHub App, 0017); tot dan is het een afspraak. Compensatie: punt 2
