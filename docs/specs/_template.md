@@ -1,5 +1,5 @@
 ---
-status: voorstel # voorstel | goedgekeurd | gebouwd | vervallen — alleen de eigenaar zet goedgekeurd; gebouwd: # #<PR>; gevalideerd: <sha> (pnpm docs:status)
+status: voorstel # voorstel | goedgekeurd | gebouwd | vervallen — de architect zet de status in het voorstel, de merge door de eigenaar is het besluit (ADR 0038); gebouwd: # #<PR>; gevalideerd: <sha> (pnpm docs:status)
 namespace: <resource>
 ---
 

@@ -109,6 +109,43 @@ function bestaandeDatum(deel) {
   return tijd.getUTCFullYear() === jaar && tijd.getUTCMonth() + 1 === maand && tijd.getUTCDate() === dag;
 }
 
+const VOORSTEL = new Set(['voorstel', 'voorgesteld']);
+
+/** De melding bij A4 (ADR 0038 punt 2), gedeeld door guard en rolhek. */
+export const A4_MELDING =
+  'de tekst of status van een geaccepteerd, vervallen of vervangen ADR wijzigt niet en gaat niet terug naar voorgesteld (A4, ADR 0038 punt 2); schrijf een nieuw ADR dat het vervangt (`vervangen door NNNN`)';
+
+/**
+ * Hoe een document zonder record mag veranderen (ADR 0038 punt 1, 2 en 5). Puur; `voor`/`na` zijn de volledige teksten.
+ * - `vrij`: geen eigenaarbesluit (voorstel, of niets wezenlijks gewijzigd);
+ * - `a4`: een ADR met een eigenaarstatus wijzigt van inhoud of gaat terug naar voorgesteld;
+ * - `gebouwd`: alleen met bouwbewijs;
+ * - `besluit`: een eigenaarstatus die de merge van de eigenaar beslist (`nieuw`: een nieuw document of vanuit een voorstel);
+ * - `geweigerd`: een andere overgang (bijv. vervallen terug naar goedgekeurd); alleen met een record.
+ * @param {string} file @param {string | null} voor @param {string} na
+ * @returns {{ uitslag: 'vrij' | 'a4' | 'gebouwd' | 'besluit' | 'geweigerd', nieuw: boolean }}
+ */
+export function beslisOvergang(file, voor, na) {
+  const oud = voor === null ? null : documentInfo(file, voor);
+  const nieuwInfo = documentInfo(file, na);
+  const uit = (/** @type {'vrij' | 'a4' | 'gebouwd' | 'besluit' | 'geweigerd'} */ uitslag, nieuw = false) => ({ uitslag, nieuw });
+  if (oud?.kind === 'adr' && oud.status !== 'voorgesteld' &&
+    (nieuwInfo === null || oud.digest !== nieuwInfo.digest || nieuwInfo.status === 'voorgesteld'))
+    return uit('a4');
+  if (nieuwInfo === null || (voor !== null && oud === null)) return uit('geweigerd');
+  if (VOORSTEL.has(nieuwInfo.status) || (oud?.status === nieuwInfo.status && oud.digest === nieuwInfo.digest)) return uit('vrij');
+  if (nieuwInfo.status === 'gebouwd') return uit('gebouwd');
+  if (oud === null || VOORSTEL.has(oud.status)) return uit('besluit', true);
+  return toegestaanZonderRecord(oud.status, nieuwInfo.status, nieuwInfo.kind) ? uit('besluit') : uit('geweigerd');
+}
+
+/** ADR geaccepteerd → vervangen/vervallen; spec goedgekeurd/gebouwd → vervallen; inhoud van een goedgekeurde spec. @param {string} van @param {string} naar @param {string} kind */
+function toegestaanZonderRecord(van, naar, kind) {
+  if (kind === 'adr') return van === 'geaccepteerd' && (naar === 'vervallen' || /^vervangen door \d{4}$/.test(naar));
+  if (naar === 'vervallen') return van === 'goedgekeurd' || van === 'gebouwd';
+  return van === 'goedgekeurd' && naar === 'goedgekeurd';
+}
+
 /** @param {string} text */
 export function builtReference(text) {
   const match = /^status: gebouwd # #(\d+); gevalideerd: ([0-9a-f]{40})\r?$/m.exec(text);
