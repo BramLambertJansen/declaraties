@@ -433,10 +433,12 @@ Live feiten (gates, routes, componenten, nummers) komen uit `scripts/kit/feiten.
 - **Besluit en status** (ADR 0038, 0027): de merge is de acceptatie. Architect of hoofdsessie schrijft de eigenaarstatus in het
   voorstel; de eigenaar merget of sluit de PR. Zonder record laat `check-document-status` toe: een nieuw document met een eigenaarstatus,
   `voorstel`/`voorgesteld` naar een eigenaarstatus, `geaccepteerd` naar `vervangen door NNNN` (NNNN op main of in de PR) of `vervallen`, een
-  spec van `goedgekeurd`/`gebouwd` naar `vervallen` of terug naar `voorstel`, en de inhoud van een goedgekeurde spec. Dat kan alleen in een
-  besluit-PR (alleen die documenten en hun record) of in de feature-lane (één nieuwe mini-spec met code). A4: een ADR met een eigenaarstatus
-  verandert niet van inhoud en gaat niet terug naar `voorgesteld`; schrijf een nieuw ADR dat het vervangt (`beslisOvergang`,
-  `rails/hooks/lib/document-state.mjs`; het rolhek weigert dat lokaal voor elke rol). Het register `.claude/decisions.json` blijft voor
+  spec van `goedgekeurd`/`gebouwd` naar `vervallen`, en de inhoud van een goedgekeurde spec. Dat kan alleen in een besluit-PR (alleen
+  die documenten en hun record) of in de feature-lane (één nieuwe mini-spec met code). Een spec terug naar `voorstel` (vanaf elke status)
+  is geen eigenaarstatus en mag altijd, ook in een PR met code. A4: een ADR met een eigenaarstatus op main verandert niet van inhoud,
+  gaat niet terug naar `voorgesteld` en wordt niet verwijderd; schrijf een nieuw ADR dat het vervangt (`beslisOvergang`,
+  `rails/hooks/lib/document-state.mjs`; het rolhek vergelijkt met main en weigert dat lokaal voor elke rol). Een gemandateerde spec
+  die van inhoud wijzigt, verliest haar mandaat. Het register `.claude/decisions.json` blijft voor
   broncodemandaat (`--path`) en `requiredChecks`; het bindt inhoudsdigest, repository, exacte branch, status en exacte bronbestanden.
   `gebouwd` vereist de juiste PR en verplichte Actions-checks op de gevalideerde bron-SHA; uitsluitend latere statusregels mogen daarvan
   afwijken. De CI-guard gebruikt

@@ -234,7 +234,9 @@ function decideFile({ rel, change, role }, ctx, decision) {
     decision.deny.push(`${rel} is een gecommitte migratie: wijzig hem nooit, maak een nieuwe (AGENTS.md)${hint}`);
     return;
   }
-  const overgang = change.after === null || documentKind(rel) === null ? null : beslisOvergang(rel, ctx.read(rel), change.after);
+  // A4 en de overgang vergelijken met main (de vertrouwde basis); alleen zonder authority is de werkmap de terugval.
+  const basis = ctx.authority == null ? ctx.read(rel) : ctx.authority.trusted(rel);
+  const overgang = change.after === null || documentKind(rel) === null ? null : beslisOvergang(rel, basis, change.after);
   if (overgang?.uitslag === 'a4') {
     decision.deny.push(`${rel}: ${A4_MELDING}`);
     return;

@@ -40,7 +40,7 @@ inhoud na de status en committer doen er niet toe (ADR 0038 punt 9). Zonder reco
   Een migratie mag alleen een nieuwe tabel maken (`create table (…)`, daarna index, RLS, grants aan `app_*`-rollen en policies, uitsluitend op die tabel; geen kopieën, functies of dollar-quotes) en de mini-spec heeft dan de kop
   "Datawijzigingen (met grants)". Een geneste `CLAUDE.md` of `AGENTS.md` valt eruit. Een onbekend pad buiten `gates` en buiten `src/`, `docs/` en `db/` (zoals `.vscode/` of `.mcp.json`) valt eruit. Diff-guard en
   CODEOWNERS blijven gelden voor elk gate-pad in de PR. Het bereik is ruimer dan de letter van ADR 0029 punt 6 (eigenaarbesluit).
-- **Besluit-PR (framework-lane):** een of meer ADR's en specs die een eigenaarstatus krijgen (ook `vervangen door NNNN` of `vervallen`, of nieuwe inhoud van een goedgekeurde spec), met hooguit hun eigen records in `.claude/decisions.json` (andere records of `requiredChecks` wijzigen telt niet), zonder code of andere bestanden. Bouwen volgt in een volgende PR.
+- **Besluit-PR (framework-lane):** een of meer ADR's en specs die een eigenaarstatus krijgen (ook `vervangen door NNNN` of `vervallen`, of nieuwe inhoud van een goedgekeurde spec), met hooguit hun eigen records in `.claude/decisions.json` (andere records of `requiredChecks` wijzigen telt niet), zonder code of andere bestanden: alleen documenten in `docs/adr/` en `docs/specs/` die zelf een besluit krijgen, ook geen index of ander document. Wijzigt de inhoud van een spec met een `--path`-mandaat, dan vervalt dat mandaat; code eronder vraagt een nieuw record. Bouwen volgt in een volgende PR.
 - Past de PR in geen van beide, dan geldt de strenge route: de status heeft een record op main nodig (ADR 0027, hierboven).
 
 ## Ontwikkelen en runnerchecks
@@ -139,8 +139,8 @@ OV-2, [ADR 0031](../adr/0031-guard-en-pr-verify-bruikbaarder.md) besluit 2). Dan
 
 ## Correctie aan een geaccepteerd ADR
 
-De inhoud van een geaccepteerd ADR (buiten de statusregel) verandert niet, en een ADR met een eigenaarstatus gaat niet terug naar
-`voorgesteld`: guard en rolhek weigeren dat voor elke rol (A4, ADR 0038 punt 2). Kies het spoor naar wat er verandert
+De inhoud van een geaccepteerd ADR (buiten de statusregel) verandert niet, en een ADR met een eigenaarstatus op main gaat niet terug naar
+`voorgesteld` en wordt niet verwijderd of hernoemd: guard en rolhek (dat vergelijkt met main) weigeren dat voor elke rol (A4, ADR 0038 punt 2). Kies het spoor naar wat er verandert
 ([ADR 0031](../adr/0031-guard-en-pr-verify-bruikbaarder.md) besluit 3, gewijzigd door ADR 0038 punt 8):
 
 1. **Normatief** (wat besloten is): een nieuw ADR dat het oude wijzigt of vervangt. De tekst van het oude blijft; `vervangen door NNNN`

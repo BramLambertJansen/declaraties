@@ -79,6 +79,21 @@ function verifyDocument(document, context) {
   return { file: document.file, nieuw, record };
 }
 
+/**
+ * A4 (ADR 0038 punt 2): een ADR met een eigenaarstatus op main verdwijnt niet, ook niet via een rename.
+ * @param {{ status: string, pad: string, van?: string }[]} changes @param {Context} context
+ */
+function verifyGeenAdrWeg(changes, context) {
+  const weg = changes.flatMap(({ status, pad, van }) =>
+    status === 'D' ? [pad] : status === 'R' && van !== undefined ? [van] : [],
+  );
+  for (const file of weg.filter((pad) => documentKind(pad) === 'adr')) {
+    const status = documentInfo(file, context.authority.trusted(file) ?? '')?.status;
+    if (status !== undefined && status !== 'voorgesteld')
+      throw new Error(`${file}: verwijderd met status ${status}; ${A4_MELDING}`);
+  }
+}
+
 /** `vervangen door NNNN` wijst naar een ADR op main of in de PR (ADR 0038 punt 5). @param {string} file @param {string} status @param {Context} context */
 function verifyVervanger(file, status, context) {
   const nummer = /^vervangen door (\d{4})$/.exec(status)?.[1];
@@ -146,16 +161,14 @@ function verifyRoadmap(changes, mandated, context) {
 
 /**
  * Een besluitdocument zelf valt buiten de taakscope: verifyDocument en verifyInPrStatus beoordelen het (ADR 0038 punt 5).
- * Uitzondering: een spec met een actief mandaat op deze branch wijzigt hier niet van inhoud; dat vraagt een nieuw record
- * (ADR 0038 punt 9), dus een andere branch.
+ * Wijzigt de inhoud van een gemandateerde spec, dan vervalt dat mandaat (punt 9): code eronder faalt hier tot er een nieuw record is.
  * @param {{ status: string, pad: string, van?: string }[]} changes @param {Context} context @param {readonly string[]} besluiten
  */
 function verifyScope(changes, context, besluiten) {
   const mandated = mandatedSpecs(context);
   if (mandated.length === 0) return; // Gewoon railwerk blijft onder de bestaande eigenaarreview van de diff-guard vallen.
   const files = changes.flatMap(({ pad, van }) => [pad, ...(van === undefined ? [] : [van])]);
-  const vrij = besluiten.filter((file) => !mandated.includes(file));
-  for (const file of files.filter((candidate) => candidate !== ROADMAP && !vrij.includes(candidate)))
+  for (const file of files.filter((candidate) => candidate !== ROADMAP && !besluiten.includes(candidate)))
     verifyScopedFile(file, context);
   if (files.includes(ROADMAP)) verifyRoadmap(changes, mandated, context);
 }
@@ -283,6 +296,7 @@ async function main() {
   const config = loadConfig(gitText(root, ['show', `${base}:.claude/gates.json`]) ?? '');
   /** @type {Context} */
   const context = { root, sha, split, adrBestanden: adrFiles(root, sha), authority: snapshot, config };
+  verifyGeenAdrWeg(changes, context);
   const besluiten = changes.flatMap(({ pad }) => {
     const besluit = verifyDocument(
       { file: pad, before: authority.trusted(pad), after: snapshot.working(pad) },
