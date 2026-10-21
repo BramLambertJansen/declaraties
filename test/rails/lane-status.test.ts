@@ -482,7 +482,7 @@ describe('annotatie voor de job document-status', () => {
 
 const ADR_OUD = 'docs/adr/0050-oud.md';
 const ADR_NIEUW = 'docs/adr/0051-nieuw.md';
-const BOUWREGEL = `status: gebouwd # #5; gevalideerd: ${'a'.repeat(40)}`;
+const BOUWSTATUS = `gebouwd # #5; gevalideerd: ${'a'.repeat(40)}`;
 
 const adrTekst = (nr: string, status: string, besluit = 'Iets.'): string =>
   `# ${nr} — Demo\n\nStatus: ${status}\n\n## Besluit\n\n${besluit}\n`;
@@ -535,7 +535,7 @@ describe('ADR 0038 punt 1: een nieuw document met een eigenaarstatus, zonder rec
 
   test('nieuwe spec direct op gebouwd, zonder bouwbewijs: faalt', () => {
     const fixture = nieuw();
-    write(fixture.root, MINI, spec('demo', BOUWREGEL, false));
+    write(fixture.root, MINI, spec('demo', BOUWSTATUS, false));
     faalt(fixture, agent(fixture));
   });
 
@@ -628,8 +628,8 @@ describe('ADR 0038 punt 5: geaccepteerd naar vervangen door NNNN of vervallen, z
 
 describe('ADR 0038 punt 5: een spec van goedgekeurd of gebouwd naar vervallen, zonder record', () => {
   test.each([
-    ['goedgekeurd', 'status: goedgekeurd'],
-    ['gebouwd', BOUWREGEL],
+    ['goedgekeurd', 'goedgekeurd'],
+    ['gebouwd', BOUWSTATUS],
   ])('%s naar vervallen: slaagt', (_naam, begin) => {
     const fixture = metBasis({ [MINI]: spec('demo', begin, false) });
     zetStatusRegel(fixture.root, MINI, 'status: vervallen');
