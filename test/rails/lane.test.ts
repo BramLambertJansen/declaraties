@@ -105,9 +105,18 @@ describe('feature-lane: negatief (moet de strenge route geven)', () => {
     expect(resultaat.reden).not.toBe('');
   });
 
-  test('5 twee specs naar een eigenaarstatus', () => {
+  // GEWIJZIGD (ADR 0038 punt 5): twee specs zonder code zijn nu een besluit-PR (framework-lane); met code blijft het geen lane.
+  test('5 twee specs naar een eigenaarstatus, zonder code: besluit-PR (framework)', () => {
     const resultaat = lane([A(SPEC), A('docs/specs/andere.md')], { besluiten: [SPEC, 'docs/specs/andere.md'] });
+    expect(resultaat.lane).toBe('framework');
+  });
+
+  test('5b twee mini-specs naar een eigenaarstatus mét code: geen lane (feature-lane is één mini-spec)', () => {
+    const resultaat = lane([A(SPEC), A('docs/specs/andere.md'), A('src/web/features/demo/page.tsx')], {
+      besluiten: [SPEC, 'docs/specs/andere.md'],
+    });
     expect(resultaat.lane).toBeNull();
+    expect(resultaat.reden).not.toBe('');
   });
 
   test('8 een volledige spec (geen sjabloon: mini) met code', () => {
@@ -137,10 +146,53 @@ describe('framework-lane', () => {
     expect(lane([A(ADR), M('scripts/kit/check-docs.mjs')], { besluiten: [ADR], mini: false }).lane).toBeNull();
   });
 
-  test('twee besluitdocumenten in één framework-PR geven geen lane', () => {
+  // GEWIJZIGD (ADR 0038 punt 2 en 5): meerdere ADR's en specs per besluit-PR mogen, zolang er geen code bij zit.
+  test('twee besluitdocumenten in één besluit-PR geven de framework-lane', () => {
     expect(
       lane([A(ADR), A('docs/adr/0098-demo.md')], { besluiten: [ADR, 'docs/adr/0098-demo.md'], mini: false }).lane,
-    ).toBeNull();
+    ).toBe('framework');
+  });
+
+  test('een ADR, een oud ADR (M) en een spec als besluiten, zonder code: framework', () => {
+    expect(
+      lane([A(ADR), M('docs/adr/0050-oud.md'), A(SPEC)], {
+        besluiten: [ADR, 'docs/adr/0050-oud.md', SPEC],
+        mini: false,
+      }).lane,
+    ).toBe('framework');
+  });
+
+  test('meerdere besluitdocumenten met hun record, zonder code: framework', () => {
+    expect(lane([A(ADR), A(SPEC), M('.claude/decisions.json')], { besluiten: [ADR, SPEC], mini: false }).lane).toBe(
+      'framework',
+    );
+  });
+
+  test.each([
+    ['een bronbestand', 'src/api/routes/demo.ts'],
+    ['een bestaand script', 'scripts/kit/check-docs.mjs'],
+  ])('meerdere besluitdocumenten mét %s: geen lane (besluit-PR bevat geen code)', (_naam, pad) => {
+    const resultaat = lane([A(ADR), A('docs/adr/0098-demo.md'), A(pad)], {
+      besluiten: [ADR, 'docs/adr/0098-demo.md'],
+      mini: false,
+    });
+    expect(resultaat.lane).toBeNull();
+    expect(resultaat.reden).not.toBe('');
+  });
+
+  test.each([['docs/roadmap.md'], ['CHANGELOG.md']])(
+    "twee ADR's en %s: geen lane (alleen docs/adr, docs/specs en het record)",
+    (pad) => {
+      const resultaat = lane([A(ADR), A('docs/adr/0098-demo.md'), M(pad)], {
+        besluiten: [ADR, 'docs/adr/0098-demo.md'],
+        mini: false,
+      });
+      expect(resultaat.lane).toBeNull();
+    },
+  );
+
+  test('een volledige spec met code buiten de feature-lane (10): geen lane', () => {
+    expect(lane([A(SPEC), A('src/api/routes/demo.ts')], { mini: false }).lane).toBeNull();
   });
 
   test('zonder besluit in de PR is er geen lane', () => {
