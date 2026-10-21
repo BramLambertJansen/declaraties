@@ -3,7 +3,7 @@
 // met echte payloads kan bewijzen. De stdin/stdout-kant staat in rails/hooks/rolhek.mjs.
 import path from 'node:path';
 import { gitSubcommand, parseCommands, programName, splitCommand, writeTargets } from './shell.mjs';
-import { documentInfo } from './document-state.mjs';
+import { A4_MELDING, beslisOvergang, documentInfo, documentKind } from './document-state.mjs';
 import { canRecordStatus, canWriteProtected } from './task-authority.mjs';
 import { automaticRunner } from './runner-authority.mjs';
 
@@ -234,19 +234,38 @@ function decideFile({ rel, change, role }, ctx, decision) {
     decision.deny.push(`${rel} is een gecommitte migratie: wijzig hem nooit, maak een nieuwe (AGENTS.md)${hint}`);
     return;
   }
-  if (recordedStatus({ rel, change, role }, ctx, decision)) return;
+  // A4 en de overgang vergelijken met main (de vertrouwde basis); alleen zonder authority is de werkmap de terugval.
+  const basis = ctx.authority == null ? ctx.read(rel) : ctx.authority.trusted(rel);
+  const overgang = change.after === null || documentKind(rel) === null ? null : beslisOvergang(rel, basis, change.after);
+  if (overgang?.uitslag === 'a4') {
+    decision.deny.push(`${rel}: ${A4_MELDING}`);
+    return;
+  }
+  // ADR 0038 punt 6: architect en hoofdsessie schrijven de eigenaarstatus in het voorstel; de merge van de eigenaar beslist.
+  const eigenaarstatus = ['hoofdsessie', 'architect'].includes(role) && ['besluit', 'vrij'].includes(overgang?.uitslag ?? '');
+  if (!eigenaarstatus && statusZonderBesluit({ rel, change, role }, ctx, decision)) return;
+  if (matches(config.testpaden) && ctx.read(rel) !== null) existingTest({ rel, change, role }, ctx, decision);
+  decideByRole({ rel, change, role }, ctx, decision);
+}
+
+/**
+ * Voor een rol die geen eigenaarstatus schrijft: alleen met een record op main, en `goedgekeurd` nooit zelf (ADR 0038 punt 6).
+ * @param {{ rel: string, change: Change, role: string }} target @param {Ctx} ctx @param {Decision} decision
+ * @returns {boolean} true als de beslissing vaststaat
+ */
+function statusZonderBesluit({ rel, change, role }, ctx, decision) {
+  if (recordedStatus({ rel, change, role }, ctx, decision)) return true;
   const nextDocument = documentInfo(rel, change.after ?? '');
   if (ctx.authority != null && nextDocument !== null && !['voorstel', 'voorgesteld'].includes(nextDocument.status) &&
     !canRecordStatus({ file: rel, text: change.after ?? '' }, ctx.authority)) {
-    decision.deny.push(`${rel}: inhoud of besluit heeft geen geldig bewijs uit main; heropen het voorstel voor een nieuwe beoordeling`);
-    return;
+    decision.deny.push(`${rel}: een eigenaarstatus of de inhoud van een goedgekeurde spec schrijven alleen architect en hoofdsessie (ADR 0038 punt 6); gebouwd via pnpm docs:status`);
+    return true;
   }
-  if (approvesSpec(rel, change, ctx)) {
-    decision.deny.push(`${rel}: status goedgekeurd zet alleen de eigenaar (AGENTS.md)`);
-    return;
+  if (!['hoofdsessie', 'architect'].includes(role) && approvesSpec(rel, change, ctx)) {
+    decision.deny.push(`${rel}: status goedgekeurd schrijven alleen architect en hoofdsessie (ADR 0038 punt 6)`);
+    return true;
   }
-  if (matches(config.testpaden) && ctx.read(rel) !== null) existingTest({ rel, change, role }, ctx, decision);
-  decideByRole({ rel, change, role }, ctx, decision);
+  return false;
 }
 
 /**

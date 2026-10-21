@@ -1,19 +1,19 @@
 # Agentdoorloop met bewijs
 
-De eigenaar beslist inhoudelijk en merget. De agent bereidt administratie voor, bouwt, verzamelt bewijs en zet
-statussen zodra het bewijs bestaat ([ADR 0027](../adr/0027-taakmandaat-voor-frameworkwerk.md)).
+De eigenaar beslist inhoudelijk met zijn merge ([ADR 0038](../adr/0038-beslisroute.md)). De agent schrijft de bedoelde status in
+het voorstel, bouwt, verzamelt bewijs en zet `gebouwd` zodra het bouwbewijs bestaat ([ADR 0027](../adr/0027-taakmandaat-voor-frameworkwerk.md)).
 
 ## Besluit en taakscope voorbereiden
 
-Begin met `node scripts/kit/feiten.mjs`. Architect schrijft spec of ADR als voorstel. De hoofdsessie bereidt het
-besluitrecord voor. Voorbeeld met een document dat eerst moet bestaan:
+Begin met `node scripts/kit/feiten.mjs`. Architect schrijft spec of ADR direct met de bedoelde status; de eigenaar merget
+(besluit) of sluit de PR (afwijzen). Alleen voor een broncodemandaat (`--path`) bereidt de hoofdsessie een besluitrecord voor:
 
 ```sh
 pnpm docs:decision docs/specs/voorbeeld.md goedgekeurd --branch feat/voorbeeld --path src/api/app.ts
 ```
 
-Herhaal `--path` voor exacte bronbestanden; laat het weg voor statusadministratie zonder broncodemandaat. Voor ADR's
-geldt dezelfde procedure met hun eigen statuswoorden. Het record bindt de inhoudsdigest aan repository en bouwbranch.
+Herhaal `--path` voor exacte bronbestanden. Het record bindt de inhoudsdigest aan repository en bouwbranch; wijzigt de
+spec daarna van inhoud, dan vervalt het mandaat en is een nieuw record nodig (ADR 0038 punt 9).
 De agent legt document en record in één reviewbare PR voor. Het register in de werkbranch geeft nog geen rechten.
 
 Na eigenaarreview en merge haalt de hoofdsessie `origin/main` op. De bouwbranch neemt het document ongewijzigd over
@@ -24,23 +24,23 @@ pnpm docs:status docs/specs/voorbeeld.md goedgekeurd
 ```
 
 Werkmap en HEAD moeten overeenkomen. Commit de status voordat je een volgende registreert. De eigenaar hoeft geen
-YAML-regel te typen. Inhoud wijzigen vraagt een nieuw voorstel en passend eigenaarbesluit. Intrekking: eigenaar
+YAML-regel te typen. Intrekking van een mandaat: eigenaar
 verwijdert of vervangt het record op main; lokaal verversen, CI gebruikt de actuele basis. Een verouderde lokale
 basis kan nog oud akkoord zien.
 
-### Feature-lane en mini-spec (ADR 0029)
+### Feature-lane en mini-spec (ADR 0029, 0038)
 
-Een besluit kost één PR: de merge is het besluit. De agent zet de statusregel nooit; de eigenaar zet hem in dezelfde PR in de
-GitHub-webeditor en merget. `check-document-status` herkent dan twee gevallen en eist daarbij dat de commit die de statusregel
-zette alleen statusregels wijzigt, dat er geen inhoud na de status komt en dat de committer GitHub web-flow is (`scripts/kit/lane.mjs`).
+Een besluit kost één PR: de merge is het besluit. Architect of hoofdsessie zet de statusregel in het voorstel; commitvolgorde,
+inhoud na de status en committer doen er niet toe (ADR 0038 punt 9). Zonder record herkent `check-document-status` twee gevallen
+(`scripts/kit/lane.mjs`); de samenvatting noemt elk document dat een eigenaarstatus krijgt. Een PR met een eigenaarstatus merget altijd de eigenaar.
 
 - **Feature-lane:** app-werk met een mini-spec (`docs/specs/_mini.md`, veld `sjabloon: mini`). Alles mag meewijzigen (ook docs,
   `CHANGELOG.md`, de roadmap en gegenereerde bestanden zoals het schema-snapshot) behalve `src/core`, een pad uit `voorReview`
-  (`.claude/gates.json`), een ADR, een gewijzigde of verwijderde bestaande test of migratie, en een tweede spec met een eigenaarstatus.
+  (`.claude/gates.json`), een ADR, een gewijzigde of verwijderde bestaande test of migratie, en een tweede document met een eigenaarstatus.
   Een migratie mag alleen een nieuwe tabel maken (`create table (…)`, daarna index, RLS, grants aan `app_*`-rollen en policies, uitsluitend op die tabel; geen kopieën, functies of dollar-quotes) en de mini-spec heeft dan de kop
   "Datawijzigingen (met grants)". Een geneste `CLAUDE.md` of `AGENTS.md` valt eruit. Een onbekend pad buiten `gates` en buiten `src/`, `docs/` en `db/` (zoals `.vscode/` of `.mcp.json`) valt eruit. Diff-guard en
   CODEOWNERS blijven gelden voor elk gate-pad in de PR. Het bereik is ruimer dan de letter van ADR 0029 punt 6 (eigenaarbesluit).
-- **Framework-lane:** een ADR of volledige spec met hooguit zijn eigen record in `.claude/decisions.json` (andere records of `requiredChecks` wijzigen telt niet). Bouwen volgt in een volgende PR.
+- **Besluit-PR (framework-lane):** een of meer ADR's en specs die een eigenaarstatus krijgen (ook `vervangen door NNNN` of `vervallen`, of nieuwe inhoud van een goedgekeurde spec), met hooguit hun eigen records in `.claude/decisions.json` (andere records of `requiredChecks` wijzigen telt niet), zonder code of andere bestanden: alleen documenten in `docs/adr/` en `docs/specs/` die zelf een besluit krijgen, ook geen index of ander document. Wijzigt de inhoud van een spec met een `--path`-mandaat, dan vervalt dat mandaat; code eronder vraagt een nieuw record. Bouwen volgt in een volgende PR.
 - Past de PR in geen van beide, dan geldt de strenge route: de status heeft een record op main nodig (ADR 0027, hierboven).
 
 ## Ontwikkelen en runnerchecks
@@ -103,8 +103,7 @@ De guard mag de groene broncommit gebruiken als de latere diff uitsluitend statu
 of configuratie wijzigen vraagt nieuw bouwbewijs. Gebouwd vereist geen merge. ADR's hebben geen gebouwd-status:
 implementatiebewijs hoort bij hun gekoppelde spec.
 
-Voor vervallen of vervangen door NNNN bereidt de agent ook een eigenaarbesluit voor en registreert daarna de bewezen
-status. Een vervanging zonder inhoudelijk akkoord activeert zichzelf niet.
+`vervallen` of `vervangen door NNNN` schrijft de architect of hoofdsessie in een besluit-PR; de merge door de eigenaar beslist.
 
 ## Invoering en runtime
 
@@ -140,16 +139,16 @@ OV-2, [ADR 0031](../adr/0031-guard-en-pr-verify-bruikbaarder.md) besluit 2). Dan
 
 ## Correctie aan een geaccepteerd ADR
 
-De inhoud van een geaccepteerd ADR (buiten de statusregel) verandert niet zonder record op main en eigenaarmerge (ADR 0027).
-Kies het spoor naar wat er verandert
-([ADR 0031](../adr/0031-guard-en-pr-verify-bruikbaarder.md) besluit 3):
+De inhoud van een geaccepteerd ADR (buiten de statusregel) verandert niet, en een ADR met een eigenaarstatus op main gaat niet terug naar
+`voorgesteld` en wordt niet verwijderd of hernoemd: guard en rolhek (dat vergelijkt met main) weigeren dat voor elke rol (A4, ADR 0038 punt 2). Kies het spoor naar wat er verandert
+([ADR 0031](../adr/0031-guard-en-pr-verify-bruikbaarder.md) besluit 3, gewijzigd door ADR 0038 punt 8):
 
-1. **Normatief** (wat besloten is): een nieuw ADR dat het oude wijzigt of vervangt. De tekst van het oude blijft.
+1. **Normatief** (wat besloten is): een nieuw ADR dat het oude wijzigt of vervangt. De tekst van het oude blijft; `vervangen door NNNN`
+   op het oude mag in dezelfde PR, zonder record.
 2. **Verwijzing naar een later ADR**: een ADR-link achter de statuswaarde, met alleen het nummer als linktekst en het
    bestand ernaast als doel (zoals `0032` naar het bestand van ADR 0032). Geen record nodig; de eigenaar ziet het in de gate-PR.
    Achter de statuswaarde mag verder alleen `(JJJJ-MM-DD)` en `#<nr>`, gescheiden door `, ` of ` — ` (besluit 4,
    `statusregelOvertreding` in `rails/hooks/lib/document-state.mjs`); anders is `document-status` rood. Een ongewijzigde regel
    op main blijft geldig.
-3. **Niet-normatieve tekstcorrectie** (taalfout, kapotte link): PR 1 zet het ADR terug op `voorgesteld` met het record
-   (`pnpm docs:decision <adr> geaccepteerd --branch <tweede branch>`); PR 2 registreert `geaccepteerd` met `pnpm docs:status`.
-   De PR-beschrijving noemt dat het ADR tussen beide merges `voorgesteld` is; bundel zulke correcties.
+
+Een niet-normatieve tekstcorrectie (taalfout, kapotte link) heeft geen eigen spoor meer: ze verdwijnt bij de volgende vervanging.

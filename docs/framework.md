@@ -1,9 +1,10 @@
 # Framework
 
 Normatief. Dit document is de wet voor elke app die uit deze template start.
-Wijzigen via een PR met review door de eigenaar. Een ADR is nodig bij een van de vier drempels in ADR 0029 punt 4 (A1 twee of meer zones,
-A2 moeilijk terug te draaien, A3 rechten verruimen of een check afzwakken, A4 een geaccepteerde ADR wijzigen); anders volstaat een regel in dit
-document of `docs/` met PR-nummer.
+Wijzigen via een PR met review door de eigenaar. Een ADR is nodig bij de drempels van ADR 0038 punt 4: A2 moeilijk terug te draaien
+(migratie op bestaande rijen, rollen/RLS-model, auth of identiteit, provider of nieuwe dependency), A3 rechten verruimen of een check, hook
+of gate afzwakken, A4 een geaccepteerd ADR wijzigen of vervangen, en van A1 alleen een wijziging van het contract tussen zones; een strengere
+check is geen ADR. Anders volstaat een regel in dit document of `docs/` met PR-nummer.
 
 ## 1. Principes
 
@@ -286,8 +287,8 @@ Elke rol begint met de feiten: `node scripts/kit/feiten.mjs` (gates, routes, per
 volgende vrije migratie- en ADR-nummer), niet met wat in proza staat.
 
 1. **Spec** (architect) in `docs/specs/` volgens `_template.md` — alleen bij migratie, nieuwe route of nieuwe permissie. De architect schrijft
-   alleen specs en ADR's als voorstel. De eigenaar beslist inhoudelijk; de agent mag de status met bewijs administreren via
-   `pnpm docs:status` (ADR 0027). Een goedgekeurde spec heeft een ingevulde sectie "Hergebruik en UX" (`check-docs`).
+   de spec of het ADR direct met de bedoelde status (`goedgekeurd`, `geaccepteerd`, `vervallen`, `vervangen door NNNN`); de merge door
+   de eigenaar is het besluit, afwijzen is de PR sluiten (ADR 0038). `gebouwd` blijft bij `pnpm docs:status` met bouwbewijs. Een goedgekeurde spec heeft een ingevulde sectie "Hergebruik en UX" (`check-docs`).
 2. **Contract**: zod-schema's en routes die `501` teruggeven wanneer de wijziging een API-contract toevoegt.
 3. **Tester-agent** schrijft acceptatietests tegen het contract; ze compileren en falen op hun asserties. Schrijft alleen in testpaden;
    per permissie en per policy ook de negatieve test. Bij een nieuwe resource neemt hij de declaratie die `pnpm new:resource` afdrukt
@@ -307,13 +308,13 @@ volgende vrije migratie- en ADR-nummer), niet met wat in proza staat.
    (`pnpm pr:verify <nr> --watch`, bij rood `gh run view <run-id> --log-failed`, fixen en opnieuw; stoppen bij een afgezwakte regel, dezelfde
    fout drie keer, een oorzaak buiten de code of een gate-pad), conflicten via `git merge origin/main`, na de merge opruimen (lokale en remote
    branch, worktree, `main` bijwerken met `--ff-only`), eindmelding. Inhoudelijke goedkeuring en merge blijven van de eigenaar; geen zelfreview, check-status, push naar `main` of force-push.
-   De hoofdsessie registreert bewezen statussen, zet het gate-label binnen de scope uit main en verzamelt werkelijk runner/CI-bewijs
+   Een PR waarin een document een eigenaarstatus krijgt, merget altijd de eigenaar (ADR 0038 punt 7). De hoofdsessie zet het gate-label binnen de scope uit main en verzamelt werkelijk runner/CI-bewijs
    (ADR 0027, [procedure](operations/agent-doorloop.md)). Rode of ontbrekende checks blokkeren oplevering.
 7. **Eigenaar** reviewt en merget.
 
 **Docs horen bij de wijziging**: de developer werkt bij elke wijziging die gedrag, API, configuratie of conventies raakt de relevante doc
 mee, in dezelfde commit en PR (kort, met `bestand:regel`-verwijzingen, zonder code te kopiëren). Spec naar `gebouwd`, roadmap-vinkje en ADR-status
-horen daar ook bij: ADR/spec-statussen via bewijsgebonden administratie (ADR 0027), roadmap-vinkjes met eigenaarakkoord. Binnen een taakmandaat mag `docs/roadmap.md` alleen het vinkje van het item van de taak meewijzigen; de precieze regel staat in `docs/dod.md`. Een item waarvan het bewijs beschikbaar is, wordt in
+horen daar ook bij: een eigenaarstatus staat in het voorstel en de merge beslist (ADR 0038), `gebouwd` met bouwbewijs (ADR 0027), roadmap-vinkjes met eigenaarakkoord. Binnen een taakmandaat mag `docs/roadmap.md` alleen het vinkje van het item van de taak meewijzigen; de precieze regel staat in `docs/dod.md`. Een item waarvan het bewijs beschikbaar is, wordt in
 diezelfde PR afgevinkt, en nooit zonder bewijs (`docs/dod.md`, Altijd). `check:docs-drift` waarschuwt in CI (geen blokkade) als `src/`
 wijzigt zonder `docs/` of `CHANGELOG.md`. `check:roadmap` (in `gate:fast`) blokkeert wel: een nieuw of gewijzigd `[x]` zonder testpad, checknaam of PR-nummer, en een spec die naar `gebouwd` gaat zonder bewijs (`scripts/kit/check-roadmap.mjs`). Er is geen docs-stap na de merge.
 
@@ -429,11 +430,18 @@ Live feiten (gates, routes, componenten, nummers) komen uit `scripts/kit/feiten.
   CODEOWNERS = `gates` + `jsonGates`, `voorReview` valt daarbinnen, `altijdVragen` binnen `voorReview`, de Edit-regels in `ask` = `altijdVragen`
   en `onderhoud` heeft de vorm `{ "repository": "<owner>/<repo>" }`; het gate-register is gelijk aan `gate:fast`/`gate:slow`;
   spec- en ADR-statussen uit de vaste woordenlijst; een goedgekeurde spec heeft "Hergebruik en UX"; elk AC-id van een gebouwde spec heeft een testbestand met `<namespace>/AC-n`, of met het AC-id samen met de specnaam of namespace; elk component heeft een rij in de catalogus.
-- **Besluit en status** (ADR 0027): agent bereidt spec/ADR en besluitrecord voor met `pnpm docs:decision`; alleen het register
-  `.claude/decisions.json` op main geeft bevoegdheid. De eigenaar reviewt en merget het inhoudelijke besluit. Daarna registreert
-  `pnpm docs:status` de bewezen status zonder de inhoud te wijzigen. Het register bindt inhoudsdigest, repository, exacte branch,
-  status en exacte bronbestanden. `gebouwd` vereist de juiste PR en verplichte Actions-checks op de gevalideerde bron-SHA;
-  uitsluitend latere statusregels mogen daarvan afwijken. Ook intrekking en vervanging vragen bewijs. De CI-guard gebruikt
+- **Besluit en status** (ADR 0038, 0027): de merge is de acceptatie. Architect of hoofdsessie schrijft de eigenaarstatus in het
+  voorstel; de eigenaar merget of sluit de PR. Zonder record laat `check-document-status` toe: een nieuw document met een eigenaarstatus,
+  `voorstel`/`voorgesteld` naar een eigenaarstatus, `geaccepteerd` naar `vervangen door NNNN` (NNNN op main of in de PR) of `vervallen`, een
+  spec van `goedgekeurd`/`gebouwd` naar `vervallen`, en de inhoud van een goedgekeurde spec. Dat kan alleen in een besluit-PR (alleen
+  die documenten en hun record) of in de feature-lane (één nieuwe mini-spec met code). Een spec terug naar `voorstel` (vanaf elke status)
+  is geen eigenaarstatus en mag altijd, ook in een PR met code. A4: een ADR met een eigenaarstatus op main verandert niet van inhoud,
+  gaat niet terug naar `voorgesteld` en wordt niet verwijderd; schrijf een nieuw ADR dat het vervangt (`beslisOvergang`,
+  `rails/hooks/lib/document-state.mjs`; het rolhek vergelijkt met main en weigert dat lokaal voor elke rol). Een gemandateerde spec
+  die van inhoud wijzigt, verliest haar mandaat. Het register `.claude/decisions.json` blijft voor
+  broncodemandaat (`--path`) en `requiredChecks`; het bindt inhoudsdigest, repository, exacte branch, status en exacte bronbestanden.
+  `gebouwd` vereist de juiste PR en verplichte Actions-checks op de gevalideerde bron-SHA; uitsluitend latere statusregels mogen daarvan
+  afwijken. De CI-guard gebruikt
   `scripts/kit/check-document-status.mjs` uit main, als eigen job `document-status` naast `diff-guard` (ADR 0031 besluit 1); een werkversie of commit-auteur geeft zichzelf geen goedkeuring.
   Een nieuwe of gewijzigde ADR-statusregel draagt achter de statuswaarde alleen `(JJJJ-MM-DD)`, `#<nr>` en een link naar een bestaand
   ADR met alleen het nummer als linktekst, gescheiden door `, ` of ` — ` (`statusregelOvertreding`, ADR 0031 besluit 4); een regel

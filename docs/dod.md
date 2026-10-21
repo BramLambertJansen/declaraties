@@ -11,7 +11,7 @@ De reviewer bepaalt eerst welke fase uit `docs/roadmap.md` bij het werk hoort: d
 - [ ] Elk acceptatiecriterium voor gewijzigd gedrag heeft een inhoudelijke test (geen lege of triviale assertie). Bij wijzigingen zonder gedragsverandering, zoals alleen documentatie, noteer je voor dit criterium “n.v.t.” met reden; toepasselijke documentatiechecks blijven verplicht.
 - [ ] Geen bestaande migratie gewijzigd. Een bestaande test is alleen gewijzigd als de spec of opdracht het geteste gedrag verandert, en staat met reden in de PR; geen test verwijderd of geskipt zonder akkoord van de eigenaar.
 - [ ] Runnerchecks volgen ADR 0009/0027: vaste opdracht, geïsoleerde teststack, ongewijzigde hostcode. Bij gewijzigde hostcode gebruikt de agent de wegwerp-CI. De hoofdsessie verzamelt werkelijke uitslagen op de juiste SHA; geen routineverzoek aan de eigenaar om tests zelf te draaien.
-- [ ] Bij migratie, nieuwe route of nieuwe permissie bestaat een goedgekeurde spec in `docs/specs/`; zonder die spec is de PR niet klaar. Statusadministratie via `pnpm docs:status` vraagt bewijs uit main. Gebouwd kan bij de geopende PR, na afgeronde implementatie en groene verplichte Actions-checks; geen statusveld als inhoudelijke zelfgoedkeuring (ADR 0027).
+- [ ] Bij migratie, nieuwe route of nieuwe permissie bestaat een goedgekeurde spec in `docs/specs/`; zonder die spec is de PR niet klaar. De status `goedgekeurd` staat in het voorstel en de merge door de eigenaar is het besluit (ADR 0038). Gebouwd via `pnpm docs:status` kan bij de geopende PR, na afgeronde implementatie en groene verplichte Actions-checks (ADR 0027).
 
 ### Beveiliging en data (geldt in elke fase)
 

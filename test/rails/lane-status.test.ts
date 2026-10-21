@@ -17,9 +17,10 @@ import {
   type Fixture,
 } from '../hooks/follow-up-kit';
 
-// ADR 0029 punt 3 en 7: een statusovergang in de PR zelf is geldig in de feature-lane en in de framework-lane, mits de
-// commit die de statusregel zette alleen statusregels wijzigt (a), er geen inhoud na de status komt (b) en de committer
-// GitHub web-flow is (c). Echte tijdelijke repositories; de checker draait zoals guard.yml hem draait, met main als basis.
+// ADR 0038 (de merge is de acceptatie; vervangt ADR 0029 punt 3 en 7 voor de statuscommit-eisen): een statusovergang in de PR
+// zelf is geldig in de feature-lane en in de besluit-PR (framework-lane); de eisen (a) alleen statusregels, (b) geen inhoud
+// erna en (c) web-flow vervallen (P2-uitzondering, punt 9). Echte tijdelijke repositories; de checker draait zoals guard.yml
+// hem draait, met main als basis.
 afterEach(opruimen);
 
 const MINI = 'docs/specs/demo.md';
@@ -71,7 +72,7 @@ function zetStatus(root: string, file: string, naar: string): void {
   );
 }
 
-/** De agent legt een voorstel + code voor; daarna zet de web-flow-committer de statusregel. */
+/** De agent legt een voorstel + code voor; daarna zet een committer (standaard web-flow, maar dat doet er niet meer toe) de statusregel. */
 function feature(
   opties: { mini?: boolean; code?: string[]; statusCommit?: 'agent' | 'web-flow'; extra?: (root: string) => void } = {},
 ) {
@@ -102,35 +103,42 @@ describe('feature-lane', () => {
     expect(uitvoer.stdout).toContain('statusovergang in de PR');
   });
 
-  test('9a de statuscommit wijzigt ook inhoud: faalt', () => {
+  // GEWIJZIGD (ADR 0038 punt 9): 9a, 9b en 9c waren de statuscommit-eisen (a), (b) en (c); die vervallen.
+  test('9a de statuscommit wijzigt ook inhoud: slaagt (eis a vervalt, ADR 0038 punt 9)', () => {
     const { fixture, head } = feature({
       extra: (root) => {
         write(root, WEB, 'export const x = 2;\n');
       },
     });
-    expect(draaiChecker(fixture, head).status).toBe(1);
+    const uitvoer = draaiChecker(fixture, head);
+    expect(uitvoer.stderr).toBe('');
+    expect(uitvoer.status).toBe(0);
   });
 
-  test('9b inhoud na de status: faalt', () => {
+  test('9b inhoud na de status: slaagt (eis b vervalt, ADR 0038 punt 9)', () => {
     const { fixture } = feature();
     write(fixture.root, MINI, `${read(fixture.root, MINI)}\nExtra regel.\n`);
     const head = commitAls(fixture.root, 'feat: nog iets', 'web-flow');
-    expect(draaiChecker(fixture, head).status).toBe(1);
+    const uitvoer = draaiChecker(fixture, head);
+    expect(uitvoer.stderr).toBe('');
+    expect(uitvoer.status).toBe(0);
   });
 
-  test('9c een andere committer dan web-flow: faalt', () => {
+  test('9c een andere committer dan web-flow: slaagt (eis c vervalt, ADR 0038 punt 9)', () => {
     const { fixture, head } = feature({ statusCommit: 'agent' });
     const uitvoer = draaiChecker(fixture, head);
-    expect(uitvoer.status).toBe(1);
-    expect(uitvoer.stderr).toContain('web-flow');
+    expect(uitvoer.stderr).toBe('');
+    expect(uitvoer.status).toBe(0);
   });
 
-  test('de status in dezelfde commit als het nieuwe bestand: faalt', () => {
+  test('de status in dezelfde commit als het nieuwe bestand: slaagt (nieuw document met eigenaarstatus, punt 1)', () => {
     const fixture = nieuw();
     write(fixture.root, MINI, spec('demo', 'goedgekeurd', true));
     write(fixture.root, WEB, 'export const x = 1;\n');
-    const head = commitAls(fixture.root, 'feat: alles in één', 'web-flow');
-    expect(draaiChecker(fixture, head).status).toBe(1);
+    const head = commitAls(fixture.root, 'feat: alles in één', 'agent');
+    const uitvoer = draaiChecker(fixture, head);
+    expect(uitvoer.stderr).toBe('');
+    expect(uitvoer.status).toBe(0);
   });
 
   test.each([
@@ -160,14 +168,25 @@ describe('feature-lane', () => {
     expect(draaiChecker(fixture, head).status).toBe(1);
   });
 
-  test('5 twee specs naar een eigenaarstatus: faalt', () => {
+  // GEWIJZIGD (ADR 0038 punt 5 en 9): twee specs zonder code mogen nu; met code blijft het feature-lane van één mini-spec.
+  test('5 twee specs naar een eigenaarstatus, zonder code: slaagt (de beperking tot één document vervalt)', () => {
     const fixture = nieuw();
     write(fixture.root, MINI, spec('demo', 'voorstel', true));
     write(fixture.root, 'docs/specs/tweede.md', spec('tweede', 'voorstel', true));
     commitAls(fixture.root, 'feat: twee specs', 'agent');
     zetStatus(fixture.root, MINI, 'goedgekeurd');
     zetStatus(fixture.root, 'docs/specs/tweede.md', 'goedgekeurd');
-    expect(draaiChecker(fixture, commitAls(fixture.root, 'docs: status', 'web-flow')).status).toBe(1);
+    const uitvoer = draaiChecker(fixture, commitAls(fixture.root, 'docs: status', 'web-flow'));
+    expect(uitvoer.stderr).toBe('');
+    expect(uitvoer.status).toBe(0);
+  });
+
+  test('5b twee mini-specs naar een eigenaarstatus mét code: faalt (feature-lane is één mini-spec)', () => {
+    const fixture = nieuw();
+    write(fixture.root, MINI, spec('demo', 'goedgekeurd', true));
+    write(fixture.root, 'docs/specs/tweede.md', spec('tweede', 'goedgekeurd', true));
+    write(fixture.root, WEB, 'export const x = 1;\n');
+    expect(draaiChecker(fixture, commitAls(fixture.root, 'feat: twee specs en code', 'agent')).status).toBe(1);
   });
 
   test('7 een rename van src/core naar src/web: faalt', () => {
@@ -298,22 +317,27 @@ function featureMetMigratie(sql: string, kop: boolean, eigen?: string) {
 }
 
 describe('statuscommit: aanvullende gevallen', () => {
-  test('de agent zet de status en web-flow commit daarna iets anders: faalt', () => {
+  // GEWIJZIGD (ADR 0038 punt 9): de eisen (a), (b) en (c) vervallen; de eindstand van de PR beslist, niet de commitvolgorde.
+  test('de agent zet de status en web-flow commit daarna iets anders: slaagt (eis a, b en c vervallen)', () => {
     const fixture = nieuw();
     write(fixture.root, MINI, spec('demo', 'voorstel', true));
     commitAls(fixture.root, 'feat: demo', 'agent');
     zetStatus(fixture.root, MINI, 'goedgekeurd');
     commitAls(fixture.root, 'docs: status door de agent', 'agent');
     write(fixture.root, WEB, 'export const x = 1;\n');
-    expect(draaiChecker(fixture, commitAls(fixture.root, 'feat: web', 'web-flow')).status).toBe(1);
+    const uitvoer = draaiChecker(fixture, commitAls(fixture.root, 'feat: web', 'web-flow'));
+    expect(uitvoer.stderr).toBe('');
+    expect(uitvoer.status).toBe(0);
   });
 
-  test('web-flow zet de status, de agent zet hem terug en weer door: faalt', () => {
+  test('web-flow zet de status, de agent zet hem terug en weer door: slaagt (eis c vervalt)', () => {
     const { fixture } = feature();
     zetStatus(fixture.root, MINI, 'voorstel');
     commitAls(fixture.root, 'docs: terug', 'web-flow');
     zetStatus(fixture.root, MINI, 'goedgekeurd');
-    expect(draaiChecker(fixture, commitAls(fixture.root, 'docs: weer door de agent', 'agent')).status).toBe(1);
+    const uitvoer = draaiChecker(fixture, commitAls(fixture.root, 'docs: weer door de agent', 'agent'));
+    expect(uitvoer.stderr).toBe('');
+    expect(uitvoer.status).toBe(0);
   });
 
   test('main erbij mergen na de statuscommit: slaagt', () => {
@@ -329,15 +353,20 @@ describe('statuscommit: aanvullende gevallen', () => {
     expect(uitvoer.status).toBe(0);
   });
 
-  test('een rename in de statuscommit: faalt', () => {
+  // GEWIJZIGD (ADR 0038 punt 9): de statuscommit-eisen bestaan niet meer; de spec is op main nooit geweest, dus het
+  // hernoemde bestand is netto een nieuw document met een eigenaarstatus.
+  test('een nieuw voorstel in de PR hernoemen voor de merge: slaagt (netto een nieuwe goedgekeurde spec)', () => {
     const { fixture } = feature();
     git(fixture.root, ['mv', MINI, 'docs/specs/hernoemd.md']);
-    expect(draaiChecker(fixture, commitAls(fixture.root, 'docs: hernoem', 'web-flow')).status).toBe(1);
+    const uitvoer = draaiChecker(fixture, commitAls(fixture.root, 'docs: hernoem', 'web-flow'));
+    expect(uitvoer.stderr).toBe('');
+    expect(uitvoer.status).toBe(0);
   });
 });
 
 describe('twee besluiten en renames', () => {
-  test('een tweede spec met een record op main telt ook als eigenaarstatus: faalt', () => {
+  // GEWIJZIGD (ADR 0038 punt 5): twee specs zonder code zijn een geldige besluit-PR; "meer dan één document" bestaat niet meer.
+  test('een tweede spec met een record op main, zonder code: slaagt (meerdere documenten mogen)', () => {
     const fixture = nieuw();
     const tweede = 'docs/specs/tweede.md';
     write(fixture.root, tweede, spec('tweede', 'voorstel', true));
@@ -360,8 +389,8 @@ describe('twee besluiten en renames', () => {
     zetStatus(fixture.root, MINI, 'goedgekeurd');
     zetStatus(fixture.root, tweede, 'goedgekeurd');
     const uitvoer = draaiChecker({ root: fixture.root, base }, commitAls(fixture.root, 'docs: status', 'web-flow'));
-    expect(uitvoer.status).toBe(1);
-    expect(uitvoer.stderr).toContain('meer dan één document');
+    expect(uitvoer.stderr).toBe('');
+    expect(uitvoer.status).toBe(0);
   });
 
   test('een vervallen spec hernoemen en weer goedkeuren: faalt', () => {
@@ -428,7 +457,7 @@ describe('annotatie voor de job document-status', () => {
     const bestand = path.join(tempDir('samenvatting-'), 'summary.md');
     process.env['GITHUB_STEP_SUMMARY'] = bestand;
     try {
-      const fout = feature({ statusCommit: 'agent' });
+      const fout = feature({ mini: false }); // GEWIJZIGD: een agent-statuscommit is niet meer fout (ADR 0038 punt 9)
       draaiChecker(fout.fixture, fout.head);
       expect(readFileSync(bestand, 'utf8')).toContain('document-status: afgekeurd');
       const goed = feature();
@@ -439,11 +468,357 @@ describe('annotatie voor de job document-status', () => {
     }
   });
 
+  // GEWIJZIGD: de foutcase was een agent-statuscommit en de melding noemde web-flow; beide bestaan niet meer (ADR 0038 punt 9).
   test('een fout komt als ::error title=document-status:: op stdout (ADR 0031 besluit 1)', () => {
-    const { fixture, head } = feature({ statusCommit: 'agent' });
+    const { fixture, head } = feature({ mini: false });
     const uitvoer = draaiChecker(fixture, head);
     expect(uitvoer.status).toBe(1);
     expect(uitvoer.stdout).toContain('::error title=document-status::');
-    expect(uitvoer.stdout).toContain('web-flow');
+    expect(uitvoer.stdout).toContain(MINI);
+  });
+});
+
+// --- ADR 0038: de merge is de acceptatie. Gewone committer (geen web-flow), geen record op main. ------------------------
+
+const ADR_OUD = 'docs/adr/0050-oud.md';
+const ADR_NIEUW = 'docs/adr/0051-nieuw.md';
+const BOUWSTATUS = `gebouwd # #5; gevalideerd: ${'a'.repeat(40)}`;
+
+const adrTekst = (nr: string, status: string, besluit = 'Iets.'): string =>
+  `# ${nr} — Demo\n\nStatus: ${status}\n\n## Besluit\n\n${besluit}\n`;
+
+/** main krijgt deze bestanden; de branch start daarop (origin/main = HEAD). */
+function metBasis(bestanden: Record<string, string>): Fixture {
+  const fixture = nieuw();
+  for (const [pad, tekst] of Object.entries(bestanden)) write(fixture.root, pad, tekst);
+  commitAls(fixture.root, 'chore: basis', 'agent');
+  const base = git(fixture.root, ['rev-parse', 'HEAD']);
+  git(fixture.root, ['update-ref', 'refs/remotes/origin/main', base]);
+  return { root: fixture.root, base };
+}
+
+/** Vervangt de hele statusregel (ook een `gebouwd # …`-regel). */
+function zetStatusRegel(root: string, file: string, regel: string): void {
+  write(root, file, read(root, file).replace(/^(?:status|Status):.*$/m, regel));
+}
+
+const agent = (fixture: Fixture, bericht = 'docs: besluit'): string => commitAls(fixture.root, bericht, 'agent');
+
+function slaagt(fixture: Fixture, head: string): void {
+  const uitvoer = draaiChecker(fixture, head);
+  expect(uitvoer.stderr).toBe('');
+  expect(uitvoer.status).toBe(0);
+}
+
+function faalt(fixture: Fixture, head: string): string {
+  const uitvoer = draaiChecker(fixture, head);
+  expect(uitvoer.status).toBe(1);
+  expect(uitvoer.stderr).not.toBe('');
+  return uitvoer.stderr;
+}
+
+describe('ADR 0038 punt 1: een nieuw document met een eigenaarstatus, zonder record en zonder web-flow', () => {
+  test.each([['geaccepteerd'], ['vervallen'], ['vervangen door 0001']])(
+    'nieuw ADR met Status: %s: slaagt',
+    (status) => {
+      const fixture = nieuw();
+      write(fixture.root, ADR, adrTekst('0099', status));
+      slaagt(fixture, agent(fixture));
+    },
+  );
+
+  test.each([['goedgekeurd'], ['vervallen']])('nieuwe spec met status: %s: slaagt', (status) => {
+    const fixture = nieuw();
+    write(fixture.root, MINI, spec('demo', status, false));
+    slaagt(fixture, agent(fixture));
+  });
+
+  test('nieuwe spec direct op gebouwd, zonder bouwbewijs: faalt', () => {
+    const fixture = nieuw();
+    write(fixture.root, MINI, spec('demo', BOUWSTATUS, false));
+    faalt(fixture, agent(fixture));
+  });
+
+  test('nieuw ADR met vrije tekst op de statusregel blijft falen (ADR 0031 besluit 4)', () => {
+    const fixture = nieuw();
+    write(fixture.root, ADR, adrTekst('0099', 'geaccepteerd — zomaar tekst'));
+    faalt(fixture, agent(fixture));
+  });
+});
+
+describe('ADR 0038 punt 5: voorstel naar eigenaarstatus; inhoud en commitvolgorde doen er niet toe', () => {
+  test.each([
+    { naam: 'ADR', pad: ADR, begin: adrTekst('0099', 'voorgesteld'), regel: 'Status: geaccepteerd' },
+    { naam: 'spec', pad: MINI, begin: spec('demo', 'voorstel', false), regel: 'status: goedgekeurd' },
+  ])('$naam: status en inhoud in dezelfde commit: slaagt', ({ pad, begin, regel }) => {
+    const fixture = metBasis({ [pad]: begin });
+    zetStatusRegel(fixture.root, pad, regel);
+    write(fixture.root, pad, `${read(fixture.root, pad)}\nNog een alinea in dezelfde commit.\n`);
+    slaagt(fixture, agent(fixture));
+  });
+
+  test.each([
+    { naam: 'ADR', pad: ADR, begin: adrTekst('0099', 'voorgesteld'), regel: 'Status: geaccepteerd' },
+    { naam: 'spec', pad: MINI, begin: spec('demo', 'voorstel', false), regel: 'status: goedgekeurd' },
+  ])('$naam: er komt inhoud na de statuscommit, door een gewone committer: slaagt', ({ pad, begin, regel }) => {
+    const fixture = metBasis({ [pad]: begin });
+    zetStatusRegel(fixture.root, pad, regel);
+    agent(fixture, 'docs: status');
+    write(fixture.root, pad, `${read(fixture.root, pad)}\nInhoud na de status.\n`);
+    slaagt(fixture, agent(fixture, 'docs: nog een alinea'));
+  });
+});
+
+describe('ADR 0038 punt 5: meerdere documenten in één besluit-PR', () => {
+  test("twee nieuwe ADR's en een nieuwe spec, zonder code: slaagt", () => {
+    const fixture = nieuw();
+    write(fixture.root, 'docs/adr/0060-een.md', adrTekst('0060', 'geaccepteerd'));
+    write(fixture.root, 'docs/adr/0061-twee.md', adrTekst('0061', 'geaccepteerd'));
+    write(fixture.root, MINI, spec('demo', 'goedgekeurd', false));
+    slaagt(fixture, agent(fixture));
+  });
+
+  test('een ADR én een spec die van voorstel naar eigenaarstatus gaan, zonder code: slaagt', () => {
+    const fixture = metBasis({
+      [ADR]: adrTekst('0099', 'voorgesteld'),
+      [MINI]: spec('demo', 'voorstel', false),
+    });
+    zetStatusRegel(fixture.root, ADR, 'Status: geaccepteerd');
+    zetStatusRegel(fixture.root, MINI, 'status: goedgekeurd');
+    slaagt(fixture, agent(fixture));
+  });
+});
+
+describe('ADR 0038 punt 5: geaccepteerd naar vervangen door NNNN of vervallen, zonder record', () => {
+  const basis = () =>
+    metBasis({ [ADR_OUD]: adrTekst('0050', 'geaccepteerd'), [ADR_NIEUW]: adrTekst('0051', 'geaccepteerd') });
+
+  test('vervangen door een ADR dat al op main staat: slaagt', () => {
+    const fixture = basis();
+    zetStatusRegel(fixture.root, ADR_OUD, 'Status: vervangen door 0051');
+    slaagt(fixture, agent(fixture));
+  });
+
+  test('vervangen door een ADR dat in dezelfde PR wordt toegevoegd: slaagt', () => {
+    const fixture = metBasis({ [ADR_OUD]: adrTekst('0050', 'geaccepteerd') });
+    write(fixture.root, 'docs/adr/0052-vervanger.md', adrTekst('0052', 'geaccepteerd'));
+    zetStatusRegel(fixture.root, ADR_OUD, 'Status: vervangen door 0052');
+    slaagt(fixture, agent(fixture));
+  });
+
+  test('vervangen door een ADR dat nergens bestaat: faalt', () => {
+    const fixture = basis();
+    zetStatusRegel(fixture.root, ADR_OUD, 'Status: vervangen door 0077');
+    faalt(fixture, agent(fixture));
+  });
+
+  test('geaccepteerd naar vervallen: slaagt', () => {
+    const fixture = basis();
+    zetStatusRegel(fixture.root, ADR_OUD, 'Status: vervallen');
+    slaagt(fixture, agent(fixture));
+  });
+
+  test('vervangen door, maar de tekst van het oude ADR wijzigt ook: faalt (A4 blijft)', () => {
+    const fixture = basis();
+    zetStatusRegel(fixture.root, ADR_OUD, 'Status: vervangen door 0051');
+    write(fixture.root, ADR_OUD, `${read(fixture.root, ADR_OUD)}\nNormatieve correctie.\n`);
+    faalt(fixture, agent(fixture));
+  });
+});
+
+describe('ADR 0038 punt 5: een spec van goedgekeurd of gebouwd naar vervallen, zonder record', () => {
+  test.each([
+    ['goedgekeurd', 'goedgekeurd'],
+    ['gebouwd', BOUWSTATUS],
+  ])('%s naar vervallen: slaagt', (_naam, begin) => {
+    const fixture = metBasis({ [MINI]: spec('demo', begin, false) });
+    zetStatusRegel(fixture.root, MINI, 'status: vervallen');
+    slaagt(fixture, agent(fixture));
+  });
+
+  test('vervallen terug naar goedgekeurd blijft falen (alleen een nieuw voorstel krijgt een eigenaarstatus)', () => {
+    const fixture = metBasis({ [MINI]: spec('demo', 'vervallen', false) });
+    zetStatusRegel(fixture.root, MINI, 'status: goedgekeurd');
+    faalt(fixture, agent(fixture));
+  });
+});
+
+describe('ADR 0038 punt 2 en 5: geaccepteerd terug naar voorgesteld is de omweg om A4', () => {
+  test('geaccepteerd naar voorgesteld, zonder inhoudswijziging: faalt', () => {
+    const fixture = metBasis({ [ADR]: adrTekst('0099', 'geaccepteerd') });
+    zetStatusRegel(fixture.root, ADR, 'Status: voorgesteld');
+    faalt(fixture, agent(fixture));
+  });
+
+  test('geaccepteerd naar voorgesteld mét nieuwe inhoud: faalt', () => {
+    const fixture = metBasis({ [ADR]: adrTekst('0099', 'geaccepteerd') });
+    zetStatusRegel(fixture.root, ADR, 'Status: voorgesteld');
+    write(fixture.root, ADR, `${read(fixture.root, ADR)}\nAndere inhoud.\n`);
+    faalt(fixture, agent(fixture));
+  });
+});
+
+describe('ADR 0038 punt 2: elke eigenaarstatus van een ADR terug naar voorgesteld is geweigerd; een spec mag terug naar voorstel', () => {
+  test.each([['vervallen'], ['vervangen door 0051']])('ADR %s naar voorgesteld: faalt', (status) => {
+    const fixture = metBasis({ [ADR_OUD]: adrTekst('0050', status), [ADR_NIEUW]: adrTekst('0051', 'geaccepteerd') });
+    zetStatusRegel(fixture.root, ADR_OUD, 'Status: voorgesteld');
+    faalt(fixture, agent(fixture));
+  });
+
+  test('spec goedgekeurd naar voorstel: slaagt', () => {
+    const fixture = metBasis({ [MINI]: spec('demo', 'goedgekeurd', false) });
+    zetStatusRegel(fixture.root, MINI, 'status: voorstel');
+    slaagt(fixture, agent(fixture));
+  });
+});
+
+describe('ADR 0038 punt 5 (antwoord 4): een besluit-PR bevat alleen docs/adr, docs/specs en het record', () => {
+  test.each([['docs/roadmap.md'], ['CHANGELOG.md']])("twee ADR's en %s: faalt", (pad) => {
+    const fixture = nieuw();
+    write(fixture.root, 'docs/adr/0060-een.md', adrTekst('0060', 'geaccepteerd'));
+    write(fixture.root, 'docs/adr/0061-twee.md', adrTekst('0061', 'geaccepteerd'));
+    write(fixture.root, pad, 'Aangepast.\n');
+    faalt(fixture, agent(fixture));
+  });
+});
+
+describe('ADR 0038 punt 2: de tekst van een geaccepteerd ADR verandert niet (A4 blijft)', () => {
+  test('inhoud wijzigen, status blijft geaccepteerd: faalt', () => {
+    const fixture = metBasis({ [ADR]: adrTekst('0099', 'geaccepteerd') });
+    write(fixture.root, ADR, adrTekst('0099', 'geaccepteerd', 'Iets anders.'));
+    faalt(fixture, agent(fixture));
+  });
+
+  test('inhoud wijzigen terwijl de PR ook een ander document accepteert: faalt', () => {
+    const fixture = metBasis({ [ADR]: adrTekst('0099', 'geaccepteerd') });
+    write(fixture.root, ADR, adrTekst('0099', 'geaccepteerd', 'Iets anders.'));
+    write(fixture.root, 'docs/adr/0098-ander.md', adrTekst('0098', 'geaccepteerd'));
+    faalt(fixture, agent(fixture));
+  });
+});
+
+describe('ADR 0038 punt 5: inhoud van een goedgekeurde spec wijzigen alleen in een besluit-PR zonder code', () => {
+  test.each([
+    ['mini-spec', true],
+    ['volledige spec', false],
+  ])('%s, PR zonder code: slaagt', (_naam, mini) => {
+    const fixture = metBasis({ [MINI]: spec('demo', 'goedgekeurd', mini) });
+    write(fixture.root, MINI, `${read(fixture.root, MINI)}\n## Extra\n\nNieuw gedrag.\n`);
+    slaagt(fixture, agent(fixture));
+  });
+
+  test.each([
+    ['een bronbestand in src/web', WEB],
+    ['een route in src/api', ROUTE],
+  ])('PR met %s: faalt', (_naam, code) => {
+    const fixture = metBasis({ [MINI]: spec('demo', 'goedgekeurd', true) });
+    write(fixture.root, MINI, `${read(fixture.root, MINI)}\n## Extra\n\nNieuw gedrag.\n`);
+    write(fixture.root, code, 'export const x = 1;\n');
+    faalt(fixture, agent(fixture));
+  });
+});
+
+describe('ADR 0038 punt 5 en 7: besluit-PR en feature-lane', () => {
+  test('feature-lane (een mini-spec met code) met een gewone committer: slaagt', () => {
+    const { fixture, head } = feature({ statusCommit: 'agent' });
+    slaagt(fixture, head);
+  });
+
+  test('een volledige spec met eigenaarstatus én src/api-code, gewone committer: faalt', () => {
+    const fixture = nieuw();
+    write(fixture.root, MINI, spec('demo', 'goedgekeurd', false));
+    write(fixture.root, ROUTE, 'export const x = 1;\n');
+    expect(faalt(fixture, agent(fixture, 'feat: spec en route'))).toContain(MINI);
+  });
+
+  test('een ADR met eigenaarstatus én een bronbestand, gewone committer: faalt', () => {
+    const fixture = nieuw();
+    write(fixture.root, ADR, adrTekst('0099', 'geaccepteerd'));
+    write(fixture.root, WEB, 'export const x = 1;\n');
+    faalt(fixture, agent(fixture));
+  });
+
+  test('een ADR én een mini-spec met eigenaarstatus plus code, gewone committer: faalt', () => {
+    const fixture = nieuw();
+    write(fixture.root, ADR, adrTekst('0099', 'geaccepteerd'));
+    write(fixture.root, MINI, spec('demo', 'goedgekeurd', true));
+    write(fixture.root, WEB, 'export const x = 1;\n');
+    faalt(fixture, agent(fixture));
+  });
+});
+
+describe('ADR 0038 punt 5: de samenvatting noemt elk document dat een eigenaarstatus krijgt', () => {
+  function drieDocumenten() {
+    const fixture = metBasis({ [ADR_OUD]: adrTekst('0050', 'geaccepteerd') });
+    write(fixture.root, 'docs/adr/0060-vervanger.md', adrTekst('0060', 'geaccepteerd'));
+    write(fixture.root, MINI, spec('demo', 'goedgekeurd', false));
+    zetStatusRegel(fixture.root, ADR_OUD, 'Status: vervangen door 0060');
+    return { fixture, head: agent(fixture) };
+  }
+  const NAMEN = ['docs/adr/0060-vervanger.md', MINI, ADR_OUD];
+
+  test('de uitvoer op stdout noemt alle drie de bestanden', () => {
+    const { fixture, head } = drieDocumenten();
+    const uitvoer = draaiChecker(fixture, head);
+    expect(uitvoer.status).toBe(0);
+    for (const naam of NAMEN) expect(uitvoer.stdout).toContain(naam);
+  });
+
+  test('de stapsamenvatting (GITHUB_STEP_SUMMARY) noemt alle drie de bestanden', () => {
+    const bestand = path.join(tempDir('samenvatting-0038-'), 'summary.md');
+    process.env['GITHUB_STEP_SUMMARY'] = bestand;
+    try {
+      const { fixture, head } = drieDocumenten();
+      expect(draaiChecker(fixture, head).status).toBe(0);
+      const tekst = readFileSync(bestand, 'utf8');
+      expect(tekst).toContain('document-status: goedgekeurd');
+      for (const naam of NAMEN) expect(tekst).toContain(naam);
+    } finally {
+      delete process.env['GITHUB_STEP_SUMMARY'];
+    }
+  });
+});
+
+// --- Review van ADR 0038: verwijderen, terugzetten van een spec en het bouwbewijs. ---------------------------------------
+
+/** Een lange, onderscheidende tekst, zodat een verwijderd en een nieuw bestand nooit als rename gelden. */
+const uniek = (prefix: string): string =>
+  Array.from(
+    { length: 12 },
+    (_regel, index) => `${prefix} regel ${String(index)} met eigen woorden ${prefix}${String(index * 7)}.`,
+  ).join('\n');
+
+describe('ADR 0038 punt 2: een ADR met een eigenaarstatus verwijderen is A4', () => {
+  test.each([['geaccepteerd'], ['vervallen'], ['vervangen door 0051']])(
+    'een ADR met Status: %s verwijderen: faalt',
+    (status) => {
+      const fixture = metBasis({ [ADR_OUD]: adrTekst('0050', status), [ADR_NIEUW]: adrTekst('0051', 'geaccepteerd') });
+      git(fixture.root, ['rm', '-q', ADR_OUD]);
+      faalt(fixture, agent(fixture));
+    },
+  );
+
+  test('0017-a.md verwijderen en 0017-b.md met andere inhoud en geaccepteerd toevoegen (geen rename): faalt', () => {
+    const fixture = metBasis({ 'docs/adr/0017-a.md': adrTekst('0017', 'geaccepteerd', uniek('alfa')) });
+    git(fixture.root, ['rm', '-q', 'docs/adr/0017-a.md']);
+    write(fixture.root, 'docs/adr/0017-b.md', adrTekst('0017', 'geaccepteerd', uniek('beta')));
+    faalt(fixture, agent(fixture));
+  });
+
+  test('een voorgesteld ADR verwijderen: slaagt', () => {
+    const fixture = metBasis({ [ADR_OUD]: adrTekst('0050', 'voorgesteld') });
+    git(fixture.root, ['rm', '-q', ADR_OUD]);
+    slaagt(fixture, agent(fixture));
+  });
+});
+
+describe('ADR 0038 punt 2: een spec mag van gebouwd of vervallen terug naar voorstel (geen eigenaarstatus)', () => {
+  test.each([
+    ['gebouwd', BOUWSTATUS],
+    ['vervallen', 'vervallen'],
+  ])('%s naar voorstel: slaagt', (_naam, begin) => {
+    const fixture = metBasis({ [MINI]: spec('demo', begin, false) });
+    zetStatusRegel(fixture.root, MINI, 'status: voorstel');
+    slaagt(fixture, agent(fixture));
   });
 });

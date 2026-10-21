@@ -74,7 +74,8 @@ describe('bestanden: hoofdsessie', () => {
     { name: 'gegenereerd bestand', payload: write('src/api/db/schema.ts', 'x'), expected: 'deny' },
     { name: 'gecommitte migratie', payload: write('db/migrations/20261009000000_baseline.sql', 'x'), expected: 'deny' },
     { name: 'nieuwe migratie', payload: write('db/migrations/20261011000000_x.sql', 'x'), expected: 'allow' },
-    { name: 'spec zelf goedkeuren', payload: edit('docs/specs/x.md', ['voorstel', 'goedgekeurd']), expected: 'deny' },
+    // GEWIJZIGD (ADR 0038 punt 6): de hoofdsessie mag een eigenaarstatus schrijven; de merge van de eigenaar is de acceptatie.
+    { name: 'spec zelf goedkeuren', payload: edit('docs/specs/x.md', ['voorstel', 'goedgekeurd']), expected: 'allow' },
     { name: 'buiten de repo', payload: write('../elders.txt', 'x'), expected: 'allow' },
   ])('$name', ({ payload, expected }) => {
     expect(verdict(payload)).toBe(expected);
@@ -114,6 +115,21 @@ describe('rollen', () => {
       name: 'architect in spec',
       payload: write('docs/specs/z.md', 'status: voorstel', 'architect'),
       expected: 'allow',
+    },
+    {
+      name: 'architect keurt een spec goed (ADR 0038 punt 6)',
+      payload: edit('docs/specs/x.md', ['voorstel', 'goedgekeurd'], 'architect'),
+      expected: 'allow',
+    },
+    {
+      name: 'developer keurt een spec niet goed',
+      payload: edit('docs/specs/x.md', ['voorstel', 'goedgekeurd'], 'developer'),
+      expected: 'deny',
+    },
+    {
+      name: 'tester keurt een spec niet goed',
+      payload: edit('docs/specs/x.md', ['voorstel', 'goedgekeurd'], 'tester'),
+      expected: 'deny',
     },
     { name: 'architect in code', payload: write('src/api/x.ts', 'x', 'architect'), expected: 'deny' },
     { name: 'docs in docs/', payload: write('docs/gouden-pad.md', 'x', 'docs'), expected: 'allow' },

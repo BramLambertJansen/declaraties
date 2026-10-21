@@ -1,4 +1,4 @@
-// Lane-herkenning (ADR 0029 punt 6 en 7). Puur: de aanroeper levert de wijzigingen en de besluitdocumenten.
+// Lane-herkenning (ADR 0029 punt 6 en 7, ADR 0038 punt 5: besluit-PR met meerdere documenten). Puur: de aanroeper levert de wijzigingen en de besluitdocumenten.
 // Bereik (eigenaarbesluit, ruimer dan de letter van punt 6): alles wat niet in src/core, voorReview of docs/adr/ staat; bestaande
 // tests en migraties blijven dicht. Een pad buiten `gates` telt alleen binnen src/, docs/, db/ of CHANGELOG.md: onbekende
 // dotfiles en configs (.vscode, .envrc, .mcp.json, postcss.config.*) kunnen vóór review effect hebben en vallen dicht.
@@ -53,11 +53,14 @@ function paden(changes) {
 export function laneVan({ changes, besluiten, mini, config }) {
   const [besluit, ...rest] = besluiten;
   if (besluit === undefined) return { lane: null, reden: 'geen document krijgt een eigenaarstatus in deze PR' };
-  if (rest.length > 0)
-    return { lane: null, reden: `meer dan één document krijgt een eigenaarstatus: ${besluiten.join(', ')}` };
-  const overige = paden(changes).filter(({ pad }) => pad !== besluit);
+  const overige = paden(changes).filter(({ pad }) => !besluiten.includes(pad));
   const vreemd = overige.find(({ pad }) => pad !== RECORD);
-  if (vreemd === undefined) return { lane: 'framework', reden: 'alleen het besluit en eventueel zijn record' };
+  if (vreemd === undefined) return { lane: 'framework', reden: 'besluit-PR: alleen besluitdocumenten en hun record' };
+  if (rest.length > 0)
+    return {
+      lane: null,
+      reden: `${vreemd.pad} hoort niet in een besluit-PR met ${besluiten.join(', ')}; de feature-lane is één mini-spec`,
+    };
   if (!mini) return { lane: null, reden: `${vreemd.pad} hoort niet in een PR met een in-PR-status (geen mini-spec)` };
   const reden = overige.map((wijziging) => buitenBereik(wijziging, config)).find((melding) => melding !== null);
   return reden === undefined
@@ -163,15 +166,16 @@ export function migratieOvertreding(tekst) {
 }
 
 /**
- * Wijzigt het register alleen de records van `file`? (ADR 0029 punt 7(i): "hooguit zijn record").
- * @param {{ basis: string | null, head: string | null, file: string }} invoer
+ * Wijzigt het register alleen de records van `file` (of van elk bestand in de lijst)? (ADR 0029 punt 7(i), ADR 0038 punt 5).
+ * @param {{ basis: string | null, head: string | null, file: string | readonly string[] }} invoer
  */
 export function recordAlleenBesluit({ basis, head, file }) {
+  const bestanden = typeof file === 'string' ? [file] : file;
   try {
     const oud = JSON.parse(basis ?? '');
     const nieuw = JSON.parse(head ?? '');
     const rest = (/** @type {{ decisions: { file: string }[] }} */ register) =>
-      JSON.stringify({ ...register, decisions: register.decisions.filter((entry) => entry.file !== file) });
+      JSON.stringify({ ...register, decisions: register.decisions.filter((entry) => !bestanden.includes(entry.file)) });
     return rest(oud) === rest(nieuw);
   } catch {
     return false;
