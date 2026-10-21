@@ -1,6 +1,6 @@
 # 0037 — check-core: correctie op 0008 "Afdwingen"
 
-Status: voorgesteld
+Status: geaccepteerd
 
 Wijzigt [0008](0008-grens-core-en-app.md), sectie "Afdwingen" (r. 78–82). De tekst en statusregel van 0008 blijven. Normatieve
 wijziging, dus een nieuw ADR (`docs/operations/agent-doorloop.md:141`). ADR-drempel ([0029](0029-snellere-beslisroute.md)
