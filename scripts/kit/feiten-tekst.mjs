@@ -141,7 +141,8 @@ export function faseOverzicht({ roadmap, dod, specs }) {
 
 /** @param {unknown} value */
 function field(value) {
-  if (Array.isArray(value)) return value.map(String).join(', ');
+  // Een lege lijst blijft zichtbaar: een permissie zonder rollen is informatie (de tester leidt de verboden rollen af).
+  if (Array.isArray(value)) return value.length === 0 ? '(geen)' : value.map(String).join(', ');
   if (typeof value !== 'object' || value === null) return String(value);
   return Object.entries(value)
     .map(([key, content]) => `${key}=${Array.isArray(content) ? content.join('|') : String(content)}`)

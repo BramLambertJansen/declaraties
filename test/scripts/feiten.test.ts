@@ -1,6 +1,6 @@
 import { spawnSync } from 'node:child_process';
 import path from 'node:path';
-import { adrOverzicht, componentenTekst, faseOverzicht, nextAdr } from '../../scripts/kit/feiten-tekst.mjs';
+import { adrOverzicht, componentenTekst, faseOverzicht, nextAdr, toText } from '../../scripts/kit/feiten-tekst.mjs';
 import { describe, expect, test } from 'vitest';
 
 // scripts/kit/feiten.mjs en feiten-tekst.mjs: leesbare componenten, ADR-filter met --alle, volgende nummer en de fase-sectie.
@@ -172,5 +172,13 @@ describe('aanroep', () => {
       true,
       true,
     ]);
+  });
+});
+
+describe('tekstweergave', () => {
+  test('een lege lijst blijft zichtbaar als (geen), zodat een permissie zonder rollen niet als rollenloos verdwijnt', () => {
+    const tekst = toText([{ naam: 'permissies', inhoud: [{ permissie: 'x:read', rollen: [] }] }]);
+
+    expect(tekst).toBe('## permissies\n- x:read · (geen)');
   });
 });
