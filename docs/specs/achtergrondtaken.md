@@ -2,15 +2,15 @@
 status: voorstel # voorstel | goedgekeurd | gebouwd | vervallen — alleen de eigenaar zet goedgekeurd; gebouwd: # #<PR>; gevalideerd: <sha> (pnpm docs:status)
 namespace: jobs
 model: opus
-modelreden: nieuwe databaserol en security definer-functies app.purge_expired en app.retention_targets (ADR 0025 punt 3d), gelijktijdigheid via advisory locks en de stopvolgorde (punt 3a), en wijzigingen in src/core (db, auth, nieuwe map jobs; punt 3c)
+modelreden: nieuwe databaserol en security definer-functies app.purge_expired en app.retention_targets (ADR 0046 punt 18), gelijktijdigheid via advisory locks en de stopvolgorde (punt 18), en wijzigingen in src/core (db, auth, nieuwe map jobs; punt 18)
 ---
 
 # Achtergrondtaken: bewaarcatalogus, rol `app_jobs`, runner en opruimen
 
 Geen kop weglaten; "n.v.t. — reden" mag. Ontbreekt een antwoord, dan vraagt de agent het.
 
-Uitwerking van [ADR 0020](../adr/0020-achtergrondtaken.md) (leidend), sectie Bouwvolgorde, stap 5 t/m 8, en van
-[ADR 0022](../adr/0022-avg.md) punt 5 (bewaarcatalogus); roadmap ST-03 (en het deel bewaarcatalogus van ST-05). Stap 1 t/m 4 zijn
+Uitwerking van [ADR 0050](../adr/0050-achtergrondtaken-en-mail-outbox.md) (leidend; was [ADR 0020](../adr/0020-achtergrondtaken.md), sectie Bouwvolgorde, stap 5 t/m 8), en van
+[ADR 0051](../adr/0051-audit-log-en-avg.md) punt 14 (bewaarcatalogus); roadmap ST-03 (en het deel bewaarcatalogus van ST-05). Stap 1 t/m 4 zijn
 gebouwd in #128 (spec [audit-log](audit-log.md)): `app.request_id()` en `app.audit_log` staan in `db/schema.snapshot.sql:207` en `:403`.
 Stap 9 (mail-outbox) staat in de spec [mail-outbox](mail-outbox.md) en wacht op alle vier delen van deze spec.
 
@@ -41,7 +41,7 @@ als `app_jobs`, `better_auth` als `auth_service`), in batches onder een advisory
 ## Deel-PR's
 
 Vier PR's, in deze volgorde; elk deel heeft eigen acceptatiecriteria en begint pas als het vorige gemerged is. De wijzigings-ADR
-(zie hierboven) is een eigen PR direct vóór deel C (ADR 0029: één PR per besluit); deel C en D verwijzen ernaar.
+(zie hierboven) is een eigen PR direct vóór deel C (ADR 0046: één PR per besluit); deel C en D verwijzen ernaar.
 
 | Deel | ADR 0020-stap | Inhoud | Wacht op | AC's |
 |---|---|---|---|---|
@@ -57,7 +57,7 @@ Vier PR's, in deze volgorde; elk deel heeft eigen acceptatiecriteria en begint p
 | `user`, `admin` (`app_authenticated` via `api_user`) | niets | geen `execute` | nee |
 | `app_definer` (security definer-functies) | `select` (policy `retention_definer_select`) | is de eigenaar; verwijdert alleen wat de delete-policy van de tabel toelaat | nee |
 | `app_jobs` (nieuw, deel B) | geen tabelrecht; leest via `app.retention_targets()` | alleen `execute` op functies van klasse `job` | nee |
-| `auth_service` (pool van Better Auth) | niets | geen `execute` | ja, alleen via `purgeExpired()` in `src/core/api/auth` (ADR 0010) |
+| `auth_service` (pool van Better Auth) | niets | geen `execute` | ja, alleen via `purgeExpired()` in `src/core/api/auth` (ADR 0041) |
 | `app_migrator` | eigenaar; rijen via migraties | eigenaar van de tabellen; lid van `app_definer` (`db/init/01-roles.sql:34`) | — |
 
 `app_jobs` heeft geen rechten op tabellen (in `public`, `app` en `better_auth`), geen `TRUNCATE`, `REFERENCES` of `TRIGGER`, en geen
@@ -67,7 +67,7 @@ Vier PR's, in deze volgorde; elk deel heeft eigen acceptatiecriteria en begint p
 
 ### Deel A — migratie `…_retention.sql`
 
-**Tabel `app.retention`** (ADR 0022 punt 5), RLS `enable` én `force`:
+**Tabel `app.retention`** (ADR 0051 punt 14), RLS `enable` én `force`:
 
 | Kolom | Type | Regel |
 |---|---|---|
@@ -87,11 +87,11 @@ Vier PR's, in deze volgorde; elk deel heeft eigen acceptatiecriteria en begint p
 
 | `table_name` | `time_column` | `keep` | `purger` | Bron |
 |---|---|---|---|---|
-| `app.retention` | null | null | `app` | "configuratie" (ADR 0022 punt 5) |
+| `app.retention` | null | null | `app` | "configuratie" (ADR 0051 punt 14) |
 | `public.user_roles` | null | null | `app` | verdwijnt met het account (cascade) |
-| `app.audit_log` | `at` | `1 year` | `app` | ADR 0021 OV-5 |
+| `app.audit_log` | `at` | `1 year` | `app` | ADR 0051 punt 6 |
 | `app.rate_limits` | `window_start` | `60 seconds` (= `RATE_LIMIT_WINDOW_SECONDS`) | `app` | spec rate-limit, regel 40; OV-A1 |
-| `better_auth.session` | `createdAt` | `7 days` (= `SESSION_ABSOLUTE_SECONDS`) | `auth` | ADR 0003 |
+| `better_auth.session` | `createdAt` | `7 days` (= `SESSION_ABSOLUTE_SECONDS`) | `auth` | ADR 0041 |
 | `better_auth.verification` | `expiresAt` | `0 seconds` | `auth` | de geldigheid zit al in `expiresAt` |
 | `better_auth."rateLimit"` | `lastRequest` (epoch-ms, `bigint`) | `60 seconds` (= `AUTH_RATE_LIMIT_KEEP_SECONDS`, deel D; langste venster van Better Auth) | `auth` | OV-A3, OV-A4 |
 | `better_auth."user"`, `account`, `"twoFactor"` | null | null | `auth` | met het account; OV-A3 |
@@ -101,7 +101,7 @@ Vier PR's, in deze volgorde; elk deel heeft eigen acceptatiecriteria en begint p
   vervalt en wordt `audit_log_delete_expired_only` (`before delete … for each row`, functie `app.audit_log_guard_delete()`, eigenaar
   `app_definer`, geen security definer, klasse `intern`, reden "triggerfunctie van app.audit_log"): weigert met 42501 elke rij met
   `at >= app.retention_cutoff('app.audit_log')`. `update` en `truncate` blijven altijd geweigerd. De audit-invariant in
-  `db/tests/invarianten.sql` wijzigt op drie plekken: policy-allowlist (`:139`, `:142`) wordt de vier van ADR 0021 punt 6, grant-allowlist
+  `db/tests/invarianten.sql` wijzigt op drie plekken: policy-allowlist (`:139`, `:142`) wordt de vier van ADR 0051 punt 5, grant-allowlist
   (`:151`–`:152`) krijgt `('app_definer', 'DELETE')`, trigger-allowlist (`:163`) de nieuwe naam.
   **Let op:** `app_migrator` is eigenaar én lid van `app_definer`; onder FORCE RLS valt hij onder `audit_log_definer_delete`, dus een
   `delete` van een regel binnen de termijn geeft 0 rijen (de policy filtert vóór de trigger). De trigger is de grens voor wie RLS omzeilt
@@ -165,10 +165,10 @@ Vier PR's, in deze volgorde; elk deel heeft eigen acceptatiecriteria en begint p
     verbinding waar de volgende controle op wacht, en de single-flight van `createReadiness` (`checking`) blijft gelden voor beide pings.
     De export blijft `pingDatabase(): Promise<void>`:
     `src/api/server.ts` en `createReadiness` wijzigen niet, de exportlijst van `src/core/api/db` ook niet. `closeDatabase()` sluit ook deze ping.
-  - Beide pings zijn elk begrensd op 900 ms en lopen parallel, dus samen blijven ze binnen de 2 s van ADR 0018 punt 3; cache en single-flight
+  - Beide pings zijn elk begrensd op 900 ms en lopen parallel, dus samen blijven ze binnen de 2 s van ADR 0049 punt 4; cache en single-flight
     gelden voor het geheel (`src/core/api/http/readiness.ts`).
 - **`src/core/api/jobs/`**: `defineJobs`-register (naam, nummer, interval, `run`), `startJobs({ jobs, … })` → `{ stop }`, en
-  `runJobsOnce()` (één ronde, voor adapters van hosts die naar nul schalen, ADR 0020 punt 7; de template levert geen adapter).
+  `runJobsOnce()` (één ronde, voor adapters van hosts die naar nul schalen, ADR 0050 punt 7; de template levert geen adapter).
   Constante `JOB_LOCK_NAMESPACE` (één vaste `int4`) en taaknummers 1–99 voor core, vanaf 100 voor de app (OV-C2). Interval standaard
   `JOBS_INTERVAL_SECONDS = 60` (`src/core/shared/limits.ts`), per taak te kiezen; eerste ronde direct na de start (OV-C1).
   Geen import van `pg` (`.dependency-cruiser.mjs:52` blijft gelden): `withJob` en `purgeExpired` worden geïnjecteerd vanuit `src/api/server.ts`.
@@ -344,7 +344,7 @@ uit de functies zijn fouten in de servercode.
 | Anonieme request op `/api/auth/forget-password*` of `/api/auth/email-otp/*` | rij in `"rateLimit"` met venster 60 s; opruimen pas na 60 s | — |
 | Wachtende variant en de lock blijft bezet | wacht tot de `statement_timeout` (5 s), dan fout en rollback; gelogd | — |
 | Proces crasht midden in een batch | transactie rolt terug, lock vervalt met de verbinding; volgende ronde doet het opnieuw (idempotent) | — |
-| Database onbereikbaar | taak faalt, gelogd; volgende ronde opnieuw; readiness geeft 503 (ADR 0018) | — |
+| Database onbereikbaar | taak faalt, gelogd; volgende ronde opnieuw; readiness geeft 503 (ADR 0049) | — |
 | Alleen `app_jobs` kan niet verbinden (verkeerde `JOBS_DATABASE_URL`, wachtwoord niet geroteerd, verbindingslimiet van de rol) | taak faalt, gelogd; readiness geeft 503 via de jobs-ping, ook als `api_user` wel verbindt (AC-44, AC-45) | — |
 | `JOBS_DATABASE_URL` met de gegevens van een andere rol | jobs-ping faalt op `session_user`; readiness 503; `withJob` weigert al op de rolcontrole (AC-19) | — |
 | SIGTERM tijdens een batch | runner maakt de batch af, start niets nieuws, daarna pools dicht; na `SHUTDOWN_TIMEOUT_MS` afgebroken (rollback) | — |
@@ -353,8 +353,8 @@ uit de functies zijn fouten in de servercode.
 | Rij in `app.retention` voor een tabel die later verdwijnt | invariant regel 2 faalt tot de rij weg is | — |
 | `app.purge_expired` op een tabel met `keep` null | 0, niets verwijderd | — |
 | `app_migrator` of `app_definer` verwijdert een auditregel binnen de termijn | 0 rijen (policy onder FORCE RLS); zonder FORCE (eigenaar) weigert de trigger met 42501 | — |
-| Eigenaar zet FORCE RLS uit en de trigger uit | mogelijk als eigenaar (zoals ADR 0021 punt 6); de invariant (`pnpm test:db`) faalt bij elke migratie die het achterlaat | — |
-| Sessie ouder dan 7 dagen die nog gebruikt wordt | `getSession()` weigert hem al (ADR 0003); opruimen verwijdert hem | — |
+| Eigenaar zet FORCE RLS uit en de trigger uit | mogelijk als eigenaar (zoals ADR 0051 punt 5); de invariant (`pnpm test:db`) faalt bij elke migratie die het achterlaat | — |
+| Sessie ouder dan 7 dagen die nog gebruikt wordt | `getSession()` weigert hem al (ADR 0041); opruimen verwijdert hem | — |
 | `statement_timeout` tijdens een batch van 1000 | batch rolt terug, gelogd; volgende ronde opnieuw | — |
 | Meer verlopen rijen dan 100 × 1000 | de rest volgt in de volgende ronde | — |
 | Bestaande lokale database zonder rol `app_jobs` | migratie `…_app_jobs.sql` faalt; volume opnieuw maken of rol met de hand (notitie "Bij een update") | — |
@@ -398,9 +398,9 @@ een nieuwe kolom het vraagt, `CHANGELOG.md`, `docs/roadmap.md` ST-03/ST-05 (stan
 ## Buiten scope
 
 - Mail-outbox, `app.enqueue_mail` en de worker: spec [mail-outbox](mail-outbox.md) (ADR 0020 stap 9).
-- FK-invariant (stap 10), export (stap 11), verwijderen (stap 12) en het privacy-sjabloon (stap 13): ADR 0022, eigen specs.
-- Een adapter in `deploy/<host>/` en de uitzondering in framework §3 (ADR 0020 punt 7): bij de provider-ADR van een app.
-- Rijen voor de clientfouten-tabel: komen met die tabel (ADR 0022 punt 5).
+- FK-invariant (stap 10), export (stap 11), verwijderen (stap 12) en het privacy-sjabloon (stap 13): ADR 0051, eigen specs.
+- Een adapter in `deploy/<host>/` en de uitzondering in framework §3 (ADR 0050 punt 7): bij de provider-ADR van een app.
+- Rijen voor de clientfouten-tabel: komen met die tabel (ADR 0051 punt 14).
 - Indexen op `better_auth` voor het opruimen (OV-D2): pas na meting.
 - Een scherm of metriek voor taken (ST-10).
 
@@ -469,7 +469,7 @@ van de keuze. Dit besluit geeft geen akkoord op de beschermde paden uit "Raakt o
 
 ## Testplan
 
-Bewijsmatrix (tester schrijft rood vóór de developer; bij een migratie één `pnpm test:db`-run, ADR 0025 punt 9).
+Bewijsmatrix (tester schrijft rood vóór de developer; bij een migratie één `pnpm test:db`-run, ADR 0046 punt 23).
 
 | Bewijs | Soort | Plaats | AC |
 |---|---|---|---|

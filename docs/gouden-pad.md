@@ -5,7 +5,7 @@ dan van database naar scherm. Elke stap verwijst naar het bestand dat het voordo
 
 ## Begin met `pnpm new:resource <naam>`
 
-Voor een resource met een eigenaar per rij (ADR 0016). Naam: meervoud, kebab-case, Engels (`invoices`). Alleen de hoofdsessie
+Voor een resource met een eigenaar per rij (ADR 0047). Naam: meervoud, kebab-case, Engels (`invoices`). Alleen de hoofdsessie
 draait hem; `--dry-run` toont het plan zonder te schrijven, en bestaat een doel al, dan schrijft hij niets.
 
 1. **Zonder spec:** `pnpm new:resource <naam>` maakt `docs/specs/<naam>.md` (status `voorstel`) met de afgeleide routes,
@@ -19,7 +19,7 @@ draait hem; `--dry-run` toont het plan zonder te schrijven, en bestaat een doel 
    - gewijzigd: `src/shared/contracts/index.ts`, `src/shared/ids.ts` (aangemaakt als hij ontbreekt) en `db/ids.json` (brand `<Naam>Id`), `src/shared/limits.ts`
      (paginagrootte), `src/web/copy/ui.ts` (teksten, te vervangen door die uit de spec), `src/web/lib/nav.ts` (menu-item),
      `src/shared/permissions.ts` (`<naam>:read` en `<naam>:write`) en `src/api/app.ts` (de routes); die twee zijn geen
-     gate meer (ADR 0029 punt 18), het risico-overzicht van de diff-guard noemt de nieuwe permissie en routes;
+     gate meer (ADR 0046 punt 32), het risico-overzicht van de diff-guard noemt de nieuwe permissie en routes;
    - bestaande tests, als afgedrukte wijziging die de hoofdsessie met Edit zet: `src/shared/permissions.test.ts` en
      `src/web/routes.test.tsx` (menu per rol). Noem de twee testwijzigingen met reden in de PR;
    - de declaratie voor de securitysuite, als afgedrukte wijziging (`--- test/security/resources.ts`): één regel per route in
@@ -29,12 +29,14 @@ draait hem; `--dry-run` toont het plan zonder te schrijven, en bestaat een doel 
    `test/security/resources.ts` en vult de samples in (tot dan is `pnpm test:db` rood), de developer voegt de velden toe in
    een nieuwe migratie met kolomgrants en bouwt de handlers. De stappen hieronder gelden dan per bestand.
 
-`pnpm check:new-resource` bewijst in een tijdelijke kopie dat de uitvoer `pnpm gate:fast` haalt (eigen job in CI).
+`pnpm check:new-resource` bewijst in een tijdelijke kopie dat de uitvoer `pnpm gate:fast` haalt (eigen job in CI, niet in elke
+`gate:fast`). De generator voegt geen dependency toe: de route-tree komt van de al geïnstalleerde `@tanstack/router-plugin`
+(ADR 0047 punt 8–9).
 
 ## Stappen
 
 1. **Spec** met status `goedgekeurd`: `docs/specs/accountbeheer.md` (routes, foutcodes, teksten, ACs, testplan).
-2. **Migratie** met RLS, grants en policies, of een view van `app_definer`: `db/migrations/*_user_roles.sql`, `*_accounts_view.sql`; een functie van `app_definer` die in `better_auth` schrijft: `*_account_blocking.sql` (ADR 0026).
+2. **Migratie** met RLS, grants en policies, of een view van `app_definer`: `db/migrations/*_user_roles.sql`, `*_accounts_view.sql`; een functie van `app_definer` die in `better_auth` schrijft: `*_account_blocking.sql` (ADR 0043).
    pgTAP per policy: `db/tests/user_roles.sql`, `db/tests/accounts.sql`; nieuwe functie → regel in `db/tests/functies.sql`.
 3. **Schema genereren**: `pnpm db:generate` (snapshot en `src/api/db/schema.ts`); nieuwe id-kolom → `db/ids.json`.
 4. **Permissie** en **foutcode**: `src/shared/permissions.ts`, `src/shared/errors.ts`, tekst in `src/web/copy/errors.ts`.

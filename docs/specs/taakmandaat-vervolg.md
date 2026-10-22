@@ -10,7 +10,7 @@ namespace: mandate-follow-up
 Een taak onder een taakmandaat kan haar eigen roadmap-vinkje en `gebouwd`-status in één stap en één PR afronden, met één
 bewijsvorm die `check:roadmap` en `check-document-status` gelijk lezen, en de runner-hostbestanden lopen niet ongemerkt uiteen.
 
-Achtergrond: [spec taakmandaat](taakmandaat-frameworkwerk.md), [ADR 0027](../adr/0027-taakmandaat-voor-frameworkwerk.md),
+Achtergrond: [spec taakmandaat](taakmandaat-frameworkwerk.md), [ADR 0046](../adr/0046-werkstraat-en-beslisroute.md),
 [spec roadmap-vinkjes](roadmap-vinkjes.md). Eigenaarbesluiten (2026-10-13, na de review van PR #130):
 
 - **B1** — Binnen een taakmandaat mag `docs/roadmap.md` meewijzigen, maar alleen het vinkje van het item van de taak.
@@ -203,7 +203,7 @@ doet, plus het vinkje:
 
 `docs/dod.md:10` (vervangt de huidige regel):
 
-> - [ ] Is het bewijs voor een roadmap-item beschikbaar (checkuitslag of test, eventueel met PR-nummer), dan vinkt dezelfde PR dat item af, met een verwijzing achter het vinkje (testpad, checknaam of PR-nummer; de uitslag staat in de PR) en met akkoord van de eigenaar. Een spec naar `gebouwd` heeft één vorm, die `pnpm docs:status` schrijft: `status: gebouwd # #<PR>; gevalideerd: <sha>`; een afgevinkt roadmap-item vervangt die niet. Binnen een taakmandaat wijzigt in `docs/roadmap.md` alleen het vinkje van het item dat de spec van het mandaat tussen backticks noemt (precies één open item per spec); `pnpm docs:status <spec> gebouwd --pr <nummer> --roadmap` zet status en vinkje samen (ADR 0027). Een item dat deze PR afrondt maar open blijft, is een bevinding van de reviewer, net als een vinkje zonder bewijs. `pnpm check:roadmap` (in `gate:fast`) en `check-document-status` (CI) lezen beide vormen met dezelfde code; of het juiste item is afgevinkt blijft een oordeel van de reviewer.
+> - [ ] Is het bewijs voor een roadmap-item beschikbaar (checkuitslag of test, eventueel met PR-nummer), dan vinkt dezelfde PR dat item af, met een verwijzing achter het vinkje (testpad, checknaam of PR-nummer; de uitslag staat in de PR) en met akkoord van de eigenaar. Een spec naar `gebouwd` heeft één vorm, die `pnpm docs:status` schrijft: `status: gebouwd # #<PR>; gevalideerd: <sha>`; een afgevinkt roadmap-item vervangt die niet. Binnen een taakmandaat wijzigt in `docs/roadmap.md` alleen het vinkje van het item dat de spec van het mandaat tussen backticks noemt (precies één open item per spec); `pnpm docs:status <spec> gebouwd --pr <nummer> --roadmap` zet status en vinkje samen (ADR 0046). Een item dat deze PR afrondt maar open blijft, is een bevinding van de reviewer, net als een vinkje zonder bewijs. `pnpm check:roadmap` (in `gate:fast`) en `check-document-status` (CI) lezen beide vormen met dezelfde code; of het juiste item is afgevinkt blijft een oordeel van de reviewer.
 
 `docs/framework.md` §8, na "roadmap-vinkjes met eigenaarakkoord." (`docs/framework.md:297`); in `framework.md` zelf is
 `dod.md` de juiste relatieve link:

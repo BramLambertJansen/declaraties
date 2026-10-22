@@ -10,15 +10,15 @@ Geen kop weglaten; "n.v.t. — reden" mag. Ontbreekt een antwoord, dan staat het
 ## Doel
 
 De hoofdsessie merget een feature-lane-PR zelf met exact `gh pr merge <nr> --squash --match-head-commit <sha>` (`<sha>` = lokale
-`HEAD`), na een permissieprompt, alleen als de voorwaarden uit [ADR 0029](../adr/0029-snellere-beslisroute.md) punt 14–16 en de
+`HEAD`), na een permissieprompt, alleen als de voorwaarden uit [ADR 0046](../adr/0046-werkstraat-en-beslisroute.md) punt 30, 33 en 35 en de
 eigenaarbesluiten hieronder aantoonbaar gelden, onder het account van de eigenaar.
 
 ### Uitgangspunt (opdracht van 2026-10-18; de eigenaar bevestigt het met de status `goedgekeurd`)
 
 - Route 2: agent-merge nu bouwen, onder het account van de eigenaar. Geen GitHub App; ST-01 blijft open.
-- De zwakte uit ADR 0029 punt 17 is geaccepteerd: de merge is geen identiteitsbewijs, het reviewerakkoord is een sessie-artefact,
+- De zwakte uit ADR 0046 (Gevolgen) is geaccepteerd: de merge is geen identiteitsbewijs, het reviewerakkoord is een sessie-artefact,
   en de diff-guard staat voor de eigenaar als auteur op `overgang` (groen met waarschuwing, `scripts/kit/diff-guard.mjs:166`).
-- De voorwaarden uit ADR 0029 punt 10 en 16 zijn vervuld op `origin/main` `1c56274`: AC→test-check en risico-overzicht (#167, #170,
+- De voorwaarden uit ADR 0046 punt 29 en 35 zijn vervuld op `origin/main` `1c56274`: AC→test-check en risico-overzicht (#167, #170,
   `docs/roadmap.md:451`), ADR 0029 `geaccepteerd`.
 - Eigenaarbesluiten V-1 tot en met V-4 en V-6 (zie "Besloten door de eigenaar") zijn in de hele spec doorgevoerd.
 
@@ -42,7 +42,7 @@ Twee correcties op de opdracht, uit de feiten:
 1. Het rolhek staat sinds ADR 0033 in `rails/hooks/lib/rolhek.mjs`; `.claude/hooks/rolhek.mjs` is een stub die de versie van `main`
    laadt. `.claude/hooks/lib/rolhek.mjs` bestaat niet. Deze spec gebruikt `rails/hooks/lib/rolhek.mjs`.
 2. `.claude/gates.json`, `.claude/decisions.json` en `.github/**` (dus ook `.github/settings/main-protection.json`) staan in
-   `altijdVragen`: de developer-subagent krijgt daar deny, de hoofdsessie een prompt (ADR 0033 punt 3). Die drie bestanden in PR A
+   `altijdVragen`: de developer-subagent krijgt daar deny, de hoofdsessie een prompt (ADR 0045 punt 9). Die drie bestanden in PR A
    schrijft dus de hoofdsessie met eigenaarakkoord per bewerking, niet de developer. `scripts/**`, `rails/**`, `test/**` en `docs/**`
    zijn in de onderhoudsmodus een melding.
 
@@ -89,7 +89,7 @@ voegt de eigenaar toe via een eigen branch (V-12, afgesproken).
 | Eigenaar | Zet de modus (C), beantwoordt de prompt bij elke agent-merge (V-3), krijgt achteraf een PR-commentaar en de eindmelding, merget elke framework-lane-PR zelf. |
 | Hoofdsessie | Mag alleen de exacte vorm uit "Doel" op een feature-lane-PR, met de voorwaarden uit B1; het rolhek geeft daarbij `ask`, nooit `allow`. |
 | Developer, tester, reviewer, architect, docs, onbekende subagent | Mergen blijft deny, in elke modus. |
-| GitHub | Harde grens: de ruleset eist de verplichte checks van GitHub Actions (ADR 0030 punt 6); `--match-head-commit` laat GitHub een PR met een andere head weigeren. |
+| GitHub | Harde grens: de ruleset eist de verplichte checks van GitHub Actions (ADR 0046 punt 34); `--match-head-commit` laat GitHub een PR met een andere head weigeren. |
 
 ## Datawijzigingen (met grants)
 
@@ -175,7 +175,7 @@ niet. Daarom in PR A:
 
 ```json
 {
-  "$comment": "Ruleset main als code (framework §10, ADR 0030 punt 3). scripts/github-ruleset.sh zet hem, scripts/check-github.mjs controleert hem alleen-lezend; test/scripts/main-protection.test.ts houdt beide gelijk.",
+  "$comment": "Ruleset main als code (framework §10, ADR 0046 punt 30). scripts/github-ruleset.sh zet hem, scripts/check-github.mjs controleert hem alleen-lezend; test/scripts/main-protection.test.ts houdt beide gelijk.",
   "ruleset": { "<precies de payload van scripts/github-ruleset.sh <repo> zonder --zonder-codeql>": "" }
 }
 ```
@@ -187,7 +187,7 @@ ongewijzigd. De nieuwe test vergelijkt alleen de stub-payload met het bestand; w
 
 ### A3 — sleutel `merge` in `.claude/gates.json`
 
-- Toevoegen: `"merge": "eigenaar"`, en in `$comment` de zin: "`merge` (ADR 0029 punt 14): `\"eigenaar\"` of `\"feature-lane\"`;
+- Toevoegen: `"merge": "eigenaar"`, en in `$comment` de zin: "`merge` (ADR 0046 punt 30): `\"eigenaar\"` of `\"feature-lane\"`;
   ontbreekt of onleesbaar → `\"eigenaar\"`; het rolhek leest hem uit het anker, nooit uit de werkmap."
 - `check-docs` (nieuwe sleutel `docs:gates:merge`, in `scripts/kit/check-docs.mjs` naast `onderhoudViolations`): ontbreekt → goed;
   `"eigenaar"` → goed; `"feature-lane"` → goed als `scripts/check-github.mjs` én `.github/settings/main-protection.json` in git staan,
@@ -221,8 +221,8 @@ ongewijzigd. De nieuwe test vergelijkt alleen de stub-payload met het bestand; w
 
 ### A5 — `requiredChecks`
 
-`"diff-guard"` erbij in `requiredChecks` van `.claude/decisions.json` (ADR 0029 punt 16). De ruleset op GitHub blijft ongewijzigd
-(`NIET_VERPLICHT` in `test/scripts/github-ruleset.test.ts` blijft gelden, ADR 0017).
+`"diff-guard"` erbij in `requiredChecks` van `.claude/decisions.json` (ADR 0046 punt 35). De ruleset op GitHub blijft ongewijzigd
+(`NIET_VERPLICHT` in `test/scripts/github-ruleset.test.ts` blijft gelden, ADR 0045 punt 17).
 
 ### A6 — `pnpm pr:verify <nr> --lane`
 
@@ -356,7 +356,7 @@ De sectie "Mergen" wordt letterlijk:
 Het rolhek beslist met `merge` uit zijn anker; deze stap leest de modus alleen ter informatie uit
 `git show origin/main:.claude/gates.json`. Wijken die af (bijvoorbeeld een oude lokale `origin/main`), dan geldt de weigering van het
 rolhek. Bij `"eigenaar"` (of zonder sleutel) reviewt en merget de eigenaar; de hoofdsessie merget nooit. Bij `"feature-lane"` merget de
-hoofdsessie zelf (ADR 0029 punt 14), alleen als alles geldt:
+hoofdsessie zelf (ADR 0046 punt 30), alleen als alles geldt:
 
 1. De reviewer gaf akkoord op de huidige head: na de laatste review is `git diff <reviewer-sha>..HEAD` leeg of door de reviewer opnieuw
    bekeken, en er staat geen blokkerende bevinding open.
@@ -371,7 +371,7 @@ ervoor. Zet geen `GH_REPO` of `GH_HOST` en gebruik geen `gh repo set-default` na
 Na de merge: `gh pr comment <nr> --body "<melding>"` met de melding hieronder, en dezelfde tekst in de eindmelding. Een framework-lane-PR
 merget altijd de eigenaar.
 
-Melding: `Gemerged door de agent (feature-lane, ADR 0029 punt 14) op <head-sha>. Reviewer-akkoord op <reviewer-sha>; pr:verify --lane groen. Nieuwe permissies en routes: zie het risico-overzicht van de diff-guard.`
+Melding: `Gemerged door de agent (feature-lane, ADR 0046 punt 30) op <head-sha>. Reviewer-akkoord op <reviewer-sha>; pr:verify --lane groen. Nieuwe permissies en routes: zie het risico-overzicht van de diff-guard.`
 ```
 
 `allowed-tools` in de frontmatter van `SKILL.md` (:4) krijgt géén `gh pr merge`-patroon: een toegestaan gereedschap in de skill zou de
@@ -383,32 +383,32 @@ prompt uit B2 overslaan. `test/rails/opleveren-skill.test.ts` blijft geldig (de 
 ### B4 — `.github/workflows/guard.yml` (eigenaar pusht)
 
 Alleen de kopcommentaarregel 4: "Nog geen verplichte check (ADR 0017, OV-1): dat wordt hij bij de overstap op de GitHub App." wordt
-"In de ruleset nog geen verplichte check (ADR 0017, OV-1); wel in `requiredChecks` voor `pnpm pr:verify` (ADR 0029 punt 16)." Geen
+"In de ruleset nog geen verplichte check (ADR 0045 punt 17); wel in `requiredChecks` voor `pnpm pr:verify` (ADR 0046 punt 35)." Geen
 functionele wijziging: lane en merge-uitslag komen uit het script (A4).
 
 ### B5 — `docs/framework.md` (eigenaar)
 
 - §8 stap 6, de zin "Inhoudelijke goedkeuring en merge blijven van de eigenaar;" wordt "Inhoudelijke goedkeuring blijft van de eigenaar;
-  de merge ook, behalve een feature-lane-PR bij `merge: \"feature-lane\"` op `main`, na een prompt (ADR 0029 punt 14, skill
+  de merge ook, behalve een feature-lane-PR bij `merge: \"feature-lane\"` op `main`, na een prompt (ADR 0046 punt 30, skill
   `opleveren`);".
 - §8 stap 7 wordt: "**Eigenaar** reviewt en merget; een feature-lane-PR merget de hoofdsessie volgens stap 6, na een prompt en met
   achteraf een melding aan de eigenaar."
 - §8, tabel PreToolUse rolhek (Bash): bij "mergen (…)" toevoegen: "behalve exact `gh pr merge <nr> --squash --match-head-commit <sha>`
   zonder omhulsel of toewijzing en zonder `GH_REPO`/`GH_HOST` in de omgeving, door de hoofdsessie, met `<sha>` = lokale `HEAD`, bij `merge: \"feature-lane\"` op het anker, een
-  feature-lane van `HEAD` en geen gate-pad buiten de mini-spec; dan `ask`, nooit `allow` (ADR 0029 punt 14)".
+  feature-lane van `HEAD` en geen gate-pad buiten de mini-spec; dan `ask`, nooit `allow` (ADR 0046 punt 30)".
 - §8, alinea permissieregels (`docs/framework.md:364-365`): in de opsomming van de deny-regels wordt "mergen" vervangen door "mergen
-  (`gh pr merge` krijgt een prompt; `--admin`, `--auto` en `gh api *merge*` blijven deny, ADR 0029 punt 14)".
+  (`gh pr merge` krijgt een prompt; `--admin`, `--auto` en `gh api *merge*` blijven deny, ADR 0046 punt 30)".
 - §10 eerste bullet (`docs/framework.md:396`): "De eigenaar merget." wordt "De eigenaar merget; een feature-lane-PR mag de agent mergen
-  na een prompt (ADR 0029 punt 14)."
+  na een prompt (ADR 0046 punt 30)."
 - Ongewijzigd, met reden: `docs/framework.md:424` ("De eigenaar reviewt en merget het inhoudelijke besluit") gaat over besluit-PR's in
   de framework-lane, die de eigenaar blijft mergen.
 - §10 bullet "Instellingen als code": "faalt als de agent onder het account van de eigenaar werkt" wordt "meldt `overgang` als de
-  agent onder het account van de eigenaar werkt (ADR 0029 punt 17, geaccepteerd)" (V-6).
+  agent onder het account van de eigenaar werkt (ADR 0046 Gevolgen, geaccepteerd)" (V-6).
 
 ### B6 — `AGENTS.md` (eigenaar)
 
 Regel 74: "Push nooit naar `main`, gebruik nooit `--no-verify`, merge nooit." wordt "Push nooit naar `main`, gebruik nooit `--no-verify`;
-merge alleen een feature-lane-PR via de skill `opleveren` (ADR 0029 punt 14)."
+merge alleen een feature-lane-PR via de skill `opleveren` (ADR 0046 punt 30)."
 
 ### B7 — `CLAUDE.md` (eigenaar)
 
@@ -425,12 +425,12 @@ deze verwijsregel al sinds zijn acceptatie (punt 15, "0030 krijgt een verwijsreg
 - `.claude/agents/reviewer.md:3`: "vóór de eigenaar merget" wordt "vóór de merge (door de eigenaar, of in de feature-lane door de
   hoofdsessie na een prompt)".
 - `docs/operations/agent-doorloop.md:3`: "De eigenaar beslist inhoudelijk en merget." wordt "De eigenaar beslist inhoudelijk en merget;
-  een feature-lane-PR merget de hoofdsessie na een prompt (ADR 0029 punt 14, skill `opleveren`)."
+  een feature-lane-PR merget de hoofdsessie na een prompt (ADR 0046 punt 30, skill `opleveren`)."
 - `docs/operations/agent-doorloop.md:33-34`: "de eigenaar zet hem in dezelfde PR in de GitHub-webeditor en merget." wordt "de eigenaar
-  zet hem in dezelfde PR in de GitHub-webeditor en merget; een feature-lane-PR mag daarna de hoofdsessie mergen, na een prompt (ADR 0029
-  punt 14, skill `opleveren`)."
+  zet hem in dezelfde PR in de GitHub-webeditor en merget; een feature-lane-PR mag daarna de hoofdsessie mergen, na een prompt (ADR 0046
+  punt 30, skill `opleveren`)."
 - `docs/operations/agent-doorloop.md:117`: "De agent merget nooit." wordt "De agent merget nooit, behalve een feature-lane-PR via de skill
-  `opleveren` (ADR 0029 punt 14)."
+  `opleveren` (ADR 0046 punt 30)."
 - `docs/operations/agent-doorloop.md:138`: "De eigenaar merget zelf." wordt "De eigenaar merget zelf; een feature-lane-PR mag de
   hoofdsessie mergen (skill `opleveren`)."
 - Gecontroleerd met `grep` op "merge nooit", "merget nooit", "eigenaar merget" in `AGENTS.md`, `CLAUDE.md`, `.claude/agents/*.md`,
@@ -444,17 +444,17 @@ deze verwijsregel al sinds zijn acceptatie (punt 15, "0030 krijgt een verwijsreg
 | check-github, gebruik | `Gebruik: node scripts/check-github.mjs <owner>/<repo>` |
 | check-github, per regel | `✓ <onderwerp>` of `✗ <onderwerp>: verwacht <verwacht>, gevonden <gevonden>` |
 | check-github, onleesbaar | `✗ <onderwerp>: onleesbaar (<endpoint>); een onleesbare instelling telt als fout` |
-| check-github, account | `! overgang: gh is ingelogd als <login>, een goedkeurder; de merge is geen identiteitsbewijs (ADR 0029 punt 17)` |
+| check-github, account | `! overgang: gh is ingelogd als <login>, een goedkeurder; de merge is geen identiteitsbewijs (ADR 0046 Gevolgen)` |
 | check-github, slot goed | `check-github: ruleset main op <repo> komt overeen met .github/settings/main-protection.json` |
 | check-github, slot fout | `check-github: <n> afwijking(en); zet de ruleset met scripts/github-ruleset.sh <repo> en draai opnieuw` |
-| check-docs, `agent-na-akkoord` | `.claude/gates.json: merge "agent-na-akkoord" is geparkeerd (ADR 0030 PR 2, ADR 0029 punt 14); gebruik "eigenaar" of "feature-lane"` |
-| check-docs, `feature-lane` zonder A1/A2 | `.claude/gates.json: merge "feature-lane" vraagt scripts/check-github.mjs en .github/settings/main-protection.json (ADR 0030 punt 3)` |
-| check-docs, andere waarde | `.claude/gates.json: merge is "eigenaar" of "feature-lane" (ADR 0029 punt 14)` |
+| check-docs, `agent-na-akkoord` | `.claude/gates.json: merge "agent-na-akkoord" is geparkeerd (ADR 0046 punt 33 en 30); gebruik "eigenaar" of "feature-lane"` |
+| check-docs, `feature-lane` zonder A1/A2 | `.claude/gates.json: merge "feature-lane" vraagt scripts/check-github.mjs en .github/settings/main-protection.json (ADR 0046 punt 30)` |
+| check-docs, andere waarde | `.claude/gates.json: merge is "eigenaar" of "feature-lane" (ADR 0046 punt 30)` |
 | diff-guard, samenvatting | `**Lane:** feature — <reden>` / `**Lane:** framework — <reden>` / `**Lane:** geen — <reden>`, daaronder `**Agent-merge:** ja` of `**Agent-merge:** nee — <reden>` |
 | diff-guard, annotaties | `::notice title=lane::feature` / `::notice title=lane::framework` / `::notice title=lane::geen: <reden>`, en `::notice title=agent-merge::ja` / `::notice title=agent-merge::nee: <reden>` |
 | pr:verify `--lane`, fout | `lane: geen agent-merge volgens diff-guard op <sha7> (<gevonden>)` / `lane: geen geslaagde diff-guard van GitHub Actions voor PR #<nr> op <sha7>` / `lane: PR #<nr> heeft base <ref>, niet de default branch <default>` |
-| rolhek, ask | `mergen: feature-lane op <sha7>, geen gate-pad buiten <mini-spec>; de statuscommit van de eigenaar (web-flow) controleert alleen document-status in CI, niet het rolhek; de eigenaar beslist met deze prompt (ADR 0029 punt 14)` |
-| rolhek, deny | `mergen: <reden>; alleen exact gh pr merge <nr> --squash --match-head-commit <sha> door de hoofdsessie, bij merge "feature-lane" op main en een feature-lane (ADR 0029 punt 14)` met `<reden>` uit: `modus is "eigenaar"`, `geen exacte vorm`, `alleen de hoofdsessie`, `sha is niet de lokale HEAD`, `werkmap niet schoon`, `HEAD is niet gepusht`, `GH_REPO of GH_HOST is gezet`, `lane: <reden van laneVan>`, `gate-pad <pad>`, `geen mergefeiten` |
+| rolhek, ask | `mergen: feature-lane op <sha7>, geen gate-pad buiten <mini-spec>; de statuscommit van de eigenaar (web-flow) controleert alleen document-status in CI, niet het rolhek; de eigenaar beslist met deze prompt (ADR 0046 punt 30)` |
+| rolhek, deny | `mergen: <reden>; alleen exact gh pr merge <nr> --squash --match-head-commit <sha> door de hoofdsessie, bij merge "feature-lane" op main en een feature-lane (ADR 0046 punt 30)` met `<reden>` uit: `modus is "eigenaar"`, `geen exacte vorm`, `alleen de hoofdsessie`, `sha is niet de lokale HEAD`, `werkmap niet schoon`, `HEAD is niet gepusht`, `GH_REPO of GH_HOST is gezet`, `lane: <reden van laneVan>`, `gate-pad <pad>`, `geen mergefeiten` |
 
 ## Acceptatiecriteria
 
@@ -552,7 +552,7 @@ PR C heeft geen AC: de controle is handmatig door de eigenaar (zie Levering).
 | Situatie | Gedrag | Foutcode |
 |---|---|---|
 | Ruleset op GitHub strenger dan het bestand (extra check, `strict` aan) | goed | n.v.t. |
-| Ruleset later versoepeld, na C | niet automatisch gezien (restrisico ADR 0030); GitHub blijft de grens bij elke merge | n.v.t. |
+| Ruleset later versoepeld, na C | niet automatisch gezien (restrisico ADR 0046); GitHub blijft de grens bij elke merge | n.v.t. |
 | `gh` zonder login of zonder rechten om `bypass_actors` te lezen | onleesbaar → exit 1 | n.v.t. |
 | Private repo zonder CodeQL (`--zonder-codeql`) | `check-github` faalt op de twee CodeQL-checks; zie V-7 | n.v.t. |
 | De eigenaar zet de status van de mini-spec in de webeditor na de review | nieuwe head; lokaal `git pull --ff-only`, reviewer bekijkt `git diff <reviewer-sha>..HEAD` (alleen de statusregel), `pr:verify --lane` opnieuw op de nieuwe head | n.v.t. |
@@ -584,12 +584,12 @@ PR C heeft geen AC: de controle is handmatig door de eigenaar (zie Levering).
 
 ## Buiten scope
 
-- GitHub App, tokens of credentials (ST-01, ADR 0029 "Niet beslist").
-- Agent-merge in de framework-lane en de waarde `"agent-na-akkoord"` (ADR 0030 PR 2 blijft geparkeerd).
+- GitHub App, tokens of credentials (ST-01, ADR 0046 "Niet beslist").
+- Agent-merge in de framework-lane en de waarde `"agent-na-akkoord"` (ADR 0046 punt 33: blijft geparkeerd).
 - `diff-guard` of `document-status` als verplichte check in de ruleset op GitHub.
 - `gh pr merge --auto`, `--admin`, `--delete-branch`, `gh api …/merge`, `gh pr review`.
 - Wijzigen van `scripts/github-ruleset.sh` (de JSON wordt nog niet de bron van het script; zie V-8).
-- Periodiek opnieuw draaien van `check-github` (restrisico ruleset, ADR 0030).
+- Periodiek opnieuw draaien van `check-github` (restrisico ruleset, ADR 0046).
 
 ## Testplan
 

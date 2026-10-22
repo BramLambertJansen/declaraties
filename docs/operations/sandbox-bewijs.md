@@ -29,6 +29,6 @@ Twee lagen: een eerder, samengesteld commando dat ook `.env` las, weigerde de pe
   (`Device or resource busy`); dat doet de eigenaar.
 - **`~/.ssh` en `~/.aws`** zijn alleen als regel aanwezig; bewijs volgt op een machine waar die mappen bestaan.
 - **`excludedCommands`** (`.claude/settings.json:122`: `pnpm test:db`, `ui:check`, `gate:slow`, `db:generate`, `check:snapshot`)
-  draaien buiten de sandbox, met `ask`; ADR 0009 beschrijft dat gat.
+  draaien buiten de sandbox, met `ask`; ADR 0044 beschrijft dat gat.
 - **Niet getoetst:** `failIfUnavailable` en `allowUnsandboxedCommands: false` (`.claude/settings.json:120`–`:121`).
 - De deny- en ask-patronen in `permissions` zijn gemak, geen grens (framework §8); dit verslag bewijst de sandbox.

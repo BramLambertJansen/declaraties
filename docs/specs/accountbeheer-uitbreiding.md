@@ -34,7 +34,7 @@ Volgens de aanbeveling bij OV-1 (één nieuwe migratie; beschermde-padwijziginge
 - **`better_auth."user".blocked_at timestamptz null`** via Better Auth `user.additionalFields` (`input: false`, kolomnaam `blocked_at`),
   door `auth generate` in de migratie. Better Auth leest het veld mee bij elke sessie-opvraging; schrijven doet alleen de functie hieronder.
 - **Grants aan `app_definer`** (allowlist in `db/tests/invarianten.sql` erbij): `select (blocked_at)` en `update (blocked_at)` op `better_auth."user"`.
-  Geen grant op `better_auth.session`: sessies intrekken loopt via Better Auth (ADR 0014 sluit sessies voor `app_definer` uit).
+  Geen grant op `better_auth.session`: sessies intrekken loopt via Better Auth (ADR 0043 sluit sessies voor `app_definer` uit).
 - **`app.set_account_blocked(p_user_id text, p_blocked boolean) returns void`** — `security definer`, eigenaar `app_definer`, `search_path = ''`,
   execute aan `app_authenticated`, klasse `client` in de functiecatalogus. Eist `app.is_mfa_admin()` (anders 42501), weigert `p_user_id =
   app.current_user_id()` (`OWN_ACCOUNT`) en een account zonder credential (`ACCOUNT_INVITED`), neemt de advisory lock van de laatste-admin-regel,
@@ -56,7 +56,7 @@ Volgens de aanbeveling bij OV-1 (één nieuwe migratie; beschermde-padwijziginge
 | POST | `/api/auth/two-factor/verify-backup-code` `{ code }` (Better Auth) | half ingelogd (geen sessie) | `INVALID_BACKUP_CODE`, `VALIDATION`, `RATE_LIMITED` |
 | POST | `/api/auth/sign-in/email`, `/two-factor/verify-*` (bestaand) | — | erbij: `ACCOUNT_BLOCKED` (server; web toont `INVALID_CREDENTIALS`) |
 
-- **Blokkeren zonder admin-plugin** (ADR 0013 verwierp die; OV-1): (1) `app.set_account_blocked` in de transactie van de route; (2) daarna
+- **Blokkeren zonder admin-plugin** (ADR 0043 verwierp die; OV-1): (1) `app.set_account_blocked` in de transactie van de route; (2) daarna
   `ctx.services.sessions.revokeAll` (`internalAdapter.deleteUserSessions`), opruimen; (3) de garantie: `authGateway.getSession` ziet
   `user.blockedAt` (additional field, komt mee met de sessie, geen extra query), verwijdert de sessie en geeft geen sessie, zoals bij de absolute
   7 dagen. Een login tussen (1) en (2) is zo ook dood. `databaseHooks.session.create.before` weigert nieuwe sessies (inloggen, TOTP, herstelcode,
@@ -67,7 +67,7 @@ Volgens de aanbeveling bij OV-1 (één nieuwe migratie; beschermde-padwijziginge
   intrekken eerst → `INVITATION_INVALID` (token weg, `USER_NOT_FOUND`, of de nieuwe `databaseHooks.account.create.before` vindt de user niet:
   `APIError` `INVALID_TOKEN`, ook tijdens het hashen). Alleen een commit precies tussen die hook en de insert geeft nog een 23503 (500).
 - **Resetlink** via `ctx.services.invitations.sendResetLink`: oude `reset-password:*`-tokens weg (zoals `reinviteUser`), `auth.api.requestPasswordReset`
-  server-side (`/request-password-reset` blijft dicht, ADR 0013), dan `expiresAt` van de nieuwe tokenrij op nu + `RESET_LINK_TTL_SECONDS` (OV-4).
+  server-side (`/request-password-reset` blijft dicht, ADR 0043), dan `expiresAt` van de nieuwe tokenrij op nu + `RESET_LINK_TTL_SECONDS` (OV-4).
   `sendResetPassword` kiest de mail: met credential de resetmail naar `/nieuw-wachtwoord?token=…` (scherm van `/uitnodiging`, andere teksten),
   zonder de uitnodiging. Bij gebruik trekt `revokeSessionsOnPasswordReset` de sessies in.
 - **RLS-vangnet:** intrekken en resetlink draaien als `auth_service`, buiten RLS. De route leest eerst in zijn transactie de rij uit `app.accounts`
@@ -153,9 +153,9 @@ Volgens de aanbeveling bij OV-1 (één nieuwe migratie; beschermde-padwijziginge
 - `src/core/api/auth` (options, `auth.ts`: `getSession` controleert `blockedAt`; `invitations.ts`: `revoke`, `sendResetLink`), `src/api/services.ts`
   (vertaling van de nieuwe fouten), mail-layout (resetmail), route `/nieuw-wachtwoord`. `src/core/web/lib/auth.ts`: `authErrorCode` zet bij inloggen
   nu elke 4xx om in `INVALID_CREDENTIALS`; dat blijft (OV-5), erbij komen herstelcode en `RESET_LINK_INVALID`. Mutaties invalideren `accounts`.
-- **Beschermde paden** (nieuwe ADR via `feiten.mjs`): ADR 0013 (backupcodes dicht, admin-plugin verworpen); ADR 0014 (allowlist; "geen sessies"
-  blijft); framework §6 en ADR 0010 (`better_auth` dicht behalve `auth_service`, nu `update (blocked_at)` voor `app_definer`); `db/tests/invarianten.sql`.
-- **Audit log:** besloten in [ADR 0021](../adr/0021-audit-log.md), uitgewerkt in spec [audit-log](audit-log.md): blokkeren, deblokkeren, rol, invite en
+- **Beschermde paden** (nieuwe ADR via `feiten.mjs`): ADR 0043 (backupcodes dicht, admin-plugin verworpen); ADR 0043 (allowlist; "geen sessies"
+  blijft); framework §6 en ADR 0041 (`better_auth` dicht behalve `auth_service`, nu `update (blocked_at)` voor `app_definer`); `db/tests/invarianten.sql`.
+- **Audit log:** besloten in [ADR 0051](../adr/0051-audit-log-en-avg.md), uitgewerkt in spec [audit-log](audit-log.md): blokkeren, deblokkeren, rol, invite en
   reinvite schrijven een regel. Intrekken (`core.account.revoke`) en resetlink (`core.account.reset_link`) krijgen hun regel bij de bouw van die routes (audit-log OV-C1).
 
 ## Buiten scope
@@ -180,12 +180,12 @@ aantal resterende herstelcodes tonen (`/view-backup-codes` is alleen server-side
 ## Open vragen voor de eigenaar
 
 - **OV-1** — Waar staat "geblokkeerd"? Aanbeveling: `better_auth."user".blocked_at`, geschreven door een functie van `app_definer` (atomair met de
-  laatste-admin-regel), gelezen door Better Auth bij elke sessie. Vraagt een grant buiten ADR 0014 en schrijven in `better_auth` (ADR 0010), dus een
-  ADR. Alternatieven: kolom in `public.user_roles` (Better Auth kan hem niet lezen) of de admin-plugin (ADR 0013 verwierp hem; ADR nodig).
+  laatste-admin-regel), gelezen door Better Auth bij elke sessie. Vraagt een grant buiten ADR 0043 en schrijven in `better_auth` (ADR 0041), dus een
+  ADR. Alternatieven: kolom in `public.user_roles` (Better Auth kan hem niet lezen) of de admin-plugin (ADR 0043 verwierp hem; ADR nodig).
 - **OV-2** — Eén permissie `accounts:manage` voor blokkeren en resetlink, intrekken onder `accounts:invite`? Aanbeveling: ja; aparte permissies pas als een app rollen anders verdeelt.
 - **OV-3** — Herstelcodes ook voor `user` (zodra die TOTP kan instellen) of alleen voor admins? Aanbeveling: voor iedereen met TOTP; het kost niets extra.
 - **OV-4** — Geldigheid resetlink? Aanbeveling: 1 uur (`RESET_LINK_TTL_SECONDS`, `expiresAt` na aanmaken verkort), uitnodiging blijft 7 dagen:
-  een resetlink geeft een actief account over (gevolg in ADR 0013).
+  een resetlink geeft een actief account over (gevolg in ADR 0043).
 - **OV-5** — Ziet een geblokkeerd account (na een juist wachtwoord) "Dit account is geblokkeerd." of de gewone inlogfout? Aanbeveling: de gewone
   inlogfout (OWASP). Een eigen melding bevestigt een aanvaller dat het wachtwoord klopt (orakel voor gelekte wachtwoorden); de prijs: de
   gebruiker hoort het van de beheerder.
