@@ -17,6 +17,10 @@ Hier staan wijzigingen die van belang zijn bij het gebruiken of bijwerken van de
 
 ### Gewijzigd
 
+- A4 (ADR 0046 punt 2): een geaccepteerd ADR mag in een besluit-PR worden herschreven (met een herzieningsregel
+  `Herzien: JJJJ-MM-DD (#NNN): wat`) en een ADR met een eigenaarstatus mag in een besluit-PR worden verwijderd; lokaal mogen alleen
+  architect en hoofdsessie dat (`check-document-status`, rolhek). De tekst van ADR 0046 punt 2 volgt in een besluit-PR. Bij een update:
+  een eigen ADR herschrijven of opruimen gaat voortaan via een besluit-PR in plaats van een vervangend ADR.
 - Unittests draaien parallel per bestand en Vitest gebruikt hooguit vier workers (`vitest.config.ts`); de integratietests (`int`) blijven serieel. Bij een update: eigen unittests (`src/**/*.test.ts`) mogen geen gedeelde state hebben (vaste poorten, vaste paden, de echte database); zie `docs/operations/testuitvoering.md`.
 - Beslisroute (ADR 0038): de merge door de eigenaar is de acceptatie. Architect en hoofdsessie schrijven de eigenaarstatus in het voorstel; `check-document-status` laat zonder record en zonder web-flow een besluit-PR met meerdere ADR's en specs toe, en guard en rolhek weigeren een ADR met eigenaarstatus terug naar `voorgesteld` of met nieuwe inhoud (`rails/hooks/lib/document-state.mjs`, `scripts/kit/lane.mjs`).
 

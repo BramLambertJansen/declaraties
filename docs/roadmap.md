@@ -184,6 +184,12 @@ Open werk dat niet geparkeerd is, grofweg in volgorde. Wat nog een spec of eigen
   expansie (`$GH`, `bash -c`) is werk van de diff-guard. Ook open, voor de reviewer: `reviewerMay` negeert voorafgaande variabelen
   (`GIT_PAGER=…`, `PATH=…`) en opties als `git diff --output=<bestand>`.
   aanleiding: `rails/hooks/lib/rolhek.mjs` (spec `agent-merge`, Bekende gaten)
+- [ ] **Schrijven via een programma buiten `fileTargets` omzeilt het rolhek.** `writeTargets` in `rails/hooks/lib/shell.mjs` kent alleen een
+  vaste lijst (redirect, `tee`, `sed -i`, `cp`, `git checkout` …). Een script via `python3`, `node -e` of een heredoc naar zo'n interpreter
+  (`python3 - <<EOF`), en ook `awk`, `patch`, `git apply`, `curl -o`, `tar x` of `prettier --write`, schrijft beschermde paden zonder de
+  beslissing (ask, deny of melding) die een Edit op hetzelfde pad krijgt; een redirect (`cat > f <<EOF`) ziet het rolhek wel. Eerst kiezen
+  tussen weigeren en melden; de diff-guard in CI blijft de grens.
+  aanleiding: #260 (eigenaarbesluit: als item opnemen; de developer schreef `.claude/**`, `.github/**`, `scripts/**` en `rails/**` via een Python-script, de reviewer zag alleen ADR-nummerwijzigingen)
 
 ## Geparkeerd
 
