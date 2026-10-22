@@ -3,7 +3,8 @@ import { createAccountTestApp } from './account-harness.ts';
 import { uniqueEmail } from '../auth/harness.ts';
 
 // De fouten worden met echte database-locks opgewekt; app, Better Auth en Mailpit zijn de echte teststack.
-const t = createAccountTestApp();
+// Elke test hier houdt een lock vast: lock_timeout van 1 s geeft 55P03 in plaats van 5 s wachten op statement_timeout.
+const t = createAccountTestApp({ lockTimeoutMs: 1000 });
 afterAll(() => t.close());
 
 async function admin() {

@@ -6,6 +6,7 @@ import {
   documentInfo,
   documentKind,
   builtReference,
+  nieuweHerzieningsregels,
   statusregelOvertreding,
 } from '../../rails/hooks/lib/document-state.mjs';
 import { readAuthority, gitText } from '../../rails/hooks/lib/authority-context.mjs';
@@ -18,7 +19,7 @@ import { kaderVan, ROADMAP, taakVinkje } from './roadmap-item.mjs';
 import { regularGitFile, statusOnlyDiff, isAncestor } from './status-git.mjs';
 import { laneVan, isMiniSpec, migratieOvertreding, recordAlleenBesluit } from './lane.mjs';
 
-/** @typedef {{ root: string, sha: string, split: string, adrBestanden: string[], authority: import('../../rails/hooks/lib/task-authority.mjs').Authority, config: import('../../rails/hooks/lib/rolhek.mjs').Config }} Context */
+/** @typedef {{ root: string, base: string, sha: string, split: string, pr: number | null, adrBestanden: string[], adrArchief: string[], authority: import('../../rails/hooks/lib/task-authority.mjs').Authority, config: import('../../rails/hooks/lib/rolhek.mjs').Config }} Context */
 
 /** @param {string} name */
 function requiredEnv(name) {
@@ -68,7 +69,10 @@ function verifyDocument(document, context) {
   if (uitslag === 'a4') throw new Error(`${document.file}: ${A4_MELDING}`);
   if (uitslag === 'vrij') return null;
   // Een herschreven geaccepteerd ADR is een besluit zonder record: alleen een besluit-PR laat het door (verifyInPrStatus).
-  if (uitslag === 'herzien') return { file: document.file, nieuw: false, record: false };
+  if (uitslag === 'herzien') {
+    verifyHerzieningPr(document.file, nieuweHerzieningsregels(document.before ?? '', document.after), context.pr);
+    return { file: document.file, nieuw: false, record: false };
+  }
   const target = { file: document.file, text: document.after };
   if (uitslag === 'gebouwd') {
     if (verifyBuilt(target, context)) return null;
@@ -79,6 +83,64 @@ function verifyDocument(document, context) {
   if (uitslag === 'geweigerd') return null;
   verifyVervanger(document.file, info.status, context);
   return { file: document.file, nieuw, record };
+}
+
+/**
+ * Een nieuwe herzieningsregel noemt deze PR (`PR_NUMBER` uit guard.yml); zonder geldig PR-nummer faalt een herschrijving dicht.
+ * @param {string} file @param {string[]} regels @param {number | null} pr
+ */
+function verifyHerzieningPr(file, regels, pr) {
+  const fout = regels.find((regel) => pr === null || /^Herzien: \S+ \(#(\d+)\):/.exec(regel)?.[1] !== String(pr));
+  if (fout === undefined) return;
+  const verwacht = pr === null ? 'geen geldig PR_NUMBER' : `verwacht (#${String(pr)})`;
+  throw new Error(`${file}: herzieningsregel "${fout}" noemt niet deze PR (${verwacht}); ${A4_MELDING}`);
+}
+
+/**
+ * Nummers blijven (ADR 0046 punt 2): een toegevoegd ADR krijgt geen nummer dat op de basis ooit verwijderd is.
+ * @param {{ status: string, pad: string }[]} changes @param {Context} context
+ */
+function verifyNummerVrij(changes, context) {
+  const nummer = (/** @type {string} */ pad) => /^docs\/adr\/(\d{4})-/.exec(pad)?.[1];
+  const opBasis = new Set(adrFiles(context.root, context.base).map((f) => f.slice(0, 4)));
+  const log = gitText(context.root, [
+    'log',
+    context.base,
+    '--no-renames',
+    '--diff-filter=D',
+    '--format=',
+    '--name-only',
+    '--',
+    'docs/adr/',
+  ]);
+  if (log === null) throw new Error('Geschiedenis van docs/adr/ is niet leesbaar (nummers blijven, ADR 0046 punt 2)');
+  const gebruikt = new Set(log.split('\n').flatMap((pad) => nummer(pad) ?? []));
+  for (const { status, pad } of changes) {
+    const n = nummer(pad);
+    if (['A', 'R'].includes(status) && n !== undefined && gebruikt.has(n) && !opBasis.has(n))
+      throw new Error(`${pad}: nummer ${n} is al gebruikt door een verwijderd ADR; kies het volgende vrije nummer`);
+  }
+}
+
+/**
+ * Na een verwijdering wijst elke `vervangen door NNNN` die overblijft naar een ADR dat na de PR bestaat; het archief telt
+ * mee als doel en als verwijzer (ADR 0053 punt 5).
+ * @param {Context} context
+ */
+function verifyVervangersBestaan(context) {
+  const nummers = new Set([...context.adrBestanden, ...context.adrArchief].map((f) => f.slice(0, 4)));
+  // Een archiefbestand wordt gelezen als ADR onder zijn naam in `docs/adr/` (documentKind kent het archief nog niet).
+  const paden = [
+    ...context.adrBestanden.map((f) => ({ file: `docs/adr/${f}`, alsAdr: `docs/adr/${f}` })),
+    ...context.adrArchief.map((f) => ({ file: `${ARCHIEF}${f}`, alsAdr: `docs/adr/${f}` })),
+  ];
+  for (const { file, alsAdr } of paden) {
+    const doel = /^vervangen door (\d{4})$/.exec(
+      documentInfo(alsAdr, context.authority.working(file) ?? '')?.status ?? '',
+    )?.[1];
+    if (doel !== undefined && !nummers.has(doel))
+      throw new Error(`${file}: vervangen door ${doel}, maar ADR ${doel} bestaat na deze PR niet meer; ${A4_MELDING}`);
+  }
 }
 
 /**
@@ -108,14 +170,18 @@ function verifyAdrWeg(changes, context) {
   const vreemd = changes.find(({ pad }) => pad !== RECORD && !/^docs\/(?:adr|specs)\//.test(pad));
   if (weg.length > 0 && vreemd !== undefined)
     throw new Error(`${weg.join(', ')}: verwijderd naast ${vreemd.pad}; ${A4_MELDING}`);
+  // Elk verdwenen ADR-pad (ook een voorgesteld ADR, ook als bron van een rename) kan het doel van `vervangen door` zijn.
+  const verdwenen = (/** @type {{ status: string, pad: string, van?: string }} */ { status, pad, van }) =>
+    status === 'R' ? (van ?? '') : status === 'D' ? pad : '';
+  if (changes.some((wijziging) => documentKind(verdwenen(wijziging)) === 'adr')) verifyVervangersBestaan(context);
   return weg.map((file) => ({ file, nieuw: false, record: false }));
 }
 
-/** `vervangen door NNNN` wijst naar een ADR op main of in de PR (ADR 0046 punt 5). @param {string} file @param {string} status @param {Context} context */
+/** `vervangen door NNNN` wijst naar een ADR (ook in het archief) op main of in de PR (ADR 0046 punt 5). @param {string} file @param {string} status @param {Context} context */
 function verifyVervanger(file, status, context) {
   const nummer = /^vervangen door (\d{4})$/.exec(status)?.[1];
   if (nummer === undefined || file.startsWith(`docs/adr/${nummer}-`)) return;
-  if (!context.adrBestanden.some((naam) => naam.startsWith(`${nummer}-`)))
+  if (![...context.adrBestanden, ...context.adrArchief].some((naam) => naam.startsWith(`${nummer}-`)))
     throw new Error(`${file}: vervangen door ${nummer}, maar dat ADR staat niet op main of in de PR`);
 }
 
@@ -132,10 +198,19 @@ function statusLine(text) {
   );
 }
 
-/** Bestandsnamen van de ADR's op HEAD. @param {string} root @param {string} sha */
-function adrFiles(root, sha) {
-  const names = gitText(root, ['ls-tree', '--name-only', '-z', sha, 'docs/adr/']) ?? '';
-  return names.split('\0').flatMap((file) => /^docs\/adr\/(\d{4}-[^/]+\.md)$/.exec(file)?.[1] ?? []);
+const ARCHIEF = 'docs/adr/archief/';
+
+/** Bestandsnamen van de ADR's op HEAD in `map` (standaard `docs/adr/`, zonder archief). @param {string} root @param {string} sha @param {string} [map] */
+function adrFiles(root, sha, map = 'docs/adr/') {
+  const names = gitText(root, ['ls-tree', '--name-only', '-z', sha, map]) ?? '';
+  return names
+    .split('\0')
+    .flatMap((file) => (file.startsWith(map) ? (/^(\d{4}-[^/]+\.md)$/.exec(file.slice(map.length))?.[1] ?? []) : []));
+}
+
+/** De ADR's op HEAD in `docs/adr/` en, apart, in het archief. @param {string} root @param {string} sha */
+function adrLijsten(root, sha) {
+  return { adrBestanden: adrFiles(root, sha), adrArchief: adrFiles(root, sha, ARCHIEF) };
 }
 
 /** De specs met een actief mandaat op deze repository en branch. @param {Context} context */
@@ -311,8 +386,11 @@ async function main() {
   if (diff === null) throw new Error('Diff is niet leesbaar');
   const changes = parseNameStatus(diff);
   const config = loadConfig(gitText(root, ['show', `${base}:.claude/gates.json`]) ?? '');
+  const prNummer = process.env['PR_NUMBER'] ?? '';
+  const pr = /^[1-9]\d*$/.test(prNummer) ? Number(prNummer) : null;
   /** @type {Context} */
-  const context = { root, sha, split, adrBestanden: adrFiles(root, sha), authority: snapshot, config };
+  const context = { root, base, sha, split, pr, ...adrLijsten(root, sha), authority: snapshot, config };
+  verifyNummerVrij(changes, context);
   const verwijderd = verifyAdrWeg(changes, context);
   const gewijzigd = changes.flatMap(({ pad }) => {
     const besluit = verifyDocument(
