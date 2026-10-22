@@ -37,10 +37,16 @@ jobs:
 
   # pgTAP, integratie, e2e met axe en de schema-snapshot tegen een verse database, in de runner van ADR 0044 (compose op de
   # Docker van de GitHub-runner). Zo zijn de RLS-invarianten een harde grens in CI, niet alleen lokaal (framework §1.2).
-  gate-slow:
-    name: gate:slow
+  # De drie trage gates uit gate:slow draaien als parallelle jobs, elk met een eigen verse stack (runner.sh brengt die per
+  # suite toch al opnieuw op); de job gate:slow hieronder houdt de naam van de verplichte check.
+  gate-slow-part:
+    name: gate:slow (${{ matrix.script }})
     runs-on: ubuntu-24.04
     timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        script: [test:db, ui:check, check:snapshot]
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -50,16 +56,35 @@ jobs:
           version: 2026.9.18
           install_args: node pnpm
       - run: pnpm install --frozen-lockfile
-      - run: pnpm gate:slow
+      - run: pnpm "$SCRIPT"
+        env:
+          SCRIPT: ${{ matrix.script }}
       # Playwright-traces en screenshots bij een rode e2e; de runner schrijft ze naar .runner-output.
       - if: failure()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: runner-output
+          name: runner-output-${{ strategy.job-index }}
           path: .runner-output/
           include-hidden-files: true
           retention-days: 7
           if-no-files-found: ignore
+
+  # De verplichte check gate:slow (ruleset, scripts/github-ruleset.sh): groen alleen als elk deel geslaagd is. always(),
+  # zodat een rood, overgeslagen of geannuleerd deel hier rood wordt in plaats van gate:slow over te slaan.
+  gate-slow:
+    name: gate:slow
+    needs: gate-slow-part
+    if: always()
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - run: |
+          if [ "$RESULT" != "success" ]; then
+            echo "::error title=gate:slow::een deel van gate:slow is $RESULT"
+            exit 1
+          fi
+        env:
+          RESULT: ${{ needs.gate-slow-part.result }}
 
   # Betterleaks (framework §6): wat lefthook lokaal tegenhoudt, kan via --no-verify of een andere machine toch binnenkomen.
   # Op een PR de commits van die PR, anders alle gefetchte refs. Altijd met scripts/kit/betterleaks.toml; inline allows tellen niet.
