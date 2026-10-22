@@ -163,11 +163,13 @@ describe('scripts/github-ruleset.sh', () => {
   });
 
   test('--zonder-codeql: alleen de twee CodeQL-checks vallen weg', () => {
-    const { status, payload } = run(['eigenaar/app', '--zonder-codeql']);
+    const { status, payload, stderr } = run(['eigenaar/app', '--zonder-codeql']);
 
     expect(status).toBe(0);
     expect(ontbrekend(payload, checksUitWorkflows())).toStrictEqual(CODEQL);
     expect(checks(payload)).toHaveLength(checksUitWorkflows().length - CODEQL.length);
+    expect(stderr).toContain('niet codeql.yml of de verplichte checks van pr:verify');
+    expect(stderr).toContain('rond de setup niet af');
   });
 
   test('private repo zonder Pro/Team: duidelijke melding, geen zichtbaarheid gewijzigd', () => {
