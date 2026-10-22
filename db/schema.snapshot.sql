@@ -280,13 +280,14 @@ CREATE FUNCTION app.set_account_blocked(p_user_id text, p_blocked boolean) RETUR
     if not app.is_mfa_admin() then
       raise exception 'FORBIDDEN' using errcode = '42501';
     end if;
+    perform pg_catalog.pg_advisory_xact_lock(pg_catalog.hashtext('public.user_roles:last_admin'));
     select u.blocked_at into v_blocked_at from better_auth."user" u where u.id = p_user_id;
     if not found then
       raise exception 'NOT_FOUND';
     end if;
     if not p_blocked then
-      update better_auth."user" set blocked_at = null where id = p_user_id and blocked_at is not null;
-      if found then
+      if v_blocked_at is not null then
+        update better_auth."user" set blocked_at = null where id = p_user_id;
         insert into app.audit_log (actor_id, action, target_type, target_id, request_id, details)
           values (app.current_user_id(), 'core.account.unblock', 'account', p_user_id, app.request_id(), '{}'::jsonb);
       end if;
@@ -303,17 +304,16 @@ CREATE FUNCTION app.set_account_blocked(p_user_id text, p_blocked boolean) RETUR
     if v_blocked_at is not null then
       return;
     end if;
-    perform pg_catalog.pg_advisory_xact_lock(pg_catalog.hashtext('public.user_roles:last_admin'));
-    update better_auth."user" set blocked_at = pg_catalog.now() where id = p_user_id and blocked_at is null;
-    if not found then
-      return;
-    end if;
+    update better_auth."user"
+      set blocked_at = pg_catalog.now(), session_version = session_version + 1
+      where id = p_user_id;
     if not exists (
       select 1
       from public.user_roles r
       join better_auth."user" u on u.id = r.user_id
       where r.role = 'admin'
         and u.blocked_at is null
+        and u.deactivated_at is null
         and exists (
           select 1 from better_auth.account a where a."userId" = u.id and a."providerId" = 'credential'
         )
@@ -327,6 +327,68 @@ CREATE FUNCTION app.set_account_blocked(p_user_id text, p_blocked boolean) RETUR
 
 
 ALTER FUNCTION app.set_account_blocked(p_user_id text, p_blocked boolean) OWNER TO app_definer;
+
+--
+-- Name: set_account_deactivated(text, boolean); Type: FUNCTION; Schema: app; Owner: app_definer
+--
+
+CREATE FUNCTION app.set_account_deactivated(p_user_id text, p_deactivated boolean) RETURNS void
+    LANGUAGE plpgsql SECURITY DEFINER
+    SET search_path TO ''
+    AS $$
+  declare
+    v_deactivated_at timestamptz;
+  begin
+    if not app.is_mfa_admin() then
+      raise exception 'FORBIDDEN' using errcode = '42501';
+    end if;
+    perform pg_catalog.pg_advisory_xact_lock(pg_catalog.hashtext('public.user_roles:last_admin'));
+    select u.deactivated_at into v_deactivated_at from better_auth."user" u where u.id = p_user_id;
+    if not found then
+      raise exception 'NOT_FOUND';
+    end if;
+    if not exists (
+      select 1 from better_auth.account a where a."userId" = p_user_id and a."providerId" = 'credential'
+    ) then
+      raise exception 'ACCOUNT_INVITED';
+    end if;
+    if not p_deactivated then
+      if v_deactivated_at is not null then
+        update better_auth."user" set deactivated_at = null where id = p_user_id;
+        insert into app.audit_log (actor_id, action, target_type, target_id, request_id, details)
+          values (app.current_user_id(), 'core.account.activate', 'account', p_user_id, app.request_id(), '{}'::jsonb);
+      end if;
+      return;
+    end if;
+    if p_user_id = app.current_user_id() then
+      raise exception 'OWN_ACCOUNT';
+    end if;
+    if v_deactivated_at is not null then
+      return;
+    end if;
+    update better_auth."user"
+      set deactivated_at = pg_catalog.now(), session_version = session_version + 1
+      where id = p_user_id;
+    if not exists (
+      select 1
+      from public.user_roles r
+      join better_auth."user" u on u.id = r.user_id
+      where r.role = 'admin'
+        and u.blocked_at is null
+        and u.deactivated_at is null
+        and exists (
+          select 1 from better_auth.account a where a."userId" = u.id and a."providerId" = 'credential'
+        )
+    ) then
+      raise exception 'LAST_ADMIN' using detail = 'De laatste admin kan niet weg.';
+    end if;
+    insert into app.audit_log (actor_id, action, target_type, target_id, request_id, details)
+      values (app.current_user_id(), 'core.account.deactivate', 'account', p_user_id, app.request_id(), '{}'::jsonb);
+  end
+  $$;
+
+
+ALTER FUNCTION app.set_account_deactivated(p_user_id text, p_deactivated boolean) OWNER TO app_definer;
 
 --
 -- Name: user_roles_keep_one_admin(); Type: FUNCTION; Schema: app; Owner: app_definer
@@ -344,6 +406,7 @@ CREATE FUNCTION app.user_roles_keep_one_admin() RETURNS trigger
       join better_auth."user" u on u.id = r.user_id
       where r.role = 'admin'
         and u.blocked_at is null
+        and u.deactivated_at is null
         and exists (
           select 1 from better_auth.account a where a."userId" = u.id and a."providerId" = 'credential'
         )
@@ -397,7 +460,10 @@ CREATE TABLE better_auth."user" (
     "createdAt" timestamp with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
     "updatedAt" timestamp with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
     "twoFactorEnabled" boolean,
-    blocked_at timestamp with time zone
+    blocked_at timestamp with time zone,
+    last_login_at timestamp with time zone,
+    deactivated_at timestamp with time zone,
+    session_version integer DEFAULT 0 NOT NULL
 );
 
 
@@ -430,12 +496,16 @@ CREATE VIEW app.accounts WITH (security_barrier='true') AS
     r.role,
         CASE
             WHEN (u.blocked_at IS NOT NULL) THEN 'blocked'::text
+            WHEN (u.deactivated_at IS NOT NULL) THEN 'deactivated'::text
             WHEN (EXISTS ( SELECT 1
                FROM better_auth.account a
               WHERE ((a."userId" = u.id) AND (a."providerId" = 'credential'::text)))) THEN 'active'::text
             ELSE 'invited'::text
         END AS status,
-    u."createdAt" AS created_at
+    u."createdAt" AS created_at,
+    u.last_login_at,
+    u.deactivated_at,
+    u.blocked_at
    FROM (better_auth."user" u
      JOIN public.user_roles r ON ((r.user_id = u.id)))
   WHERE ( SELECT app.is_mfa_admin() AS is_mfa_admin);
@@ -547,6 +617,7 @@ CREATE TABLE better_auth.session (
     "userAgent" text,
     "userId" text NOT NULL,
     session_strength text DEFAULT 'password'::text NOT NULL,
+    session_version integer DEFAULT 0 NOT NULL,
     CONSTRAINT session_strength_check CHECK ((session_strength = ANY (ARRAY['password'::text, 'mfa'::text])))
 );
 
@@ -1034,6 +1105,14 @@ GRANT ALL ON FUNCTION app.set_account_blocked(p_user_id text, p_blocked boolean)
 
 
 --
+-- Name: FUNCTION set_account_deactivated(p_user_id text, p_deactivated boolean); Type: ACL; Schema: app; Owner: app_definer
+--
+
+REVOKE ALL ON FUNCTION app.set_account_deactivated(p_user_id text, p_deactivated boolean) FROM PUBLIC;
+GRANT ALL ON FUNCTION app.set_account_deactivated(p_user_id text, p_deactivated boolean) TO app_authenticated;
+
+
+--
 -- Name: FUNCTION user_roles_keep_one_admin(); Type: ACL; Schema: app; Owner: app_definer
 --
 
@@ -1101,6 +1180,27 @@ GRANT SELECT("createdAt") ON TABLE better_auth."user" TO app_definer;
 --
 
 GRANT SELECT(blocked_at),UPDATE(blocked_at) ON TABLE better_auth."user" TO app_definer;
+
+
+--
+-- Name: COLUMN "user".last_login_at; Type: ACL; Schema: better_auth; Owner: app_migrator
+--
+
+GRANT SELECT(last_login_at) ON TABLE better_auth."user" TO app_definer;
+
+
+--
+-- Name: COLUMN "user".deactivated_at; Type: ACL; Schema: better_auth; Owner: app_migrator
+--
+
+GRANT SELECT(deactivated_at),UPDATE(deactivated_at) ON TABLE better_auth."user" TO app_definer;
+
+
+--
+-- Name: COLUMN "user".session_version; Type: ACL; Schema: better_auth; Owner: app_migrator
+--
+
+GRANT SELECT(session_version),UPDATE(session_version) ON TABLE better_auth."user" TO app_definer;
 
 
 --

@@ -1,86 +1,116 @@
+import { useState } from 'react';
 import type { z } from 'zod';
 import type { accountItem } from '#shared/contracts/accounts.ts';
 import { copy } from '#web/copy/ui.ts';
-import { Button, ConfirmDialog, DropdownMenu, Notice, useErrorText, type MenuItem } from '#web/ui/index.ts';
-import { useBlock } from './queries.ts';
+import { Button, DropdownMenu, useErrorText, type MenuItem } from '#web/ui/index.ts';
+import { useActivate, useReinvite, useUnblock } from './queries.ts';
+import { AccountStatusDialog } from './account-status-dialog.tsx';
 
 type Account = z.output<typeof accountItem>;
+export type AccountMessage = { readonly tone: 'info' | 'error'; readonly text: string } | null;
 
-// Menu "Acties voor {naam}" van een rij (spec accountbeheer-uitbreiding): een actief account heeft "Blokkeren", een
-// geblokkeerd account "Deblokkeren". Op de eigen rij ontbreekt "Blokkeren" (AC-14); een rij zonder acties krijgt geen leeg menu.
-export function itemsFor(account: Account, isOwn: boolean, handlers: BlockHandlers): readonly MenuItem[] {
-  if (account.status === 'geblokkeerd') {
-    return [
-      {
-        label: copy.accounts.unblock,
-        onSelect: () => {
-          handlers.unblock(account);
-        },
-      },
-    ];
-  }
-  if (account.status === 'actief' && !isOwn) {
-    return [
-      {
-        label: copy.accounts.block,
-        onSelect: () => {
-          handlers.askBlock(account);
-        },
-      },
-    ];
-  }
-  return [];
+export interface AccountHandlers {
+  readonly unblock: () => void;
+  readonly activate: () => void;
+  readonly askBlock: () => void;
+  readonly askDeactivate: () => void;
 }
 
-export interface BlockHandlers {
-  readonly unblock: (account: Account) => void;
-  readonly askBlock: (account: Account) => void;
+export function itemsFor(account: Account, isOwn: boolean, handlers: AccountHandlers): readonly MenuItem[] {
+  if (account.status === 'uitgenodigd' || isOwn) return [];
+  return [
+    account.geblokkeerd
+      ? { label: copy.accounts.unblock, onSelect: handlers.unblock }
+      : { label: copy.accounts.block, onSelect: handlers.askBlock },
+    account.gedeactiveerd
+      ? { label: copy.accounts.activate, onSelect: handlers.activate }
+      : { label: copy.accounts.deactivate, onSelect: handlers.askDeactivate },
+  ];
 }
 
-export function RowMenu({ account, items }: { account: Account; items: readonly MenuItem[] }) {
+export function AccountActions({
+  account,
+  isOwn,
+  busy,
+  onMessage,
+}: {
+  account: Account;
+  isOwn: boolean;
+  busy: boolean;
+  onMessage: (message: AccountMessage) => void;
+}) {
+  const unblock = useUnblock();
+  const activate = useActivate();
+  const reinvite = useReinvite();
+  const [confirming, setConfirming] = useState<'block' | 'deactivate' | null>(null);
+  const errorText = useErrorText();
+  const pending = unblock.isPending || activate.isPending || reinvite.isPending;
+  const succeed = (text: string) => {
+    setConfirming(null);
+    onMessage({ tone: 'info', text });
+  };
+  const fail = (error: unknown) => {
+    onMessage({ tone: 'error', text: errorText(error) });
+  };
+  const ask = (action: 'block' | 'deactivate') => {
+    onMessage(null);
+    setConfirming(action);
+  };
+  const items = itemsFor(account, isOwn, {
+    unblock: () => {
+      onMessage(null);
+      unblock.mutateAsync(account.id).then(() => {
+        succeed(copy.accounts.unblocked(account.naam));
+      }, fail);
+    },
+    activate: () => {
+      onMessage(null);
+      activate.mutateAsync(account.id).then(() => {
+        succeed(copy.accounts.activated(account.naam));
+      }, fail);
+    },
+    askBlock: () => {
+      ask('block');
+    },
+    askDeactivate: () => {
+      ask('deactivate');
+    },
+  });
+  if (account.status === 'uitgenodigd') {
+    return (
+      <Button
+        variant="outline"
+        disabled={busy || pending}
+        onClick={() => {
+          onMessage(null);
+          reinvite.mutateAsync(account.id).then(() => {
+            succeed(copy.inviteDialog.sent(account.email));
+          }, fail);
+        }}
+      >
+        {copy.accounts.reinvite}
+      </Button>
+    );
+  }
   if (items.length === 0) return null;
   return (
-    <DropdownMenu trigger={<Button variant="outline">{copy.accounts.rowActions(account.naam)}</Button>} items={items} />
-  );
-}
-
-// Blokkeren vraagt bevestiging (ConfirmDialog, focus op "Annuleren"); een fout staat in de dialoog, gelukt sluit hem.
-export function BlockDialog({
-  target,
-  onClose,
-  onBlocked,
-}: {
-  target: Account | null;
-  onClose: () => void;
-  onBlocked: (account: Account) => void;
-}) {
-  const block = useBlock();
-  const errorText = useErrorText();
-  const confirm = () => {
-    if (target === null) return;
-    block.mutateAsync(target.id).then(
-      () => {
-        onBlocked(target);
-      },
-      () => undefined,
-    );
-  };
-  return (
-    <ConfirmDialog
-      open={target !== null}
-      onOpenChange={(open) => {
-        if (!open) {
-          block.reset();
-          onClose();
+    <>
+      <DropdownMenu
+        trigger={
+          <Button variant="outline" disabled={busy || pending}>
+            {copy.accounts.rowActions(account.naam)}
+          </Button>
         }
-      }}
-      title={copy.accounts.blockDialog.title(target?.naam ?? '')}
-      description={copy.accounts.blockDialog.description(target?.naam ?? '')}
-      confirmLabel={copy.accounts.block}
-      busy={block.isPending}
-      onConfirm={confirm}
-    >
-      {block.isError ? <Notice tone="error">{errorText(block.error)}</Notice> : null}
-    </ConfirmDialog>
+        items={items.map((item) => ({ ...item, disabled: busy || pending }))}
+      />
+      <AccountStatusDialog
+        account={account}
+        action={confirming}
+        onClose={() => {
+          setConfirming(null);
+        }}
+        onChanged={succeed}
+      />
+    </>
   );
 }

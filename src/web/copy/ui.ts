@@ -50,15 +50,24 @@ export const copy = {
     email: 'E-mailadres',
     role: 'Rol',
     status: 'Status',
+    lastLogin: 'Laatst ingelogd',
+    unknownLogin: 'Onbekend',
     // Kop van de kolom met "Opnieuw uitnodigen"; alleen voor schermlezers.
     actions: 'Acties',
     roles: roleLabels,
-    statuses: { actief: 'Actief', uitgenodigd: 'Uitgenodigd', geblokkeerd: 'Geblokkeerd' },
+    statuses: {
+      actief: 'Actief',
+      uitgenodigd: 'Uitgenodigd',
+      geblokkeerd: 'Geblokkeerd',
+      gedeactiveerd: 'Gedeactiveerd',
+    },
     reinvite: 'Opnieuw uitnodigen',
     // Spec accountbeheer-uitbreiding: menu per rij en de blokkeerdialoog.
     rowActions: (naam: string) => `Acties voor ${naam}`,
     block: 'Blokkeren',
     unblock: 'Deblokkeren',
+    deactivate: 'Deactiveren',
+    activate: 'Activeren',
     blockDialog: {
       title: (naam: string) => `${naam} blokkeren?`,
       description: (naam: string) =>
@@ -66,6 +75,13 @@ export const copy = {
     },
     blocked: (naam: string) => `${naam} is geblokkeerd.`,
     unblocked: (naam: string) => `${naam} is gedeblokkeerd.`,
+    deactivateDialog: {
+      title: (naam: string) => `${naam} deactiveren?`,
+      description:
+        'Dit account krijgt direct geen toegang meer. De gegevens blijven bewaard. Activeren heft een eventuele blokkade niet op.',
+    },
+    deactivated: (naam: string) => `${naam} is gedeactiveerd.`,
+    activated: (naam: string) => `${naam} is geactiveerd. Een eventuele blokkade blijft gelden.`,
     invite: 'Account uitnodigen',
     empty: 'Nog geen accounts.',
     more: 'Meer laden',

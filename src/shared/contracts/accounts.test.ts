@@ -63,6 +63,9 @@ test('de status geblokkeerd is een geldige status in de lijst, het filter en het
     rol: 'user',
     status: 'geblokkeerd',
     aangemaakt: '2026-10-12T10:00:00Z',
+    laatstIngelogd: null,
+    gedeactiveerd: false,
+    geblokkeerd: true,
   };
   expect(accountItem.safeParse(item).success).toBe(true);
 });
