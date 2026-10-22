@@ -112,7 +112,7 @@ dependency-cruiser); checks op de database lezen de catalogus van de lokale data
 |---|---|---|
 | Na elke bewerking (PostToolUse-hook) | ESLint + Prettier op dat bestand | ~1–2 s |
 | Pre-commit (lefthook) | format, ESLint op staged, Betterleaks | < 10 s |
-| Einde beurt (Stop-hook) | `tsc --incremental`, ESLint `--cache`, `vitest --changed` (alleen het unit-project) | ~10–30 s |
+| Einde beurt (Stop-hook) | `tsc -b` (incrementeel: `incremental` in `tsconfig.base.json`), ESLint en `vitest related` (projecten unit en web) op de geraakte bestanden (`rails/hooks/lib/werkstraat.mjs:79`) | ~10–30 s |
 | Database-tests | `pnpm test:db`: integratie + pgTAP tegen lokale Postgres | ~20–60 s |
 | Pre-push | `gate:fast` | < 60 s |
 | CI | `gate:fast` + build, daarna `gate:slow` | 3–5 / 8–15 min |
