@@ -98,6 +98,13 @@ function verifyAdrWeg(changes, context) {
     if (bron !== null) throw new Error(`${van ?? ''}: hernoemd met status ${bron}; ${A4_MELDING}`);
   }
   const weg = changes.filter(({ status, pad }) => status === 'D' && eigenaarstatus(pad) !== null).map(({ pad }) => pad);
+  // Verwijderen plus toevoegen onder hetzelfde nummer is een rename die git niet herkent (nummers blijven).
+  const nummer = (/** @type {string} */ pad) => /^docs\/adr\/(\d{4})-/.exec(pad)?.[1];
+  const zelfdeNummer = weg.find((file) =>
+    changes.some(({ status, pad }) => status === 'A' && pad !== file && nummer(pad) === nummer(file)),
+  );
+  if (zelfdeNummer !== undefined)
+    throw new Error(`${zelfdeNummer}: verwijderd naast een nieuw ADR met hetzelfde nummer; ${A4_MELDING}`);
   const vreemd = changes.find(({ pad }) => pad !== RECORD && !/^docs\/(?:adr|specs)\//.test(pad));
   if (weg.length > 0 && vreemd !== undefined)
     throw new Error(`${weg.join(', ')}: verwijderd naast ${vreemd.pad}; ${A4_MELDING}`);

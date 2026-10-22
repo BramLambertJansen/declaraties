@@ -442,7 +442,8 @@ Live feiten (gates, routes, componenten, nummers) komen uit `scripts/kit/feiten.
   met een nieuwe herzieningsregel `Herzien: JJJJ-MM-DD (#NNN): wat`) en een ADR met een eigenaarstatus verwijderen mag alleen in een
   besluit-PR; een vervallen of vervangen ADR verandert niet van inhoud, een ADR gaat nooit terug naar `voorgesteld` en wordt niet hernoemd
   (`beslisOvergang` en `isHerschrijving` in `rails/hooks/lib/document-state.mjs`, `verifyAdrWeg` in `scripts/kit/check-document-status.mjs`;
-  het rolhek vergelijkt met main en laat herschrijven en verwijderen alleen aan architect en hoofdsessie). Een gemandateerde spec
+  het rolhek vergelijkt met main en laat herschrijven en verwijderen alleen aan architect en hoofdsessie; de tekst van ADR 0046 punt 2
+  volgt in een besluit-PR). Een gemandateerde spec
   die van inhoud wijzigt, verliest haar mandaat. Het register `.claude/decisions.json` blijft voor
   broncodemandaat (`--path`) en `requiredChecks`; het bindt inhoudsdigest, repository, exacte branch, status en exacte bronbestanden.
   `gebouwd` vereist de juiste PR en verplichte Actions-checks op de gevalideerde bron-SHA; uitsluitend latere statusregels mogen daarvan
