@@ -184,6 +184,28 @@ describe('G3: een rename van een ADR met eigenaarstatus blijft geweigerd', () =>
   );
 });
 
+describe('G3: verwijderen naast toevoegen met hetzelfde ADR-nummer is een rename-omweg', () => {
+  test.each([['geaccepteerd'], ['vervallen'], ['vervangen door 0051']])(
+    'G3 D + A met hetzelfde nummer, verwijderd ADR met Status: %s, in een besluit-PR: faalt met A4',
+    (status) => {
+      const fixture = metBasis({
+        'docs/adr/0017-a.md': adrTekst('0017', status, uniek('alfa')),
+        [ADR_NIEUW]: adrTekst('0051', 'geaccepteerd'),
+      });
+      git(fixture.root, ['rm', '-q', 'docs/adr/0017-a.md']);
+      write(fixture.root, 'docs/adr/0017-b.md', adrTekst('0017', 'geaccepteerd', uniek('beta')));
+      expect(faalt(fixture, agent(fixture))).toMatch(A4);
+    },
+  );
+
+  test('G3 D van 0017-a naast A van een ADR met een ander nummer, in een besluit-PR: slaagt', () => {
+    const fixture = metBasis({ 'docs/adr/0017-a.md': adrTekst('0017', 'geaccepteerd', uniek('alfa')) });
+    git(fixture.root, ['rm', '-q', 'docs/adr/0017-a.md']);
+    write(fixture.root, ADR_VERVANGER, adrTekst('0052', 'geaccepteerd', uniek('beta')));
+    slaagt(fixture, agent(fixture));
+  });
+});
+
 describe('G4: een voorgesteld ADR verwijderen blijft vrij', () => {
   test('G4 een voorgesteld ADR verwijderen: slaagt', () => {
     const fixture = metBasis({ [ADR_OUD]: adrTekst('0050', 'voorgesteld') });
