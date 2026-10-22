@@ -146,12 +146,15 @@ Is de auteur van een PR zelf goedkeurder, dan geeft `diff-guard` de uitslag `ove
 
 ## Correctie aan een geaccepteerd ADR
 
-De inhoud van een geaccepteerd ADR (buiten de statusregel) verandert niet, en een ADR met een eigenaarstatus op main gaat niet terug naar
-`voorgesteld` en wordt niet verwijderd of hernoemd: guard en rolhek (dat vergelijkt met main) weigeren dat voor elke rol (A4, ADR 0046 punt 2). Kies het spoor naar wat er verandert
-([ADR 0045](../adr/0045-railwerk.md) punt 21):
+Een geaccepteerd ADR herschrijven of een ADR met een eigenaarstatus op main verwijderen mag alleen in een besluit-PR (alleen `docs/adr/`,
+`docs/specs/` en het record), door architect of hoofdsessie. Een vervallen of vervangen ADR verandert niet van inhoud, en geen ADR gaat terug
+naar `voorgesteld` of wordt hernoemd: guard en rolhek (dat vergelijkt met main) weigeren dat (A4, ADR 0046 punt 2). Kies het spoor naar wat
+er verandert ([ADR 0045](../adr/0045-railwerk.md) punt 21):
 
-1. **Normatief** (wat besloten is): een nieuw ADR dat het oude wijzigt of vervangt. De tekst van het oude blijft; `vervangen door NNNN`
-   op het oude mag in dezelfde PR, zonder record.
+1. **Normatief** (wat besloten is): herschrijf het bestaande ADR in een besluit-PR, met een nieuwe herzieningsregel
+   `Herzien: JJJJ-MM-DD (#NNN): wat` (bestaande datum, het PR-nummer, wat er verandert; oude regels blijven staan). Een nieuw ADR
+   alleen voor een onderwerp dat in geen bestaand ADR past; `vervangen door NNNN` op het oude mag in dezelfde PR, zonder record.
+   Een oud ADR verwijderen mag in een besluit-PR nadat een reviewer heeft bevestigd dat de inhoud volledig in het nieuwe staat.
 2. **Verwijzing naar een later ADR**: een ADR-link achter de statuswaarde, met alleen het nummer als linktekst en het
    bestand ernaast als doel (zoals `0045` naar het bestand van ADR 0045). Geen record nodig; de eigenaar ziet het in de gate-PR.
    Achter de statuswaarde mag verder alleen `(JJJJ-MM-DD)` en `#<nr>`, gescheiden door `, ` of ` — ` (punt 22,

@@ -438,9 +438,11 @@ Live feiten (gates, routes, componenten, nummers) komen uit `scripts/kit/feiten.
   `voorstel`/`voorgesteld` naar een eigenaarstatus, `geaccepteerd` naar `vervangen door NNNN` (NNNN op main of in de PR) of `vervallen`, een
   spec van `goedgekeurd`/`gebouwd` naar `vervallen`, en de inhoud van een goedgekeurde spec. Dat kan alleen in een besluit-PR (alleen
   die documenten en hun record) of in de feature-lane (één nieuwe mini-spec met code). Een spec terug naar `voorstel` (vanaf elke status)
-  is geen eigenaarstatus en mag altijd, ook in een PR met code. A4: een ADR met een eigenaarstatus op main verandert niet van inhoud,
-  gaat niet terug naar `voorgesteld` en wordt niet verwijderd; schrijf een nieuw ADR dat het vervangt (`beslisOvergang`,
-  `rails/hooks/lib/document-state.mjs`; het rolhek vergelijkt met main en weigert dat lokaal voor elke rol). Een gemandateerde spec
+  is geen eigenaarstatus en mag altijd, ook in een PR met code. A4: een geaccepteerd ADR herschrijven (status blijft `geaccepteerd`,
+  met een nieuwe herzieningsregel `Herzien: JJJJ-MM-DD (#NNN): wat`) en een ADR met een eigenaarstatus verwijderen mag alleen in een
+  besluit-PR; een vervallen of vervangen ADR verandert niet van inhoud, een ADR gaat nooit terug naar `voorgesteld` en wordt niet hernoemd
+  (`beslisOvergang` en `isHerschrijving` in `rails/hooks/lib/document-state.mjs`, `verifyAdrWeg` in `scripts/kit/check-document-status.mjs`;
+  het rolhek vergelijkt met main en laat herschrijven en verwijderen alleen aan architect en hoofdsessie). Een gemandateerde spec
   die van inhoud wijzigt, verliest haar mandaat. Het register `.claude/decisions.json` blijft voor
   broncodemandaat (`--path`) en `requiredChecks`; het bindt inhoudsdigest, repository, exacte branch, status en exacte bronbestanden.
   `gebouwd` vereist de juiste PR en verplichte Actions-checks op de gevalideerde bron-SHA; uitsluitend latere statusregels mogen daarvan
