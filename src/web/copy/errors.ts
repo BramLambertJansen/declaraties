@@ -16,6 +16,7 @@ export const errorTexts = {
   OWN_ACCOUNT: 'Dit kan niet bij je eigen account.',
   ACCOUNT_INVITED: 'Dit account is nog niet actief. Nodig opnieuw uit of trek de uitnodiging in.',
   ACCOUNT_BLOCKED: 'Dit account is geblokkeerd. Deblokkeer het eerst.',
+  ACCOUNT_DEACTIVATED: 'E-mailadres of wachtwoord klopt niet.',
   WRONG_PASSWORD: wrongCurrentPasswordText,
   SESSION_NOT_FRESH: 'Log opnieuw in om dit te wijzigen.',
   EMAIL_LINK_INVALID: 'Deze link is verlopen of al gebruikt. Vraag de wijziging opnieuw aan.',
