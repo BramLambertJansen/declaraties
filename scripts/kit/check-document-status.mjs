@@ -90,7 +90,7 @@ function verifyDocument(document, context) {
  * @param {string} file @param {string[]} regels @param {number | null} pr
  */
 function verifyHerzieningPr(file, regels, pr) {
-  const fout = regels.find((regel) => pr === null || !regel.includes(`(#${String(pr)}):`));
+  const fout = regels.find((regel) => pr === null || /^Herzien: \S+ \(#(\d+)\):/.exec(regel)?.[1] !== String(pr));
   if (fout === undefined) return;
   const verwacht = pr === null ? 'geen geldig PR_NUMBER' : `verwacht (#${String(pr)})`;
   throw new Error(`${file}: herzieningsregel "${fout}" noemt niet deze PR (${verwacht}); ${A4_MELDING}`);
@@ -113,7 +113,8 @@ function verifyNummerVrij(changes, context) {
     '--',
     'docs/adr/',
   ]);
-  const gebruikt = new Set((log ?? '').split('\n').flatMap((pad) => nummer(pad) ?? []));
+  if (log === null) throw new Error('Geschiedenis van docs/adr/ is niet leesbaar (nummers blijven, ADR 0046 punt 2)');
+  const gebruikt = new Set(log.split('\n').flatMap((pad) => nummer(pad) ?? []));
   for (const { status, pad } of changes) {
     const n = nummer(pad);
     if (['A', 'R'].includes(status) && n !== undefined && gebruikt.has(n) && !opBasis.has(n))
@@ -164,7 +165,10 @@ function verifyAdrWeg(changes, context) {
   const vreemd = changes.find(({ pad }) => pad !== RECORD && !/^docs\/(?:adr|specs)\//.test(pad));
   if (weg.length > 0 && vreemd !== undefined)
     throw new Error(`${weg.join(', ')}: verwijderd naast ${vreemd.pad}; ${A4_MELDING}`);
-  if (weg.length > 0) verifyVervangersBestaan(context);
+  // Elk verdwenen ADR-pad (ook een voorgesteld ADR, ook als bron van een rename) kan het doel van `vervangen door` zijn.
+  const verdwenen = (/** @type {{ status: string, pad: string, van?: string }} */ { status, pad, van }) =>
+    status === 'R' ? (van ?? '') : status === 'D' ? pad : '';
+  if (changes.some((wijziging) => documentKind(verdwenen(wijziging)) === 'adr')) verifyVervangersBestaan(context);
   return weg.map((file) => ({ file, nieuw: false, record: false }));
 }
 
