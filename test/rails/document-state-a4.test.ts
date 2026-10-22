@@ -15,7 +15,7 @@ const spec = (status: string, tekst = 'Bestaande kit.'): string =>
 
 function uitkomst(voor: string | null, na: string, file = ADR): { uitslag: string; nieuw: boolean } {
   const { uitslag, nieuw } = beslisOvergang(file, voor, na);
-  return { uitslag: String(uitslag), nieuw };
+  return { uitslag, nieuw };
 }
 
 describe('B1: geaccepteerd naar geaccepteerd met meer geldige herzieningsregels is herzien', () => {
@@ -100,12 +100,12 @@ describe('B3: ongewijzigd gedrag voor de overige overgangen', () => {
   );
 
   test.each([
-    ['vervallen', 'geaccepteerd'],
-    ['vervangen door 0098', 'geaccepteerd'],
-    ['vervallen', 'voorgesteld'],
-    ['vervangen door 0098', 'voorgesteld'],
-  ])('B3 status van %s naar %s: a4', (van, naar) => {
-    expect(uitkomst(adr(van), adr(naar)).uitslag).toBe('a4');
+    ['vervallen', 'geaccepteerd', 'geweigerd'],
+    ['vervangen door 0098', 'geaccepteerd', 'geweigerd'],
+    ['vervallen', 'voorgesteld', 'a4'],
+    ['vervangen door 0098', 'voorgesteld', 'a4'],
+  ])('B3 status van %s naar %s zonder inhoudswijziging: %s (alleen met record)', (van, naar, uitslag) => {
+    expect(uitkomst(adr(van), adr(naar)).uitslag).toBe(uitslag);
   });
 
   test.each([['vervallen'], ['vervangen door 0098']])(

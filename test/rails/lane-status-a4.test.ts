@@ -15,8 +15,8 @@ const WEB = 'src/web/features/demo/page.tsx';
 const HERZIEN = 'Herzien: 2026-10-22 (#262): tekst aangepast.';
 const A4 = /A4/;
 
-const adrTekst = (nr: string, status: string, besluit = 'Iets.', extra: string[] = []): string =>
-  `# ${nr} — Demo\n\nStatus: ${status}\n\n## Besluit\n\n${besluit}\n${extra.map((regel) => `\n${regel}\n`).join('')}`;
+const adrTekst = (nr: string, status: string, besluit = 'Iets.'): string =>
+  `# ${nr} — Demo\n\nStatus: ${status}\n\n## Besluit\n\n${besluit}\n`;
 
 /** Een lange, onderscheidende tekst, zodat een verwijderd en een nieuw bestand nooit als rename gelden. */
 const uniek = (prefix: string): string =>
@@ -67,8 +67,9 @@ function faalt(fixture: Fixture, head: string): string {
   return uitvoer.stderr;
 }
 
-const herschrijf = (root: string, file: string, nr: string, besluit = 'Iets anders.'): void =>
-  write(root, file, adrTekst(nr, 'geaccepteerd', besluit, [HERZIEN]));
+function herschrijf(root: string, file: string, nr: string): void {
+  write(root, file, adrTekst(nr, 'geaccepteerd', `Iets anders.\n\n${HERZIEN}`));
+}
 
 describe('G1: een herzien ADR is een besluit zonder record', () => {
   test('G1 geaccepteerd ADR herschreven met een herzieningsregel, alleen docs/adr: slaagt en noemt het bestand', () => {
@@ -110,7 +111,11 @@ describe('G1: een herzien ADR is een besluit zonder record', () => {
   test('G1 herzien ADR maakt de feature-lane nooit mogelijk: een herzien ADR naast een nieuwe mini-spec met code faalt', () => {
     const fixture = metBasis({ [ADR_OUD]: adrTekst('0050', 'geaccepteerd') });
     herschrijf(fixture.root, ADR_OUD, '0050');
-    write(fixture.root, 'docs/specs/demo.md', `---\nstatus: goedgekeurd\nnamespace: demo\nsjabloon: mini\n---\n\n# Demo\n`);
+    write(
+      fixture.root,
+      'docs/specs/demo.md',
+      `---\nstatus: goedgekeurd\nnamespace: demo\nsjabloon: mini\n---\n\n# Demo\n`,
+    );
     write(fixture.root, WEB, 'export const x = 1;\n');
     expect(faalt(fixture, agent(fixture))).toContain('geen herkende lane');
   });
@@ -126,11 +131,14 @@ describe('G1: een herzien ADR is een besluit zonder record', () => {
 describe('G2: een ADR met een eigenaarstatus verwijderen in een besluit-PR', () => {
   const eigenaarstatussen = [['geaccepteerd'], ['vervallen'], ['vervangen door 0051']] as const;
 
-  test.each(eigenaarstatussen)('G2 een PR die alleen een ADR met Status: %s verwijdert: slaagt en noemt het bestand', (status) => {
-    const fixture = metBasis({ [ADR_OUD]: adrTekst('0050', status), [ADR_NIEUW]: adrTekst('0051', 'geaccepteerd') });
-    git(fixture.root, ['rm', '-q', ADR_OUD]);
-    expect(slaagt(fixture, agent(fixture))).toContain(ADR_OUD);
-  });
+  test.each(eigenaarstatussen)(
+    'G2 een PR die alleen een ADR met Status: %s verwijdert: slaagt en noemt het bestand',
+    (status) => {
+      const fixture = metBasis({ [ADR_OUD]: adrTekst('0050', status), [ADR_NIEUW]: adrTekst('0051', 'geaccepteerd') });
+      git(fixture.root, ['rm', '-q', ADR_OUD]);
+      expect(slaagt(fixture, agent(fixture))).toContain(ADR_OUD);
+    },
+  );
 
   test('G2 verwijderen naast een nieuw ADR met eigenaarstatus: slaagt en noemt beide bestanden', () => {
     const fixture = metBasis({ [ADR_OUD]: adrTekst('0050', 'geaccepteerd', uniek('alfa')) });
