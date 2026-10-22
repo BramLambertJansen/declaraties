@@ -179,22 +179,25 @@ describe('lokale A4 (punt 2): een geaccepteerd ADR wijzigt niet, behalve voor ho
   describe.each(ROLLEN.filter(([rol]) => ['hoofdsessie', 'architect', 'developer'].includes(rol)))(
     'melding voor %s',
     (rol, agent) => {
-      test.each([
-        ...(rol === 'developer'
-          ? [['de inhoud wijzigen', () => edit(ADR_GEACC, ['Iets.', 'Iets anders.'], agent)] as const]
-          : []),
+      const rijen: [string, () => unknown][] = [
         ['terug naar voorgesteld', () => edit(ADR_GEACC, ['Status: geaccepteerd', 'Status: voorgesteld'], agent)],
         [
           'terug naar voorgesteld met inhoud',
           () => write(ADR_GEACC, adr('0098', 'voorgesteld', 'Andere inhoud.'), agent),
         ],
-      ])('%s: verwijst naar een nieuw ADR dat vervangt, niet naar "heropen het voorstel"', (_naam, maak) => {
-        const melding = run(maak()).deny.join('\n');
-        expect(melding).not.toBe('');
-        expect(melding).not.toMatch(/heropen/i);
-        expect(melding).toMatch(/nieuw ADR/i);
-        expect(melding).toMatch(/vervang/i);
-      });
+      ];
+      if (rol === 'developer')
+        rijen.unshift(['de inhoud wijzigen', () => edit(ADR_GEACC, ['Iets.', 'Iets anders.'], agent)]);
+      test.each(rijen)(
+        '%s: verwijst naar een nieuw ADR dat vervangt, niet naar "heropen het voorstel"',
+        (_naam, maak) => {
+          const melding = run(maak()).deny.join('\n');
+          expect(melding).not.toBe('');
+          expect(melding).not.toMatch(/heropen/i);
+          expect(melding).toMatch(/nieuw ADR/i);
+          expect(melding).toMatch(/vervang/i);
+        },
+      );
     },
   );
 });
