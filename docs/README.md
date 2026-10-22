@@ -16,6 +16,7 @@ Deze template is bedoeld om webapps met code-agents te bouwen. De documentatie h
 | De architectuur of regels begrijpen | [Framework](framework.md) |
 | Een PR beoordelen | [Definition of Done](dod.md) |
 | Controles uitvoeren en CI-resultaten verzamelen | [Agentdoorloop met bewijs](operations/agent-doorloop.md#ontwikkelen-en-runnerchecks) |
+| Weten hoe de tests parallel draaien | [Testuitvoering](operations/testuitvoering.md) |
 | Weten wat nog ontbreekt | [Roadmap](roadmap.md) |
 | Weten wat een template-update verandert | [Changelog](../CHANGELOG.md) |
 | Een beheerder aanmaken of herstellen | [Beheerdersrunbook](operations/eerste-admin.md) |
