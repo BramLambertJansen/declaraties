@@ -67,6 +67,8 @@ function verifyDocument(document, context) {
   const { uitslag, nieuw } = beslisOvergang(document.file, document.before, document.after);
   if (uitslag === 'a4') throw new Error(`${document.file}: ${A4_MELDING}`);
   if (uitslag === 'vrij') return null;
+  // Een herschreven geaccepteerd ADR is een besluit zonder record: alleen een besluit-PR laat het door (verifyInPrStatus).
+  if (uitslag === 'herzien') return { file: document.file, nieuw: false, record: false };
   const target = { file: document.file, text: document.after };
   if (uitslag === 'gebouwd') {
     if (verifyBuilt(target, context)) return null;
@@ -80,18 +82,33 @@ function verifyDocument(document, context) {
 }
 
 /**
- * A4 (ADR 0046 punt 2): een ADR met een eigenaarstatus op main verdwijnt niet, ook niet via een rename.
+ * A4 (ADR 0046 punt 2): een ADR met een eigenaarstatus op main verdwijnt alleen in een besluit-PR (alleen `docs/adr/`,
+ * `docs/specs/` en het record), en nooit via een rename. Zo'n verwijdering is een besluit zonder record.
  * @param {{ status: string, pad: string, van?: string }[]} changes @param {Context} context
+ * @returns {Besluit[]}
  */
-function verifyGeenAdrWeg(changes, context) {
-  const weg = changes.flatMap(({ status, pad, van }) =>
-    status === 'D' ? [pad] : status === 'R' && van !== undefined ? [van] : [],
-  );
-  for (const file of weg.filter((pad) => documentKind(pad) === 'adr')) {
-    const status = documentInfo(file, context.authority.trusted(file) ?? '')?.status;
-    if (status !== undefined && status !== 'voorgesteld')
-      throw new Error(`${file}: verwijderd met status ${status}; ${A4_MELDING}`);
+function verifyAdrWeg(changes, context) {
+  const eigenaarstatus = (/** @type {string} */ file) => {
+    const status =
+      documentKind(file) === 'adr' ? documentInfo(file, context.authority.trusted(file) ?? '')?.status : undefined;
+    return status !== undefined && status !== 'voorgesteld' ? status : null;
+  };
+  for (const { status, van } of changes) {
+    const bron = status === 'R' && van !== undefined ? eigenaarstatus(van) : null;
+    if (bron !== null) throw new Error(`${van ?? ''}: hernoemd met status ${bron}; ${A4_MELDING}`);
   }
+  const weg = changes.filter(({ status, pad }) => status === 'D' && eigenaarstatus(pad) !== null).map(({ pad }) => pad);
+  // Verwijderen plus toevoegen onder hetzelfde nummer is een rename die git niet herkent (nummers blijven).
+  const nummer = (/** @type {string} */ pad) => /^docs\/adr\/(\d{4})-/.exec(pad)?.[1];
+  const zelfdeNummer = weg.find((file) =>
+    changes.some(({ status, pad }) => status === 'A' && pad !== file && nummer(pad) === nummer(file)),
+  );
+  if (zelfdeNummer !== undefined)
+    throw new Error(`${zelfdeNummer}: verwijderd naast een nieuw ADR met hetzelfde nummer; ${A4_MELDING}`);
+  const vreemd = changes.find(({ pad }) => pad !== RECORD && !/^docs\/(?:adr|specs)\//.test(pad));
+  if (weg.length > 0 && vreemd !== undefined)
+    throw new Error(`${weg.join(', ')}: verwijderd naast ${vreemd.pad}; ${A4_MELDING}`);
+  return weg.map((file) => ({ file, nieuw: false, record: false }));
 }
 
 /** `vervangen door NNNN` wijst naar een ADR op main of in de PR (ADR 0046 punt 5). @param {string} file @param {string} status @param {Context} context */
@@ -296,14 +313,15 @@ async function main() {
   const config = loadConfig(gitText(root, ['show', `${base}:.claude/gates.json`]) ?? '');
   /** @type {Context} */
   const context = { root, sha, split, adrBestanden: adrFiles(root, sha), authority: snapshot, config };
-  verifyGeenAdrWeg(changes, context);
-  const besluiten = changes.flatMap(({ pad }) => {
+  const verwijderd = verifyAdrWeg(changes, context);
+  const gewijzigd = changes.flatMap(({ pad }) => {
     const besluit = verifyDocument(
       { file: pad, before: authority.trusted(pad), after: snapshot.working(pad) },
       context,
     );
     return besluit === null ? [] : [besluit];
   });
+  const besluiten = [...gewijzigd, ...verwijderd];
   const melding = verifyInPrStatus({ besluiten, changes }, context);
   verifyScope(
     changes,
