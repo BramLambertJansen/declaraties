@@ -17,7 +17,7 @@ import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import { readAuthority } from '../../rails/hooks/lib/authority-context.mjs';
 import { trustedRunner } from '../../rails/hooks/lib/runner-authority.mjs';
 
-// ADR 0045, voorwaarde bij punt 8 tot 9: de hooks lezen hun vertrouwde basis uit het anker (de SHA die de stub-lader als
+// ADR 0045 punt 3 (voorwaarde voor punt 8 en 9): de hooks lezen hun vertrouwde basis uit het anker (de SHA die de stub-lader als
 // RAILS_ANKER doorgeeft), gecontroleerd tegen de hash van elk object, en niet uit een lokale origin/main die een agent kan
 // ombuigen. Contractpunten A1 tot en met A5. Remotes zijn lokale bare repo's; het echte netwerk komt er nooit aan te pas.
 const STUB_SOURCE = path.join(process.cwd(), '.claude/hooks');
