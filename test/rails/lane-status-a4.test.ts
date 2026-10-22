@@ -14,6 +14,8 @@ const ADR_VERVANGER = 'docs/adr/0052-vervanger.md';
 const WEB = 'src/web/features/demo/page.tsx';
 const HERZIEN = 'Herzien: 2026-10-22 (#262): tekst aangepast.';
 const A4 = /A4/;
+/** Het PR-nummer uit HERZIEN, zoals guard.yml het als PR_NUMBER meegeeft (G5). */
+const PR262 = { PR_NUMBER: '262' };
 
 const adrTekst = (nr: string, status: string, besluit = 'Iets.'): string =>
   `# ${nr} — Demo\n\nStatus: ${status}\n\n## Besluit\n\n${besluit}\n`;
@@ -53,15 +55,15 @@ function metBasis(bestanden: Record<string, string>): Fixture {
 
 const agent = (fixture: Fixture, bericht = 'docs: besluit'): string => commitAgent(fixture.root, bericht);
 
-function slaagt(fixture: Fixture, head: string): string {
-  const uitvoer = draaiChecker(fixture, head);
+function slaagt(fixture: Fixture, head: string, extra: Record<string, string> = {}): string {
+  const uitvoer = draaiChecker(fixture, head, extra);
   expect(uitvoer.stderr).toBe('');
   expect(uitvoer.status).toBe(0);
   return uitvoer.stdout;
 }
 
-function faalt(fixture: Fixture, head: string): string {
-  const uitvoer = draaiChecker(fixture, head);
+function faalt(fixture: Fixture, head: string, extra: Record<string, string> = {}): string {
+  const uitvoer = draaiChecker(fixture, head, extra);
   expect(uitvoer.status).toBe(1);
   expect(uitvoer.stderr).not.toBe('');
   return uitvoer.stderr;
@@ -75,7 +77,7 @@ describe('G1: een herzien ADR is een besluit zonder record', () => {
   test('G1 geaccepteerd ADR herschreven met een herzieningsregel, alleen docs/adr: slaagt en noemt het bestand', () => {
     const fixture = metBasis({ [ADR_OUD]: adrTekst('0050', 'geaccepteerd') });
     herschrijf(fixture.root, ADR_OUD, '0050');
-    const stdout = slaagt(fixture, agent(fixture));
+    const stdout = slaagt(fixture, agent(fixture), PR262);
     expect(stdout).toContain(ADR_OUD);
     expect(stdout).toContain('besluit-PR');
   });
@@ -84,7 +86,7 @@ describe('G1: een herzien ADR is een besluit zonder record', () => {
     const fixture = metBasis({ [ADR_OUD]: adrTekst('0050', 'geaccepteerd') });
     herschrijf(fixture.root, ADR_OUD, '0050');
     write(fixture.root, ADR_NIEUW, adrTekst('0051', 'geaccepteerd'));
-    const stdout = slaagt(fixture, agent(fixture));
+    const stdout = slaagt(fixture, agent(fixture), PR262);
     expect(stdout).toContain(ADR_OUD);
     expect(stdout).toContain(ADR_NIEUW);
   });
@@ -92,7 +94,7 @@ describe('G1: een herzien ADR is een besluit zonder record', () => {
   test('G1 geaccepteerd ADR met andere inhoud maar zonder herzieningsregel: faalt met de A4-melding', () => {
     const fixture = metBasis({ [ADR_OUD]: adrTekst('0050', 'geaccepteerd') });
     write(fixture.root, ADR_OUD, adrTekst('0050', 'geaccepteerd', 'Iets anders.'));
-    expect(faalt(fixture, agent(fixture))).toMatch(A4);
+    expect(faalt(fixture, agent(fixture), PR262)).toMatch(A4);
   });
 
   test.each([
@@ -103,7 +105,7 @@ describe('G1: een herzien ADR is een besluit zonder record', () => {
     const fixture = metBasis({ [ADR_OUD]: adrTekst('0050', 'geaccepteerd') });
     herschrijf(fixture.root, ADR_OUD, '0050');
     write(fixture.root, pad, 'export const x = 1;\n');
-    const stderr = faalt(fixture, agent(fixture));
+    const stderr = faalt(fixture, agent(fixture), PR262);
     expect(stderr).toContain(ADR_OUD);
     expect(stderr).toContain('geen herkende lane');
   });
@@ -117,14 +119,14 @@ describe('G1: een herzien ADR is een besluit zonder record', () => {
       `---\nstatus: goedgekeurd\nnamespace: demo\nsjabloon: mini\n---\n\n# Demo\n`,
     );
     write(fixture.root, WEB, 'export const x = 1;\n');
-    expect(faalt(fixture, agent(fixture))).toContain('geen herkende lane');
+    expect(faalt(fixture, agent(fixture), PR262)).toContain('geen herkende lane');
   });
 
   test('G1 herzien ADR naast een nieuwe spec zonder code is een besluit-PR: slaagt', () => {
     const fixture = metBasis({ [ADR_OUD]: adrTekst('0050', 'geaccepteerd') });
     herschrijf(fixture.root, ADR_OUD, '0050');
     write(fixture.root, 'docs/specs/demo.md', `---\nstatus: goedgekeurd\nnamespace: demo\n---\n\n# Demo\n`);
-    expect(slaagt(fixture, agent(fixture))).toContain(ADR_OUD);
+    expect(slaagt(fixture, agent(fixture), PR262)).toContain(ADR_OUD);
   });
 });
 
@@ -217,6 +219,131 @@ describe('G4: een voorgesteld ADR verwijderen blijft vrij', () => {
     const fixture = metBasis({ [ADR_OUD]: adrTekst('0050', 'voorgesteld') });
     git(fixture.root, ['rm', '-q', ADR_OUD]);
     write(fixture.root, WEB, 'export const x = 1;\n');
+    slaagt(fixture, agent(fixture));
+  });
+});
+
+describe('G5: elke nieuwe herzieningsregel draagt het PR-nummer uit de omgeving', () => {
+  const basis = () => metBasis({ [ADR_OUD]: adrTekst('0050', 'geaccepteerd') });
+
+  test('G5 regel (#262) en PR_NUMBER=262: slaagt', () => {
+    const fixture = basis();
+    herschrijf(fixture.root, ADR_OUD, '0050');
+    slaagt(fixture, agent(fixture), PR262);
+  });
+
+  test('G5 regel (#262) en PR_NUMBER=263: faalt met de A4-melding en noemt het verwachte nummer', () => {
+    const fixture = basis();
+    herschrijf(fixture.root, ADR_OUD, '0050');
+    const stderr = faalt(fixture, agent(fixture), { PR_NUMBER: '263' });
+    expect(stderr).toMatch(A4);
+    expect(stderr).toContain('263');
+  });
+
+  test.each([['0'], ['-5'], ['abc'], ['26.2'], ['']])(
+    'G5 PR_NUMBER=%j is geen positief geheel getal: faalt (dicht)',
+    (waarde) => {
+      const fixture = basis();
+      herschrijf(fixture.root, ADR_OUD, '0050');
+      faalt(fixture, agent(fixture), { PR_NUMBER: waarde });
+    },
+  );
+
+  test('G5 PR_NUMBER ontbreekt: een herzien ADR faalt (dicht)', () => {
+    const fixture = basis();
+    herschrijf(fixture.root, ADR_OUD, '0050');
+    faalt(fixture, agent(fixture));
+  });
+
+  test('G5 een bestaande oude regel met een ander PR-nummer blijft geldig naast een nieuwe regel met het juiste nummer', () => {
+    const oud = 'Herzien: 2026-09-01 (#200): eerste herziening.';
+    const fixture = metBasis({ [ADR_OUD]: adrTekst('0050', 'geaccepteerd', `Iets.\n\n${oud}`) });
+    write(fixture.root, ADR_OUD, adrTekst('0050', 'geaccepteerd', `Iets anders.\n\n${oud}\n\n${HERZIEN}`));
+    slaagt(fixture, agent(fixture), PR262);
+  });
+
+  test('G5 de nieuwe regel draagt een ander nummer dan de oude regel én dan PR_NUMBER: faalt', () => {
+    const oud = 'Herzien: 2026-09-01 (#200): eerste herziening.';
+    const fixture = metBasis({ [ADR_OUD]: adrTekst('0050', 'geaccepteerd', `Iets.\n\n${oud}`) });
+    write(
+      fixture.root,
+      ADR_OUD,
+      adrTekst('0050', 'geaccepteerd', `Iets anders.\n\n${oud}\n\nHerzien: 2026-10-22 (#201): tekst.`),
+    );
+    expect(faalt(fixture, agent(fixture), PR262)).toMatch(A4);
+  });
+});
+
+/** main krijgt `behouden`; `verwijderd` staat eerst op main en wordt in een latere basiscommit verwijderd. */
+function metGeschiedenis(behouden: Record<string, string>, verwijderd: Record<string, string>): Fixture {
+  const fixture = maakRepo({ specs: [], mandaat: [], roadmap: [] });
+  for (const [pad, tekst] of Object.entries({ ...behouden, ...verwijderd })) write(fixture.root, pad, tekst);
+  commitAgent(fixture.root, 'chore: basis met ADR');
+  for (const pad of Object.keys(verwijderd)) git(fixture.root, ['rm', '-q', pad]);
+  commitAgent(fixture.root, 'docs: ADR verwijderd');
+  const base = git(fixture.root, ['rev-parse', 'HEAD']);
+  git(fixture.root, ['update-ref', 'refs/remotes/origin/main', base]);
+  return { root: fixture.root, base };
+}
+
+describe('G6: een ADR-nummer dat ooit bestond en is verwijderd, wordt niet hergebruikt', () => {
+  const GEBRUIKT = 'docs/adr/0070-oud-besluit.md';
+  const basis = () =>
+    metGeschiedenis({ [ADR_OUD]: adrTekst('0050', 'voorgesteld') }, { [GEBRUIKT]: adrTekst('0070', 'geaccepteerd') });
+
+  test.each([['geaccepteerd'], ['voorgesteld']])(
+    'G6 een toegevoegd ADR (status A) met Status: %s en het verwijderde nummer 0070: faalt, nummer 0070 is al gebruikt',
+    (status) => {
+      const fixture = basis();
+      write(fixture.root, 'docs/adr/0070-andere-titel.md', adrTekst('0070', status, 'Heel iets anders.'));
+      expect(faalt(fixture, agent(fixture))).toMatch(/nummer 0070 is al gebruikt/);
+    },
+  );
+
+  test('G6 het doel van een rename met het verwijderde nummer 0070: faalt, nummer 0070 is al gebruikt', () => {
+    const fixture = metGeschiedenis(
+      { [ADR_OUD]: adrTekst('0050', 'voorgesteld', uniek('delta')) },
+      { [GEBRUIKT]: adrTekst('0070', 'geaccepteerd') },
+    );
+    git(fixture.root, ['mv', ADR_OUD, 'docs/adr/0070-hernoemd.md']);
+    expect(faalt(fixture, agent(fixture))).toMatch(/nummer 0070 is al gebruikt/);
+  });
+
+  test('G6 een nieuw nummer dat nooit bestond: slaagt', () => {
+    const fixture = basis();
+    write(fixture.root, 'docs/adr/0071-nieuw.md', adrTekst('0071', 'geaccepteerd'));
+    slaagt(fixture, agent(fixture));
+  });
+});
+
+describe('G7: een ADR met een eigenaarstatus mag niet naar een verwijderd ADR blijven verwijzen', () => {
+  const DOEL = 'docs/adr/0060-doel.md';
+  const VERWIJZER = 'docs/adr/0061-verwijzer.md';
+  const ANDER = 'docs/adr/0062-ander.md';
+  const basis = () =>
+    metBasis({
+      [DOEL]: adrTekst('0060', 'geaccepteerd', uniek('doel')),
+      [VERWIJZER]: adrTekst('0061', 'vervangen door 0060', uniek('verwijzer')),
+      [ANDER]: adrTekst('0062', 'geaccepteerd', uniek('ander')),
+    });
+
+  test('G7 het doel wordt verwijderd, de verwijzer blijft: faalt en noemt het ADR met de losse verwijzing', () => {
+    const fixture = basis();
+    git(fixture.root, ['rm', '-q', DOEL]);
+    const stderr = faalt(fixture, agent(fixture));
+    expect(stderr).toContain(VERWIJZER);
+    expect(stderr).toContain('0060');
+  });
+
+  test('G7 verwijzer en doel worden samen verwijderd: slaagt', () => {
+    const fixture = basis();
+    git(fixture.root, ['rm', '-q', DOEL, VERWIJZER]);
+    slaagt(fixture, agent(fixture));
+  });
+
+  test('G7 een ander ADR wordt verwijderd, het doel van de verwijzer blijft: slaagt', () => {
+    const fixture = basis();
+    git(fixture.root, ['rm', '-q', ANDER]);
     slaagt(fixture, agent(fixture));
   });
 });
