@@ -2,14 +2,14 @@
 status: voorstel # voorstel | goedgekeurd | gebouwd | vervallen — alleen de eigenaar zet goedgekeurd; gebouwd: # #<PR>; gevalideerd: <sha> (pnpm docs:status)
 namespace: outbox
 model: opus
-modelreden: nieuwe security definer-functies en een gewijzigde security definer-view app.accounts (ADR 0025 punt 3d), gelijktijdigheid met lease en for update skip locked (punt 3a), en de uitnodigingsflow in src/core/api/auth (punt 3c)
+modelreden: nieuwe security definer-functies en een gewijzigde security definer-view app.accounts (ADR 0046 punt 18), gelijktijdigheid met lease en for update skip locked (punt 18), en de uitnodigingsflow in src/core/api/auth (punt 18)
 ---
 
 # Mail-outbox zonder token
 
 Geen kop weglaten; "n.v.t. — reden" mag. Ontbreekt een antwoord, dan vraagt de agent het.
 
-Uitwerking van [ADR 0020](../adr/0020-achtergrondtaken.md) (leidend) punt 3, sectie Bouwvolgorde stap 9; roadmap ST-03. **Hangt af van
+Uitwerking van [ADR 0050](../adr/0050-achtergrondtaken-en-mail-outbox.md) (leidend) punt 4 (was [ADR 0020](../adr/0020-achtergrondtaken.md) punt 3, sectie Bouwvolgorde stap 9); roadmap ST-03. **Hangt af van
 de spec [achtergrondtaken](achtergrondtaken.md)**: alle vier delen daarvan (A bewaarcatalogus, B rol `app_jobs` en klasse `job`, C runner en
 `withJob` met de wachtende variant, D `app.purge_expired`) moeten gemerged zijn voordat deel A hieronder begint.
 
@@ -38,7 +38,7 @@ laatste uitnodiging in de rij staat, verstuurd is of mislukt.
 | `app_jobs` | niets rechtstreeks | nee (klasse `client`) | alleen `execute` (klasse `job`) |
 | `api_user`, `auth_service` | niets | nee | nee |
 
-Geen policy voor `app_authenticated` (ADR 0020 punt 3). `auth_service` schrijft niets in schema `app`.
+Geen policy voor `app_authenticated` (ADR 0050 punt 4). `auth_service` schrijft niets in schema `app`.
 
 ## Datawijzigingen (met grants)
 
@@ -66,7 +66,7 @@ Geen policy voor `app_authenticated` (ADR 0020 punt 3). `auth_service` schrijft 
 - **Policies:** `mail_outbox_definer_select` (`for select to app_definer using (true)`), `mail_outbox_definer_insert`
   (`for insert … with check (true)`), `mail_outbox_definer_update` (`for update … using (true) with check (true)`),
   `mail_outbox_definer_delete` (`for delete … using (created_at < (select app.retention_cutoff('app.mail_outbox')))`).
-- **Rij in `app.retention`**: `app.mail_outbox`, `created_at`, `30 days`, `app`, reden "mail-outbox (ADR 0022 punt 5)".
+- **Rij in `app.retention`**: `app.mail_outbox`, `created_at`, `30 days`, `app`, reden "mail-outbox (ADR 0051 punt 14)".
 
 **`app.enqueue_mail(p_kind text, p_user_id text) returns void`** — security definer, eigenaar `app_definer`, `set search_path = ''`, geen
 overload; `execute` alleen aan `app_authenticated`; klasse `client`. Volgorde:
@@ -285,9 +285,9 @@ Een SMTP-fout bereikt de route niet meer: de route faalt alleen als de transacti
 | Opnieuw uitnodigen terwijl de rij in backoff staat (`send_after` tot 60 min vooruit) | geen nieuwe rij; `send_after` wordt now, de mail gaat bij de volgende ronde (≤ 5 s), zodat "staat klaar om te versturen" klopt (AC-34) | — |
 | Opnieuw uitnodigen terwijl de worker die rij verstuurt | de lopende link wordt ongeldig, er komt een nieuwe rij (de geclaimde rij telt niet als wachtend); de admin ziet `wachtrij` tot die verstuurd is (AC-22) | — |
 | Markeren faalt (database even weg) | lease verloopt, mail gaat opnieuw (at-least-once) | — |
-| Account verwijderd terwijl een rij in de rij staat | cascade verwijdert de rij (ADR 0022 punt 2) | — |
+| Account verwijderd terwijl een rij in de rij staat | cascade verwijdert de rij (ADR 0051 punt 11) | — |
 | Account intussen actief (eerdere link gebruikt) | geen mail, `failed_at` met `ALREADY_ACTIVE`; lijst toont geen uitnodigingsstatus (actief) | — |
-| Commit van de route faalt na `createUser` | account zonder rol; geen rij (bestaand gat, ADR 0021 OV-7) | `INTERNAL_ERROR` |
+| Commit van de route faalt na `createUser` | account zonder rol; geen rij (bestaand gat, ADR 0051 punt 9) | `INTERNAL_ERROR` |
 | Better Auth vangt de SMTP-fout zelf af | de callback vangt hem eerder en gooit niet; de `AsyncLocalStorage`-context legt vast dat er een fout was; worker markeert `SMTP_ERROR` (AC-16, AC-38) | — |
 | Rij ouder dan 30 dagen | opgeruimd; status in de lijst wordt null ("Uitgenodigd") | — |
 | Uitnodigingslink na 7 dagen verlopen | ongewijzigd: `INVITATION_INVALID`; herstel via opnieuw uitnodigen | `INVITATION_INVALID` |
@@ -296,7 +296,7 @@ Een SMTP-fout bereikt de route niet meer: de route faalt alleen als de transacti
 Alternatieven voor het randgeval "opnieuw uitnodigen tijdens verzenden", niet gekozen: (b) een unieke partiële index op wachtende rijen (de
 letter van OV-6 a): dan doet de enqueue niets terwijl de link van de geclaimde rij al weg is, en ziet de admin "verstuurd" bij een dode link;
 (c) `reinviteUser` verwijdert geen tokens meer (de worker doet het bij verzenden): wijkt af van ADR 0020 Gevolgen ("oude tokens weg en
-enqueue"); (d) markeren alleen als het token nog bestaat: vraagt tokenkennis in de outbox, wat ADR 0020 punt 3 uitsluit.
+enqueue"); (d) markeren alleen als het token nog bestaat: vraagt tokenkennis in de outbox, wat ADR 0050 punt 4 uitsluit.
 
 ## Raakt ook
 
@@ -321,7 +321,7 @@ Niet beschermd, wel mee: `src/api/routes/accounts.ts`, `src/api/services.ts`, `s
 
 ## Buiten scope
 
-- App-soorten met `recipient` en een eigen definer-functie (ADR 0020 punt 3): mechanisme staat klaar, geen voorbeeld in de template.
+- App-soorten met `recipient` en een eigen definer-functie (ADR 0050 punt 4): mechanisme staat klaar, geen voorbeeld in de template.
 - De routes intrekken en resetlink (`core.password_reset` gebruiken): spec accountbeheer-uitbreiding.
 - E-mailwijziging via de outbox (`src/core/api/auth/mailing.ts`): blijft synchroon; eigen besluit.
 - Filteren op uitnodigingsstatus in de lijst (OV-9).
@@ -364,10 +364,10 @@ status per deel administratief op `goedgekeurd` zetten met `pnpm docs:status` (A
 
 - **OV-1 — Better Auth slikt een SMTP-fout.** `requestPasswordReset` roept `sendResetPassword` aan via `runInBackgroundOrAwait`, dat elke fout
   vangt en alleen logt (`better-auth/dist/api/routes/password.mjs:82`, `context/create-context.mjs:215`). De worker ziet een SMTP-fout dus niet,
-  en ADR 0020 punt 3 (opnieuw proberen, `failed_at`) werkt dan niet; ook het huidige synchrone pad faalt niet bij een SMTP-fout. (a) de mailfunctie
+  en ADR 0050 punt 4 (opnieuw proberen, `failed_at`) werkt dan niet; ook het huidige synchrone pad faalt niet bij een SMTP-fout. (a) de mailfunctie
   legt per aanroep de uitkomst vast (bijv. `AsyncLocalStorage` in `src/core/api/auth`), `sendCoreMail` gooit als die een fout bevat; (b) de worker
   maakt het token zelf (`internalAdapter.createVerificationValue` met `reset-password:`-prefix en `INVITATION_TTL_SECONDS`) en mailt zelf, zonder
-  `requestPasswordReset`. Aanbeveling: (a), blijft het pad van de ADR. (b) wijkt af van ADR 0020 punt 3 en vraagt een correctie.
+  `requestPasswordReset`. Aanbeveling: (a), blijft het pad van de ADR. (b) wijkt af van ADR 0050 punt 4 en vraagt een correctie.
 - **OV-2 — Markeren achter een try-lock.** Loopt markeren via `withJob` met `pg_try_advisory_xact_lock`, dan kan het overgeslagen worden terwijl
   een andere instantie claimt; de rij wordt dan na de lease opnieuw verstuurd. (a) `withJob` krijgt een wachtende variant (`pg_advisory_xact_lock`,
   begrensd door `statement_timeout`) voor markeren; (b) markeren onder een eigen taaknummer met try-lock en opnieuw proberen. Aanbeveling: (a);

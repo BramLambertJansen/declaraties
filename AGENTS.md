@@ -7,19 +7,19 @@ Template voor webapps, gebouwd door agents binnen afgedwongen kaders. De regels 
 
 Fundament gebouwd (fase 0/1); volgende stap is de proef-app (ST-09, `docs/roadmap.md`). Wat niet in `package.json` of de repo staat, bestaat nog niet: verzin geen
 commando's, scripts of bestanden. Noem iets pas klaar met de uitvoer van de check die het bewijst.
-De merge is de acceptatie (ADR 0038): architect of hoofdsessie schrijft de bedoelde status in het voorstel, de eigenaar beslist met zijn merge.
+De merge is de acceptatie (ADR 0046): architect of hoofdsessie schrijft de bedoelde status in het voorstel, de eigenaar beslist met zijn merge.
 
 ## Stack
 
-- `src/core/{api,web,shared}` — van de template; een app wijzigt het niet, maar breidt uit via registratie (ADR 0008).
+- `src/core/{api,web,shared}` — van de template; een app wijzigt het niet, maar breidt uit via registratie (ADR 0040).
 - `src/web` — Vite + React SPA, TanStack Router/Query, React Hook Form, shadcn/ui, Tailwind v4.
 - `src/api` — Hono; lokale ingang `src/api/server.ts` (:8787). Host-adapters alleen in `deploy/<host>/`.
-- `src/core/api/auth` — Better Auth, sessie-cookie, schema `better_auth` (ADR 0003, 0010).
+- `src/core/api/auth` — Better Auth, sessie-cookie, schema `better_auth` (ADR 0041).
 - `src/core/shared` — `can()`-engine, basisfoutcodes en -limieten, branded IDs, `Cents`, cursor-contract, `assert()`, `unsafeCast()`.
 - `src/shared` — zod-schema's, `permissions.ts`, eigen foutcodes, `limits.ts` en IDs van de app.
-- `db/` — SQL-migraties (dbmate), pgTAP-tests, `schema.snapshot.sql` (gegenereerd); rollen in `db/init/` (ADR 0004).
-- Lokaal: `compose.yaml` (Postgres 17 + pgTAP, Mailpit). Node 26, pnpm 11, TypeScript 6.0 (ADR 0005).
-- Geen hosting- of databaseprovider in de template; een app kiest die per ADR (ADR 0002).
+- `db/` — SQL-migraties (dbmate), pgTAP-tests, `schema.snapshot.sql` (gegenereerd); rollen in `db/init/` (ADR 0042).
+- Lokaal: `compose.yaml` (Postgres 17 + pgTAP, Mailpit). Node 26, pnpm 11, TypeScript 6.0 (ADR 0039).
+- Geen hosting- of databaseprovider in de template; een app kiest die per ADR (ADR 0039).
 
 ## Regels
 
@@ -70,8 +70,8 @@ vangen het later toch, en dan is het werk verloren. Uitzonderingen staan limitat
 
 **Repo en grenzen** — zodat de kaders zelf niet ongemerkt verschuiven.
 - Bewerk geen gegenereerde bestanden en geen `.env*`; `.env.example` is beschermd (de demo-waarden zijn een securityregel).
-- Beschermde paden (`docs/framework.md` §10) vragen eigenaarakkoord; developer-broncode kan met exact taakmandaat (ADR 0027).
-- Geen nieuwe dependency zonder akkoord. Een eigenaarstatus schrijven alleen architect en hoofdsessie in het voorstel (ADR 0038); `gebouwd` via `pnpm docs:status` met bouwbewijs.
+- Beschermde paden (`docs/framework.md` §10) vragen eigenaarakkoord; developer-broncode kan met exact taakmandaat (ADR 0046).
+- Geen nieuwe dependency zonder akkoord. Een eigenaarstatus schrijven alleen architect en hoofdsessie in het voorstel (ADR 0046); `gebouwd` via `pnpm docs:status` met bouwbewijs.
 - Push nooit naar `main`, gebruik nooit `--no-verify`, merge nooit. Eén onderwerp per PR, conventional commits.
 - Geen zelfreview of check-status. Gate-label alleen door hoofdsessie via `pnpm pr:label-gate` binnen het mandaat uit main.
 - Geen `docker` of runneroverride. Runnerchecks zelf draaien of CI-bewijs ophalen (`pnpm pr:verify`); zie `docs/operations/agent-doorloop.md`.
