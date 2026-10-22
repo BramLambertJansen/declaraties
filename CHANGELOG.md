@@ -17,6 +17,7 @@ Hier staan wijzigingen die van belang zijn bij het gebruiken of bijwerken van de
 
 ### Gewijzigd
 
+- `"sideEffects": ["**/*.css"]` in `package.json`: Rolldown behandelt de barrel `src/web/ui/index.ts` als vrij van bijwerkingen, zodat een scherm alleen de componenten laadt die het gebruikt. Gemeten bovenop de entry (kB gzip): `/login` 72 → 36, `/` 58 → 2, `/admin` 75 → 19; de catalogus (`/design-system`, alleen admins) draagt nu zelf de componenten die alleen daar voorkomen. Totaal JS 243 → 248 kB door meer kleine chunks (budget 260, `test/ui/bundle-budget.test.ts`). Bij een update: een eigen module met een bijwerking op importniveau (geen CSS) moet je expliciet in `sideEffects` opnemen. `/design-system` gebruikt geen `lazyRouteComponent` meer: `autoCodeSplitting` splitst al.
 - Unittests draaien parallel per bestand en Vitest gebruikt hooguit vier workers (`vitest.config.ts`); de integratietests (`int`) blijven serieel. Bij een update: eigen unittests (`src/**/*.test.ts`) mogen geen gedeelde state hebben (vaste poorten, vaste paden, de echte database); zie `docs/operations/testuitvoering.md`.
 - Beslisroute (ADR 0038): de merge door de eigenaar is de acceptatie. Architect en hoofdsessie schrijven de eigenaarstatus in het voorstel; `check-document-status` laat zonder record en zonder web-flow een besluit-PR met meerdere ADR's en specs toe, en guard en rolhek weigeren een ADR met eigenaarstatus terug naar `voorgesteld` of met nieuwe inhoud (`rails/hooks/lib/document-state.mjs`, `scripts/kit/lane.mjs`).
 
