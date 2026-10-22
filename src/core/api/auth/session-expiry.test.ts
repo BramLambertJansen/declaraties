@@ -11,6 +11,7 @@ test('de sessielijst vraagt actieve sessies en sluit beide verlopen termijnen ui
     updatedAt: new Date(now - age),
     expiresAt: new Date(expiresAt),
     userAgent: '',
+    sessionVersion: 1,
   });
   const listSessions = vi.fn(() =>
     Promise.resolve([
@@ -18,11 +19,16 @@ test('de sessielijst vraagt actieve sessies en sluit beide verlopen termijnen ui
       session('idle-expired', 86400000, now - 1),
       session('boundary', 1000, now),
       session('absolute-expired', 8 * 86400000, now + 1000),
+      { ...session('revoked', 1000, now + 1000), sessionVersion: 0 },
     ]),
   );
   const auth = unsafeCast<Auth>(
-    { $context: Promise.resolve({ internalAdapter: { listSessions } }) },
-    'test: alleen listSessions wordt gebruikt',
+    {
+      $context: Promise.resolve({
+        internalAdapter: { listSessions, findUserById: () => Promise.resolve({ sessionVersion: 1 }) },
+      }),
+    },
+    'test: de sessielijst leest actieve sessies en de huidige gebruikersgeneratie',
   );
   const result = await listOwnSessions(auth, { userId: 'u1', sessionId: 'current' }, now);
   expect(result.map((item) => item.id)).toEqual(['current']);

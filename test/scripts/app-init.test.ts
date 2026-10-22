@@ -68,7 +68,7 @@ describe('planAppInit', () => {
     expect(readFileSync(path.join(dir, 'package.json'), 'utf8')).toContain('"name": "app-template"');
   });
 
-  test('haalt de onderhoudsmodus uit .claude/gates.json: die hoort bij de template-repo (ADR 0033 punt 2)', () => {
+  test('haalt de onderhoudsmodus uit .claude/gates.json: die hoort bij de template-repo (ADR 0045 punt 8)', () => {
     const dir = copy();
     mkdirSync(path.join(dir, '.claude'), { recursive: true });
     cpSync(path.join(ROOT, '.claude/gates.json'), path.join(dir, '.claude/gates.json'));

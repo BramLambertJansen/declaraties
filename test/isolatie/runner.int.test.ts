@@ -2,7 +2,7 @@ import { Socket, connect } from 'node:net';
 import { readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { describe, expect, test } from 'vitest';
 
-// Bewijst de isolatie van de runner (ADR 0009): vanuit de container falen een verbinding naar internet en naar de
+// Bewijst de isolatie van de runner (ADR 0044): vanuit de container falen een verbinding naar internet en naar de
 // host, inloggen als postgres en schrijven in de repo. Draait alleen via `pnpm test:db`.
 const TIMEOUT = 3000;
 

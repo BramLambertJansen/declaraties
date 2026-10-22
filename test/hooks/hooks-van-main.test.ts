@@ -17,7 +17,7 @@ import path from 'node:path';
 import { deflateSync } from 'node:zlib';
 import { afterEach, describe, expect, test } from 'vitest';
 
-// ADR 0033 punt 1: hooks draaien van main. Een stub in .claude/hooks/ voert rails/hooks/<naam>.mjs uit zoals die op
+// ADR 0045 punt 3: hooks draaien van main. Een stub in .claude/hooks/ voert rails/hooks/<naam>.mjs uit zoals die op
 // de remote main staat (anker .claude/hooks/.cache/main, cache .claude/hooks/.cache/<tree-oid>/). Echte tijdelijke
 // repo's met een lokale bare remote; het echte netwerk komt er nooit aan te pas.
 const STUB_SOURCE = path.join(process.cwd(), '.claude/hooks');

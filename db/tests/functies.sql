@@ -1,4 +1,4 @@
--- Functiecatalogus (framework §6, ADR 0011): elke functie in public en app is `client` (uitvoerbaar voor
+-- Functiecatalogus (framework §6, ADR 0045): elke functie in public en app is `client` (uitvoerbaar voor
 -- app_authenticated) of `intern` (geen API-rol). Een nieuwe functie zonder klasse faalt hier. Elke client-functie
 -- controleert de actor of heeft een vastgelegde reden waarom niet. Alles in één transactie die terugdraait.
 begin;
@@ -13,6 +13,7 @@ insert into catalogus values
   ('app.is_mfa_admin()', 'client', null),
   ('app.assign_role(text, text)', 'client', null),
   ('app.set_account_blocked(text, boolean)', 'client', null),
+  ('app.set_account_deactivated(text, boolean)', 'client', null),
   ('app.consume_rate_limit(text, integer, integer)', 'client', 'actor uit app.current_user_id(); zonder actor 42501 (spec rate-limit)'),
   ('app.user_roles_keep_one_admin()', 'intern', 'triggerfunctie van public.user_roles'),
   -- Audit log (spec audit-log, AC-19).

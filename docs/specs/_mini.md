@@ -1,12 +1,12 @@
 ---
-status: voorstel # voorstel | goedgekeurd | gebouwd | vervallen — alleen de eigenaar zet goedgekeurd; gebouwd: # #<PR>; gevalideerd: <sha> (pnpm docs:status)
+status: voorstel # voorstel | goedgekeurd | gebouwd | vervallen — de architect zet de status in het voorstel, de merge door de eigenaar is het besluit (ADR 0046); gebouwd: # #<PR>; gevalideerd: <sha> (pnpm docs:status)
 namespace: <resource>
 sjabloon: mini
 ---
 
 # <Feature>
 
-Korte spec voor app-werk in de feature-lane (ADR 0029 punt 5–6): een route, een permissie of een nieuwe tabel via
+Korte spec voor app-werk in de feature-lane (ADR 0046 punt 13–14): een route, een permissie of een nieuwe tabel via
 `pnpm new:resource`. Alles in `src/core`, een migratie op bestaande rijen, rollen/RLS-model of `security definer` vraagt het
 volledige sjabloon (`_template.md`). Geen kop weglaten; "n.v.t. — reden" mag. Ontbreekt een antwoord, dan vraagt de agent het.
 

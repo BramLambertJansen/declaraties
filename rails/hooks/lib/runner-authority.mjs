@@ -1,4 +1,4 @@
-// Alleen vaste runner-opdrachten met ongewijzigde hostcode mogen zonder handmatige prompt (ADR 0027).
+// Alleen vaste runner-opdrachten met ongewijzigde hostcode mogen zonder handmatige prompt (ADR 0044 punt 5).
 import { gitText, safeRepositoryPath, trustedBase } from './authority-context.mjs';
 
 export const HOST_FILES = ['scripts', 'package.json', 'pnpm-workspace.yaml', '.npmrc', '.pnpmfile.cjs', 'mise.toml',
@@ -23,7 +23,7 @@ function enabled(text) {
 
 /** @param {string} root */
 export function trustedRunner(root) {
-  // Binnen een hook het anker (ADR 0033), gecontroleerd gelezen; anders origin/main.
+  // Binnen een hook het anker (ADR 0045), gecontroleerd gelezen; anders origin/main.
   const basis = trustedBase(root, undefined);
   if (basis === null || !enabled(basis.read('.claude/gates.json') ?? '')) return false;
   const base = gitText(root, ['merge-base', basis.sha, 'HEAD'])?.trim();

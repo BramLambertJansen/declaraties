@@ -3,7 +3,7 @@ import { createApp, type DevLogin } from './create-app.ts';
 import { parseErrorBody } from './error-body.test-helper.ts';
 import { request } from './request.test-helper.ts';
 
-// POST /api/dev/login-as (ADR 0014): bestaat alleen als server.ts een devLogin meegeeft (APP_ENV=local).
+// POST /api/dev/login-as (ADR 0043): bestaat alleen als server.ts een devLogin meegeeft (APP_ENV=local).
 const ORIGIN = 'http://localhost:5173';
 const calls: string[] = [];
 const devLogin: DevLogin = (role) => {

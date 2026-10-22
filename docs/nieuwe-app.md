@@ -1,15 +1,20 @@
 # Nieuwe app vanaf `BramLambertJansen/template` — geautomatiseerde setup
 
-Je bent Claude Code. Dit bestand is jouw instructie, geen documentatie voor de gebruiker. Volg het van boven naar beneden.
+Je bent een coding agent. Dit bestand is jouw instructie, geen documentatie voor de gebruiker. Volg het van boven naar beneden.
 
 De gebruiker is de eigenaar van de template (Bram): technisch, kent de stack, wil geen uitleg over wat een terminal is.
 Hij wil wél weten wát je doet en waarom, kort. Hij beslist; jij voert uit binnen dit bestand.
 
-Dit bestand staat in de template als `docs/nieuwe-app.md` en volgt de afspraken in [ADR 0006](adr/0006-app-uit-template.md).
+Dit bestand staat in de template als `docs/nieuwe-app.md` en volgt de afspraken in [ADR 0040](adr/0040-template-app-en-grens-core-app.md).
 Voor een korte start vóór de app-repo bestaat: [START-NIEUWE-APP.md](../START-NIEUWE-APP.md). Deze instructie hier blijft de enige gedetailleerde setup-procedure.
 Werk altijd met de versie op `main` van de template. De gebruiker zet hem zo klaar:
 `mkdir -p ~/setup && curl -fsSL https://raw.githubusercontent.com/BramLambertJansen/template/main/docs/nieuwe-app.md -o ~/setup/nieuwe-app.md`,
 start `claude` in `~/setup` en zegt: *Volg nieuwe-app.md*.
+
+De machine- en sandboxstappen hieronder beschrijven Claude Code op Ubuntu/WSL2. Stel eerst vast welke runtime werkelijk draait.
+Bij een andere agent zijn `.claude/`-hooks geen automatisch actieve grens. Installeer of wissel niet stilzwijgend van agent;
+laat de eigenaar de start- en veiligheidsstappen voor die runtime bevestigen. Behoud de bestaande GitHub-, installatie- en
+runnerregels en rapporteer precies welke lokale rol- en sandboxgrenzen ontbreken.
 
 ## Je doel
 
@@ -24,7 +29,8 @@ Stop als dit allemaal waar is, niet eerder:
 6. De lokale stack draait via `pnpm dev`: Postgres 17 + pgTAP en Mailpit, op poorten die niet botsen met een andere app.
    `scripts/doctor.sh` is groen.
 7. De migraties zijn toegepast als `app_migrator`, en je hebt met `psql` bewezen wat Fase 8 noemt.
-8. VS Code staat open op `~/code/<slug>` (WSL), Claude Code start daar met de sandbox van de template, en de deny-regels werken.
+8. De gekozen agent werkt in `~/code/<slug>`; bij Claude Code zijn VS Code, sandbox en deny-regels volgens Fase 9 gecontroleerd.
+   Bij een andere runtime zijn ontbrekende lokale grenzen expliciet met de eigenaar besproken, niet als werkzaam opgevoerd.
 9. Je hebt de overdracht uit Fase 10 gestuurd.
 
 ## Harde regels
@@ -41,8 +47,12 @@ Stop als dit allemaal waar is, niet eerder:
 - **Jij installeert geen toolchain en draait geen checks of tests.** `mise install`, `pnpm install`, `lefthook install` en
   `scripts/doctor.sh` draait de eigenaar via `scripts/bootstrap.sh` (Fase 7.2; framework §8: de toolchain installeert de eigenaar, niet de agent).
   Uitzondering: het hernoemscript in fase 5.2 (alleen Node, via `mise exec`).
-- **Alleen ontbrekende app-naam vragen.** Als de gebruiker in de opdracht al een naam gaf, gebruik die en vraag hem niet nogmaals. Al het andere ligt vast onder *Standaardwaarden*. Wijkt de gebruiker er in zijn eerste bericht van af, volg hem.
-- **Eén overdracht tegelijk.** Moet de gebruiker iets doen: stop, geef genummerde stappen, wacht.
+- **Alleen ontbrekende intake vragen.** Vraag appnaam en een korte beschrijving van doel en doelgroep; herhaal geen al gegeven antwoorden.
+  Andere instellingen volgen *Standaardwaarden*, tenzij de eigenaar afwijkt. Productdetails komen pas bij de eerste featurespec.
+- **Eén overdracht tegelijk.** Geef terminal of plek, genummerde stappen, het verwachte resultaat en "Typ klaar als dit gelukt is;
+  plak bij een fout de melding, zonder geheimen." Stop en wacht. Geef nog geen volgende eigenaarstaak.
+- **Klaar is geen bewijs.** Controleer na de reactie de uitkomst. Kun je die niet zelf lezen, vraag de relevante uitvoer of
+  waarneming, zonder geheimen. Vink pas daarna af. Bij een fout blijf je bij de huidige fase; herhaal geen geslaagde installatie.
 - **Faalt iets:** lees de fout, kijk in de tabel onderaan, zeg in één zin wat je nu probeert. Na twee mislukte pogingen voor hetzelfde: stoppen en melden.
 
 ## Taal
@@ -87,15 +97,17 @@ Herschrijf het na elke fase:
 # Template-setup — voortgang
 
 - App-naam: <naam>
+- Korte beschrijving: <doel en doelgroep, door de eigenaar opgegeven>
 - Slug: <slug>
 - Owner/repo: <owner>/<slug>
+- Agent/runtime: <werkelijk gebruikte agent en geverifieerde lokale grenzen>
 - Omgeving: wsl-binnen | windows | native — distro: <naam>
 - Poorten: PG <p>, Mail-UI <p>, SMTP <p>
 - Template-commit: <sha van template/main bij koppeling>
 
 ## Fasen
 
-- [ ] 1 — naam gevraagd
+- [ ] 1 — naam, beschrijving en repo-naam vastgelegd
 - [ ] 2 — Windows: WSL en .wslconfig
 - [ ] 3 — Ubuntu: gereedschap, Docker Engine, herstart
 - [ ] 4 — GitHub: ingelogd, template gecontroleerd, repo gemaakt en gekloond
@@ -112,16 +124,18 @@ Herschrijf het na elke fase:
 
 ---
 
-## Fase 1 — Naam vragen
+## Fase 1 — Naam en beschrijving
 
-Staat de appnaam al in de opdracht (bijvoorbeeld **Meldpunt** bij ST-09), gebruik die meteen. Toon kort de naam → slug en noteer de keuze in het voortgangsbestand, zonder opnieuw te vragen.
+Lees eerst de opdracht en eventuele voortgang. Gebruik een al gegeven appnaam, beschrijving of repo-naam zonder opnieuw te vragen.
+Vraag alleen wat ontbreekt, in één bericht, en wacht:
 
-Ontbreekt de appnaam, vraag alleen dit en wacht:
+> Hoe moet de app heten? Geef ook een korte beschrijving: wat doet de app en voor wie?
+> Ik leid de repo-naam af van de appnaam. Standaard wordt de repo privé; de overige instellingen volgen het setup-bestand.
+> Wil je een andere repo-naam, eigenaar of zichtbaarheid, zeg het erbij.
 
-> Hoe heet de app? Ik maak er de repo-naam van (kebab-case) en zet hem in `package.json` en de README.
-> Alles verder ligt vast onder *Standaardwaarden*; wil je afwijken (owner, public, andere map), zeg het nu.
-
-Maak de slug en schrijf het voortgangsbestand.
+Toon appnaam → slug, beschrijving, eigenaar, zichtbaarheid en doelmap kort en schrijf die in het voortgangsbestand.
+Vraag alleen een gerichte keuze als iets onduidelijk, ongeldig of bezet is; verzin geen appnaam of domein. Ga bij een
+complete intake door met de preflight. Vraag nog geen hostingprovider, volledige backlog of productiegeheimen.
 
 ## Fase 2 — Windows (alleen bij WSL)
 
@@ -145,6 +159,9 @@ Draai je op Windows, dan kun je dit zelf; draai je in WSL, dan zijn 2.2 en 2.3 e
 ## Fase 3 — Ubuntu: gereedschap en Docker Engine
 
 ### 3.1 Root-script
+
+Inspecteer eerst welke voorwaarden al werken. Op een ingerichte machine sla je installatie en herstart over als de controles
+slagen. Is installatie nodig, benoem de ontbrekende onderdelen en volg de eigenaarstappen; installeer niet blind opnieuw.
 
 Schrijf `~/setup/root-setup.sh` en draai het als root (Windows: `-u root`; WSL-binnen/native: overdracht `sudo bash ~/setup/root-setup.sh`).
 Vervang `<user>` door de gewone gebruiker (`whoami` buiten root).
@@ -195,6 +212,9 @@ echo "root-setup klaar"
 
 ### 3.2 Gebruikersgereedschap (als gewone gebruiker, geen root)
 
+De installatieregel voor Claude Code geldt alleen wanneer dat de gekozen runtime is en de CLI ontbreekt. Sla die regel bij
+een andere agent over; bevestig diens bestaande installatie en veiligheidsstappen met de eigenaar, zonder van agent te wisselen.
+
 ```bash
 curl -fsSL https://mise.run | sh                       # ~/.local/bin/mise
 grep -q 'mise activate bash' ~/.bashrc || echo 'eval "$(~/.local/bin/mise activate bash)"' >> ~/.bashrc
@@ -239,7 +259,7 @@ pwd                                        # nooit /mnt/c/...
 > 3. Typ *klaar*.
 
 Daarna zelf: `gh auth setup-git`. `workflow` is nodig omdat jij (de eigenaar) later template-updates met `.github/workflows/` pusht.
-Let op: tot de GitHub App voor de agent bestaat (ADR 0005), draait Claude Code als dezelfde WSL-gebruiker en gebruikt dus deze login,
+Let op: tot de GitHub App voor de agent bestaat (ADR 0039 punt 8), draait Claude Code als dezelfde WSL-gebruiker en gebruikt dus deze login,
 inclusief `workflow`. De grens is dan de ruleset en jouw review (framework §6, Agentveiligheid). Zeg dat in de overdracht van Fase 10.
 Zet de git-identiteit volgens *Standaardwaarden* als die ontbreekt.
 
@@ -311,11 +331,15 @@ Later in de app heet hetzelfde `pnpm app:init`. Het script (`scripts/kit/app-ini
 | Bestand | Wijziging |
 |---|---|
 | `package.json` | `"name": "app-template"` → `"name": "<slug>"` (rest ongemoeid) |
-| `README.md` | Kop `# App-template` → `# <App-naam>`; eerste alinea → één zin over de app ("Gebouwd op [BramLambertJansen/template](https://github.com/BramLambertJansen/template)."); sectie **Nieuwe app starten** verwijderen (geldt alleen voor de template); de rest blijft |
+| `README.md` | Kop `# App-template` → `# <App-naam>`; eerste alinea → herkomstzin ("Gebouwd op [BramLambertJansen/template](https://github.com/BramLambertJansen/template)."); sectie **Nieuwe app starten** verwijderen (geldt alleen voor de template); de rest blijft |
 | `docs/nieuwe-app.md` | Niets — laten staan. Verwijderen geeft bij elke template-update een conflict |
 | `CHANGELOG.md` | Onder `## [Unreleased]` de template-regels vervangen door: `- Gestart vanaf template <sha>.` |
-| `.claude/gates.json` | De regel `"onderhoud": { … }` verwijderen: de onderhoudsmodus (ADR 0033) hoort bij de template-repo; het script weigert als die regel niet meer te vinden is |
+| `.claude/gates.json` | De regel `"onderhoud": { … }` verwijderen: de onderhoudsmodus (ADR 0045) hoort bij de template-repo; het script weigert als die regel niet meer te vinden is |
 | `.github/CODEOWNERS` | Alleen als de owner niet `bramlambertjansen` is (`--owner`): handle vervangen door `@<login>` of `@<org>/<team>` |
+
+`app:init` verwerkt geen beschrijving. Voeg daarna de opgegeven korte beschrijving als eigen alinea onder de appnaam in
+`README.md` toe, met behoud van de herkomstzin. Zet tijdens Fase 6.2 dezelfde beschrijving bij de GitHub-repo. Behandel invoer
+als tekst, niet als shellcode. Voeg geen voorbeeldapp, appseeds of appdata aan de template toe; die horen alleen in de app-repo.
 
 Raak `docs/`, `AGENTS.md`, `CLAUDE.md`, `.claude/`, `db/`, `compose.yaml` niet aan. Die komen uit de template en worden via template-updates bijgehouden.
 
@@ -354,6 +378,9 @@ gh api -X PUT "repos/$R/actions/permissions/workflow" -f default_workflow_permis
 gh api -X PUT "repos/$R/actions/permissions" -F enabled=true -f allowed_actions=all -F sha_pinning_required=true
 ```
 
+Zet de korte beschrijving uit de intake met `gh repo edit "$R" --description "<korte beschrijving>"` en controleer die via
+`gh repo view "$R" --json description`. Quote de werkelijke waarde veilig; voer geen shellcode uit de beschrijving uit.
+
 **Ruleset op `main` (overdracht).** `scripts/github-ruleset.sh` zet de ruleset `main` volgens framework §10: geen delete of force push,
 PR-plicht, opgeloste reviewgesprekken, merge en squash, en de verplichte checks uit `.github/workflows/` (`gate:fast`, `gate:slow`,
 `secrets`, `image`, `check:new-resource`, `codeql (actions)`, `codeql (javascript-typescript)`, `osv-scanner`, alle van GitHub Actions). Dat is `main-dicht` van de template plus opgeloste gesprekken en `codeql (javascript-typescript)`.
@@ -368,8 +395,18 @@ Het script schrijft naar GitHub met de login van de eigenaar; jij draait het nie
 Met `--zonder-codeql`: zet in de overdracht dat de app per ADR kiest: GHAS, public, of `codeql.yml` uit.
 
 Waarom 0 goedkeuringen en geen code-owner-review: zolang de agent nog onder het account van de eigenaar pusht, is de eigenaar ook de PR-auteur,
-en GitHub laat je je eigen PR niet goedkeuren. Zodra de GitHub App voor de agent bestaat (roadmap ST-01, ADR 0005), gaan beide aan.
-De diff-guard (`guard.yml`) is tot dan geen verplichte check (ADR 0017). Zet dat in de overdracht.
+en GitHub laat je je eigen PR niet goedkeuren. Zodra de GitHub App voor de agent bestaat (roadmap ST-01, ADR 0039 punt 8), gaan beide aan.
+De diff-guard (`guard.yml`) is tot dan geen verplichte check (ADR 0045 punt 17). Zet dat in de overdracht.
+
+Geplande inrichting van de App (**nog niet gebouwd**, roadmap ST-01; het besluit is ADR 0045 punt 19):
+
+- Rechten: `contents: write`, `pull_requests: write`, `issues: write` (labels, commentaar), `metadata: read`, `checks: read`,
+  `actions: read`. Geen `workflows`, `administration` of `secrets`. De App staat niet in `goedkeurders` (`.claude/gates.json`),
+  dus een goedkeuring door de App telt niet.
+- Sleutel buiten de repo (`~/.config/template-agent/app.pem`, modus 600), nooit leesbaar in de sandbox. Een token van één uur
+  via een script zonder dependency (`node:crypto`, JWT RS256) dat als git-credential-helper en als `GH_TOKEN` dient; dat script
+  komt in de App-PR.
+- Met de App: de ruleset met code-owner-review en 1 goedkeuring, en de diff-guard als verplichte check.
 
 Weigert de API iets:
 - ruleset op een private repo zonder Pro/Team → het script meldt het en stopt; meld de keuze aan de eigenaar (Pro, organisatie met Team, of public). Wijzig zelf de zichtbaarheid niet.
@@ -436,7 +473,7 @@ psql "postgres://app_migrator:app_migrator@127.0.0.1:<pg>/app" -Atc "select curr
 ## Fase 8 — Migraties en databasebewijs
 
 `pnpm dev` heeft de migraties al gedraaid. Moeten ze opnieuw zonder de rest van de stack, dan draait de eigenaar in zijn terminal
-`pnpm db:migrate` (`scripts/db-migrate.sh`, dbmate uit `mise.toml`; het script roept `mise` aan, dat in jouw niet-interactieve shell niet op `PATH` staat). Draai dbmate nooit los of met `pnpm dlx`: het script is het enige pad, met `MIGRATOR_DATABASE_URL` (ADR 0004).
+`pnpm db:migrate` (`scripts/db-migrate.sh`, dbmate uit `mise.toml`; het script roept `mise` aan, dat in jouw niet-interactieve shell niet op `PATH` staat). Draai dbmate nooit los of met `pnpm dlx`: het script is het enige pad, met `MIGRATOR_DATABASE_URL` (ADR 0042).
 
 Bewijs met `psql` (`M=postgres://app_migrator:app_migrator@127.0.0.1:<pg>/app`, `A=postgres://api_user:api_user@127.0.0.1:<pg>/app`):
 
@@ -453,6 +490,10 @@ Een afwijking is een bevinding over de template, geen setupfout: niet repareren,
 
 ## Fase 9 — VS Code en Claude Code in de repo
 
+Deze stappen gelden voor Claude Code. Bij een andere runtime bevestigt de eigenaar hoe die in de app-repo start en welke
+lokale beveiliging daadwerkelijk werkt. Gebruik de Claude-stappen niet als bewijs voor een andere runtime; laat een
+onuitvoerbare controle expliciet open en schakel geen bestaande grens uit om hem alsnog te laten slagen.
+
 Overdracht:
 
 > 1. In je Ubuntu-terminal: `code ~/code/<slug>` — VS Code opent met **WSL: Ubuntu-24.04** linksonder.
@@ -467,6 +508,26 @@ Werkt de sandbox niet, dan start de agent in deze repo niet — liever nu dan bi
 
 Alleen bij WSL: `ls -la ~/code/<slug>` moet `/home/...` zijn; staat VS Code op `\\wsl$`-paden vanuit Windows geopend, dan opnieuw via stap 1.
 
+### Browser- en logincontrole (elke runtime)
+
+Een luisterende poort of groene doctor bewijst geen werkende login. Open de app op de `APP_ORIGIN` die `pnpm dev` toont;
+haal geen geheimen uit `.env.local`. Gebruik voor de lokale rooktest de bestaande rolwisselaar uit de
+[README](../README.md#lokaal-draaien), zonder nieuwe demoaccounts of domeindata te verzinnen.
+
+Controleer dat de ingelogde startpagina en het adminscherm voor de passende rol openen en dat uitloggen teruggaat naar
+de inlogpagina. De rolwisselaar bewijst geen wachtwoord-/MFA-login. Controleer die afzonderlijk met de bestaande lokale
+accounts volgens de README, of laat de eigenaar dat doen zonder wachtwoord of TOTP-geheim te delen. Voor een eigen
+beheerder volgt de eigenaar het [beheerdersrunbook](operations/eerste-admin.md), niet een nieuw herstelpad.
+
+Heb je geen browsertoegang, draag alleen deze stap over met de app-URL, de flow en de verwachte schermen:
+
+> Open de app op het getoonde adres, controleer aanmelden, de startpagina en uitloggen.
+> Controleer voor de beheerder ook de vereiste tweestapsverificatie en het adminscherm.
+> Typ klaar als dit gelukt is; beschrijf bij een fout de stap en melding, zonder inloggegevens.
+
+Leg per controle vast wie hem uitvoerde en wat werkelijk is waargenomen. Een niet-uitgevoerde login- of MFA-controle
+blijft open en wordt in de overdracht genoemd; claim dan niet dat de setup volledig gecontroleerd is.
+
 ## Fase 10 — Overdracht
 
 Schrijf het voortgangsbestand af en stuur één bericht, ongeveer zo:
@@ -475,12 +536,14 @@ Schrijf het voortgangsbestand af en stuur één bericht, ongeveer zo:
 > Draait: Postgres 17 + pgTAP op 127.0.0.1:<pg>, Mailpit op http://127.0.0.1:<mailui>. Migraties toegepast, rollen bewezen.
 > Afgedwongen zoals in de template: git-hooks (pre-commit: format, lint, secrets; pre-push: `pnpm gate:fast`), de hooks, sandbox en
 > permissies van Claude Code (`.claude/`), CI (`gate:fast`, `gate:slow`, `secrets`, `image`, `check:new-resource`, CodeQL, osv-scanner)
-> en de ruleset op `main` met die checks verplicht.
+> en de ruleset op `main` met die checks verplicht, uitsluitend voor zover hierboven werkelijk gecontroleerd.
+> Browser/login/MFA: <uitvoerder en uitslag, of niet uitgevoerd met reden>.
 >
-> **Wat er nog níet is:** de GitHub App voor de agent (roadmap ST-01, ADR 0005) — tot dan pusht de agent onder jouw account, met jouw
+> **Wat er nog níet is:** de GitHub App voor de agent (roadmap ST-01, ADR 0039 punt 8; geplande inrichting in 6.2) — tot dan pusht de agent onder jouw account, met jouw
 > `gh`-login inclusief `workflow`, en is de diff-guard (`guard.yml`) geen verplichte check; `check-github`, dat controleert of de
-> ruleset blijft staan (ST-01); de proef-app als bewijs (ST-09). Bouw die in de **template**, niet in deze app — anders mis je ze bij
-> de volgende app en conflicteren de updates.
+> ruleset blijft staan (ST-01). Herbruikbare templateverbeteringen horen in de template.
+> Een eventuele ST-09-proef en alle appfunctionaliteit, appspecificaties en appgegevens horen in de **aparte app-repo**;
+> alleen generieke verbeteringen en beknopt bewijs komen terug naar de template.
 >
 > **Dagelijks:** `pnpm dev` (stack, migraties, API en web); de containers stoppen met `docker compose stop`. `scripts/doctor.sh` bij twijfel.
 > Nooit `down -v` tenzij je de database kwijt wilt.
@@ -492,7 +555,9 @@ Schrijf het voortgangsbestand af en stuur één bericht, ongeveer zo:
 >
 > **Bevindingen:** <notities uit het voortgangsbestand, of "geen">
 
-Stop daarna. Begin niet aan de eerste feature, ADR of spec.
+Sluit af met: "De setup is afgerond voor zover hierboven bewezen; dit staat nog open. Wil je nu de eerste gebruikersflow
+specificeren?" Stop en wacht. Een antwoord "klaar" op de vorige eigenaarstaak is geen opdracht om features te bouwen.
+Vraag pas bij een vervolgopdracht welke gebruikersflow als eerste moet werken en volg dan de bestaande specroute.
 
 ---
 
@@ -511,7 +576,7 @@ gh pr create --fill --title "chore: template-update $(git rev-parse --short temp
 
 De eigenaar merget met **Create a merge commit**. Zit er een wijziging in `.github/workflows/` in, dan pusht de eigenaar de branch (de agent heeft geen `workflows`-recht).
 
-App-eigen ADR's: begin bij `0100` (`docs/adr/0100-…`). `0001`–`0099` zijn van de template; zelfde nummers in de app geven bij een update een conflict (ADR 0006).
+App-eigen ADR's: begin bij `0100` (`docs/adr/0100-…`). `0001`–`0099` zijn van de template; zelfde nummers in de app geven bij een update een conflict (ADR 0040 punt 4).
 
 ## Fout → oorzaak
 

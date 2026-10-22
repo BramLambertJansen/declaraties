@@ -5,7 +5,7 @@ import path from 'node:path';
 import { expect, test } from 'vitest';
 import { docsViolations } from '../../scripts/kit/check-docs.mjs';
 
-// ADR 0029 punt 8, 9 en 18 (stap 7): `voorReview` in .claude/gates.json is een deelverzameling van gates + jsonGates en
+// ADR 0046 punt 27, 28 en 32 (stap 7): `voorReview` in .claude/gates.json is een deelverzameling van gates + jsonGates en
 // de `Edit(...)`-regels in permissions.ask van .claude/settings.json zijn er exact aan gelijk. CODEOWNERS blijft = gates +
 // jsonGates. Sleutels (contract van de developer): `docs:spiegel:voorreview-gates:<pad>` (voorReview-item buiten gates en
 // jsonGates), `docs:spiegel:ask:<pad>` (voorReview-item zonder Edit-regel) en `docs:spiegel:voorreview:<pad>` (Edit-regel
@@ -104,7 +104,7 @@ test('CODEOWNERS blijft gates + jsonGates: een gate buiten voorReview moet er we
   expect(await keys(root)).toStrictEqual(['docs:spiegel:codeowners-gates:src/core/**']);
 });
 
-// De echte lijst, letterlijk uit de tabel van ADR 0029 punt 8 (rijen "ja"), plus `rails/**` (ADR 0033 punt 1: de hookbroncode).
+// De echte lijst, letterlijk uit de lijst uit ADR 0046 punt 27, plus `rails/**` (ADR 0045 punt 3: de hookbroncode).
 const VOOR_REVIEW = [
   'AGENTS.md',
   'CLAUDE.md',
@@ -147,7 +147,7 @@ function lees(file: string): Record<string, unknown> {
   return typeof parsed === 'object' && parsed !== null ? { ...parsed } : {};
 }
 
-test('de echte .claude/gates.json: voorReview is precies de lijst uit ADR 0029 punt 8', () => {
+test('de echte .claude/gates.json: voorReview is precies de lijst uit ADR 0046 punt 27', () => {
   const voorReview = lees('.claude/gates.json')['voorReview'];
 
   expect(Array.isArray(voorReview) ? voorReview.map(String).sort() : voorReview).toStrictEqual([...VOOR_REVIEW].sort());
@@ -186,7 +186,7 @@ test.each(['src/api/app.ts', 'src/shared/permissions.ts'])(
   },
 );
 
-// ADR 0033 punt 4 (contract B4): de Edit-regels in `ask` zijn precies `altijdVragen` (niet meer `voorReview`); zonder altijdVragen
+// ADR 0045 punt 9 (contract B4): de Edit-regels in `ask` zijn precies `altijdVragen` (niet meer `voorReview`); zonder altijdVragen
 // blijft ask = voorReview (fixtures hierboven). De echte altijdVragen-lijst staat in check-docs-onderhoud.test.ts.
 const ALTIJD_VRAGEN = [
   '.github/**',

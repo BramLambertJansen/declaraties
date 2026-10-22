@@ -1,6 +1,27 @@
 // Eén vindplaats per bestaand kitonderdeel; de bronindex blijft de inventaris bepalen.
 const groups = [
   {
+    names: ['PasswordInput', 'DateInput'],
+    id: 'example-input-utilities',
+    text: 'Toon en verberg een wachtwoord, vul een native datumveld in en probeer validatie en reset.',
+  },
+  {
+    names: ['Breadcrumbs'],
+    id: 'example-breadcrumbs',
+    text: 'Navigeer naar een bovenliggende pagina; de huidige pagina is tekst.',
+  },
+  { names: ['CopyButton'], id: 'example-copy-button', text: 'Kopieer het zichtbare voorbeeldadres naar het klembord.' },
+  {
+    names: ['FormErrorSummary', 'FormChanges', 'UnsavedChangesGuard', 'EditableSection'],
+    id: 'example-editable-details',
+    text: 'Bewerk contactgegevens, verstuur ongeldige invoer, wis wijzigingen of probeer de pagina te verlaten.',
+  },
+  {
+    names: ['BulkActions'],
+    id: 'example-bulk-actions',
+    text: 'Selecteer rijen, verwerk ze en kies Afronden; mislukte rijen blijven geselecteerd.',
+  },
+  {
     names: ['DataTable', 'DataTableHeading'],
     id: 'example-data-table',
     text: 'Zoek, filter, sorteer, selecteer en laad lokale rijen.',

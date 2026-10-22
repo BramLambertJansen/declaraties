@@ -9,7 +9,7 @@ import { defineContract } from './kit.ts';
 // De rollen komen uit core (ROLES); een nieuwe rol verschijnt hier vanzelf.
 export const ROLLEN = ROLES;
 
-export const STATUSSEN = ['actief', 'uitgenodigd', 'geblokkeerd'] as const;
+export const STATUSSEN = ['actief', 'uitgenodigd', 'geblokkeerd', 'gedeactiveerd'] as const;
 export const ACCOUNT_SORTS = ['nieuwste', 'oudste', 'naam-az', 'naam-za'] as const;
 
 // Zoeken, filteren en sorteren (spec lijstpagina): één schema voor de API (strict) en de webroute (validateSearch).
@@ -27,6 +27,9 @@ export const accountItem = z
     status: z.enum(STATUSSEN),
     // ISO 8601 met tijdzone; tonen via format.dateTime.
     aangemaakt: z.string(),
+    laatstIngelogd: z.iso.datetime({ offset: true }).nullable(),
+    gedeactiveerd: z.boolean(),
+    geblokkeerd: z.boolean(),
   })
   .strict();
 
@@ -72,7 +75,7 @@ export const reinviteContract = defineContract({
 
 const accountIdInput = z.object({ id: z.string().min(1).max(200) }).strict();
 
-// Blokkeren en deblokkeren (spec accountbeheer-uitbreiding, ADR 0026); idempotent.
+// Blokkeren en deblokkeren (spec accountbeheer-uitbreiding, ADR 0043); idempotent.
 export const blockContract = defineContract({
   method: 'POST',
   path: '/accounts/:id/block',
@@ -84,6 +87,22 @@ export const blockContract = defineContract({
 export const unblockContract = defineContract({
   method: 'POST',
   path: '/accounts/:id/unblock',
+  input: accountIdInput,
+  output: z.null(),
+  permission: 'accounts:manage',
+});
+
+export const deactivateContract = defineContract({
+  method: 'POST',
+  path: '/accounts/:id/deactivate',
+  input: accountIdInput,
+  output: z.null(),
+  permission: 'accounts:manage',
+});
+
+export const activateContract = defineContract({
+  method: 'POST',
+  path: '/accounts/:id/activate',
   input: accountIdInput,
   output: z.null(),
   permission: 'accounts:manage',

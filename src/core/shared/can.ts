@@ -1,4 +1,4 @@
-// Rechten (framework §6, ADR 0008): één functie voor API en frontend; de API blijft de echte controle, RLS de tweede laag.
+// Rechten (framework §6, ADR 0040): één functie voor API en frontend; de API blijft de echte controle, RLS de tweede laag.
 // De app levert alleen de tabel (src/shared/permissions.ts). Core voegt 'app.use' toe (elke ingelogde rol) en leidt de
 // MFA-eis af uit de rol: elke permissie die de rol admin heeft, eist voor een admin een MFA-sessie. De app kan dat niet uitzetten;
 // de RLS-helper app.is_mfa_admin() hanteert dezelfde regel.

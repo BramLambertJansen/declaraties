@@ -1,5 +1,5 @@
 // Administratie van besluiten en bouwbewijs. Schrijft uitsluitend de afgeleide statusregel en, met --roadmap, het vinkje van
-// het item van de eigen spec (ADR 0027, spec taakmandaat-vervolg).
+// het item van de eigen spec (ADR 0046 punt 10, spec taakmandaat-vervolg).
 import { readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { readAuthority, gitText } from '../../rails/hooks/lib/authority-context.mjs';

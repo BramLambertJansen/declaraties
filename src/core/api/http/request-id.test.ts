@@ -69,7 +69,7 @@ const post = (app: ReturnType<typeof setup>['app'], headers: Record<string, stri
     }),
   );
 
-describe('requestId naar withUser (ADR 0021)', () => {
+describe('requestId naar withUser (ADR 0051)', () => {
   test('withUser krijgt de requestId van de response, ook voor de rate-limit-transactie dezelfde', async () => {
     const { app, seen } = setup();
     const response = await post(app);

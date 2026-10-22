@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { expect, test } from 'vitest';
 
-// Statische basis van de SPA (roadmap 3f): standaard niet indexeren, een eigen icoon. createWebApp (ADR 0019) en Vite
+// Statische basis van de SPA (roadmap 3f): standaard niet indexeren, een eigen icoon. createWebApp (ADR 0049) en Vite
 // serveren src/web/public op de wortel.
 const read = (file: string) => readFileSync(new URL(`../../src/web/${file}`, import.meta.url), 'utf8');
 

@@ -5,7 +5,7 @@ import type { Contract, Method } from '../../shared/contract.ts';
 import type { UserId } from '../../shared/ids.ts';
 import type { Tx } from '../db/types.ts';
 
-// defineRoute (framework §1, §6; ADR 0008): de enige manier om een route te maken. createApp accepteert alleen wat hier
+// defineRoute (framework §1, §6; ADR 0040): de enige manier om een route te maken. createApp accepteert alleen wat hier
 // vandaan komt (ROUTE), parseert de input, haalt de actor uit de sessie, draait alles in één withUser-transactie en
 // controleert de permissie en de output.
 export const ROUTE: unique symbol = Symbol('defineRoute');

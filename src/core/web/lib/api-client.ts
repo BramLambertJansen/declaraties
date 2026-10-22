@@ -3,7 +3,7 @@ import type { Role } from '../../shared/can.ts';
 import { unsafeCast } from '../../shared/unsafe-cast.ts';
 
 // Enige plek met fetch (framework §5). Getypt op de route-contracten uit src/shared: de web-code importeert niets uit src/api.
-// Same-origin met cookie; de CSRF-headers stuurt de browser zelf (Sec-Fetch-Site), Content-Type zet de client altijd (ADR 0007).
+// Same-origin met cookie; de CSRF-headers stuurt de browser zelf (Sec-Fetch-Site), Content-Type zet de client altijd (ADR 0041).
 // 401 → inloggen: createQueryClient (query.ts) en de guard (guard.ts) handelen dat af; de client gooit alleen ApiError.
 
 interface AnyContract {
@@ -79,7 +79,7 @@ export function createApiClient<Contracts extends readonly AnyContract[]>() {
     return response.ok;
   }
 
-  // Alleen lokaal (ADR 0014): logt in als het seed-account van de rol; elders geeft de server 404.
+  // Alleen lokaal (ADR 0043): logt in als het seed-account van de rol; elders geeft de server 404.
   async function devLoginAs(rol: Role): Promise<void> {
     const response = await fetch('/api/dev/login-as', {
       method: 'POST',

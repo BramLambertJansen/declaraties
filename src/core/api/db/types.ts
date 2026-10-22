@@ -3,13 +3,13 @@ import type { UserId } from '../../shared/ids.ts';
 
 // Alleen types (geen pool, geen verbinding): route-code en createApp typen hiermee zonder index.ts te laden.
 
-// Drizzle over de verbinding van één transactie (ADR 0012); de handler ziet nooit de pool. Het schema komt uit de
+// Drizzle over de verbinding van één transactie (ADR 0042); de handler ziet nooit de pool. Het schema komt uit de
 // introspectie (stuk 5c); tot dan queries via sql``.
 export type Tx = NodePgDatabase;
 
 export type SessionStrength = 'password' | 'mfa';
 
-// userId is een branded UserId (framework §4, ADR 0012): dezelfde brand als de kolommen in het Drizzle-schema.
+// userId is een branded UserId (framework §4, ADR 0042): dezelfde brand als de kolommen in het Drizzle-schema.
 export interface Actor {
   readonly userId: UserId;
   readonly sessionStrength: SessionStrength;
@@ -25,7 +25,7 @@ export interface RateLimit {
 }
 
 export interface WithUserOptions {
-  // De server-gegenereerde requestId (ADR 0021): komt als `app.request_id` in de transactie, voor de auditregels.
+  // De server-gegenereerde requestId (ADR 0051): komt als `app.request_id` in de transactie, voor de auditregels.
   readonly requestId: string;
   // GET-routes: de transactie is read only (framework §6).
   readonly readOnly?: boolean;

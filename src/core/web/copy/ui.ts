@@ -14,4 +14,10 @@ export const uiTexts = {
   cancel: 'Annuleren',
   darkTheme: 'Donker thema',
   skipToContent: 'Naar de inhoud',
+  visibilityToggle: 'Wachtwoord tonen',
+  openCalendar: 'Kalender openen',
+  breadcrumbs: 'Kruimelpad',
+  copy: 'Kopiëren',
+  copied: 'Gekopieerd.',
+  copyFailed: 'Kopiëren is niet gelukt. Selecteer en kopieer de tekst zelf.',
 } as const;

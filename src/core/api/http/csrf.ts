@@ -1,6 +1,6 @@
 import type { MiddlewareHandler } from 'hono';
 
-// CSRF-controle volgens ADR 0007: voor elk request behalve GET, HEAD en OPTIONS moet het mediatype application/json zijn,
+// CSRF-controle volgens ADR 0041: voor elk request behalve GET, HEAD en OPTIONS moet het mediatype application/json zijn,
 // minstens een van Sec-Fetch-Site en Origin aanwezig zijn, en elke aanwezige header kloppen. Een header die dubbel of als
 // lijst voorkomt (de Fetch-standaard voegt dubbele headers samen met ", "), telt als niet kloppend.
 const SAFE_METHODS: ReadonlySet<string> = new Set(['GET', 'HEAD', 'OPTIONS']);

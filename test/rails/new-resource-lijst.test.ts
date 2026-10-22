@@ -146,7 +146,7 @@ describe('gegenereerd contract, echt geladen (lijstpagina/AC-8)', () => {
     for (const pad of ['src/shared/contracts/notities.ts', 'src/shared/ids.ts'])
       schrijf(pad, p.bestanden.find((b) => b.pad === pad)?.inhoud ?? '');
     schrijf('src/shared/contracts/kit.ts', readFileSync('src/shared/contracts/kit.ts', 'utf8'));
-    // ADR 0029 punt 18: permissions.ts is geen gate-wijziging meer maar een bestand dat het script zelf schrijft.
+    // ADR 0046 punt 32: permissions.ts is geen gate-wijziging meer maar een bestand dat het script zelf schrijft.
     expect(p.bestanden.map((b) => b.pad)).toContain('src/shared/permissions.ts');
     schrijf('src/shared/permissions.ts', p.bestanden.find((b) => b.pad === 'src/shared/permissions.ts')?.inhoud ?? '');
     schrijf('src/web/copy/ui.ts', p.bestanden.find((b) => b.pad === 'src/web/copy/ui.ts')?.inhoud ?? '');

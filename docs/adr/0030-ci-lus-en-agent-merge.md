@@ -1,6 +1,6 @@
 # 0030 — CI-lus tot groen en optionele agent-merge na akkoord
 
-Status: geaccepteerd
+Status: vervangen door 0046
 
 Vervangt het alternatief "Auto-merge na groen: verworpen (E-2)" uit [0025](0025-werkstraat-tot-de-merge.md) en wijzigt 0025 punt 6
 (mergen dicht voor de hoofdsessie) voor één exacte vorm. Wijzigt de "Vertrouwensgrens" van [0027](0027-taakmandaat-voor-frameworkwerk.md).

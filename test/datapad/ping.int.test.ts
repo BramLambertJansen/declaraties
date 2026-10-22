@@ -2,8 +2,8 @@ import pg from 'pg';
 import { afterAll, describe, expect, test } from 'vitest';
 import { createPing, type Ping } from '../../src/core/api/db/testing.ts';
 
-// Readiness (ADR 0018): de ping van GET /api/ready slaagt als api_user, direct én via PgBouncer (transaction mode), en
-// faalt bij een geweigerde login. Draait alleen via `pnpm test:db` in de runner (ADR 0009).
+// Readiness (ADR 0049): de ping van GET /api/ready slaagt als api_user, direct én via PgBouncer (transaction mode), en
+// faalt bij een geweigerde login. Draait alleen via `pnpm test:db` in de runner (ADR 0044).
 const TIMEOUT_MS = 900;
 
 function url(name: string): string {

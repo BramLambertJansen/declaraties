@@ -7,7 +7,7 @@ import type { Actor, ActorRole, SessionStrength, Tx, WithUserOptions } from './t
 import { checkActor, checkRequestId, consumeRateLimit, createWithUser, enterActor, rateLimited } from './with-user.ts';
 import { UserId } from '../../shared/ids.ts';
 
-// Testkit (framework §4, ADR 0012): één transactie per test die aan het eind terugdraait, een savepoint per withUser-aanroep.
+// Testkit (framework §4, ADR 0042): één transactie per test die aan het eind terugdraait, een savepoint per withUser-aanroep.
 // Alleen via testing.ts, dus alleen vanuit testbestanden (dependency-cruiser: testing-alleen-in-tests).
 
 export interface TestUser {
@@ -24,7 +24,7 @@ export interface AsUserOptions {
   readonly name?: string;
 }
 
-// Zoals WithUser, maar de testkit genereert de requestId (ADR 0021, OV-A2) zodat een test hem niet hoeft te geven.
+// Zoals WithUser, maar de testkit genereert de requestId (ADR 0051; OV-A2 van spec audit-log) zodat een test hem niet hoeft te geven.
 export type TestWithUser = <T>(
   actor: Actor,
   work: (tx: Tx, actorRole: ActorRole) => Promise<T>,

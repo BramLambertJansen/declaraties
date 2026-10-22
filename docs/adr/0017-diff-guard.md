@@ -1,6 +1,6 @@
 # 0017 — Diff-guard en de identiteit van de agent
 
-Status: geaccepteerd (2026-10-10) — roadmap fase 1, stuk 4; de eigenaar koos bij elke vraag de aanbeveling (OV-1 t/m OV-5).
+Status: vervangen door 0045
 
 ## Context
 

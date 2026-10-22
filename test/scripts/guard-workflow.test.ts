@@ -2,8 +2,8 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, test } from 'vitest';
 
-// ADR 0031 besluit 1: guard.yml heeft twee jobs, `diff-guard` en `document-status`. Beide draaien met pull_request_target en
-// behandelen de PR als git-data: geen checkout van de PR, `persist-credentials: false`, geen install.
+// ADR 0045 punt 20: guard.yml heeft de jobs `diff-guard` en `document-status`; `check-core` (ADR 0040) kwam erbij. Alle
+// draaien met pull_request_target en behandelen de PR als git-data: geen checkout van de PR, `persist-credentials: false`, geen install.
 const WORKFLOW = readFileSync(path.join(import.meta.dirname, '../../.github/workflows/guard.yml'), 'utf8');
 
 function job(name: string): string {
@@ -17,6 +17,7 @@ function job(name: string): string {
 describe.each([
   ['diff-guard', 'diff-guard.mjs'],
   ['document-status', 'check-document-status.mjs'],
+  ['check-core', 'check-core.mjs'],
 ])('guard.yml job %s', (name, script) => {
   const tekst = job(name);
 
@@ -49,7 +50,7 @@ test('het script van document-status draait in een eigen job, niet als stap van 
   expect(job('diff-guard')).not.toContain('check-document-status.mjs');
 });
 
-// De twee jobs zijn gelijk tot en met de laatste stap (de eigen controle): wie een stap toevoegt, moet dat in beide doen en
+// De jobs zijn gelijk tot en met de laatste stap (de eigen controle): wie een stap toevoegt, moet dat in beide doen en
 // valt dan op in de review. Precies één checkout (van de base-SHA) en precies één `node scripts/kit/`-aanroep per job.
 function zonderLaatsteStap(tekst: string, naam: string): string {
   const laatste = tekst.lastIndexOf('\n      - name:');
@@ -61,15 +62,14 @@ function stappen(tekst: string): string[] {
 }
 
 describe('beide jobs behandelen de PR als git-data', () => {
-  test('gelijk tot en met de laatste stap', () => {
-    expect(zonderLaatsteStap(job('document-status'), 'document-status')).toBe(
-      zonderLaatsteStap(job('diff-guard'), 'diff-guard'),
-    );
+  test.each(['document-status', 'check-core'])('%s: gelijk aan diff-guard tot en met de laatste stap', (name) => {
+    expect(zonderLaatsteStap(job(name), name)).toBe(zonderLaatsteStap(job('diff-guard'), 'diff-guard'));
   });
 
   test.each([
     ['diff-guard', 'diff-guard.mjs'],
     ['document-status', 'check-document-status.mjs'],
+    ['check-core', 'check-core.mjs'],
   ])('%s: precies één checkout, één node-aanroep en alleen zijn eigen script', (name, script) => {
     const tekst = job(name);
     expect(tekst.match(/uses: actions\/checkout@/g)).toHaveLength(1);
@@ -78,7 +78,7 @@ describe('beide jobs behandelen de PR als git-data', () => {
     expect(tekst).not.toMatch(/\bgit (?:checkout|switch|merge(?!-base)|cherry-pick|worktree|reset)\b/);
   });
 
-  test.each(['diff-guard', 'document-status'])(
+  test.each(['diff-guard', 'document-status', 'check-core'])(
     '%s: de laatste stap is de controle zelf, daarvoor geen run met PR-code',
     (name) => {
       const laatste = stappen(job(name)).at(-1) ?? '';

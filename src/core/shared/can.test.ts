@@ -9,7 +9,7 @@ const user: CanActor = { role: 'user', sessionStrength: 'password' };
 const adminWithoutMfa: CanActor = { role: 'admin', sessionStrength: 'password' };
 const admin: CanActor = { role: 'admin', sessionStrength: 'mfa' };
 
-describe('can() (framework §6, ADR 0008)', () => {
+describe('can() (framework §6, ADR 0040)', () => {
   test('zonder actor: UNAUTHENTICATED', () => {
     expect(permissions.check(null, 'notes:read')).toStrictEqual({ ok: false, code: 'UNAUTHENTICATED' });
   });

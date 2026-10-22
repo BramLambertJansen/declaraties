@@ -1,5 +1,5 @@
-# gate:fast en gate:slow op elke push naar main en elke PR (framework §10); check:new-resource als eigen job (ADR 0016, OV-7);
-# image bouwt en controleert de productie-image (ADR 0019); secrets draait Betterleaks (PR: eigen commits, anders alle gefetchte refs). CodeQL in codeql.yml.
+# gate:fast en gate:slow op elke push naar main en elke PR (framework §10); check:new-resource als eigen job (ADR 0047 punt 9);
+# image bouwt en controleert de productie-image (ADR 0049); secrets draait Betterleaks (PR: eigen commits, anders alle gefetchte refs). CodeQL in codeql.yml.
 # osv-scanner in osv.yml, de diff-guard in guard.yml. Actions op volledige SHA; Renovate werkt ze bij.
 name: ci
 
@@ -35,7 +35,7 @@ jobs:
       # Waarschuwing, geen blokkade: src/ zonder docs/ of CHANGELOG.md (AGENTS.md "Docs in dezelfde PR").
       - run: pnpm check:docs-drift
 
-  # pgTAP, integratie, e2e met axe en de schema-snapshot tegen een verse database, in de runner van ADR 0009 (compose op de
+  # pgTAP, integratie, e2e met axe en de schema-snapshot tegen een verse database, in de runner van ADR 0044 (compose op de
   # Docker van de GitHub-runner). Zo zijn de RLS-invarianten een harde grens in CI, niet alleen lokaal (framework §1.2).
   gate-slow:
     name: gate:slow
@@ -87,7 +87,7 @@ jobs:
         env:
           EVENT: ${{ github.event_name }}
 
-  # De productie-image (ADR 0019) bouwt en start: niet als root, liveness, readiness, SPA met CSP en netjes stoppen.
+  # De productie-image (ADR 0049) bouwt en start: niet als root, liveness, readiness, SPA met CSP en netjes stoppen.
   image:
     name: image
     runs-on: ubuntu-24.04
@@ -99,7 +99,7 @@ jobs:
       - run: docker build -t app:ci .
       - run: scripts/check-image.sh app:ci
 
-  # Code uit pnpm new:resource haalt gate:fast (ADR 0016, OV-7). Duurt minuten, daarom niet in gate:fast zelf; wel altijd,
+  # Code uit pnpm new:resource haalt gate:fast (ADR 0047 punt 9). Duurt minuten, daarom niet in gate:fast zelf; wel altijd,
   # want de templates doen bijna alles in src/ na.
   new-resource:
     name: check:new-resource

@@ -12,7 +12,7 @@ import {
   type Fixture,
 } from './follow-up-kit';
 
-// ADR 0031 besluit 4 (strikte statusregel voor ADR's), tests vóór de bouw.
+// ADR 0045 punt 22 (strikte statusregel voor ADR's), tests vóór de bouw.
 //
 // Verwachte pure functie in rails/hooks/lib/document-state.mjs:
 //   statusregelOvertreding(nieuweRegel: string, oudeRegel: string | null, bestaandeAdrBestanden: readonly string[]): string | null

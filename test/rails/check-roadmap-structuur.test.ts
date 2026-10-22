@@ -2,7 +2,7 @@ import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, test } from 'vitest';
 
-// check:roadmap, structuurregels (opdracht stap 4, ADR 0029 P1 en P7): hooguit 3 open items onder `## Nu`, `terug als:` bij elk
+// check:roadmap, structuurregels (opdracht stap 4, ADR 0046 P1 en P7): hooguit 3 open items onder `## Nu`, `terug als:` bij elk
 // geparkeerd item, geen gedateerd statusproza, `aanleiding:` met verwijzing bij een nieuw open item onder Nu/Volgende, en de
 // vereiste koppen. De regels gelden alleen als de head-roadmap `## Nu` heeft; verdwijnt die kop, dan is dat een fout.
 // Zelfde opzet als check-roadmap.test.ts: fixtures als data in fixtures/roadmap/<geval>/{basis,head}/, module pas in de test geladen.

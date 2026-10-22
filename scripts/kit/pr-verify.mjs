@@ -1,4 +1,4 @@
-// Leest werkelijk CI-bewijs op de huidige PR-commit; maakt nooit zelf een check-status (ADR 0027).
+// Leest werkelijk CI-bewijs op de huidige PR-commit; maakt nooit zelf een check-status (ADR 0046).
 import { readAuthority, gitText } from '../../rails/hooks/lib/authority-context.mjs';
 import { checkedCommit, GITHUB_ACTIONS_APP_ID } from '../../rails/hooks/lib/built-evidence.mjs';
 import { pullRequest, checkRuns } from './github-evidence.mjs';
@@ -43,7 +43,7 @@ function valtOnderNegeer(pad, negeer) {
 
 /**
  * De paden uit `git status --porcelain` die pr:verify blokkeren: alles behalve ongetrackte bestanden onder `negeer`
- * (ADR 0031 besluit 5). Een getrackte wijziging, hernoeming of pad met `..` blokkeert altijd.
+ * (ADR 0045 punt 23). Een getrackte wijziging, hernoeming of pad met `..` blokkeert altijd.
  * @param {string} statusPorcelain @param {readonly string[]} negeer
  * @returns {string[]}
  */

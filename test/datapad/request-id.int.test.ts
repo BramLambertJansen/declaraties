@@ -12,7 +12,7 @@ import { UserId } from '../../src/core/shared/ids.ts';
 import { required } from '../auth/harness.ts';
 
 // requestId in de database (spec audit-log, deel A, AC-1 t/m AC-3): withUser() zet app.request_id met is_local = true,
-// zodat de waarde bij de commit verdwijnt, ook achter een pooler in transaction mode. Alleen via `pnpm test:db` (ADR 0009).
+// zodat de waarde bij de commit verdwijnt, ook achter een pooler in transaction mode. Alleen via `pnpm test:db` (ADR 0044).
 const actor = (name: string) => ({ userId: UserId.parse(name), sessionStrength: 'password' }) as const;
 const idOf = z.object({ id: z.string().nullable() });
 const READ_ID = "select nullif(current_setting('app.request_id', true), '') as id";

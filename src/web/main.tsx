@@ -11,7 +11,7 @@ import { createAppRouter } from '#web/lib/router.ts';
 import { expireSession } from '#web/lib/session.ts';
 import './styles/app.css';
 
-// Compositie-root van de frontend (ADR 0008): query-client, router, foutteksten.
+// Compositie-root van de frontend (ADR 0040): query-client, router, foutteksten.
 const queryClient = createQueryClient({
   // 401 uit een query of mutatie → inloggen met de terugweg (framework §5). Alleen als er in dit tabblad een sessie was:
   // dan is hij verlopen (spec: "Je sessie is verlopen."); bij een eerste bezoek stuurt de guard al door.

@@ -35,7 +35,7 @@ test('onbekende sleutels en te lange of lege q: API weigert, web negeert', () =>
   expect(accountsSearch.web.parse({ onbekend: '1', q: '   ' })).toStrictEqual({});
 });
 
-// Spec accountbeheer-uitbreiding (ADR 0026): blokkeren en deblokkeren.
+// Spec accountbeheer-uitbreiding (ADR 0043): blokkeren en deblokkeren.
 describe.each([
   ['blockContract', blockContract, '/accounts/:id/block'],
   ['unblockContract', unblockContract, '/accounts/:id/unblock'],
@@ -63,6 +63,9 @@ test('de status geblokkeerd is een geldige status in de lijst, het filter en het
     rol: 'user',
     status: 'geblokkeerd',
     aangemaakt: '2026-10-12T10:00:00Z',
+    laatstIngelogd: null,
+    gedeactiveerd: false,
+    geblokkeerd: true,
   };
   expect(accountItem.safeParse(item).success).toBe(true);
 });

@@ -1,6 +1,6 @@
 # 0011 — Railwerk: rolhek, geteste hooks, ratchet en goedkeuring
 
-Status: geaccepteerd (2026-10-09) — voorgesteld door de agent, op verzoek van de eigenaar.
+Status: vervangen door 0045
 
 ## Context
 

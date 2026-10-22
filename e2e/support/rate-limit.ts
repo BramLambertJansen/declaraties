@@ -3,7 +3,7 @@ import pg from 'pg';
 import { z } from 'zod';
 import { createAuth, inviteUser } from '../../src/core/api/auth/index.ts';
 
-// Hulp voor e2e/rate-limit.spec.ts (spec rate-limit/AC-6), alleen in de runner (ADR 0009).
+// Hulp voor e2e/rate-limit.spec.ts (spec rate-limit/AC-6), alleen in de runner (ADR 0044).
 function required(name: string): string {
   const value = process.env[name];
   if (value === undefined || value === '') throw new Error(`${name} ontbreekt (alleen in de runner: pnpm ui:check)`);

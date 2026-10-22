@@ -1,4 +1,4 @@
-// Alleen git-data uit de vertrouwde basis; hooks doen geen netwerkwerk (ADR 0027).
+// Alleen git-data uit de vertrouwde basis; hooks doen geen netwerkwerk (ADR 0046).
 import { execFileSync } from 'node:child_process';
 import { lstatSync, readFileSync, realpathSync } from 'node:fs';
 import path from 'node:path';
@@ -64,7 +64,7 @@ function workingText(root, file) {
 }
 
 /**
- * De vertrouwde basis: binnen een hook het anker van de stub-lader (ADR 0033), gecontroleerd gelezen; daarbuiten `base` of
+ * De vertrouwde basis: binnen een hook het anker van de stub-lader (ADR 0045), gecontroleerd gelezen; daarbuiten `base` of
  * origin/main. Een gezet maar ongeldig anker geeft null (nooit terugval op origin/main, die een agent kan ombuigen).
  * @param {string} root @param {string | undefined} base
  * @returns {{ sha: string, read: (file: string) => string | null } | null}

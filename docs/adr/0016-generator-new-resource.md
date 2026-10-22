@@ -1,6 +1,6 @@
 # 0016 — Generator `pnpm new:resource`
 
-Status: geaccepteerd (2026-10-10) — voorgesteld door de architect (roadmap fase 1, stuk 5); de keuzes (OV-1 t/m OV-7) zijn van de eigenaar (2026-10-10, doorgegeven
+Status: vervangen door 0047
 via de coördinator); geaccepteerd door de eigenaar.
 
 ## Context

@@ -4,7 +4,7 @@ Uitwerking van [framework.md](framework.md) §12: wat open staat, in welke volgo
 vinkje, de specstatus en het PR-nummer, nooit in een datum of in proza. Vink alleen af met bewijs (PR-nummer, testpad of checknaam;
 `pnpm check:roadmap` dwingt het af). Eén plek per item: `ST-nn` is het label van een agenttaak uit de starter-beoordeling
 (P0 noodzakelijk voor een veilige basis, P1 voor een herbruikbare en bewezen starter, P2 optioneel op aanleiding).
-Indeling en volgorde volgen ADR 0029 en [de inventaris](reviews/2026-10-15-principes-inventaris.md).
+Indeling en volgorde volgen ADR 0046 en [de inventaris](reviews/2026-10-15-principes-inventaris.md).
 Fase 0 en 1 horen in de template; fase 2 levert verbeteringen terug aan de template; fase 3 is per app.
 Reviews: [2026-10-09 fundering](reviews/2026-10-09-fundering.md), [2026-10-09 framework](reviews/2026-10-09-framework.md).
 
@@ -20,10 +20,10 @@ zijn optioneel. Een bestaand script of ADR bewijst niet dat de capability comple
 Hooguit drie open items (`check:roadmap`); nummer 1 is bewijs vóór uitbreiding (P1).
 
 - [ ] **ST-09 (P1) — proef-app met template-update** (fase 1, stuk 6). Doel: bewijzen dat de template als basis voor een app werkt, vóór verdere uitbreiding.
-  **Uitvoeringsopdracht:** begin met [de agentstartinstructie](../START-NIEUWE-APP.md) en vervolg met [ST-09 praktijkproef Meldpunt](operations/st-09-praktijkproef.md) voor appscope, testmatrix, doorlopende bewijsregistratie, nulmeting en updateproef.
+  **Uitvoeringsopdracht:** begin met [de agentstartinstructie](../START-NIEUWE-APP.md) en vervolg met het generieke [ST-09-protocol](operations/st-09-praktijkproef.md). Appkeuze, scope, appdata en resultaten horen in de aparte app-repo, niet in deze template.
   **Werk:** kies met de eigenaar één kleine echte app met een owner-scoped resource en een adminactie. Start via `docs/nieuwe-app.md`, bouw een
   complete verticale flow en registreer elke handmatige stap, onduidelijke instructie, ontbrekende component en core-aanpassing; houd het
-  app-domein buiten deze template. Neem daarna één echte template-update over (`git merge template/main`) via een PR (ADR 0006).
+  app-domein buiten deze template. Neem daarna één echte template-update over (`git merge template/main`) via een PR (ADR 0040).
   Wat terugkomt wordt een regel of script in de template.
   **Afhankelijkheden:** bestaande runtime, auth en generator; de eigenaar levert de lokale stack en de appkeuze.
   **Klaar als:** een nieuwe gebruiker en admin doorlopen de flow tegen de echte stack; verboden toegang is getest; de update behoudt app-code
@@ -94,21 +94,21 @@ Open werk dat niet geparkeerd is, grofweg in volgorde. Wat nog een spec of eigen
   aanleiding: `src/core/web/ui/app-shell.test.tsx` (bekende fout, geen capability)
 - [ ] **ST-02 (P0) — accountbeheer en herstel afmaken** (stuk 3e; bestaande accountbeheer-specs). Open: TOTP-backupcodes (zodat een admin
   zonder telefoon niet alleen via `admin:create` terugkomt), een openstaande uitnodiging intrekken (opnieuw versturen bestaat al:
-  `reinviteRoute`) en een admin-resetlink ("wachtwoord vergeten" blijft dicht, ADR 0013). Elk deel eerst een spec.
+  `reinviteRoute`) en een admin-resetlink ("wachtwoord vergeten" blijft dicht, ADR 0043). Elk deel eerst een spec.
   **Werk:** specificeer herauthenticatie, sessie-intrekking, tokenverval, oude/nieuwe adresbevestiging en herstel zonder rolpromotie;
   koppel audit en mail aan ST-04 en ST-03 en kopieer geen synchroon mailpad als de outbox de geldende route wordt.
-  **Afhankelijkheden:** ADR 0013; audit voor admin-acties; relevante stappen uit ADR 0020.
+  **Afhankelijkheden:** ADR 0043; audit voor admin-acties; relevante stappen uit ADR 0050.
   **Klaar als:** echte-stack e2e per flow; verboden rol en admin zonder MFA geweigerd; laatste-admin-racetest; herstelcode eenmalig, ook bij
   parallel gebruik; ingetrokken of verlopen links werken niet. Elk deel krijgt afzonderlijk bewijs.
   aanleiding: `docs/reviews/2026-10-15-principes-inventaris.md` (B-11)
-- [ ] **ST-04 (P0) — audit: vervolg** (ADR 0021, spec audit-log). Gebouwd in #128: migratie, `ctx.audit`, invite/reinvite. Open: `/admin/audit`
+- [ ] **ST-04 (P0) — audit: vervolg** (ADR 0051, spec audit-log). Gebouwd in #128: migratie, `ctx.audit`, invite/reinvite. Open: `/admin/audit`
   (eigen spec) en audit voor de routes revoke en reset-link (met ST-02).
   **Werk:** servergegenereerde request-ID, audit in de transactie, append-only-tabel met vaste grants en policies, getypte strict gevalideerde
   details (geen willekeurige payloads, e-mailadressen of vrije tekst), aparte core-auditwriter voor Better Auth-acties.
   **Klaar als:** audit wordt met de actie teruggedraaid; verboden schrijver en lezer geweigerd; auditdetails falen buiten de allowlist;
   een vervalste client-request-ID wordt niet gebruikt.
   aanleiding: #128
-- [ ] **ST-03 (P0) — achtergrondtaken: runner, opruimen en mail-outbox** (stuk 7; [ADR 0020](adr/0020-achtergrondtaken.md): runner in het API-proces,
+- [ ] **ST-03 (P0) — achtergrondtaken: runner, opruimen en mail-outbox** (stuk 7; [ADR 0050](adr/0050-achtergrondtaken-en-mail-outbox.md): runner in het API-proces,
   eigen rol `app_jobs`, outbox zonder token; ADR 0020 staat onder Besluiten ter herziening). Opruimen van verlopen sessies, uitnodigingen en
   rate-limit-rijen, en mail via een outbox, elk met een integratietest.
   **Werk:** volg de sectie Bouwvolgorde van ADR 0020 letterlijk (audit, bewaarcatalogus, jobrol, runner, outbox). Verbindingen blijven in de
@@ -119,27 +119,27 @@ Open werk dat niet geparkeerd is, grofweg in volgorde. Wat nog een spec of eigen
   **Klaar als:** twee runners claimen dezelfde rij niet tegelijk; crash, lease-verval en SMTP-uitval getest; definitief mislukte mail blijft
   herstelbaar; alleen verlopen rijen verdwijnen; stoppen wacht op de lopende batch vóór het sluiten van pools. Documenteer at-least-once-verzending
   (geen exactly-once-claim).
-  aanleiding: `docs/adr/0020-achtergrondtaken.md`
-- [ ] **ST-05 (P0) — AVG: privacymechanisme, export en verwijderen** ([ADR 0022](adr/0022-avg.md), ter herziening). Mechanisme in core, inhoud per app.
+  aanleiding: `docs/adr/0050-achtergrondtaken-en-mail-outbox.md`
+- [ ] **ST-05 (P0) — AVG: privacymechanisme, export en verwijderen** ([ADR 0051](adr/0051-audit-log-en-avg.md), ter herziening). Mechanisme in core, inhoud per app.
   **Werk:** bewaarcatalogus, FK-invarianten, eigen export, admin-verwijdering en app-registratie van exporters en erasers, in de volgorde van
   ADR 0020. Accountverwijdering en audit blijven in één transactie (geen tweede verbinding op dezelfde laatste-admin-lock). Exporters filteren
   expliciet op eigenaar, ook als RLS gedeelde data toelaat. Valideer bewaartermijnen en retention-kolommen; catalogusregistratie ook in de
   generator; lever het privacyregister-sjabloon (juridische inhoud en back-uptermijnen blijven per app).
-  **Afhankelijkheden:** audit, bewaarcatalogus en outbox (ADR 0020); goedgekeurde export- en verwijderspecs.
+  **Afhankelijkheden:** audit, bewaarcatalogus en outbox (ADR 0050); goedgekeurde export- en verwijderspecs.
   **Klaar als:** gedeelde data van anderen ontbreekt in de export; accountverwijdering ruimt ook tokens en outbox op; laatste-admin en
   eigen-admin-verwijdering geweigerd; terugrollen herstelt actie en audit samen; negatieve pgTAP-fixtures voor cascades, nullable SET NULL en
   catalogusregistratie; een app-exporter en -eraser werkt zonder core-aanpassing. Retention is techniek, geen claim van AVG-conformiteit.
-  aanleiding: `docs/adr/0022-avg.md`
+  aanleiding: `docs/adr/0051-audit-log-en-avg.md`
 - [ ] **ST-01 (P0) — GitHub-bescherming daadwerkelijk activeren** (stuk 6, diff-guard uit stuk 4). Een agent kan beschermd werk niet zonder de
   juiste eigenaarreview samenvoegen. Gebouwd: `scripts/github-ruleset.sh` met `test/scripts/github-ruleset.test.ts` (#104), de diff-guard met
-  `guard.yml` (#62, ADR 0017; nog niet verplicht, uitslag `overgang` zolang de auteur zelf goedkeurder is) en CODEOWNERS en PR-template.
+  `guard.yml` (#62, ADR 0045 punt 17; nog niet verplicht, uitslag `overgang` zolang de auteur zelf goedkeurder is) en CODEOWNERS en PR-template.
   Open: organisatie, GitHub App voor de agent, org-ruleset via custom property en Actions-instellingen (daarna code-owner-review en 1 goedkeuring
   aan; private repo's vragen Pro/Team); `.github/settings/` met `scripts/check-github.mjs` (alleen-lezend, een onleesbare instelling is een fout;
   ook `app_id` van verplichte checks, `enforce_admins`, conversation resolution) en `check-spec-approval`; `docs/operations/rails-checklist.md` met
   per stuk bewijs; pushen met een kortlevend App-token zonder het eigenaar-token in de agentomgeving, daarna `denyRead` op `~/.config/gh`;
   de diff-guard verplicht bij de overstap op de App, met goedkeuring op exact de head-SHA die niet van de auteur is (framework §10). Onderscheid de overgang onder het eigenaaraccount van de definitieve App-opzet; de eigenaar
   activeert organisatie, App en instellingen.
-  **Afhankelijkheden:** ADR 0005, 0006, 0011 en 0017; beschikbaarheid van de vereiste CI-checks.
+  **Afhankelijkheden:** ADR 0039, 0040 en 0045; beschikbaarheid van de vereiste CI-checks.
   **Klaar als:** negatieve fixtures voor ontbrekende of bypassbare instellingen; bewijs dat een directe push naar main wordt geweigerd en een
   bot-PR zonder vereiste review niet mergebaar is. Geen actieve bescherming claimen op basis van alleen JSON-bestanden. Voorwaarde voor ADR 0030 PR 2.
   aanleiding: `scripts/github-ruleset.sh`
@@ -149,15 +149,21 @@ Open werk dat niet geparkeerd is, grofweg in volgorde. Wat nog een spec of eigen
 - [ ] **`/.well-known/security.txt` en `LICENSE`** (eigendom, geen open-source-licentie): beide wachten op een waarde van de eigenaar
   (contactadres per app; licentietekst).
   aanleiding: `docs/reviews/2026-10-15-principes-inventaris.md` (B-11)
-- [ ] **`.claude/settings.json` bewezen** (stuk 5): de sandbox start op Ubuntu/WSL2 (bubblewrap, socat) en de deny-regels zijn getest, ook
-  `Read(!.env.example)` en `cat .env`.
+- [x] **`.claude/settings.json` bewezen** (stuk 5): de sandbox start op Ubuntu/WSL2 (bubblewrap, socat) en de deny-regels zijn getest, ook
+  `.env.example` via `allowRead` en `cat .env`. Bewijs #239 (`docs/operations/sandbox-bewijs.md`), met twee beperkingen: een bestand dat
+  hetzelfde commando aanmaakt is leesbaar, en `~/.ssh`/`~/.aws` bestonden niet op de proefmachine.
   aanleiding: `.claude/settings.json` (onbewezen sinds stuk 5; `test/rails/sandbox-settings.test.ts` dekt de spiegel, niet de sandbox)
 - [ ] **`gate:fast` definitief** (stuk 4): vastleggen welke checks de definitieve `gate:fast` bevat (nu een groeiende lijst in `scripts/kit/gates.mjs`); `gate:slow` is gebouwd (#38), squawk staat onder Geparkeerd.
   aanleiding: `scripts/kit/gates.mjs`
-- [ ] **`check-core`** (stuk 4; `.claude/rules/core.md` noemt hem nog niet gebouwd): een app wijzigt `src/core` niet. Met fixture die bewijst dat hij faalt.
+- [x] **`check-core`** (stuk 4): een app wijzigt `src/core` niet. Met fixture die bewijst dat hij faalt. Job `check-core` in
+  `.github/workflows/guard.yml` met `scripts/kit/check-core.mjs` (regels uit ADR 0040, in de template uit); bewijs `test/rails/check-core.test.ts`.
   aanleiding: `.claude/rules/core.md`
+- [ ] **`check-core`: geen oudere core via een merge** (ADR 0040, downgrade-gat). Een merge met een oudere vertrouwde commit kan een oudere
+  `src/core` terugbrengen of core verwijderen. Aanscherping: core van head is gelijk aan die van base of van een `template/main`-commit die
+  niet ouder is dan de core op main. Met fixture die de downgrade laat falen.
+  aanleiding: #240 (ADR 0040; eigenaarbesluit: nu aanvaard, aanscherping als vervolg)
 - [ ] **Fout die in een app doorglipt wordt eerst een check of regel in de template** (met fixture), daarna gerepareerd in de app (fase 2; doorlopend, P5).
-  aanleiding: `docs/adr/0029-snellere-beslisroute.md` (P5)
+  aanleiding: `docs/adr/0046-werkstraat-en-beslisroute.md` (P5)
 - [ ] **ST-10 (P1) — staging, release en aantoonbaar herstel** (fase 3, per app). Na een provider-ADR (`0100`+: hosting en beheerde Postgres met eigen
   rollen) een adapter in `deploy/<host>/`, gescheiden omgevingen, lektest via de pooler, rollen per omgeving via runbook, `check-deployment-schema` (faalt dicht, weigert preview
   tegen productie), `check-release-ci` vóór én na de build, beschermde production-approval, release-workflows en smoketest na deploy; headers/CSP op
@@ -167,11 +173,16 @@ Open werk dat niet geparkeerd is, grofweg in volgorde. Wat nog een spec of eigen
   releasecommit; de smoketest bewijst login, lezen en gesloten browser-datatoegang; een back-up is in een aparte omgeving teruggezet met gemeten
   dataverlies en hersteltijd. Productiegoedkeuring blijft bij de eigenaar.
   aanleiding: `docs/reviews/2026-10-15-principes-inventaris.md` (B-6: niet geparkeerd besloten)
-- [ ] **ADR 0029 stap 7: agent-merge in de feature-lane** (route 2, onder het account van de eigenaar; zwakte in ADR 0029 punt 17 aanvaard).
+- [ ] **ADR 0029 stap 7: agent-merge in de feature-lane** (route 2, onder het account van de eigenaar; zwakte in ADR 0046, Gevolgen, aanvaard).
   Spec: `docs/specs/agent-merge.md`. PR A: `scripts/check-github.mjs`, `.github/settings/main-protection.json`, sleutel `merge`, lane-uitslag in de diff-guard;
   PR B: rolhek, `.claude/settings.json`, skill `opleveren` en docs (eigenaar); PR C: `merge` op `"feature-lane"` zetten (eigenaar).
-  aanleiding: `docs/adr/0029-snellere-beslisroute.md` (punt 14–17)
-- [ ] **Volledig pad naar `gh` in het rolhek** (V-13): `/usr/bin/gh pr merge …` valt buiten het rolhek (`program === "gh"`) en de settings-patronen; dicht het gat of leg vast waarom het kan blijven.
+  aanleiding: `docs/adr/0046-werkstraat-en-beslisroute.md` (punt 30, 33–35 en Gevolgen)
+- [x] **Volledig pad naar `gh` in het rolhek** (V-13): `/usr/bin/gh pr merge …` viel buiten het rolhek (`program === "gh"`) en de settings-patronen.
+  Weigeringen en schrijfdoelen kijken nu naar de naam zonder pad (`programName` in `rails/hooks/lib/shell.mjs`), ook voor `git`, `rm` en `sed`;
+  bewijs `test/hooks/rolhek-volledig-pad.test.ts`. De `deny`-patronen in `.claude/settings.json` vangen de vorm met pad niet (gemak, geen grens; framework §8).
+  Niet in deze klasse gedicht: omhulsels met opties (`sudo -u x gh …`, `env -i gh …`) en omhulsels buiten de lijst (`timeout`, `xargs`);
+  expansie (`$GH`, `bash -c`) is werk van de diff-guard. Ook open, voor de reviewer: `reviewerMay` negeert voorafgaande variabelen
+  (`GIT_PAGER=…`, `PATH=…`) en opties als `git diff --output=<bestand>`.
   aanleiding: `rails/hooks/lib/rolhek.mjs` (spec `agent-merge`, Bekende gaten)
 
 ## Geparkeerd
@@ -189,7 +200,7 @@ Bewust nog niet, tot de genoemde aanleiding er is (P1). Niets verdwijnt: elk ite
   (#111, #113). **Werk:** ontwerp na de proef-app een uitbreiding voor eenvoudige owner-scoped resources: migratie en RLS-tests, strict
   contracten, permissies, lijst/detail/aanmaken/wijzigen/verwijderen, query-hooks, formulieren en ConfirmDialog, met het gedeelde lijstpatroon
   en het cursor-contract. Documenteer welke relaties en bijzondere mutaties handwerk vragen; behoud spec-eerst, dry-run, weigering om te
-  overschrijven en rollback bij mislukte generatie. **Afhankelijkheden:** ST-09, lijstpatroon, ADR 0016, retention uit ST-05.
+  overschrijven en rollback bij mislukte generatie. **Afhankelijkheden:** ST-09, lijstpatroon, ADR 0047, retention uit ST-05.
   **Klaar als:** een gegenereerde fixture-resource werkt door alle lagen tegen de echte stack; isolatie, verboden rollen, validatie, paginering
   en destructieve acties getest; generatie haalt gates en build; dry-run toont alle schrijfdoelen, ook de route-tree; een mislukking laat geen
   half gegenereerde resource achter.
@@ -216,7 +227,7 @@ Bewust nog niet, tot de genoemde aanleiding er is (P1). Niets verdwijnt: elk ite
   bestanden niet; verlopen links en ongeldige uploads geweigerd; accountverwijdering en retention behandelen bestanden. Zonder activering voegt het
   geen service of runtimeverplichting toe.
   terug als: een concrete app notificaties of bestanden nodig heeft
-- [ ] **ST-12 (P2) — templateversies en upgradecontrole** (stuk 6 template-versie; ADR 0006). Nu: `CHANGELOG.md` met "Bij een update"-notities en
+- [ ] **ST-12 (P2) — templateversies en upgradecontrole** (stuk 6 template-versie; ADR 0040). Nu: `CHANGELOG.md` met "Bij een update"-notities en
   `scripts/kit/app-init.mjs` die de template-SHA vastlegt; nog geen tags of versieschema. **Werk:** onderscheid releaseversie, opgenomen
   templatecommit en app-build-SHA; leg herkomst vast bij app-init en update; upgrade-notities bij breaking changes, migraties, instellingen en
   handstappen; een adviserende controle op core/app-grens en ontbrekende stappen die niets automatisch wijzigt en de mergeprocedure niet vervangt.
@@ -234,7 +245,7 @@ Bewust nog niet, tot de genoemde aanleiding er is (P1). Niets verdwijnt: elk ite
   terug als: een app het nodig heeft
 - [ ] **sonarjs, better-tailwindcss en squawk** (stuk 4): de eerste twee vragen een nieuwe dependency, squawk een nieuwe tool (voor `gate:slow`).
   terug als: een fout die deze tool had gevangen doorglipt, of de proef-app toont dat ze nodig zijn
-- [ ] **ADR 0030 PR 2: algemene agent-merge** (voor de framework-lane; de feature-lane volgt ADR 0029 punt 14). Zie `.claude/skills/opleveren/SKILL.md`
+- [ ] **ADR 0030 PR 2: algemene agent-merge** (voor de framework-lane; de feature-lane volgt ADR 0046 punt 30). Zie `.claude/skills/opleveren/SKILL.md`
   en `docs/operations/agent-doorloop.md`.
   terug als: er ≥ 10 feature-PR's zijn zonder gevolgfout, de AC→test-check en het risico-overzicht actief zijn en ST-01 is besloten
 
@@ -297,7 +308,7 @@ Verplaatst naar fase 1, stuk 2 (heeft Better Auth nodig): `session_strength` via
 
 Eén branch per stuk; een groot stuk mag in deel-PR's, een spec in een eigen PR ervoor. Een stuk is klaar als elk punt onder **Klaar als** met een
 checkuitslag of testuitvoer in de PR staat. Core-onderdelen komen in `src/core/`, app-code en de referentie-feature in `src/{api,web,shared}`
-(ADR 0008). Rails en test-infra komen vóór de code die ze bewaken.
+(ADR 0040). Rails en test-infra komen vóór de code die ze bewaken.
 
 - [x] ADR 0027: taakgebonden beschermde broncode, bewijsgebonden ADR/spec-statussen, documentatielabel en automatische runner/CI-opvolging
   (specs taakmandaat-frameworkwerk en taakmandaat-vervolg; #130, #144)
@@ -315,7 +326,7 @@ checkuitslag of testuitvoer in de PR staat. Core-onderdelen komen in `src/core/`
       ook voor bekende omzeilingen (alias, re-export, bracket-notatie) (#9: `test/rails/`)
 - [x] Ratchet: `.kit/baseline.json` + `pnpm ratchet:update`, ESLint bulk-suppressions + `lint:prune`; faalt in beide richtingen (#9: `test/rails/ratchet.test.ts`)
 - [x] Gate-register `scripts/kit/gates.mjs` en eerste `scripts/kit/feiten.mjs` (gates, ADR-statussen, volgende vrije migratie- en ADR-nummer) (#9)
-- [x] Vitest-projecten `unit` en `int`; Playwright in `e2e/`; `pnpm test:db` (integratie + `pg_prove`) en `pnpm ui:check` in de runner-container van ADR 0009 (#9, #11)
+- [x] Vitest-projecten `unit` en `int`; Playwright in `e2e/`; `pnpm test:db` (integratie + `pg_prove`) en `pnpm ui:check` in de runner-container van ADR 0044 (#9, #11)
 - [x] `scripts/bootstrap.sh`, `scripts/doctor.sh` (versies, inotify, sandbox, Docker, jq, bubblewrap; `--quick` voor de SessionStart-hook) (#9)
 - [x] dbmate en Betterleaks gepind in `mise.toml`; dbmate via script (#9)
 - [x] `pnpm dev`: Docker-check, `.env.local`, `compose --env-file .env.local up --build --wait`, migraties, Hono + Vite (met headers/CSP) (#8, #9)
@@ -325,7 +336,7 @@ checkuitslag of testuitvoer in de PR staat. Core-onderdelen komen in `src/core/`
       `.github/workflows/` pusht de eigenaar (#12)
 
 **Klaar als:** `pnpm gate:fast` groen (uitvoer); pre-commit houdt een commit met `any` of `as` tegen (uitvoer); elke fixture-test van de
-rails groen (ook de omzeilingen); de ratchet-test bewijst beide richtingen; de isolatietest uit ADR 0009 groen; CI-job `gate:fast` groen op de PR;
+rails groen (ook de omzeilingen); de ratchet-test bewijst beide richtingen; de isolatietest uit ADR 0044 groen; CI-job `gate:fast` groen op de PR;
 de eigenaar bevestigt dat `pnpm dev` op een verse machine de pagina met `/api/health` toont.
 
 #### 2. Auth
@@ -333,10 +344,10 @@ de eigenaar bevestigt dat `pnpm dev` op een verse machine de pagina met `/api/he
 Spec eerst (migraties en routes).
 - [x] Better Auth (gepind) in `src/core/api/auth`, schema `better_auth`: tabellen via `auth generate` → migratie, `__Host-`-cookie, sessiebeleid, rate limit in database (#18)
 - [x] `session_strength` als sessieveld (`input: false`, standaard `password`), gezet in een after-hook op 2FA-verificatie, doorgegeven aan `withUser()`; `cookieCache` uit (#18)
-- [x] ~~Rolcontrole in auth-hooks (admin: geen magic link) via een `security definer`-functie van `app_definer`, niet via grants~~ — vervallen: geen magic link (ADR 0013, alleen two-factor)
-- [x] Inloggen, aanmelden, reset, e-mailverificatie via Mailpit; geen account-enumeratie; GET-links die een sessie maken, bevestigen met een POST — volgens ADR 0013: aanmelden en "wachtwoord vergeten" dicht; uitnodigen via de reset-flow, e-mail geverifieerd bij accepteren (#18, #28, #29)
-- [x] MFA met inschrijfscherm; admins zonder magic link en zonder `trustDevice` (#18, #29; geen magic link, ADR 0013)
-- [x] CSRF-middleware (testmatrix uit ADR 0007), `bodyLimit`, `secureHeaders()`, `onError` met `{ code, requestId }` (#16)
+- [x] ~~Rolcontrole in auth-hooks (admin: geen magic link) via een `security definer`-functie van `app_definer`, niet via grants~~ — vervallen: geen magic link (ADR 0043, alleen two-factor)
+- [x] Inloggen, aanmelden, reset, e-mailverificatie via Mailpit; geen account-enumeratie; GET-links die een sessie maken, bevestigen met een POST — volgens ADR 0043: aanmelden en "wachtwoord vergeten" dicht; uitnodigen via de reset-flow, e-mail geverifieerd bij accepteren (#18, #28, #29)
+- [x] MFA met inschrijfscherm; admins zonder magic link en zonder `trustDevice` (#18, #29; geen magic link, ADR 0043)
+- [x] CSRF-middleware (testmatrix uit ADR 0041), `bodyLimit`, `secureHeaders()`, `onError` met `{ code, requestId }` (#16)
 - [x] Env-schema met `APP_ENV` en de regels uit framework §6 (Secrets) (#16)
 - [x] `scripts/seed` via de auth-API: gebruiker per rol, admin met vast lokaal TOTP-geheim (#19; per rol uit `ROLES` sinds #29)
 
@@ -369,13 +380,13 @@ gebruikers met cursor-paginering, kent rollen toe en trekt ze in, blokkeert gebr
 - [x] `scanAxe`-uitzonderingen: geen, en een lintregel houdt ze tegen (`rails/axe-import`: alleen `e2e/support/axe.ts` gebruikt axe;
       `rails/axe-uitzondering`: geen `disableRules`/`exclude`/`include`/`options` daarin), fixtures in `test/rails/eslint.test.ts`
 - [x] `check:catalogus`: AST-index van beide UI-mappen, publieke barrel-exports en bereikbare voorbeelden met eindige stringvarianten;
-      dezelfde index voor agents en `/design-system`, zonder uitzonderingen (ADR 0028, `test/rails/catalogus-coverage.test.ts`,
+      dezelfde index voor agents en `/design-system`, zonder uitzonderingen (ADR 0048, `test/rails/catalogus-coverage.test.ts`,
       `src/web/features/design-system/component-index.test.tsx`; `gate:fast`: 1.186 tests groen, `docs/reviews/design-system-coverage.md`)
 - [x] Toasts standaard in de basiskit (besluit eigenaar 2026-10-10, zelf gebouwd zonder dependency): `ToastProvider` in `main.tsx`, `Toaster` in de AppShell en
       `useToast().success/error` met `aria-live`, op `/design-system` en in `check:catalogus` (`src/core/web/ui/toast.test.tsx`).
       Bestaande `Notice`-meldingen na een mutatie zijn nog niet omgezet (aparte taak; let daar op toasts onder een open modale `Dialog`, die inert is, en op pauze bij hover/focus, WCAG 2.2.1)
 - [x] `/design-system` als echte pagina (besluit eigenaar 2026-10-10): onder `/_app` in de AppShell, met menu-item en `can()`-guard, ook in
-      productie; vervangt "alleen in dev" hierboven en in framework §6 en §7. Eerst een spec (#44, ADR 0015, #51)
+      productie; vervangt "alleen in dev" hierboven en in framework §6 en §7. Eerst een spec (#44, ADR 0048, #51)
 - [x] UI-kit uitgebreid: native controls en feedbackbasics (#145, spec ui-kit-basics) en een doorzoekbare combobox met collectie-primitieven (#150,
   spec ui-collections); allemaal in `check:catalogus` en op `/design-system` (`src/core/web/ui/`)
 - [ ] UI-kit: tabel, tabs, galerij, filterbalk en carousel (#156, spec `docs/specs/ui-data-display.md`); in `check:catalogus` en op `/design-system`
@@ -385,12 +396,14 @@ gebruikers met cursor-paginering, kent rollen toe en trekt ze in, blokkeert gebr
 - [x] `docs/gouden-pad.md` (≤ 1 pagina) met verwijzingen naar de bestanden van deze feature
 
 **3e. Gebruikersbeheer, gebouwd** (open: ST-02 onder Volgende)
+- [ ] Laatste geslaagde login en afzonderlijke deactivatie met herstel, naast blokkeren
+      (spec `accountstatus-en-laatste-login`, ADR 0052)
 - [x] Admin blokkeert en deblokkeert een gebruiker; blokkeren trekt alle sessies direct in (de laatste-admin-regel geldt ook hier)
-      (spec `accountbeheer-uitbreiding` AC-11..14 en 22..24, ADR 0026, #117: `db/tests/account_blocking.sql`,
+      (spec `accountbeheer-uitbreiding` AC-11..14 en 22..24, ADR 0043, #117: `db/tests/account_blocking.sql`,
       `test/api/account-blocking.int.test.ts`, `e2e/account-blocking.spec.ts`, `src/core/api/auth/blocked.test.ts`)
 - [x] Gebruiker bekijkt en beëindigt de eigen sessies (spec `eigen-account`, deel 2; `test/api/eigen-account-deel2.int.test.ts`,
       `e2e/eigen-account-deel2.spec.ts`, `src/web/features/account/account-deel2.test.tsx`)
-- [x] Gebruiker wijzigt het eigen wachtwoord en de eigen naam (spec `eigen-account`, ADR 0024; `test/api/eigen-account.int.test.ts`,
+- [x] Gebruiker wijzigt het eigen wachtwoord en de eigen naam (spec `eigen-account`, ADR 0043; `test/api/eigen-account.int.test.ts`,
       `e2e/eigen-account.spec.ts`, `src/web/account.test.tsx`)
 - [x] Gebruiker wijzigt het e-mailadres, met bevestiging naar het oude en het nieuwe adres (spec `eigen-account`, deel 2, ADR 0024)
 
@@ -430,9 +443,9 @@ Elke regel uit `AGENTS.md` die een check kan zijn, wordt een check; een check te
 - [x] `check:migrations`: geen gecommitte migratie gewijzigd, verwijderd of hernoemd t.o.v. het afsplitspunt met origin/main, namen en versies uniek, in
   `gate:fast`; CI haalt daarvoor de volledige geschiedenis op (`test/rails/check-migrations.test.ts`)
 - [x] `gate:slow` = `test:db` (met `check-policies`) + `ui:check` + `check:snapshot` (snapshot en Drizzle-schema zonder verschil) (#38)
-- [x] Diff-guard met label `gate-wijziging` en goedkeuring op exact de head-SHA, met tabeltests per geval: gebouwd, nog niet verplicht (ADR 0017,
+- [x] Diff-guard met label `gate-wijziging` en goedkeuring op exact de head-SHA, met tabeltests per geval: gebouwd, nog niet verplicht (ADR 0045 punt 17,
   `scripts/kit/diff-guard.mjs`, `.github/workflows/guard.yml`, #62); verplicht bij de overstap op de GitHub App (ST-01)
-- [x] Scripts uit `excludedCommands` (`test:db`, `ui:check`, `gate:slow`, `db:generate`, `check:snapshot`) bestaan in `package.json`, alle vijf in de runner van ADR 0009
+- [x] Scripts uit `excludedCommands` (`test:db`, `ui:check`, `gate:slow`, `db:generate`, `check:snapshot`) bestaan in `package.json`, alle vijf in de runner van ADR 0044
       Bewezen door `test/rails/excluded-commands.test.ts` (WS-03)
 - [x] CI: `gate:slow`-job, gewijzigde tests als lijst, `guard.yml` (PR-code alleen als data, met de diff-guard), CodeQL, osv-scanner (PR + wekelijks;
       uitzonderingen met reden en `ignoreUntil`), Betterleaks (versie gepind in `mise.toml`), Renovate (gegroepeerd, blokkeert TS 7)
@@ -454,10 +467,10 @@ de bewaker houdt een afgezwakt check-script tegen; regels zonder check staan met
 - [x] Vijf subagents (architect, developer, tester sonnet, reviewer opus, docs) met `model`, `maxTurns`, "eerst de feiten" (#42)
 - [x] Skills (spec, nieuw-route, nieuw-scherm, nieuw-component, migratie, release, security-review) met `!`-injectie uit `scripts/kit/feiten.mjs`
       (routes, permissies, foutcodes, componenten) (#42; `release` volgt in fase 3)
-- [x] `pnpm new:resource <naam>` afgeleid uit het gouden pad (ADR 0016): spec-skelet, daarna werkstraat-stap 2 met 501-handlers; `check:new-resource` als eigen CI-job
-- [x] AC→test-check en risico-overzicht in de diff-guard (ADR 0029 P5; #167, #170): `check-docs` controleert dat elk AC-id van een gebouwde spec een test heeft
+- [x] `pnpm new:resource <naam>` afgeleid uit het gouden pad (ADR 0047): spec-skelet, daarna werkstraat-stap 2 met 501-handlers; `check:new-resource` als eigen CI-job
+- [x] AC→test-check en risico-overzicht in de diff-guard (ADR 0046 P5; #167, #170): `check-docs` controleert dat elk AC-id van een gebouwde spec een test heeft
       (`test/rails/check-docs-ac.test.ts`), de diff-guard toont nieuwe of gewijzigde migraties, permissiesleutels, routes en contractwijzigingen (`test/rails/diff-guard-risico.test.ts`)
-- [x] Prompts versoepelen (ADR 0029 punt 8, 9 en 18; #174): lijst `voorReview` in `.claude/gates.json`, Edit-regels in `ask` = `voorReview` (spiegelregel in `check-docs`), het rolhek meldt
+- [x] Prompts versoepelen (ADR 0046 punt 27, 28 en 32; #174): lijst `voorReview` in `.claude/gates.json`, Edit-regels in `ask` = `voorReview` (spiegelregel in `check-docs`), het rolhek meldt
       op andere gate-paden alleen "noem het in de PR"; `src/api/app.ts` en `src/shared/permissions.ts` zijn geen gate meer
       (`test/hooks/rolhek-voorreview.test.ts`, `test/rails/check-docs-voorreview.test.ts`)
 
@@ -484,9 +497,9 @@ Provider-neutraal: wat elke host nodig heeft, hoort in de template; de adapter p
       gebruiker-ID, duur en databasetijd (tijd binnen `withUser`); geen body, query of PII. Eigen logger, geen dependency (besluit eigenaar
       2026-10-10); `createApp({ log })`, `server.ts` geeft `writeJsonLine` mee (`src/core/api/obs/request-log.test.ts`)
 - [x] Readiness: `GET /api/ready` (200 `{ ok: true }` of 503 `{ ok: false }`) via `pingDatabase()` naast `GET /api/health` (liveness); uitkomst 1 s
-      bewaard, hooguit één controle tegelijk, timeout 2 s; eigen verbinding met timeouts; regel in framework §3, ADR 0018 (`src/core/api/http/readiness.test.ts`, `test/datapad/ping.int.test.ts`)
+      bewaard, hooguit één controle tegelijk, timeout 2 s; eigen verbinding met timeouts; regel in framework §3, ADR 0049 (`src/core/api/http/readiness.test.ts`, `test/datapad/ping.int.test.ts`)
 - [x] `pnpm start` (`node src/api/server.ts`, geen buildstap voor de API) en een containerimage (non-root) die SPA en API op één origin serveert
-      (ADR 0019, `Dockerfile`, CI-job `image` met `scripts/check-image.sh`; `src/core/api/http/web.test.ts`)
+      (ADR 0049, `Dockerfile`, CI-job `image` met `scripts/check-image.sh`; `src/core/api/http/web.test.ts`)
 
 **Klaar als:** de image start met een niet-lokale `APP_ENV` tegen de lokale stack (uitvoer van de eigenaar); per request één logregel
 (test); na SIGTERM eindigt een lopend request zonder afgebroken transactie (test); een opruimtaak verwijdert alleen verlopen rijen (test).
@@ -498,4 +511,4 @@ de bewaker houdt een afgezwakt check-script tegen; `check-github` groen; elke ro
 
 Ook gebouwd: rate limiting op app-routes (#87, spec `rate-limit`) met een requestId die de server zelf kiest (#83).
 
-- [x] Audit log van admin-acties in core: migratie, `ctx.audit` en uitnodigen/opnieuw versturen in één transactie met de actie (ADR 0021, #128)
+- [x] Audit log van admin-acties in core: migratie, `ctx.audit` en uitnodigen/opnieuw versturen in één transactie met de actie (ADR 0051, #128)

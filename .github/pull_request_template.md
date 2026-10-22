@@ -23,5 +23,5 @@
 - [ ] `docs/dod.md` doorlopen
 - [ ] Raakt dit gedrag, API, configuratie of conventies? Dan zit de doc-wijziging in deze PR (of: n.v.t., reden)
 - [ ] Geen bestaande migratie gewijzigd; geen test verwijderd of geskipt zonder akkoord
-- [ ] Runnerchecks geïsoleerd uitgevoerd of werkelijke CI-uitslagen verzameld op de juiste SHA; geen agentoverride van hostcontroles (ADR 0009/0027)
+- [ ] Runnerchecks geïsoleerd uitgevoerd of werkelijke CI-uitslagen verzameld op de juiste SHA; geen agentoverride van hostcontroles (ADR 0044)
 - [ ] Nieuwe `unsafeCast` heeft een reden

@@ -15,6 +15,7 @@ import { uiTexts } from '../copy/ui.ts';
 import { Button } from './button.tsx';
 import { useErrorText } from './error-texts.tsx';
 import { Field } from './field.tsx';
+import { FormErrorSummary, type FormErrorSummaryOptions } from './form-error-summary.tsx';
 
 // Formulieren (framework §5): zodResolver op het gedeelde schema, valideren bij verlaten en daarna bij typen
 // (mode onTouched), verzendknop uit tijdens het versturen, serverfouten per veld via setError. useForm alleen hier.
@@ -40,11 +41,12 @@ interface FormProps<Input extends FieldValues, Output> {
   readonly fieldForCode?: Readonly<Partial<Record<string, FieldPath<Input>>>>;
   // Naast de verzendknop, bijv. "Annuleren" in een dialoog.
   readonly secondaryAction?: ReactNode;
+  readonly errorSummary?: FormErrorSummaryOptions<Input>;
   readonly children: ReactNode;
 }
 
 export function Form<Input extends FieldValues, Output>(props: FormProps<Input, Output>) {
-  const { form, onSubmit, submitLabel, fieldForCode, secondaryAction, children } = props;
+  const { form, onSubmit, submitLabel, fieldForCode, secondaryAction, errorSummary, children } = props;
   const errorText = useErrorText();
   const [formError, setFormError] = useState<string | null>(null);
   const alert = useRef<HTMLParagraphElement>(null);
@@ -68,6 +70,7 @@ export function Form<Input extends FieldValues, Output>(props: FormProps<Input, 
 
   return (
     <form noValidate onSubmit={(event) => void submit(event)} className="flex flex-col gap-4">
+      {errorSummary === undefined ? null : <FormErrorSummary form={form} {...errorSummary} />}
       {formError === null ? null : (
         <p
           role="alert"
@@ -81,7 +84,15 @@ export function Form<Input extends FieldValues, Output>(props: FormProps<Input, 
       {children}
       <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
         {secondaryAction}
-        <Button type="submit" disabled={form.formState.isSubmitting}>
+        <Button
+          type="submit"
+          disabled={form.formState.isSubmitting}
+          onPointerDown={(event) => {
+            // Blurvalidatie kan fouttekst invoegen tussen pointerdown en click, waardoor de knop onder de pointer wegschuift.
+            // Houd het veld gefocust tot de click echt verzendt; het foutenoverzicht verzorgt daarna de foutfocus.
+            if (errorSummary !== undefined && event.button === 0) event.preventDefault();
+          }}
+        >
           {form.formState.isSubmitting ? uiTexts.busy : submitLabel}
         </Button>
       </div>

@@ -1,4 +1,4 @@
--- RLS- en grant-invarianten (framework §6, ADR 0004): gelden voor elke tabel, ook toekomstige. Elke invariant is een
+-- RLS- en grant-invarianten (framework §6, ADR 0042): gelden voor elke tabel, ook toekomstige. Elke invariant is een
 -- query die de overtredingen teruggeeft; de test eist dat die leeg is en bewijst daarna met een opzettelijke fout dat
 -- de query hem vangt. Alles in één transactie die terugdraait.
 begin;
@@ -40,9 +40,13 @@ insert into better_auth_allowlist values
   ('app_definer', 'SELECT', 'better_auth.user.createdAt'),
   ('app_definer', 'SELECT', 'better_auth.account.userId'),
   ('app_definer', 'SELECT', 'better_auth.account.providerId'),
-  -- ADR 0026: blokkeren; de enige kolom in better_auth die app_definer ook schrijft (app.set_account_blocked).
   ('app_definer', 'SELECT', 'better_auth.user.blocked_at'),
-  ('app_definer', 'UPDATE', 'better_auth.user.blocked_at');
+  ('app_definer', 'UPDATE', 'better_auth.user.blocked_at'),
+  ('app_definer', 'SELECT', 'better_auth.user.last_login_at'),
+  ('app_definer', 'SELECT', 'better_auth.user.deactivated_at'),
+  ('app_definer', 'SELECT', 'better_auth.user.session_version'),
+  ('app_definer', 'UPDATE', 'better_auth.user.deactivated_at'),
+  ('app_definer', 'UPDATE', 'better_auth.user.session_version');
 
 create function pg_temp.better_auth_open() returns setof text language sql stable as $$
   with grants as (
@@ -86,7 +90,7 @@ create function pg_temp.rechten_voor_public() returns setof text language sql st
   order by 1
 $$;
 
--- Tabelpatroon met owner_id (docs/reviews/2026-10-10-tabelpatroon.md, B1; ADR 0016), voor elke tabel in public met die kolom:
+-- Tabelpatroon met owner_id (docs/reviews/2026-10-10-tabelpatroon.md, B1; ADR 0047), voor elke tabel in public met die kolom:
 -- geen insert- of updaterecht voor app_authenticated op id, owner_id of created_at (A1/A2: anders kiest de client zelf de
 -- id of de eigenaar), een policy voor select, insert, update en delete to app_authenticated (A3: een recht zonder policy
 -- geeft stil 0 rijen), en een index met owner_id als eerste kolom (elke policy filtert erop).
@@ -129,8 +133,8 @@ create function pg_temp.eigenaartabellen() returns setof text language sql stabl
   order by regel collate "C"
 $$;
 
--- app.audit_log (spec audit-log AC-5, ADR 0021 punt 6; spec achtergrondtaken jobs/AC-7): precies de vier policies van
--- ADR 0021 punt 6, alleen select (en insert op kolommen en delete voor app_definer) en de drie guard-triggers aan. De tabel zelf valt al onder de algemene invarianten hierboven.
+-- app.audit_log (spec audit-log AC-5, ADR 0051 punt 5; spec achtergrondtaken jobs/AC-7): precies de vier policies van
+-- ADR 0051 punt 5, alleen select (en insert op kolommen en delete voor app_definer) en de drie guard-triggers aan. De tabel zelf valt al onder de algemene invarianten hierboven.
 create function pg_temp.audit_log_afwijkingen() returns setof text language sql stable as $$
   with t as (select to_regclass('app.audit_log') as oid)
   select 'app.audit_log ontbreekt' from t where t.oid is null
@@ -168,7 +172,7 @@ create function pg_temp.audit_log_afwijkingen() returns setof text language sql 
   order by 1
 $$;
 
--- Bewaarcatalogus (spec achtergrondtaken, deel A, ADR 0022 punt 5): elke tabel in public en app heeft een rij in
+-- Bewaarcatalogus (spec achtergrondtaken, deel A, ADR 0051 punt 14): elke tabel in public en app heeft een rij in
 -- app.retention (behalve public.schema_migrations), elke rij een tabel, de purger past bij het schema, en een tabel die
 -- app.purge_expired opruimt (purger app, keep niet null) heeft een timestamptz-kolom, select en delete voor app_definer en
 -- een delete-policy die app.retention_cutoff aanroept (of een restrictieve die dat doet); de audit log bewaart minstens 1 jaar.

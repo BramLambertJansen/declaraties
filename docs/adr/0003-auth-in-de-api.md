@@ -1,6 +1,6 @@
 # 0003 — Auth draait in de API, op de eigen Postgres
 
-Status: geaccepteerd (2026-10-09), herzien na review van 2026-10-09. Herzien via een nieuwe ADR. Deels vervangen: paragraaf CSRF door [ADR 0007](0007-csrf-controle.md), plaats `src/api/auth` door
+Status: vervangen door 0041
 [ADR 0008](0008-grens-core-en-app.md) (`src/core/api/auth`), schema `auth` door [ADR 0010](0010-schema-better-auth.md) (`better_auth`).
 
 ## Context

@@ -1,6 +1,6 @@
 /**
  * De omgeving voor de checks die de werkstraat-hook start. Het anker (`RAILS_ANKER`) is voor de hooks zelf: vitest en scripts
- * zouden anders hun eigen vertrouwde basis door dat anker laten vervangen (ADR 0033).
+ * zouden anders hun eigen vertrouwde basis door dat anker laten vervangen (ADR 0045).
  * @param {NodeJS.ProcessEnv} base
  * @param {Record<string, string> | undefined} extra
  * @returns {NodeJS.ProcessEnv}

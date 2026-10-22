@@ -42,7 +42,7 @@ export async function openAccount(page: Page): Promise<void> {
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('Mijn account');
 }
 
-// ---- Deel 2: mails uit Mailpit en sessies ouder maken (runner, ADR 0009) ----
+// ---- Deel 2: mails uit Mailpit en sessies ouder maken (runner, ADR 0044) ----
 
 function env(name: string): string {
   const value = process.env[name];

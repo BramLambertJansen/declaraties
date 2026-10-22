@@ -12,7 +12,7 @@ import {
   uniqueEmail,
 } from '../auth/harness.ts';
 
-// Opzet voor de integratietests van spec eigen-account (runner, ADR 0009): echte database, Better Auth en Mailpit.
+// Opzet voor de integratietests van spec eigen-account (runner, ADR 0044): echte database, Better Auth en Mailpit.
 // Testwachtwoorden uit herhaling: geldig voor de lengte-eis, zonder te lijken op een echt geheim (Betterleaks).
 export const PASSWORD = 'ab-'.repeat(6);
 export const NEW_PASSWORD = 'cd-'.repeat(6);

@@ -1,4 +1,4 @@
-// Better Auth in de API (ADR 0003, 0010, 0013). Ingang voor de app; de opties zelf staan in options.ts.
+// Better Auth in de API (ADR 0041, 0043). Ingang voor de app; de opties zelf staan in options.ts.
 export {
   authGateway,
   createAuth,

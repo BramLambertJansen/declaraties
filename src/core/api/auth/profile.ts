@@ -1,8 +1,8 @@
 import { APIError } from 'better-auth/api';
 import { z } from 'zod';
-import { SESSION_ABSOLUTE_SECONDS } from '../../shared/limits.ts';
 import type { Auth } from './auth.ts';
 import { describeDevice } from './user-agent.ts';
+import { sessionRejection } from './session-policy.ts';
 
 // Het eigen account (spec eigen-account): naam wijzigen buiten /update-user om (dat endpoint is dicht: het accepteert ook
 // `image` en kent de grenzen van de app niet), eigen sessies zonder tokens naar de browser (/list-sessions is dicht) en het
@@ -41,12 +41,11 @@ export class EmailLinkInvalidError extends Error {
 // Nieuwste eerst. Sessies ouder dan de absolute duur weigert authGateway.getSession al, dus ze staan er niet in.
 export async function listOwnSessions(auth: Auth, who: SessionOwner, now: number = Date.now()): Promise<OwnSession[]> {
   const { internalAdapter } = await auth.$context;
+  const user = await internalAdapter.findUserById(who.userId);
+  if (user === null) return [];
   const sessions = await internalAdapter.listSessions(who.userId, { onlyActiveSessions: true });
   return sessions
-    .filter(
-      (session) =>
-        session.expiresAt.getTime() > now && now - session.createdAt.getTime() <= SESSION_ABSOLUTE_SECONDS * 1000,
-    )
+    .filter((session) => session.expiresAt.getTime() > now && sessionRejection({ session, user }, now) === null)
     .toSorted((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
     .map((session) => ({
       id: session.id,

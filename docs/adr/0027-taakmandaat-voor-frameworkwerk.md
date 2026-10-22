@@ -1,6 +1,6 @@
 # 0027 — Taakmandaat en bewijs voor de agentdoorloop
 
-Status: geaccepteerd (2026-10-13) — eigenaarakkoord in de opdracht; statusadministratie op basis van bewijs, geen autonome inhoudelijke goedkeuring.
+Status: vervangen door 0046
 
 ## Context
 

@@ -6,7 +6,9 @@ import { decodeCursor, encodeCursor } from '#core/shared/cursor.ts';
 import {
   ACCOUNT_SORTS,
   accountsListContract,
+  activateContract,
   blockContract,
+  deactivateContract,
   inviteContract,
   reinviteContract,
   unblockContract,
@@ -24,9 +26,12 @@ const accountRow = z.object({
   naam: z.string(),
   email: z.string(),
   rol: z.enum(ROLES),
-  status: z.enum(['active', 'invited', 'blocked']),
+  status: z.enum(['active', 'invited', 'blocked', 'deactivated']),
   aangemaakt: z.string(),
   naamKey: z.string(),
+  laatstIngelogd: z.string().nullable(),
+  gedeactiveerd: z.boolean(),
+  geblokkeerd: z.boolean(),
 });
 
 type Sort = (typeof ACCOUNT_SORTS)[number];
@@ -54,9 +59,19 @@ function containsPattern(q: string): string {
   return `%${q.replace(/[\\%_]/g, (char) => `\\${char}`)}%`;
 }
 
-const STATUS_COLUMN = { actief: 'active', uitgenodigd: 'invited', geblokkeerd: 'blocked' } as const;
+const STATUS_COLUMN = {
+  actief: sql`${appAccounts.status} = 'active'`,
+  uitgenodigd: sql`${appAccounts.status} = 'invited'`,
+  geblokkeerd: sql`${appAccounts.blockedAt} is not null`,
+  gedeactiveerd: sql`${appAccounts.deactivatedAt} is not null`,
+};
 
-const STATUS_LABEL = { active: 'actief', invited: 'uitgenodigd', blocked: 'geblokkeerd' } as const;
+const STATUS_LABEL = {
+  active: 'actief',
+  invited: 'uitgenodigd',
+  blocked: 'geblokkeerd',
+  deactivated: 'gedeactiveerd',
+} as const;
 
 const naamKey = sql<string>`lower(${appAccounts.name})`;
 const aangemaaktKey = sql<string>`to_json(${appAccounts.createdAt}) #>> '{}'`;
@@ -74,7 +89,7 @@ export const accountsListRoute = defineRoute(accountsListContract, async ({ inpu
     conditions.push(sql`(${appAccounts.name} ilike ${pattern} or ${appAccounts.email} ilike ${pattern})`);
   }
   if (rol !== undefined) conditions.push(eq(appAccounts.role, rol));
-  if (status !== undefined) conditions.push(eq(appAccounts.status, STATUS_COLUMN[status]));
+  if (status !== undefined) conditions.push(STATUS_COLUMN[status]);
   if (from !== null) {
     const operator = descending ? sql`<` : sql`>`;
     conditions.push(sql`(${keyColumn}, ${appAccounts.id}) ${operator} (${from[1]}${keyCast}, ${from[2]})`);
@@ -90,6 +105,9 @@ export const accountsListRoute = defineRoute(accountsListContract, async ({ inpu
       // ISO 8601 met microseconden: dezelfde waarde gaat ongewijzigd terug in de cursor.
       aangemaakt: aangemaaktKey,
       naamKey,
+      laatstIngelogd: sql<string | null>`to_json(${appAccounts.lastLoginAt}) #>> '{}'`,
+      gedeactiveerd: sql<boolean>`${appAccounts.deactivatedAt} is not null`,
+      geblokkeerd: sql<boolean>`${appAccounts.blockedAt} is not null`,
     })
     .from(appAccounts)
     .where(conditions.length === 0 ? undefined : and(...conditions))
@@ -106,6 +124,9 @@ export const accountsListRoute = defineRoute(accountsListContract, async ({ inpu
       rol: row.rol,
       aangemaakt: row.aangemaakt,
       status: STATUS_LABEL[row.status],
+      laatstIngelogd: row.laatstIngelogd,
+      gedeactiveerd: row.gedeactiveerd,
+      geblokkeerd: row.geblokkeerd,
     })),
     nextCursor:
       rows.length > ACCOUNTS_PAGE_SIZE && last !== undefined
@@ -135,7 +156,7 @@ export const reinviteRoute = defineRoute(reinviteContract, async ({ input, tx, s
   return null;
 });
 
-// Blokkeren (ADR 0026, besluit 7): de functie in de transactie van de admin (NOT_FOUND, OWN_ACCOUNT, ACCOUNT_INVITED en
+// Blokkeren (ADR 0043 punt 18): de functie in de transactie van de admin (NOT_FOUND, OWN_ACCOUNT, ACCOUNT_INVITED en
 // LAST_ADMIN komen als P0001 uit de database), sessies opruimen na commit. Een opruimfout draait de blokkade niet terug.
 export const blockRoute = defineRoute(blockContract, async ({ input, tx, services, afterCommit }) => {
   await tx.execute(sql`select app.set_account_blocked(${input.id}, true)`);
@@ -145,5 +166,15 @@ export const blockRoute = defineRoute(blockContract, async ({ input, tx, service
 
 export const unblockRoute = defineRoute(unblockContract, async ({ input, tx }) => {
   await tx.execute(sql`select app.set_account_blocked(${input.id}, false)`);
+  return null;
+});
+
+export const deactivateRoute = defineRoute(deactivateContract, async ({ input, tx }) => {
+  await tx.execute(sql`select app.set_account_deactivated(${input.id}, true)`);
+  return null;
+});
+
+export const activateRoute = defineRoute(activateContract, async ({ input, tx }) => {
+  await tx.execute(sql`select app.set_account_deactivated(${input.id}, false)`);
   return null;
 });

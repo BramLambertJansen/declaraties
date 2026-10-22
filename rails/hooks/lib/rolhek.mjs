@@ -1,9 +1,9 @@
-// Rolhek (framework §8, ADR 0011): beslist per toolgebruik of het mag (allow), de eigenaar moet kiezen (ask) of het
+// Rolhek (framework §8, ADR 0045): beslist per toolgebruik of het mag (allow), de eigenaar moet kiezen (ask) of het
 // verboden is (deny). Puur: alles wat van de schijf of git komt, zit in `ctx`, zodat test/hooks/rolhek.test.ts elke regel
 // met echte payloads kan bewijzen. De stdin/stdout-kant staat in rails/hooks/rolhek.mjs.
 import path from 'node:path';
-import { gitSubcommand, parseCommands, splitCommand, writeTargets } from './shell.mjs';
-import { documentInfo } from './document-state.mjs';
+import { gitSubcommand, parseCommands, programName, splitCommand, writeTargets } from './shell.mjs';
+import { A4_MELDING, beslisOvergang, documentInfo, documentKind } from './document-state.mjs';
 import { canRecordStatus, canWriteProtected } from './task-authority.mjs';
 import { automaticRunner } from './runner-authority.mjs';
 
@@ -12,12 +12,12 @@ import { automaticRunner } from './runner-authority.mjs';
  *   migraties: string[], schrijfrecht: Record<string, string[]>, mcpLezen: string[], voorReview?: string[] | undefined,
  *   altijdVragen?: string[] | undefined, onderhoud?: { repository: string } | undefined }} Config
  * `voorReview` ontbreekt → elke gate telt als voorReview (faalt dicht). `altijdVragen` ontbreekt → in onderhoud blijft elk
- * voorReview-pad een gate (faalt dicht). `onderhoud`: de repository waarin de onderhoudsmodus geldt (ADR 0033 punt 2).
+ * voorReview-pad een gate (faalt dicht). `onderhoud`: de repository waarin de onderhoudsmodus geldt (ADR 0045 punt 8).
  * @typedef {{ root: string, cwd: string, config: Config, read: (rel: string) => string | null,
  *   committed: (rel: string) => boolean | 'zonder-origin', isDir: (rel: string) => boolean, branch: string,
  *   authority?: import('./task-authority.mjs').Authority | null, runnerTrusted?: boolean,
  *   onbekendeRol?: boolean, onderhoud?: boolean }} Ctx
- * `onderhoud`: de onderhoudsmodus is actief (vertrouwde configuratie en origin is die repository, ADR 0033 punt 2–3).
+ * `onderhoud`: de onderhoudsmodus is actief (vertrouwde configuratie en origin is die repository, ADR 0045 punt 8–9).
  * `onbekendeRol`: een subagent zonder bekende rol; telt als developer, maar zonder de melding buiten voorReview.
  * `committed`: staat in de merge-base met het anker of met origin/main; 'zonder-origin' = beide onleesbaar en wel in HEAD (terugval).
  * @typedef {{ deny: string[], ask: string[], context: string[], allow?: boolean }} Decision
@@ -234,19 +234,38 @@ function decideFile({ rel, change, role }, ctx, decision) {
     decision.deny.push(`${rel} is een gecommitte migratie: wijzig hem nooit, maak een nieuwe (AGENTS.md)${hint}`);
     return;
   }
-  if (recordedStatus({ rel, change, role }, ctx, decision)) return;
+  // A4 en de overgang vergelijken met main (de vertrouwde basis); alleen zonder authority is de werkmap de terugval.
+  const basis = ctx.authority == null ? ctx.read(rel) : ctx.authority.trusted(rel);
+  const overgang = change.after === null || documentKind(rel) === null ? null : beslisOvergang(rel, basis, change.after);
+  if (overgang?.uitslag === 'a4') {
+    decision.deny.push(`${rel}: ${A4_MELDING}`);
+    return;
+  }
+  // ADR 0046 punt 6: architect en hoofdsessie schrijven de eigenaarstatus in het voorstel; de merge van de eigenaar beslist.
+  const eigenaarstatus = ['hoofdsessie', 'architect'].includes(role) && ['besluit', 'vrij'].includes(overgang?.uitslag ?? '');
+  if (!eigenaarstatus && statusZonderBesluit({ rel, change, role }, ctx, decision)) return;
+  if (matches(config.testpaden) && ctx.read(rel) !== null) existingTest({ rel, change, role }, ctx, decision);
+  decideByRole({ rel, change, role }, ctx, decision);
+}
+
+/**
+ * Voor een rol die geen eigenaarstatus schrijft: alleen met een record op main, en `goedgekeurd` nooit zelf (ADR 0046 punt 6).
+ * @param {{ rel: string, change: Change, role: string }} target @param {Ctx} ctx @param {Decision} decision
+ * @returns {boolean} true als de beslissing vaststaat
+ */
+function statusZonderBesluit({ rel, change, role }, ctx, decision) {
+  if (recordedStatus({ rel, change, role }, ctx, decision)) return true;
   const nextDocument = documentInfo(rel, change.after ?? '');
   if (ctx.authority != null && nextDocument !== null && !['voorstel', 'voorgesteld'].includes(nextDocument.status) &&
     !canRecordStatus({ file: rel, text: change.after ?? '' }, ctx.authority)) {
-    decision.deny.push(`${rel}: inhoud of besluit heeft geen geldig bewijs uit main; heropen het voorstel voor een nieuwe beoordeling`);
-    return;
+    decision.deny.push(`${rel}: een eigenaarstatus of de inhoud van een goedgekeurde spec schrijven alleen architect en hoofdsessie (ADR 0046 punt 6); gebouwd via pnpm docs:status`);
+    return true;
   }
-  if (approvesSpec(rel, change, ctx)) {
-    decision.deny.push(`${rel}: status goedgekeurd zet alleen de eigenaar (AGENTS.md)`);
-    return;
+  if (!['hoofdsessie', 'architect'].includes(role) && approvesSpec(rel, change, ctx)) {
+    decision.deny.push(`${rel}: status goedgekeurd schrijven alleen architect en hoofdsessie (ADR 0046 punt 6)`);
+    return true;
   }
-  if (matches(config.testpaden) && ctx.read(rel) !== null) existingTest({ rel, change, role }, ctx, decision);
-  decideByRole({ rel, change, role }, ctx, decision);
+  return false;
 }
 
 /**
@@ -340,18 +359,18 @@ function decideByRole({ rel, change, role }, ctx, decision) {
     return;
   }
   if (free || !config.gates.some((glob) => globMatch(glob, rel))) return;
-  // ADR 0029 punt 9: buiten voorReview geen prompt, wel een melding; de eigenaar reviewt het in de PR.
+  // ADR 0046 punt 28: buiten voorReview geen prompt, wel een melding; de eigenaar reviewt het in de PR.
   const voorReview = config.voorReview ?? config.gates;
   const melding = ctx.onbekendeRol !== true && (!voorReview.some((glob) => globMatch(glob, rel)) || inOnderhoud(rel, ctx));
   if (melding && ctx.onderhoud === true && voorReview.some((glob) => globMatch(glob, rel)))
-    decision.context.push(`${rel} is een beschermd pad (framework §10, onderhoudsmodus ADR 0033): noem het in de PR (eigenaarreview)`);
+    decision.context.push(`${rel} is een beschermd pad (framework §10, onderhoudsmodus ADR 0045): noem het in de PR (eigenaarreview)`);
   else if (melding)
-    decision.context.push(`${rel} is een beschermd pad (framework §10): noem het in de PR (eigenaarreview, ADR 0029 punt 9)`);
+    decision.context.push(`${rel} is een beschermd pad (framework §10): noem het in de PR (eigenaarreview, ADR 0046 punt 28)`);
   else gate(decision, role, `${rel} is een beschermd pad (framework §10): wijzigen vraagt akkoord van de eigenaar`);
 }
 
 /**
- * In onderhoud (ADR 0033 punt 3) is een voorReview-pad een melding, behalve `altijdVragen`; ontbreekt die lijst, dan geen melding.
+ * In onderhoud (ADR 0045 punt 9) is een voorReview-pad een melding, behalve `altijdVragen`; ontbreekt die lijst, dan geen melding.
  * @param {string} rel @param {Ctx} ctx
  */
 function inOnderhoud(rel, ctx) {
@@ -407,7 +426,7 @@ export function globMatch(glob, rel) {
 // ---------- Bash ----------
 
 /**
- * Remote-URL, refs en objecten zijn de vertrouwensbasis van anker en onderhoudsmodus (ADR 0033): nooit schrijven in een `.git`-map,
+ * Remote-URL, refs en objecten zijn de vertrouwensbasis van anker en onderhoudsmodus (ADR 0045): nooit schrijven in een `.git`-map,
  * met Edit/Write of met Bash. @param {string} file
  */
 function inGitMap(file) {
@@ -416,7 +435,7 @@ function inGitMap(file) {
 
 /** @param {string} file */
 function gitMapMelding(file) {
-  return `${file}: schrijven in .git is verboden voor elke rol (ADR 0033)`;
+  return `${file}: schrijven in .git is verboden voor elke rol (ADR 0045)`;
 }
 
 
@@ -427,9 +446,9 @@ function gitMapMelding(file) {
  */
 function decideBash({ command, role }, ctx, decision) {
   for (const parsed of parseCommands(command)) {
-    const { assignments, argv } = splitCommand(parsed.words);
+    const { assignments, argv, pathWrappers } = splitCommand(parsed.words);
     forbidden({ assignments, argv }, { role, ctx }, decision);
-    if (role === 'reviewer' && !reviewerMay(argv, parsed.redirects))
+    if (role === 'reviewer' && (pathWrappers.length > 0 || !reviewerMay(argv, parsed.redirects)))
       decision.deny.push(`reviewer: alleen lezen (\`${argv.slice(0, 3).join(' ')}\` mag niet; framework §8)`);
     const targets = writeTargets(parsed);
     for (const target of targets.writes) bashTarget({ file: target, kind: 'write', role }, ctx, decision);
@@ -488,7 +507,8 @@ function isNewResource(program, args) {
  * @param {Decision} decision
  */
 function forbidden({ assignments, argv }, { role, ctx }, decision) {
-  const [program = '', ...args] = argv;
+  const [word = '', ...args] = argv;
+  const program = programName(word);
   const lefthook = [...assignments, ...(program === 'export' ? args : [])].find((word) => /^LEFTHOOK(?:_\w+)?=/.test(word));
   if (lefthook !== undefined) decision.deny.push(`${lefthook}: git-hooks overslaan is verboden (AGENTS.md)`);
   if ([...assignments, ...(program === 'export' ? args : [])].some((word) => /^CI=/.test(word)))
@@ -496,7 +516,7 @@ function forbidden({ assignments, argv }, { role, ctx }, decision) {
   if (program === 'git') decision.deny.push(...gitForbidden(args, { role, branch: ctx.branch }));
   if (program === 'gh') decision.deny.push(...ghForbidden(args));
   if (role !== 'hoofdsessie' && isNewResource(program, args))
-    decision.deny.push('pnpm new:resource: alleen de hoofdsessie (ADR 0016, OV-4); wat hij schrijft, ziet het rolhek niet');
+    decision.deny.push('pnpm new:resource: alleen de hoofdsessie (ADR 0047 punt 6); wat hij schrijft, ziet het rolhek niet');
   if (role !== 'hoofdsessie' &&
     ((program === 'pnpm' && args.includes('pr:label-gate')) ||
       (program === 'node' && args.some((arg) => /(?:^|\/)scripts\/kit\/pr-gate-label\.mjs$/.test(arg)))))
@@ -517,10 +537,10 @@ export function gitForbidden(args, { role, branch }) {
   if (subcommand === 'commit' && commitSkipsHooks(rest)) found.push('git commit -n slaat de hooks over: verboden');
   if (subcommand === 'config' && setsHooksPath(rest)) found.push('core.hooksPath zetten is verboden');
   if (config.some((setting) => TRUSTED_CONFIG.test(setting)) || movesTrustedBase(subcommand, rest))
-    found.push('de vertrouwde basis (origin/main en remote origin) verander je alleen met git fetch (ADR 0027)');
+    found.push('de vertrouwde basis (origin/main en remote origin) verander je alleen met git fetch (ADR 0046)');
   if (subcommand === 'push' && pushesMain(rest, branch)) found.push('push naar main is verboden; open een PR');
   if (subcommand === 'push' && forcePushes(rest)) found.push('force-push is verboden, ook voor de hoofdsessie (WS-04)');
-  if (subcommand === 'branch' && deletesMain(rest)) found.push('git branch -d/-D/--delete van main is verboden (ADR 0030)');
+  if (subcommand === 'branch' && deletesMain(rest)) found.push('git branch -d/-D/--delete van main is verboden (ADR 0046 punt 26)');
   if (role === 'hoofdsessie') return found;
   if (subcommand === 'push' || subcommand === 'merge' || subcommand === 'rebase')
     found.push(`subagent: git ${subcommand} doet de hoofdsessie`);
@@ -572,7 +592,7 @@ function clusterFlags(cluster) {
   return { hooks: false, takesNext: false };
 }
 
-// De hooks lezen besluiten, autoRunner en gateMarker uit de lokale ref origin/main (ADR 0027). Een eigen commit of een andere
+// De hooks lezen besluiten, autoRunner en gateMarker uit de lokale ref origin/main (ADR 0046). Een eigen commit of een andere
 // remote onder die naam zou bevoegdheid geven die nooit is toegekend; de CI-guard leest main bij GitHub en blijft de grens.
 const TRUSTED_CONFIG = /^(?:remote\.origin\.|url\.)/i;
 const TRUSTED_NAME = /^(?:refs\/(?:heads|tags)\/)?origin\/(?:main|HEAD)$/;

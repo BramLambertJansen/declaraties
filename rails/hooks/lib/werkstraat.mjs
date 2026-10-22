@@ -1,4 +1,4 @@
-// De werkstraat-hooks uit framework §8 (ADR 0011), behalve het rolhek: na elke bewerking, bij stoppen, "groen vóór klaar"
+// De werkstraat-hooks uit framework §8 (ADR 0045), behalve het rolhek: na elke bewerking, bij stoppen, "groen vóór klaar"
 // voor de developer, de stopcontrole van tester en reviewer, en de feiten bij de start van een sessie. Puur: elk commando
 // gaat via `deps.run`, zodat test/hooks/werkstraat.test.ts elke beslissing zonder echte pnpm of git bewijst.
 // Nooit database. Netwerk alleen voor de fetch van session-start (harde timeout, nooit om credentials vragen); de rest is

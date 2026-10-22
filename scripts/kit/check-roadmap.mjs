@@ -3,7 +3,7 @@
 // bewijsvorm die `pnpm docs:status` schrijft (spec taakmandaat-vervolg, B2). Het vergelijkt met het punt waar de branch van
 // origin/main afsplitste, niet met de kop van main. Is origin/main niet te lezen, dan faalt de check: onleesbaar telt als fout
 // (zoals check:migrations).
-// Heeft de head-roadmap een kop `## Nu`, dan gelden ook de structuurregels van ADR 0029 (`structuurMeldingen`).
+// Heeft de head-roadmap een kop `## Nu`, dan gelden ook de structuurregels van ADR 0046 (`structuurMeldingen`).
 import { execFileSync } from 'node:child_process';
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
@@ -273,7 +273,7 @@ function aanleidingMeldingen({ items, regels, secties }, basisTekst, bestanden) 
 }
 
 /**
- * Structuurregels (ADR 0029): alleen actief als de head-roadmap `## Nu` heeft; verdwijnt die kop, dan is dat een fout.
+ * Structuurregels (ADR 0046): alleen actief als de head-roadmap `## Nu` heeft; verdwijnt die kop, dan is dat een fout.
  * @param {{ basis: Bron, head: Head }} bronnen
  * @returns {Violation[]}
  */
@@ -282,7 +282,7 @@ function structuurMeldingen({ basis, head }) {
   const basisTekst = basis.lees(ROADMAP);
   if (!NU.test(tekst))
     return NU.test(basisTekst ?? '')
-      ? [{ key: 'roadmap:structuur', message: `${ROADMAP}: structuur verwijderd; de kop ## Nu ontbreekt (ADR 0029)` }]
+      ? [{ key: 'roadmap:structuur', message: `${ROADMAP}: structuur verwijderd; de kop ## Nu ontbreekt (ADR 0046)` }]
       : [];
   const regels = tekst.split('\n');
   const roadmap = { items: leesItems(tekst), regels, secties: sectiePerRegel(regels) };
@@ -290,7 +290,7 @@ function structuurMeldingen({ basis, head }) {
   return [
     ...VEREISTE_KOPPEN.filter((naam) => !koppen.has(naam)).map((naam) => ({
       key: `roadmap:kop:${naam}`,
-      message: `${ROADMAP}: vereiste kop ## ${naam} ontbreekt (ADR 0029)`,
+      message: `${ROADMAP}: vereiste kop ## ${naam} ontbreekt (ADR 0046)`,
     })),
     ...sectieMeldingen(roadmap),
     ...regels.flatMap((regel, index) =>

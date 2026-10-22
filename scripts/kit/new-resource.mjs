@@ -1,11 +1,13 @@
-// pnpm new:resource <naam> (ADR 0016): een resource volgens het gouden pad, in twee fasen (OV-2).
+// pnpm new:resource <naam> (ADR 0047; OV-n hieronder is 0016 OV-n): een resource volgens het gouden pad, in twee fasen (OV-2).
 //  - Zonder docs/specs/<naam>.md: alleen het spec-skelet (status voorstel). Bij status voorstel: weigeren.
 //  - Bij een goedgekeurde spec (met --rollen): werkstraat-stap 2 (framework §8, OV-1b): contract, handlers die 501 geven,
 //    migratie met het tabelpatroon (docs/reviews/2026-10-10-tabelpatroon.md), branded ID, queries, scherm, route, menu-item
 //    en teksten. Geen tests: die schrijft de tester.
 // Bestaande tests (permissions.test.ts, de menutest) schrijft hij niet: hij drukt de exacte wijziging af en de hoofdsessie
 // zet die met Edit en noemt ze met reden in de PR (OV-4). permissions.ts en app.ts schrijft hij wel: ze zijn
-// geen gate meer (ADR 0029 punt 18); het risico-overzicht van de diff-guard meldt een nieuwe permissie of route. Bestaat een doel al, dan schrijft hij niets (OV-5).
+// geen gate meer (ADR 0046 punt 32); het risico-overzicht van de diff-guard meldt een nieuwe permissie of route. Bestaat een doel al, dan schrijft hij niets (OV-5).
+// test/security/resources.ts (spec security-suite, PR 4) schrijft hij evenmin: hij drukt de declaratie af (routeClassificatie en
+// resources, samples als INVULLEN) en de tester neemt die over en vult de samples.
 // Templates in scripts/kit/templates/; check:new-resource bewijst dat de uitvoer gate:fast haalt (OV-7).
 import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
@@ -29,7 +31,7 @@ export class NewResourceError extends Error {}
  * @typedef {{ naam: string, Naam: string, naamCamel: string, tabel: string, NAAM: string }} Namen
  * @typedef {{ pad: string, inhoud: string, nieuw: boolean }} Bestand
  * @typedef {{ pad: string, zoek: string, vervang: string }} GateWijziging
- * @typedef {{ fase: 'skelet' | 'bouw', bestanden: Bestand[], gates: GateWijziging[] }} Plan
+ * @typedef {{ fase: 'skelet' | 'bouw', bestanden: Bestand[], gates: GateWijziging[], declaratie: GateWijziging[] }} Plan
  * @typedef {{ rollen?: readonly string[] | undefined, nu?: Date }} Opties
  */
 
@@ -258,7 +260,7 @@ function nav(root, n) {
 }
 
 /**
- * permissions.ts en app.ts, die het script zelf schrijft (ADR 0029 punt 18).
+ * permissions.ts en app.ts, die het script zelf schrijft (ADR 0046 punt 32).
  * @param {string} root
  * @param {Namen} n
  * @param {readonly string[]} rollen
@@ -321,6 +323,49 @@ function menuTest(root, n, rollen) {
     return rol !== undefined && rollen.includes(rol) ? `.toStrictEqual([${String(lijst)}, '${n.naam}'])` : geheel;
   });
   return nieuw === tekst ? {} : { [pad]: nieuw };
+}
+
+const RESOURCES = 'test/security/resources.ts';
+// De routes uit scripts/kit/templates/contract.ts.tmpl, met de actie die de suite erbij verwacht.
+const ACTIES = [
+  { methode: 'GET', achter: '', actie: 'list' },
+  { methode: 'POST', achter: '', actie: 'create' },
+  { methode: 'PATCH', achter: '/:id', actie: 'update' },
+  { methode: 'DELETE', achter: '/:id', actie: 'delete' },
+];
+
+/**
+ * De declaratie voor de securitysuite (spec security-suite, "Wat niet generiek kan"): één regel per route in
+ * routeClassificatie en één regel in resources. Elke structuur is een aparte inhoud ten opzichte van het origineel, zodat elke
+ * wijziging los op het huidige bestand past. Leeg als het bestand er niet is.
+ * @param {string} root
+ * @param {Namen} n
+ * @returns {Record<string, string>[]} per wijziging: pad → nieuwe inhoud
+ */
+function declaratieInhoud(root, n) {
+  const tekst = leesAls(root, RESOURCES);
+  if (tekst === null) return [];
+  const routes = ACTIES.map(
+    ({ methode, achter, actie }) =>
+      `\n  '${methode} /${n.naam}${achter}': { scope: 'eigenaar', resource: '${n.tabel}', actie: '${actie}' },`,
+  ).join('');
+  const regel = [
+    `\n  // ${n.naam} (pnpm new:resource): de tester vult de samples in (INVULLEN), de suite is rood tot dan.`,
+    `\n  ${n.tabel}: {`,
+    `\n    tabel: 'public.${n.tabel}',`,
+    '\n    sample: {',
+    '\n      create: {\n        // INVULLEN: geldige velden voor de create-route\n      },',
+    '\n      spoof: {\n        // INVULLEN: een andere, unieke geldige create-input\n      },',
+    '\n      update: {\n        // INVULLEN: geldige velden voor de update-route\n      },',
+    '\n    },',
+    `\n    lijst: 'GET /${n.naam}',`,
+    '\n  },',
+  ].join('');
+  const bron = bestand(tekst, RESOURCES);
+  return [
+    { [RESOURCES]: voegIn(bron, { anker: '\n};', tot: 'export const resources' }, routes) },
+    { [RESOURCES]: voegIn(bron, { anker: '\n};', tot: 'export const probeRouteClassificatie' }, regel) },
+  ];
 }
 
 /**
@@ -391,6 +436,7 @@ export function bestandsplan(n, versie) {
       'src/api/app.ts',
     ],
     gates: ['src/shared/permissions.test.ts', 'src/web/routes.test.tsx'],
+    declaratie: [RESOURCES],
   };
 }
 
@@ -442,6 +488,7 @@ export async function plan(root, naam, opties = {}) {
       fase: huidig,
       bestanden: [{ pad: `docs/specs/${naam}.md`, inhoud: vul('spec.md.tmpl', n), nieuw: true }],
       gates: [],
+      declaratie: [],
     };
   }
   const rollen = parseRollen(opties.rollen?.join(','));
@@ -459,7 +506,12 @@ export async function plan(root, naam, opties = {}) {
       hunk(pad, lees(root, pad), await opgemaakt(root, pad, inhoud)),
     ),
   );
-  return { fase: huidig, bestanden, gates };
+  const declaratie = await Promise.all(
+    declaratieInhoud(root, n)
+      .flatMap(Object.entries)
+      .map(async ([pad, inhoud]) => hunk(pad, lees(root, pad), await opgemaakt(root, pad, inhoud))),
+  );
+  return { fase: huidig, bestanden, gates, declaratie };
 }
 
 /**
@@ -517,7 +569,17 @@ function verslag(p, proef) {
   const regels = [kop, ...p.bestanden.map(({ pad, nieuw }) => `  ${nieuw ? 'nieuw   ' : 'gewijzigd'} ${pad}`)];
   if (p.fase === 'skelet')
     return [...regels, '', 'Vul de spec in; de eigenaar zet hem op goedgekeurd. Draai daarna opnieuw met --rollen.'];
-  const gates = p.gates.flatMap(({ pad, zoek, vervang }) => ['', `--- ${pad}`, 'vervang:', zoek, 'door:', vervang]);
+  /** @param {GateWijziging} w */
+  const blok = ({ pad, zoek, vervang }) => ['', `--- ${pad}`, 'vervang:', zoek, 'door:', vervang];
+  const gates = p.gates.flatMap(blok);
+  const declaratie =
+    p.declaratie.length === 0
+      ? []
+      : [
+          '',
+          'Securitysuite: de tester zet deze declaratie met Edit en vult de samples in (INVULLEN):',
+          ...p.declaratie.flatMap(blok),
+        ];
   return [
     ...regels,
     ...(!proef && p.bestanden.some(({ pad }) => pad.startsWith('src/web/routes/'))
@@ -526,6 +588,7 @@ function verslag(p, proef) {
     '',
     'Bestaande tests: zet deze wijzigingen met Edit en noem ze met reden in de PR:',
     ...gates,
+    ...declaratie,
     '',
     'Daarna: pnpm db:generate (runner) en pnpm gate:fast. De tester schrijft de tests (framework §8); de handlers geven 501 tot dan.',
   ];

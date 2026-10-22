@@ -1,6 +1,6 @@
 # 0013 — Uitnodigen en MFA in Better Auth
 
-Status: geaccepteerd (2026-10-09) — voorgesteld door de agent bij roadmap stuk 2 (PR 4b); keuzes voor de reset-flow, de naam bij
+Status: vervangen door 0043
 uitnodigen en de wachtwoordlengte door de eigenaar (spec `docs/specs/accountbeheer.md`); geaccepteerd door de eigenaar ("alles akkoord").
 
 ## Context

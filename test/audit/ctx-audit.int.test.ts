@@ -13,7 +13,7 @@ import { required } from '../auth/harness.ts';
 
 // Een app registreert een eigen auditactie zonder src/core te wijzigen (spec audit-log AC-30, zoals voor foutcodes in
 // .claude/rules/core.md), en een route die daarna faalt of foute details meegeeft laat niets achter (AC-29, AC-31).
-// Echte database via de testkit (`pnpm test:db`, ADR 0009); alles draait terug.
+// Echte database via de testkit (`pnpm test:db`, ADR 0044); alles draait terug.
 // Staat in test/ en niet naast de core-code: de lintregel rails/process-env staat process.env in src/ niet toe.
 const pool = createPool(required('MIGRATOR_DATABASE_URL'));
 afterAll(async () => {

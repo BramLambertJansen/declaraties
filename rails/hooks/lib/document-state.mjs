@@ -1,4 +1,4 @@
-// Een status is afgeleid. Alleen de inhoud buiten die ene regel krijgt een digest (ADR 0027).
+// Een status is afgeleid. Alleen de inhoud buiten die ene regel krijgt een digest (ADR 0046).
 import { createHash } from 'node:crypto';
 
 const SPEC_STATES = new Set(['voorstel', 'goedgekeurd', 'gebouwd', 'vervallen']);
@@ -75,7 +75,7 @@ export function changeStatus(file, text, target) {
 }
 
 /**
- * ADR 0031 besluit 4: achter een nieuwe of gewijzigde ADR-statuswaarde alleen `(JJJJ-MM-DD)`, `#<nr>` en `[NNNN](NNNN-<slug>.md)`
+ * ADR 0045 punt 22: achter een nieuwe of gewijzigde ADR-statuswaarde alleen `(JJJJ-MM-DD)`, `#<nr>` en `[NNNN](NNNN-<slug>.md)`
  * naar een bestaand ADR, gescheiden door `, ` of ` — `. Een regel gelijk aan main en een spec-regel vallen erbuiten.
  * @param {string} nieuweRegel @param {string | null} oudeRegel
  * @param {readonly string[]} bestaandeAdrBestanden bestandsnamen in `docs/adr/` op HEAD, zoals `0017-diff-guard.md`
@@ -90,7 +90,7 @@ export function statusregelOvertreding(nieuweRegel, oudeRegel, bestaandeAdrBesta
   const fout = delen.find((deel) => !toegestaanDeel(deel, bestaandeAdrBestanden));
   return fout === undefined
     ? null
-    : `statusregel: "${fout}" mag niet achter de statuswaarde; alleen (JJJJ-MM-DD), #<nr> en [NNNN](NNNN-<slug>.md) naar een bestaand ADR (ADR 0031 besluit 4)`;
+    : `statusregel: "${fout}" mag niet achter de statuswaarde; alleen (JJJJ-MM-DD), #<nr> en [NNNN](NNNN-<slug>.md) naar een bestaand ADR (ADR 0045 punt 22)`;
 }
 
 /** @param {string} deel @param {readonly string[]} bestaandeAdrBestanden */
@@ -107,6 +107,43 @@ function bestaandeDatum(deel) {
   const [jaar, maand, dag] = [datum[1], datum[2], datum[3]].map(Number);
   const tijd = new Date(Date.UTC(jaar ?? 0, (maand ?? 0) - 1, dag ?? 0));
   return tijd.getUTCFullYear() === jaar && tijd.getUTCMonth() + 1 === maand && tijd.getUTCDate() === dag;
+}
+
+const VOORSTEL = new Set(['voorstel', 'voorgesteld']);
+
+/** De melding bij A4 (ADR 0046 punt 2), gedeeld door guard en rolhek. */
+export const A4_MELDING =
+  'de tekst of status van een geaccepteerd, vervallen of vervangen ADR wijzigt niet en gaat niet terug naar voorgesteld (A4, ADR 0046 punt 2); schrijf een nieuw ADR dat het vervangt (`vervangen door NNNN`)';
+
+/**
+ * Hoe een document zonder record mag veranderen (ADR 0046 punt 1, 2 en 5). Puur; `voor`/`na` zijn de volledige teksten.
+ * - `vrij`: geen eigenaarbesluit (voorstel, of niets wezenlijks gewijzigd);
+ * - `a4`: een ADR met een eigenaarstatus wijzigt van inhoud of gaat terug naar voorgesteld;
+ * - `gebouwd`: alleen met bouwbewijs;
+ * - `besluit`: een eigenaarstatus die de merge van de eigenaar beslist (`nieuw`: een nieuw document of vanuit een voorstel);
+ * - `geweigerd`: een andere overgang (bijv. vervallen terug naar goedgekeurd); alleen met een record.
+ * @param {string} file @param {string | null} voor @param {string} na
+ * @returns {{ uitslag: 'vrij' | 'a4' | 'gebouwd' | 'besluit' | 'geweigerd', nieuw: boolean }}
+ */
+export function beslisOvergang(file, voor, na) {
+  const oud = voor === null ? null : documentInfo(file, voor);
+  const nieuwInfo = documentInfo(file, na);
+  const uit = (/** @type {'vrij' | 'a4' | 'gebouwd' | 'besluit' | 'geweigerd'} */ uitslag, nieuw = false) => ({ uitslag, nieuw });
+  if (oud?.kind === 'adr' && oud.status !== 'voorgesteld' &&
+    (nieuwInfo === null || oud.digest !== nieuwInfo.digest || nieuwInfo.status === 'voorgesteld'))
+    return uit('a4');
+  if (nieuwInfo === null || (voor !== null && oud === null)) return uit('geweigerd');
+  if (VOORSTEL.has(nieuwInfo.status) || (oud?.status === nieuwInfo.status && oud.digest === nieuwInfo.digest)) return uit('vrij');
+  if (nieuwInfo.status === 'gebouwd') return uit('gebouwd');
+  if (oud === null || VOORSTEL.has(oud.status)) return uit('besluit', true);
+  return toegestaanZonderRecord(oud.status, nieuwInfo.status, nieuwInfo.kind) ? uit('besluit') : uit('geweigerd');
+}
+
+/** ADR geaccepteerd → vervangen/vervallen; spec goedgekeurd/gebouwd → vervallen; inhoud van een goedgekeurde spec. @param {string} van @param {string} naar @param {string} kind */
+function toegestaanZonderRecord(van, naar, kind) {
+  if (kind === 'adr') return van === 'geaccepteerd' && (naar === 'vervallen' || /^vervangen door \d{4}$/.test(naar));
+  if (naar === 'vervallen') return van === 'goedgekeurd' || van === 'gebouwd';
+  return van === 'goedgekeurd' && naar === 'goedgekeurd';
 }
 
 /** @param {string} text */

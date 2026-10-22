@@ -2,12 +2,13 @@ import { createHmac } from 'node:crypto';
 import { z } from 'zod';
 import { buildApp } from '../../src/api/app.ts';
 import { createServices } from '../../src/api/services.ts';
+import { createLoginPolicy } from '../../src/api/login-policy.ts';
 import { invitationMail } from '../../src/api/mail/invitation.ts';
 import { authGateway, createAuth } from '../../src/core/api/auth/index.ts';
 import { createPool, createWithUser } from '../../src/core/api/db/testing.ts';
 import { createSmtpMailer } from '../../src/core/api/mail/smtp.ts';
 
-// Testopzet voor de auth-integratietests (runner, ADR 0009): echte database als auth_service, echte SMTP naar Mailpit.
+// Testopzet voor de auth-integratietests (runner, ADR 0044): echte database als auth_service, echte SMTP naar Mailpit.
 export function required(name: string): string {
   const value = process.env[name];
   if (value === undefined || value === '') throw new Error(`${name} ontbreekt: draai via pnpm test:db`);
@@ -18,6 +19,8 @@ export const APP_ORIGIN = required('APP_ORIGIN');
 
 export function createTestApp() {
   const sendMail = createSmtpMailer(required('SMTP_URL'), 'no-reply@template.test');
+  const pool = createPool(required('DATABASE_URL'));
+  const withUser = createWithUser(pool);
   const auth = createAuth({
     origin: APP_ORIGIN,
     secret: required('AUTH_SECRET'),
@@ -27,9 +30,8 @@ export function createTestApp() {
     // Spec eigen-account: de algemene `sendMail` van AuthConfig (de vier mails van de e-mailwijziging). Als spread, zodat
     // dit ook compileert voordat de developer de optie toevoegt; daarna is het gewoon de optie.
     ...{ sendMail },
+    loginRequiresMfa: createLoginPolicy(withUser),
   });
-  const pool = createPool(required('DATABASE_URL'));
-  const withUser = createWithUser(pool);
   const services = createServices(auth);
   return {
     auth,
@@ -47,7 +49,7 @@ function nextIp(): string {
   return `10.${String(process.pid % 250)}.${String(Math.floor(ipCounter / 250))}.${String(ipCounter % 250)}`;
 }
 
-// Een browser met cookies, die de CSRF-headers stuurt zoals de SPA (ADR 0007).
+// Een browser met cookies, die de CSRF-headers stuurt zoals de SPA (ADR 0041).
 export class Browser {
   readonly cookies = new Map<string, string>();
   private readonly app: App;

@@ -1,6 +1,6 @@
 # 0001 — Stack en architectuur
 
-Status: geaccepteerd (2026-10-09). Mappenindeling aangevuld door [ADR 0008](0008-grens-core-en-app.md) (`src/core`).
+Status: vervangen door 0039
 
 ## Context
 

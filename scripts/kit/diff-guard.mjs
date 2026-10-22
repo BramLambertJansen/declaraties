@@ -1,4 +1,4 @@
-// Diff-guard (framework §10, ADR 0011 punt 9, ADR 0017): raakt een PR een gate-pad, een bewaakte sleutel in een JSON-bestand
+// Diff-guard (framework §10, ADR 0045 punt 15–19): raakt een PR een gate-pad, een bewaakte sleutel in een JSON-bestand
 // (`package.json` → `scripts`) of een bestaande test, dan is hij alleen groen met het label `gate-wijziging` én als de laatste
 // beslissende review van een goedkeurder (niet de auteur) APPROVED is op exact de head-SHA. Is de auteur zelf goedkeurder, dan
 // kan geen onafhankelijke goedkeuring bestaan: uitslag `overgang`, groen met waarschuwing (OV-2), tot de agent als App pusht.
@@ -167,7 +167,7 @@ function uitslagVan(pr, config) {
     return {
       uitslag: 'overgang',
       redenen: [
-        `${pr.auteur} is auteur én goedkeurder: een onafhankelijke goedkeuring kan niet (ADR 0017, OV-2); lees de geraakte paden hieronder`,
+        `${pr.auteur} is auteur én goedkeurder: een onafhankelijke goedkeuring kan niet (ADR 0045 punt 17); lees de geraakte paden hieronder`,
       ],
       geraakt: g,
     };
@@ -433,7 +433,7 @@ function risicoTekst(risico) {
 }
 
 const OVERGANG_UITLEG =
-  'Overgang (ADR 0017, OV-2): de auteur is zelf goedkeurder. Label `gate-wijziging` en review worden in deze fase niet gevraagd en niet gecontroleerd. Lees de geraakte paden hieronder; de eigenaar merget zelf.';
+  'Overgang (ADR 0045 punt 17): de auteur is zelf goedkeurder. Label `gate-wijziging` en review worden in deze fase niet gevraagd en niet gecontroleerd. Lees de geraakte paden hieronder; de eigenaar merget zelf.';
 
 /** @param {Oordeel} oordeel */
 export function samenvatting(oordeel) {

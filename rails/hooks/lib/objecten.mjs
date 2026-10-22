@@ -1,4 +1,4 @@
-// Gecontroleerd lezen uit git (ADR 0033): git controleert de hash van een object niet bij gewoon lezen, en `.git/objects` is voor
+// Gecontroleerd lezen uit git (ADR 0045): git controleert de hash van een object niet bij gewoon lezen, en `.git/objects` is voor
 // de sandbox schrijfbaar. Wie een bestand uit de vertrouwde basis leest, hasht daarom zelf de commit, elke tree op het pad en de blob.
 // Zelfde werkwijze als .claude/hooks/laden.mjs (de stub moet zelfstandig blijven en kan deze module niet importeren).
 import { execFileSync } from 'node:child_process';
@@ -66,7 +66,7 @@ export function vertrouwdeCommit(root, sha) {
   }
 }
 
-/** De anker-SHA die de stub-lader doorgeeft (ADR 0033 punt 1), of null buiten een hook (tests, scripts). */
+/** De anker-SHA die de stub-lader doorgeeft (ADR 0045 punt 3), of null buiten een hook (tests, scripts). */
 export function anker() {
   const waarde = process.env['RAILS_ANKER'];
   return waarde === undefined || waarde === '' ? null : waarde;

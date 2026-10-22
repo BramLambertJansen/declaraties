@@ -5,7 +5,7 @@ import { unsafeCast } from '../../shared/unsafe-cast.ts';
 import { authGateway, type Auth } from './auth.ts';
 import { createAuthOptions } from './options.ts';
 
-// ADR 0026: een geblokkeerd account heeft geen sessie (authGateway.getSession) en krijgt er geen nieuwe (session.create.before).
+// ADR 0043: een geblokkeerd account heeft geen sessie (authGateway.getSession) en krijgt er geen nieuwe (session.create.before).
 const USER_ID = '0192f0a0-0000-7000-8000-000000000001';
 const NOW = Date.parse('2026-10-12T12:00:00Z');
 

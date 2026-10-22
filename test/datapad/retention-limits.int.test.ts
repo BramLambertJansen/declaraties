@@ -7,7 +7,7 @@ import { required } from '../auth/harness.ts';
 // De termijnen in app.retention zijn gelijk aan de constanten in src/core/shared/limits.ts (spec achtergrondtaken, jobs/AC-9):
 // één bron in TypeScript, de database bewijst de gelijkheid. De rij voor better_auth."rateLimit" volgt met deel D
 // (AC-35, AC-41). Leest als app_definer, de enige rol met select op app.retention, in een transactie die terugdraait
-// (`pnpm test:db`, ADR 0009).
+// (`pnpm test:db`, ADR 0044).
 const pool = new pg.Pool({ connectionString: required('MIGRATOR_DATABASE_URL'), max: 1 });
 let client: pg.PoolClient;
 beforeEach(async () => {

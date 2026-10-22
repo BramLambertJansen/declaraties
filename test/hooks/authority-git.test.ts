@@ -133,7 +133,7 @@ describe('taakmandaat tegen echte git-objecten', () => {
 
   test('het echte rolhek gebruikt de gates uit main bij een lokaal weggehaalde core-bescherming', () => {
     const { root } = fixture();
-    // Een pad uit altijdVragen: in de template-repo staat de onderhoudsmodus aan (ADR 0033), waarin scripts/** alleen een melding is.
+    // Een pad uit altijdVragen: in de template-repo staat de onderhoudsmodus aan (ADR 0045), waarin scripts/** alleen een melding is.
     write(root, '.claude/gates.json', CONFIG.replaceAll('".github/**",', ''));
     const payload = {
       cwd: root,
@@ -214,7 +214,7 @@ describe('taakmandaat tegen echte git-objecten', () => {
       agent_type: 'developer',
       tool_input: { ...call.tool_input, file_path: `${link}/../example.tsx` },
     };
-    // ADR 0029 punt 9: src/core is geen voorReview-pad meer, dus geen deny; het mandaat geldt niet voor het alias.
+    // ADR 0046 punt 28: src/core is geen voorReview-pad meer, dus geen deny; het mandaat geldt niet voor het alias.
     expect(decide(alias, ctx).context).not.toContainEqual(expect.stringContaining('Taakmandaat:'));
     expect(decide(alias, ctx).allow).toBeUndefined();
   });
@@ -273,10 +273,15 @@ describe('taakmandaat tegen echte git-objecten', () => {
     expect(() => check(context)).toThrow();
   });
 
-  test('de CI-check weigert inhoudswijziging onder een ongewijzigde goedgekeurd-status', () => {
+  // GEWIJZIGD (ADR 0046 punt 7): inhoud van een goedgekeurde spec wijzigen mag in een besluit-PR zonder code; het record
+  // (--path-mandaat) vervalt daardoor. Code onder dat mandaat in dezelfde PR blijft geweigerd tot er een nieuw record is.
+  test('de CI-check laat inhoudswijziging van een goedgekeurde spec toe zonder code; met code onder het vervallen mandaat faalt hij', () => {
     const context = fixture();
     approve(context.root);
     write(context.root, SPEC, readFileSync(path.join(context.root, SPEC), 'utf8') + '\nNieuw gedrag.\n');
+    commit(context.root);
+    expect(check(context)).toContain('gecontroleerd');
+    write(context.root, SOURCE, 'export const version = 2;\n');
     commit(context.root);
     expect(() => check(context)).toThrow();
   });

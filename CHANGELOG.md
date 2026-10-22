@@ -6,12 +6,23 @@ Hier staan wijzigingen die van belang zijn bij het gebruiken of bijwerken van de
 
 ### Toegevoegd
 
+- Laatste volledig geslaagde login in de accountlijst en afzonderlijk deactiveren/activeren naast blokkeren/deblokkeren
+  (ADR 0052). Beide maatregelen behouden gegevens, trekken toegang direct in en zijn onafhankelijk omkeerbaar.
+  Herstel maakt oude sessies en MFA-challenges niet opnieuw geldig; de laatste bruikbare beheerder blijft beschermd.
+
+- Generieke securitysuite (spec `docs/specs/security-suite.md`): `test/security/` controleert elke route uit het register (rechten per rol, foutvorm) en elke owner-tabel uit `test/security/resources.ts` (A-tegen-B, spoof), en `db/tests/security.sql` legt C1–C3 vast voor elke tabel en policy; draait in `pnpm test:db`. `pnpm new:resource` drukt voortaan de declaratie voor `test/security/resources.ts` af, met de samples als `INVULLEN` (`scripts/kit/new-resource.mjs`). Bij een update: declareer elke eigen route en owner-tabel in `test/security/resources.ts`, anders is `pnpm test:db` rood.
 - Op het inlogscherm kan de gebruiker het wachtwoord tonen en weer afschermen met een toegankelijke toggle. De ingevoerde waarde blijft behouden; na opnieuw laden is het veld weer afgeschermd (`src/web/features/login/login-page.tsx`, `docs/login-password-visibility.md`).
 - Bewaarcatalogus `app.retention` met `app.retention_cutoff()` (migratie `20261019120000_retention.sql`): elke tabel in `public` en `app` krijgt een termijn, een invariant bewaakt dat. Verlopen regels in `app.audit_log` (ouder dan 1 jaar) en `app.rate_limits` mogen door `app_definer` worden verwijderd; update en truncate op de audit log blijven geweigerd. Bij een update: een nieuwe eigen tabel heeft een rij in `app.retention` nodig.
 - `pnpm new:resource` registreert voortaan de nieuwe tabel in de bewaarcatalogus `app.retention` (migratie-template); de feature-lane laat die rij en de tijdelijke FORCE-toggle toe (de laatste toggle moet `force` zijn). Bij een update: bestaande eigen migraties van nieuwe tabellen hebben een rij in `app.retention` nodig (zie `scripts/kit/templates/migratie.sql.tmpl`).
 
+### Gewijzigd
+
+- Unittests draaien parallel per bestand en Vitest gebruikt hooguit vier workers (`vitest.config.ts`); de integratietests (`int`) blijven serieel. Bij een update: eigen unittests (`src/**/*.test.ts`) mogen geen gedeelde state hebben (vaste poorten, vaste paden, de echte database); zie `docs/operations/testuitvoering.md`.
+- Beslisroute (ADR 0038): de merge door de eigenaar is de acceptatie. Architect en hoofdsessie schrijven de eigenaarstatus in het voorstel; `check-document-status` laat zonder record en zonder web-flow een besluit-PR met meerdere ADR's en specs toe, en guard en rolhek weigeren een ADR met eigenaarstatus terug naar `voorgesteld` of met nieuwe inhoud (`rails/hooks/lib/document-state.mjs`, `scripts/kit/lane.mjs`).
+
 ### Opgelost
 
+- Vite bijgewerkt van 8.3.2 naar 8.3.3 voor GHSA-587h-7wmj-h5pm, GHSA-698v-4r3x-3vcv en GHSA-r825-w8mm-5pxw. De exacte versie staat in `package.json`; `pnpm-lock.yaml` legt de bijbehorende dependencyboom vast.
 - Directe authenticatieroutes weigeren nu ook geblokkeerde accounts en sessies ouder dan zeven dagen. Sessie-opvragingen geven dan geen gegevens terug en de browsercookie wordt gewist, ook als het opruimen van de sessierijen faalt. Geldige sessies en opnieuw inloggen blijven werken (`src/core/api/auth/hooks.ts`, `test/auth/session-policy.int.test.ts`).
 - Verbindingsverlies tijdens een API-handler stopt de request gecontroleerd in plaats van het hele proces. Geblokkeerde accounts blijven geblokkeerd als sessie-opruiming faalt; uitnodigingsmail volgt pas na commit en een half auth-account wordt na rollback opgeruimd (`src/core/api/db/with-user.ts`, `src/core/api/http/route-effects.ts`, `src/core/api/auth/invitations.ts`).
 - Gelijktijdig hetzelfde account blokkeren of deblokkeren schrijft slechts één auditregel per statusovergang (migratie `20261019070000_account_audit_idempotency.sql`).
@@ -93,6 +104,10 @@ Hier staan wijzigingen die van belang zijn bij het gebruiken of bijwerken van de
 - Een leeswijzer maakt onderscheid tussen gebruiksdocumentatie, ontwikkelafspraken en agentinstructies.
 
 ### Bij een update
+
+Account-lifecycle vereist de nieuwe migratie vóór de nieuwe API-code. Bestaande accounts krijgen geen verzonnen
+loginhistorie: de lijst toont "Onbekend" tot de volgende volledig geslaagde login. Zie
+[de spec](docs/specs/accountstatus-en-laatste-login.md) voor gedrag en tests.
 
 De template heeft nog geen releaseversies. Controleer bij een update de gewijzigde migraties, architectuurbesluiten en instellingen. Een volledige upgradecontrole staat op de roadmap.
 

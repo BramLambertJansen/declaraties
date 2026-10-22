@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import { describe, expect, test } from 'vitest';
 import { decide, loadConfig } from '../../rails/hooks/lib/rolhek.mjs';
 
-// ADR 0030 punt 8: het opruimen na de merge gebruikt alleen deze gitvormen. Karakteriseringstests van bestaand rolhekgedrag; het weigeren van `git branch -D main` is nieuw gedrag (ADR 0030).
+// ADR 0046: het opruimen na de merge gebruikt alleen deze gitvormen. Karakteriseringstests van bestaand rolhekgedrag; het weigeren van `git branch -D main` is nieuw gedrag (ADR 0046).
 const ROOT = '/repo';
 const config = loadConfig(readFileSync('.claude/gates.json', 'utf8'));
 

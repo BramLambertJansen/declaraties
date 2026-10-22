@@ -69,7 +69,7 @@ test('een ADR- of specstatus buiten de woordenlijst, en een goedgekeurde spec zo
   ]);
 });
 
-// ADR 0029 punt 9: de spiegel is nu `ask` (Edit-regels) = `voorReview` in .claude/gates.json; CODEOWNERS = gates + jsonGates.
+// ADR 0046 punt 28: de spiegel is nu `ask` (Edit-regels) = `voorReview` in .claude/gates.json; CODEOWNERS = gates + jsonGates.
 test('`ask` en `voorReview` lopen uit elkaar (tests en specs staan niet in `ask`)', async () => {
   const root = repo({
     '.claude/gates.json': JSON.stringify({

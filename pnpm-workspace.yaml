@@ -16,5 +16,5 @@ strictDepBuilds: true
 # lefthook: geen postinstall; scripts/bootstrap.sh draait `lefthook install` zelf.
 allowBuilds:
   lefthook: false
-# node_modules zonder symlinks buiten de repo: de runner mount alleen de repo (ADR 0009).
+# node_modules zonder symlinks buiten de repo: de runner mount alleen de repo (ADR 0044).
 enableGlobalVirtualStore: false

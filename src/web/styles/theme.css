@@ -1,4 +1,4 @@
-/* De semantische laag van deze app (framework §7, ADR 0008): overschrijf hier de standaard uit
+/* De semantische laag van deze app (framework §7, ADR 0040): overschrijf hier de standaard uit
    src/core/web/styles/semantic.css, bijvoorbeeld --primary of --radius. Alleen semantische tokens; de contrasttest
    leest ook dit bestand. */
 :root {

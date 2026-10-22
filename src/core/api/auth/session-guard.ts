@@ -17,7 +17,7 @@ export async function dropRejectedSession(ctx: HookContext, now: number): Promis
   deleteSessionCookie(ctx);
   try {
     const adapter = ctx.context.internalAdapter;
-    if (reason === 'blocked') await adapter.deleteUserSessions(found.user.id);
+    if (reason === 'blocked' || reason === 'deactivated') await adapter.deleteUserSessions(found.user.id);
     else await adapter.deleteSession(found.session.token);
   } catch {
     // Een fout bij opruimen mag de eerder vastgestelde weigering niet veranderen in een bruikbare sessie.

@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import { expect, test } from 'vitest';
 import { gates } from '../../scripts/kit/gates.mjs';
 
-// Het gate-register is de enige gate-tabel (framework §4, ADR 0011): gate:fast draait precies de snelle gates.
+// Het gate-register is de enige gate-tabel (framework §4, ADR 0045): gate:fast draait precies de snelle gates.
 const pkg: unknown = JSON.parse(readFileSync('package.json', 'utf8'));
 const scripts: Record<string, unknown> =
   typeof pkg === 'object' && pkg !== null && 'scripts' in pkg && typeof pkg.scripts === 'object' && pkg.scripts !== null

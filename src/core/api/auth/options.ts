@@ -1,9 +1,9 @@
 import type { BetterAuthOptions } from 'better-auth';
-import { APIError } from 'better-auth/api';
 import { twoFactor } from 'better-auth/plugins/two-factor';
 import type { Pool } from 'pg';
 import type { SendMail } from '../mail/smtp.ts';
 import { createHooks } from './hooks.ts';
+import { createAccountLifecycle, type AccountLifecycle } from './account-lifecycle.ts';
 import { createMailing, type Mailing } from './mailing.ts';
 import {
   EMAIL_CHANGE_TTL_SECONDS,
@@ -33,6 +33,7 @@ export interface AuthConfig {
   readonly sendMail?: SendMail | undefined;
   // Naam in die mails; zonder de hostnaam van de origin (core kent de naam van de app niet).
   readonly appName?: string | undefined;
+  readonly loginRequiresMfa?: ((userId: string) => Promise<boolean>) | undefined;
 }
 
 const NO_TRUSTED_IP_HEADER = 'x-template-geen-ip-header';
@@ -40,7 +41,7 @@ const NO_TRUSTED_IP_HEADER = 'x-template-geen-ip-header';
 export const AUTH_BASE_PATH = '/api/auth';
 export const INVITATION_PATH = '/uitnodiging';
 
-// Publiek dicht (ADR 0013): 404 in de router; interne aanroepen via auth.api.* blijven werken. disabledPaths vergelijkt
+// Publiek dicht (ADR 0043): 404 in de router; interne aanroepen via auth.api.* blijven werken. disabledPaths vergelijkt
 // letterlijk, dus een pad met een parameter staat apart in DISABLED_PREFIXES (afgevangen in authHandler).
 export const DISABLED_PREFIXES: readonly string[] = ['/reset-password/'];
 export const DISABLED_PATHS: readonly string[] = [
@@ -58,7 +59,7 @@ export const DISABLED_PATHS: readonly string[] = [
   '/revoke-session',
   '/revoke-sessions',
   '/revoke-other-sessions',
-  // Account zelf verwijderen blijft buiten scope (spec eigen-account); verwijderen is een admin-actie (ADR 0022).
+  // Account zelf verwijderen blijft buiten scope (spec eigen-account); verwijderen is een admin-actie (ADR 0051).
   '/delete-user',
   // Anoniem; zou elk account met emailVerified = false (elke uitnodiging) mailen zodra sendVerificationEmail bestaat.
   '/send-verification-email',
@@ -66,28 +67,12 @@ export const DISABLED_PATHS: readonly string[] = [
   '/verify-email',
 ];
 
-// __Host-: alleen Secure, Path=/ en zonder Domain (ADR 0003). Better Auth zou zelf __Secure- ervoor zetten; daarom
+// __Host-: alleen Secure, Path=/ en zonder Domain (ADR 0041). Better Auth zou zelf __Secure- ervoor zetten; daarom
 // staat useSecureCookies uit en zet elke cookie zelf `secure: true`.
 const HOST_COOKIES = ['session_token', 'session_data', 'dont_remember', 'two_factor'] as const;
 const cookies = Object.fromEntries(
   HOST_COOKIES.map((name) => [name, { name: `__Host-auth.${name}`, attributes: { secure: true, path: '/' } }]),
 );
-
-interface SessionHookContext {
-  readonly context: {
-    readonly internalAdapter: { findUserById: (userId: string) => Promise<object | null> };
-  };
-}
-
-// ADR 0026: een geblokkeerd account krijgt geen nieuwe sessie via een endpoint (inloggen, TOTP, dev-login): een nette
-// 403 in plaats van een 500. Zonder context (scripts) laat de hook door; de garantie zit in authGateway.getSession.
-async function refuseBlockedUser(session: { readonly userId: string }, ctx: SessionHookContext | null | undefined) {
-  if (ctx === null || ctx === undefined) return;
-  const user = await ctx.context.internalAdapter.findUserById(session.userId);
-  if (user !== null && 'blockedAt' in user && user.blockedAt !== null && user.blockedAt !== undefined) {
-    throw new APIError('FORBIDDEN', { code: 'ACCOUNT_BLOCKED', message: 'Account is geblokkeerd' });
-  }
-}
 
 interface AccountHookContext {
   readonly context: {
@@ -95,9 +80,12 @@ interface AccountHookContext {
   };
 }
 
-// ADR 0026: blockedAt = tijdstip van blokkeren. Alleen app.set_account_blocked schrijft de kolom; Better Auth leest hem mee.
+// ADR 0043: blockedAt = tijdstip van blokkeren. Alleen app.set_account_blocked schrijft de kolom; Better Auth leest hem mee.
 const USER_FIELDS = {
   blockedAt: { type: 'date', required: false, input: false, fieldName: 'blocked_at' },
+  deactivatedAt: { type: 'date', required: false, input: false, fieldName: 'deactivated_at' },
+  lastLoginAt: { type: 'date', required: false, input: false, returned: false, fieldName: 'last_login_at' },
+  sessionVersion: { type: 'number', required: true, input: false, defaultValue: 0, fieldName: 'session_version' },
 } as const;
 
 // Stap 1 gaat naar het oude adres, stap 2 naar het nieuwe (user.email is dan het nieuwe adres); de links wijzen naar de SPA.
@@ -130,9 +118,10 @@ interface ChangeConfirmation {
   readonly token: string;
 }
 
-// database: een pg-pool als auth_service (search_path better_auth, alleen DML op dat schema, ADR 0010).
+// database: een pg-pool als auth_service (search_path better_auth, alleen DML op dat schema, ADR 0041).
 export function createAuthOptions(config: AuthConfig, database: Pool) {
   const mailing = createMailing(config);
+  const lifecycle = createAccountLifecycle(database, config.loginRequiresMfa);
   return {
     ...emailChangeOptions(mailing),
     baseURL: config.origin,
@@ -147,7 +136,7 @@ export function createAuthOptions(config: AuthConfig, database: Pool) {
       maxPasswordLength: MAX_PASSWORD_LENGTH,
       resetPasswordTokenExpiresIn: INVITATION_TTL_SECONDS,
       revokeSessionsOnPasswordReset: true,
-      // Uitnodigen gebruikt de reset-flow (ADR 0013): de mail gaat naar het scherm in de SPA, niet naar de GET-redirect.
+      // Uitnodigen gebruikt de reset-flow (ADR 0043): de mail gaat naar het scherm in de SPA, niet naar de GET-redirect.
       sendResetPassword: async ({ user, token }) => {
         const url = `${config.origin}${INVITATION_PATH}?token=${encodeURIComponent(token)}`;
         await config.sendInvitation({ email: user.email, name: user.name, url });
@@ -159,6 +148,13 @@ export function createAuthOptions(config: AuthConfig, database: Pool) {
       freshAge: SESSION_FRESH_SECONDS,
       cookieCache: { enabled: false },
       additionalFields: {
+        sessionVersion: {
+          type: 'number',
+          input: false,
+          required: true,
+          defaultValue: 0,
+          fieldName: 'session_version',
+        },
         sessionStrength: {
           type: 'string',
           input: false,
@@ -174,22 +170,36 @@ export function createAuthOptions(config: AuthConfig, database: Pool) {
       cookies,
       ipAddress: { ipAddressHeaders: [config.clientIpHeader ?? NO_TRUSTED_IP_HEADER] },
     },
-    hooks: createHooks(mailing),
-    databaseHooks: {
-      session: { create: { before: refuseBlockedUser } },
-      // Een uitgenodigde gebruiker heeft geen credential-account; dat ontstaat pas als hij via de link zijn wachtwoord
-      // instelt. Dat bewijst het e-mailadres (ADR 0013).
-      account: {
-        create: {
-          // Buiten een request (seed, admin:create) geeft Better Auth 1.7.7 hier `undefined` mee, ondanks het type `| null`.
-          after: async (account, ctx: AccountHookContext | null | undefined) => {
-            if (account.providerId !== 'credential' || ctx === null || ctx === undefined) return;
-            await ctx.context.internalAdapter.updateUser(account.userId, { emailVerified: true });
-          },
-        },
-      },
-    },
+    hooks: createHooks(mailing, Date.now, lifecycle),
+    databaseHooks: createDatabaseHooks(lifecycle),
     plugins: [twoFactor({ issuer: new URL(config.origin).hostname })],
     telemetry: { enabled: false },
   } satisfies BetterAuthOptions;
+}
+
+function createDatabaseHooks(lifecycle: AccountLifecycle) {
+  return {
+    session: { create: { before: lifecycle.beforeSession } },
+    verification: {
+      create: {
+        before: async (verification, ctx) => {
+          if (!ctx) return;
+          await lifecycle.bindChallenge(verification, ctx.context, (data) =>
+            ctx.context.internalAdapter.createVerificationValue(data),
+          );
+        },
+      },
+    },
+    // Een uitgenodigde gebruiker heeft geen credential-account; dat ontstaat pas als hij via de link zijn wachtwoord
+    // instelt. Dat bewijst het e-mailadres (ADR 0043).
+    account: {
+      create: {
+        // Buiten een request (seed, admin:create) geeft Better Auth 1.7.7 hier `undefined` mee, ondanks het type `| null`.
+        after: async (account, ctx: AccountHookContext | null | undefined) => {
+          if (account.providerId !== 'credential' || ctx === null || ctx === undefined) return;
+          await ctx.context.internalAdapter.updateUser(account.userId, { emailVerified: true });
+        },
+      },
+    },
+  } satisfies NonNullable<BetterAuthOptions['databaseHooks']>;
 }

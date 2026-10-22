@@ -1,6 +1,6 @@
 # 0014 — Dev-login en de view `app.accounts`
 
-Status: geaccepteerd (2026-10-10) — voorgesteld door de agent bij PR 7a, geaccepteerd door de eigenaar; de keuzes (dev-route als uitzondering in framework §3, kolom-allowlist op
+Status: vervangen door 0043
 `better_auth` voor `app_definer`, querybouwer in `src/api`) zijn van de eigenaar (spec `docs/specs/accountbeheer.md`, 2026-10-09).
 
 ## Context

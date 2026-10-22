@@ -98,7 +98,7 @@ Bij installatie-, proxy- of sandboxproblemen volg je de [probleemdiagnose voor d
 | `scripts/doctor.sh` | De lokale ontwikkelomgeving |
 | `node scripts/kit/feiten.mjs` | Beschikbare controles, registraties en documentstatussen |
 
-Database- en schermtests draaien in de runner-container. Zie [ADR 0009](docs/adr/0009-tests-buiten-de-sandbox.md) voor de inrichting en [de DoD](docs/dod.md) voor controles per wijziging. GitHub Actions voert controles uit; branchbescherming wordt apart ingesteld.
+Database- en schermtests draaien in de runner-container. Zie [ADR 0044](docs/adr/0044-tests-buiten-de-sandbox.md) voor de inrichting en [de DoD](docs/dod.md) voor controles per wijziging. GitHub Actions voert controles uit; branchbescherming wordt apart ingesteld.
 
 De [agentdoorloop](docs/operations/agent-doorloop.md) beschrijft taakgebonden core-ontwikkeling, statusadministratie op basis van eigenaarbesluiten en automatische runner/CI-opvolging. De agent verwerkt het bewijs; de eigenaar beslist inhoudelijk en merget.
 
@@ -115,6 +115,6 @@ claude
 
 Geef Claude Code de opdracht: `Volg nieuwe-app.md`.
 
-De eigenaar moet **Settings → Template repository** inschakelen voordat **Use this template** beschikbaar is. Een nieuwe app krijgt daarna eenmalig een merge-commit die de geschiedenis koppelt. Latere updates gaan met `git merge template/main` op een branch en via een PR. Merge zulke updates met **Create a merge commit**, zodat de koppeling behouden blijft; zie [ADR 0006](docs/adr/0006-app-uit-template.md).
+De eigenaar moet **Settings → Template repository** inschakelen voordat **Use this template** beschikbaar is. Een nieuwe app krijgt daarna eenmalig een merge-commit die de geschiedenis koppelt. Latere updates gaan met `git merge template/main` op een branch en via een PR. Merge zulke updates met **Create a merge commit**, zodat de koppeling behouden blijft; zie [ADR 0040](docs/adr/0040-template-app-en-grens-core-app.md).
 
 App-eigen architectuurbesluiten nummeren vanaf `0100`. De keuze voor hosting en een beheerde database volgt bij de eerste release.
