@@ -2,6 +2,7 @@ import { createHmac } from 'node:crypto';
 import { z } from 'zod';
 import { buildApp } from '../../src/api/app.ts';
 import { createServices } from '../../src/api/services.ts';
+import { createLoginPolicy } from '../../src/api/login-policy.ts';
 import { invitationMail } from '../../src/api/mail/invitation.ts';
 import { authGateway, createAuth } from '../../src/core/api/auth/index.ts';
 import { createPool, createWithUser } from '../../src/core/api/db/testing.ts';
@@ -18,6 +19,8 @@ export const APP_ORIGIN = required('APP_ORIGIN');
 
 export function createTestApp() {
   const sendMail = createSmtpMailer(required('SMTP_URL'), 'no-reply@template.test');
+  const pool = createPool(required('DATABASE_URL'));
+  const withUser = createWithUser(pool);
   const auth = createAuth({
     origin: APP_ORIGIN,
     secret: required('AUTH_SECRET'),
@@ -27,9 +30,8 @@ export function createTestApp() {
     // Spec eigen-account: de algemene `sendMail` van AuthConfig (de vier mails van de e-mailwijziging). Als spread, zodat
     // dit ook compileert voordat de developer de optie toevoegt; daarna is het gewoon de optie.
     ...{ sendMail },
+    loginRequiresMfa: createLoginPolicy(withUser),
   });
-  const pool = createPool(required('DATABASE_URL'));
-  const withUser = createWithUser(pool);
   const services = createServices(auth);
   return {
     auth,

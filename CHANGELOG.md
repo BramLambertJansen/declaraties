@@ -6,6 +6,10 @@ Hier staan wijzigingen die van belang zijn bij het gebruiken of bijwerken van de
 
 ### Toegevoegd
 
+- Laatste volledig geslaagde login in de accountlijst en afzonderlijk deactiveren/activeren naast blokkeren/deblokkeren
+  (ADR 0052). Beide maatregelen behouden gegevens, trekken toegang direct in en zijn onafhankelijk omkeerbaar.
+  Herstel maakt oude sessies en MFA-challenges niet opnieuw geldig; de laatste bruikbare beheerder blijft beschermd.
+
 - Generieke securitysuite (spec `docs/specs/security-suite.md`): `test/security/` controleert elke route uit het register (rechten per rol, foutvorm) en elke owner-tabel uit `test/security/resources.ts` (A-tegen-B, spoof), en `db/tests/security.sql` legt C1–C3 vast voor elke tabel en policy; draait in `pnpm test:db`. `pnpm new:resource` drukt voortaan de declaratie voor `test/security/resources.ts` af, met de samples als `INVULLEN` (`scripts/kit/new-resource.mjs`). Bij een update: declareer elke eigen route en owner-tabel in `test/security/resources.ts`, anders is `pnpm test:db` rood.
 - Op het inlogscherm kan de gebruiker het wachtwoord tonen en weer afschermen met een toegankelijke toggle. De ingevoerde waarde blijft behouden; na opnieuw laden is het veld weer afgeschermd (`src/web/features/login/login-page.tsx`, `docs/login-password-visibility.md`).
 - Bewaarcatalogus `app.retention` met `app.retention_cutoff()` (migratie `20261019120000_retention.sql`): elke tabel in `public` en `app` krijgt een termijn, een invariant bewaakt dat. Verlopen regels in `app.audit_log` (ouder dan 1 jaar) en `app.rate_limits` mogen door `app_definer` worden verwijderd; update en truncate op de audit log blijven geweigerd. Bij een update: een nieuwe eigen tabel heeft een rij in `app.retention` nodig.
@@ -100,6 +104,10 @@ Hier staan wijzigingen die van belang zijn bij het gebruiken of bijwerken van de
 - Een leeswijzer maakt onderscheid tussen gebruiksdocumentatie, ontwikkelafspraken en agentinstructies.
 
 ### Bij een update
+
+Account-lifecycle vereist de nieuwe migratie vóór de nieuwe API-code. Bestaande accounts krijgen geen verzonnen
+loginhistorie: de lijst toont "Onbekend" tot de volgende volledig geslaagde login. Zie
+[de spec](docs/specs/accountstatus-en-laatste-login.md) voor gedrag en tests.
 
 De template heeft nog geen releaseversies. Controleer bij een update de gewijzigde migraties, architectuurbesluiten en instellingen. Een volledige upgradecontrole staat op de roadmap.
 

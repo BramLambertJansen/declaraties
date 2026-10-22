@@ -2,6 +2,7 @@ import { APIError, createAuthMiddleware, getSessionFromCtx } from 'better-auth/a
 import { z } from 'zod';
 import { SESSION_FRESH_SECONDS } from '../../shared/limits.ts';
 import type { Mailing } from './mailing.ts';
+import type { AccountLifecycle } from './account-lifecycle.ts';
 import { dropRejectedSession, SESSION_RECOVERY_PATHS } from './session-guard.ts';
 
 // Hooks rond Better Auth (ADR 0043, ADR 0051; spec eigen-account). Elke regel heeft een integratietest
@@ -77,7 +78,7 @@ async function answerTakenAddress(ctx: HookContext, facts: SessionFacts, mailing
   return ctx.json({ status: true });
 }
 
-export function createHooks(mailing: Mailing | null, now: () => number = Date.now) {
+export function createHooks(mailing: Mailing | null, now: () => number = Date.now, lifecycle?: AccountLifecycle) {
   const before = createAuthMiddleware(async (ctx) => {
     if (ctx.path !== '/get-session' && !SESSION_RECOVERY_PATHS.has(ctx.path)) {
       if (await dropRejectedSession(ctx, now())) {
@@ -85,6 +86,7 @@ export function createHooks(mailing: Mailing | null, now: () => number = Date.no
         throw new APIError('UNAUTHORIZED', { code: 'UNAUTHENTICATED', message: 'Geen sessie' }, ctx.responseHeaders);
       }
     }
+    await lifecycle?.beforeEndpoint(ctx);
     if (ctx.path === '/two-factor/verify-totp' && isTrustDeviceRequested(ctx.body)) {
       fail('BAD_REQUEST', 'TRUST_DEVICE_DISABLED', 'trustDevice staat uit (ADR 0043)');
     }
@@ -110,12 +112,12 @@ export function createHooks(mailing: Mailing | null, now: () => number = Date.no
     if (ctx.path === '/get-session' && (await dropRejectedSession(ctx, now()))) return ctx.json(null);
     if (ctx.path === '/change-password') return afterChangePassword(ctx);
     const session = ctx.context.newSession?.session;
-    if (session === undefined) return;
-    if (ctx.path === '/two-factor/verify-totp') {
+    if (session !== undefined && ctx.path === '/two-factor/verify-totp') {
       await ctx.context.internalAdapter.updateSession(session.token, { sessionStrength: 'mfa' });
-    } else if (ctx.path === '/two-factor/disable') {
+    } else if (session !== undefined && ctx.path === '/two-factor/disable') {
       await ctx.context.internalAdapter.updateSession(session.token, { sessionStrength: 'password' });
     }
+    await lifecycle?.afterEndpoint(ctx, now());
   });
 
   return { before, after };

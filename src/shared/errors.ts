@@ -11,6 +11,7 @@ export const errors = defineErrorCodes([
   'OWN_ACCOUNT',
   'ACCOUNT_INVITED',
   'ACCOUNT_BLOCKED',
+  'ACCOUNT_DEACTIVATED',
   // Spec eigen-account.
   'WRONG_PASSWORD',
   'SESSION_NOT_FRESH',

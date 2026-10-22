@@ -1,4 +1,12 @@
-import { accountsListContract, blockContract, inviteContract, reinviteContract, unblockContract } from './accounts.ts';
+import {
+  accountsListContract,
+  activateContract,
+  blockContract,
+  deactivateContract,
+  inviteContract,
+  reinviteContract,
+  unblockContract,
+} from './accounts.ts';
 import {
   confirmEmailContract,
   meContract,
@@ -21,5 +29,7 @@ export const contracts = [
   reinviteContract,
   blockContract,
   unblockContract,
+  deactivateContract,
+  activateContract,
 ] as const;
 export type Contracts = typeof contracts;

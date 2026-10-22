@@ -59,3 +59,19 @@ export function useUnblock() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: accountKeys.all }),
   });
 }
+
+export function useDeactivate() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => api.call('POST /accounts/:id/deactivate', { id }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: accountKeys.all }),
+  });
+}
+
+export function useActivate() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => api.call('POST /accounts/:id/activate', { id }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: accountKeys.all }),
+  });
+}

@@ -181,6 +181,9 @@ test('de migraties in db/migrations zijn groen, en zonder `owner to app_definer`
     'db/migrations/20261013100000_audit_log.sql:139: app.set_account_blocked',
     'db/migrations/20261019070000_account_audit_idempotency.sql:3: app.set_account_blocked',
     'db/migrations/20261019120000_retention.sql:27: app.retention_cutoff',
+    'db/migrations/20261021120000_account_lifecycle.sql:14: app.user_roles_keep_one_admin',
+    'db/migrations/20261021120000_account_lifecycle.sql:36: app.set_account_blocked',
+    'db/migrations/20261021120000_account_lifecycle.sql:90: app.set_account_deactivated',
   ]);
 });
 
@@ -311,5 +314,6 @@ test('app.accounts in de echte migraties is groen, en zonder `owner to app_defin
   expect(viewRegels(zonderEigenaar).map((fout) => fout.split(' leest ')[0])).toStrictEqual([
     'db/migrations/20261009214212_accounts_view.sql:12: app.accounts',
     'db/migrations/20261012200000_account_blocking.sql:90: app.accounts',
+    'db/migrations/20261021120000_account_lifecycle.sql:148: app.accounts',
   ]);
 });

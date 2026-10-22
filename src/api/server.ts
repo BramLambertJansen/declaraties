@@ -11,6 +11,7 @@ import { APP_NAME } from '#shared/app.ts';
 import { buildApp } from './app.ts';
 import { invitationMail } from './mail/invitation.ts';
 import { createServices } from './services.ts';
+import { createLoginPolicy } from './login-policy.ts';
 
 // Readiness (GET /api/ready): een probe wacht hooguit 2 s; binnen 1 s krijgt de volgende probe dezelfde uitkomst.
 const READY_TIMEOUT_MS = 2000;
@@ -28,6 +29,7 @@ const auth = createAuth({
   // De mails van een e-mailwijziging (spec eigen-account).
   sendMail,
   appName: APP_NAME,
+  loginRequiresMfa: createLoginPolicy(withUser),
 });
 
 const gateway = authGateway(auth);

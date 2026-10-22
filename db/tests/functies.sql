@@ -13,6 +13,7 @@ insert into catalogus values
   ('app.is_mfa_admin()', 'client', null),
   ('app.assign_role(text, text)', 'client', null),
   ('app.set_account_blocked(text, boolean)', 'client', null),
+  ('app.set_account_deactivated(text, boolean)', 'client', null),
   ('app.consume_rate_limit(text, integer, integer)', 'client', 'actor uit app.current_user_id(); zonder actor 42501 (spec rate-limit)'),
   ('app.user_roles_keep_one_admin()', 'intern', 'triggerfunctie van public.user_roles'),
   -- Audit log (spec audit-log, AC-19).

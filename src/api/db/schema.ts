@@ -13,6 +13,9 @@ export const appAccounts = appSchema
     role: text('role'),
     status: text('status'),
     createdAt: timestamp('created_at', { withTimezone: true, mode: 'string' }),
+    lastLoginAt: timestamp('last_login_at', { withTimezone: true, mode: 'string' }),
+    deactivatedAt: timestamp('deactivated_at', { withTimezone: true, mode: 'string' }),
+    blockedAt: timestamp('blocked_at', { withTimezone: true, mode: 'string' }),
   })
   .existing();
 

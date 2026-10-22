@@ -196,6 +196,9 @@ Ankers: OWASP Top 10:2025, OWASP API Security Top 10, ASVS 5.0 niveau 1 (checkli
   (uitzondering: `public.schema_migrations`); schema `better_auth` heeft geen grants behalve aan `auth_service`, plus de kolom-allowlist van `app_definer` voor de view `app.accounts` (ADR 0043) en `update (blocked_at)` voor `app.set_account_blocked` (ADR 0043).
   Daarnaast gelden C1–C3 uit `db/tests/security.sql` voor elke tabel en policy: owner-tabellen breed gedetecteerd, het predicaat
   van de policies en een allowlist van grants per tabel en recht.
+  Account-lifecycle (ADR 0052) voegt voor `app_definer` alleen lezen van `last_login_at`, `deactivated_at` en
+  user-`session_version` toe, plus schrijven van de laatste twee. Een nieuwe blokkade of deactivatie verhoogt de
+  sessieversie; herstel herstelt geen oude sessies. Laatste login telt alleen na volledige vereiste authenticatie.
 - **FORCE RLS werkt alleen voor niet-superusers**: daarom is `app_migrator` eigenaar en geen superuser, lokaal én in productie.
   Datamigraties die alle rijen moeten zien, lopen via een gereviewde `security definer`-functie van `app_definer`; omdat FORCE RLS
   ook voor `app_definer` geldt, krijgt de tabel daarvoor een eigen policy `to app_definer` met pgTAP-test.

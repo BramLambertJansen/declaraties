@@ -40,9 +40,13 @@ insert into better_auth_allowlist values
   ('app_definer', 'SELECT', 'better_auth.user.createdAt'),
   ('app_definer', 'SELECT', 'better_auth.account.userId'),
   ('app_definer', 'SELECT', 'better_auth.account.providerId'),
-  -- ADR 0043: blokkeren; de enige kolom in better_auth die app_definer ook schrijft (app.set_account_blocked).
   ('app_definer', 'SELECT', 'better_auth.user.blocked_at'),
-  ('app_definer', 'UPDATE', 'better_auth.user.blocked_at');
+  ('app_definer', 'UPDATE', 'better_auth.user.blocked_at'),
+  ('app_definer', 'SELECT', 'better_auth.user.last_login_at'),
+  ('app_definer', 'SELECT', 'better_auth.user.deactivated_at'),
+  ('app_definer', 'SELECT', 'better_auth.user.session_version'),
+  ('app_definer', 'UPDATE', 'better_auth.user.deactivated_at'),
+  ('app_definer', 'UPDATE', 'better_auth.user.session_version');
 
 create function pg_temp.better_auth_open() returns setof text language sql stable as $$
   with grants as (

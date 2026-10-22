@@ -395,6 +395,8 @@ gebruikers met cursor-paginering, kent rollen toe en trekt ze in, blokkeert gebr
 - [x] `docs/gouden-pad.md` (≤ 1 pagina) met verwijzingen naar de bestanden van deze feature
 
 **3e. Gebruikersbeheer, gebouwd** (open: ST-02 onder Volgende)
+- [ ] Laatste geslaagde login en afzonderlijke deactivatie met herstel, naast blokkeren
+      (spec `accountstatus-en-laatste-login`, ADR 0052)
 - [x] Admin blokkeert en deblokkeert een gebruiker; blokkeren trekt alle sessies direct in (de laatste-admin-regel geldt ook hier)
       (spec `accountbeheer-uitbreiding` AC-11..14 en 22..24, ADR 0043, #117: `db/tests/account_blocking.sql`,
       `test/api/account-blocking.int.test.ts`, `e2e/account-blocking.spec.ts`, `src/core/api/auth/blocked.test.ts`)

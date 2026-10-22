@@ -48,6 +48,8 @@ export const routeClassificatie: Readonly<Record<string, RouteKlasse>> = {
   'POST /accounts/:id/reinvite': { scope: 'admin' },
   'POST /accounts/:id/block': { scope: 'admin' },
   'POST /accounts/:id/unblock': { scope: 'admin' },
+  'POST /accounts/:id/deactivate': { scope: 'admin' },
+  'POST /accounts/:id/activate': { scope: 'admin' },
 };
 
 // De probe-resource van de suite zelf (public.security_probes, opgebouwd uit scripts/kit/templates/migratie.sql.tmpl plus het
