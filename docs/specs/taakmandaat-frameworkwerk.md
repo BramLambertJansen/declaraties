@@ -9,7 +9,7 @@ namespace: task-mandate
 
 De eigenaar heeft deze uitbreiding en bewijsgebonden statusadministratie op 2026-10-13 in de opdracht goedgekeurd.
 Een developer kan afgebakend frameworkwerk doen; de hoofdsessie verzorgt statussen, documentatielabel en runnerbewijs.
-Kwaliteitschecks, inhoudelijke besluiten en eigenaarreview blijven verplicht. [ADR 0027](../adr/0027-taakmandaat-voor-frameworkwerk.md).
+Kwaliteitschecks, inhoudelijke besluiten en eigenaarreview blijven verplicht. [ADR 0046](../adr/0046-werkstraat-en-beslisroute.md).
 
 ## Rollen en wie wat ziet
 
