@@ -34,7 +34,7 @@ describe('GET /api/ready (readiness, framework §3)', () => {
   });
 });
 
-describe('requestId (ADR 0021)', () => {
+describe('requestId (ADR 0051)', () => {
   test('de server maakt hem zelf: een X-Request-Id van de client wordt genegeerd', async () => {
     const response = await request(createApp(), '/api/bestaat-niet', {
       headers: { 'X-Request-Id': 'door-de-client-gekozen' },

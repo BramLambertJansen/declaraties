@@ -5,7 +5,7 @@ import { required } from '../auth/harness.ts';
 
 // De grenzen in src/core/shared/limits.ts zijn gelijk aan de CHECK-waarden van app.audit_log (spec audit-log, "Raakt ook"
 // en .claude/rules/database.md): één bron in TypeScript, de database bewijst de grens. Draait als app_definer in een
-// transactie die terugdraait (`pnpm test:db`, ADR 0009).
+// transactie die terugdraait (`pnpm test:db`, ADR 0044).
 const pool = new pg.Pool({ connectionString: required('MIGRATOR_DATABASE_URL'), max: 1 });
 let client: pg.PoolClient;
 beforeEach(async () => {

@@ -156,7 +156,7 @@ export const reinviteRoute = defineRoute(reinviteContract, async ({ input, tx, s
   return null;
 });
 
-// Blokkeren (ADR 0026, besluit 7): de functie in de transactie van de admin (NOT_FOUND, OWN_ACCOUNT, ACCOUNT_INVITED en
+// Blokkeren (ADR 0043 punt 18): de functie in de transactie van de admin (NOT_FOUND, OWN_ACCOUNT, ACCOUNT_INVITED en
 // LAST_ADMIN komen als P0001 uit de database), sessies opruimen na commit. Een opruimfout draait de blokkade niet terug.
 export const blockRoute = defineRoute(blockContract, async ({ input, tx, services, afterCommit }) => {
   await tx.execute(sql`select app.set_account_blocked(${input.id}, true)`);

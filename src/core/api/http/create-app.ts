@@ -24,17 +24,17 @@ import { csrf } from './csrf.ts';
 import type { Readiness } from './readiness.ts';
 import { createRouteEffects } from './route-effects.ts';
 
-// Dev-login (spec accountbeheer, framework §3: limitatieve uitzondering, ADR 0014): logt echt in als het seed-account van de
+// Dev-login (spec accountbeheer, framework §3: limitatieve uitzondering, ADR 0043): logt echt in als het seed-account van de
 // rol en geeft de set-cookie-regels terug. Alleen meegeven bij APP_ENV=local; zonder bestaat /api/dev/login-as niet (404).
 export type DevLogin = (role: Role, headers: Headers) => Promise<readonly string[]>;
 
 interface BaseConfig<Services> {
-  // Exact de origin van de SPA (ADR 0007); zonder waarde weigert de CSRF-controle elke Origin-header.
+  // Exact de origin van de SPA (ADR 0041); zonder waarde weigert de CSRF-controle elke Origin-header.
   readonly appOrigin?: string;
   // Better Auth op /api/auth/* (framework §3: de enige routes buiten defineRoute) en de sessie per request.
   readonly auth?: AuthGateway;
   readonly withUser?: WithUser;
-  // Alleen routes uit defineRoute (ADR 0008); iets anders weigert createApp bij opstart.
+  // Alleen routes uit defineRoute (ADR 0040); iets anders weigert createApp bij opstart.
   readonly routes?: readonly RouteDef<Contract, Services>[];
   readonly devLogin?: DevLogin;
   // Foutcodes die naar buiten mogen; een onbekende code wordt INTERNAL_ERROR.
@@ -150,14 +150,14 @@ export function createApp<Services>(config: BaseConfig<Services> & { readonly se
     );
   }
   for (const route of routes) {
-    if (!isRouteDef(route)) throw new Error('createApp: alleen routes uit defineRoute (ADR 0008)');
+    if (!isRouteDef(route)) throw new Error('createApp: alleen routes uit defineRoute (ADR 0040)');
   }
   const fail = (c: Context, code: string) => c.json({ code, requestId: c.get('requestId') }, statusFor(code));
   const core: readonly string[] = coreErrorCodes;
   const isPublic = (code: string) => config.errors?.is(code) ?? core.includes(code);
 
   // De ID maakt de server altijd zelf (nooit uit X-Request-Id van de client): hij koppelt de request-log aan foutmeldingen
-  // en straks aan auditregels (ADR 0021), dus een client mag hem niet kiezen of een bestaande nadoen.
+  // en straks aan auditregels (ADR 0051), dus een client mag hem niet kiezen of een bestaande nadoen.
   const app = new Hono()
     .basePath('/api')
     .use(requestId({ headerName: '' }))

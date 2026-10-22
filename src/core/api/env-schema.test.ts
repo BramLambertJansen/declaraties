@@ -121,7 +121,7 @@ describe('API_HOST en SHUTDOWN_TIMEOUT_MS (draaien buiten pnpm dev)', () => {
   });
 });
 
-describe('readEnv (uitbreidingsplek voor de app, ADR 0008)', () => {
+describe('readEnv (uitbreidingsplek voor de app, ADR 0040)', () => {
   afterEach(() => {
     vi.unstubAllEnvs();
   });
@@ -139,7 +139,7 @@ describe('readEnv (uitbreidingsplek voor de app, ADR 0008)', () => {
   });
 });
 
-describe('WEB_DIR (productie-image, ADR 0019)', () => {
+describe('WEB_DIR (productie-image, ADR 0049)', () => {
   test('niet gezet of leeg: geen SPA uit de API-server', () => {
     expect(parseEnv(production).webDir).toBeUndefined();
     expect(parseEnv({ ...production, WEB_DIR: '' }).webDir).toBeUndefined();

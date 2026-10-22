@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { expect, test } from 'vitest';
 
-// De productie-image (ADR 0019) loopt niet achter op de rest van de toolchain: dezelfde pnpm als packageManager, dezelfde
+// De productie-image (ADR 0049) loopt niet achter op de rest van de toolchain: dezelfde pnpm als packageManager, dezelfde
 // Node als mise.toml, en dezelfde basisimage (op digest) als de runner in compose.yaml.
 const read = (file: string) => readFileSync(new URL(`../../${file}`, import.meta.url), 'utf8');
 const dockerfile = read('Dockerfile');

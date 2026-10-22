@@ -5,7 +5,7 @@ import path from 'node:path';
 import { expect, test } from 'vitest';
 import { docsViolations } from '../../scripts/kit/check-docs.mjs';
 
-// ADR 0029 punt 5: een mini-spec (`sjabloon: mini`) heeft vaste koppen en `check-docs` controleert het frontmatterveld.
+// ADR 0046 punt 13: een mini-spec (`sjabloon: mini`) heeft vaste koppen en `check-docs` controleert het frontmatterveld.
 // Sleutel: `docs:<spec>:sjabloon`. Het volledige sjabloon (`_template.md`) heeft het veld niet en blijft ongewijzigd.
 const KOPPEN = ['Doel', 'Rollen en wie wat ziet', 'Routes en foutcodes', 'Acceptatiecriteria', 'Hergebruik en UX'];
 

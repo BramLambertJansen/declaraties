@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Controleert de productie-image (ADR 0019) zonder database: start met APP_ENV=staging en geldige, niet-demo geheimen,
+# Controleert de productie-image (ADR 0049) zonder database: start met APP_ENV=staging en geldige, niet-demo geheimen,
 # daarna: niet als root, liveness 200, readiness 503 (geen database), SPA met CSP, API-fout als { code, requestId },
 # en na SIGTERM netjes gestopt (exitcode 0). Voor CI en de eigenaar; de agent gebruikt geen docker.
 # Gebruik: scripts/check-image.sh <image>

@@ -5,7 +5,7 @@ import path from 'node:path';
 import { expect, test } from 'vitest';
 import { docsViolations } from '../../scripts/kit/check-docs.mjs';
 
-// ADR 0033 punt 2 en 4 (contract B4): de Edit-regels in `permissions.ask` van .claude/settings.json zijn precies `altijdVragen`
+// ADR 0045 punt 8 en 9 (contract B4): de Edit-regels in `permissions.ask` van .claude/settings.json zijn precies `altijdVragen`
 // (ontbreekt die: precies `voorReview`, zoals voorheen), `altijdVragen` valt binnen `voorReview`, en `onderhoud` heeft precies de
 // vorm `{ "repository": "<owner>/<repo>" }`. De sleutels van de meldingen liggen niet vast; de tests zoeken op het pad en op de
 // naam van de sleutel (`altijdVragen`, `onderhoud`) in sleutel of tekst van de melding.
@@ -190,7 +190,7 @@ test('B4: de echte .claude/gates.json: onderhoud.repository is BramLambertJansen
   expect(lees('.claude/gates.json')['onderhoud']).toStrictEqual({ repository: 'BramLambertJansen/template' });
 });
 
-test('B4: de echte .claude/gates.json: altijdVragen is precies de lijst uit ADR 0033 punt 3', () => {
+test('B4: de echte .claude/gates.json: altijdVragen is precies de lijst uit ADR 0045 punt 9', () => {
   const altijdVragen = lees('.claude/gates.json')['altijdVragen'];
 
   expect(Array.isArray(altijdVragen) ? altijdVragen.map(String).sort() : altijdVragen).toStrictEqual(

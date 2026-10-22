@@ -11,7 +11,7 @@ const CLOSED = [
 import { AccountAlreadyActiveError, inviteUser, reinviteUser } from '../../src/core/api/auth/index.ts';
 import { APP_ORIGIN, Browser, createTestApp, latestMailTo, required, tokenFrom, totp, uniqueEmail } from './harness.ts';
 
-// Better Auth in de API (ADR 0003, 0010, 0013; spec accountbeheer). Draait via `pnpm test:db` tegen de echte database
+// Better Auth in de API (ADR 0041, 0043; spec accountbeheer). Draait via `pnpm test:db` tegen de echte database
 // (als auth_service) en Mailpit.
 // Testwachtwoorden uit herhaling: geldig voor de lengte-eis, zonder te lijken op een echt geheim (Betterleaks).
 const PASSWORD = 'ab-'.repeat(6);
@@ -62,7 +62,7 @@ describe('schema', () => {
   });
 });
 
-describe('publiek dicht (ADR 0013)', () => {
+describe('publiek dicht (ADR 0043)', () => {
   test.each(CLOSED)('$method $path geeft 404', async ({ method, path }) => {
     const browser = new Browser(app);
     const response =
@@ -177,7 +177,7 @@ describe('uitnodigen (spec accounts/AC-5, AC-6)', () => {
   });
 });
 
-describe('MFA en session_strength (framework §6, ADR 0013)', () => {
+describe('MFA en session_strength (framework §6, ADR 0043)', () => {
   async function enrolled() {
     const { email } = await invitedAndActivated('mfa');
     const browser = new Browser(app);

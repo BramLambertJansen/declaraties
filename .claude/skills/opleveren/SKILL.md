@@ -6,7 +6,7 @@ allowed-tools: Bash(node scripts/kit/feiten.mjs *), Bash(pnpm pr:verify *), Bash
 
 # Opleveren
 
-Pas na de reviewer (framework §8 stap 5). Zie ADR 0030 punt 1 en 8.
+Pas na de reviewer (framework §8 stap 5). Zie ADR 0046 punt 25 en 26.
 
 Feiten nu:
 
@@ -24,7 +24,7 @@ Feiten nu:
 
 ## Mergen
 
-Bij modus "eigenaar" reviewt en merget de eigenaar; de hoofdsessie merget nooit. Een agent-modus komt er pas met PR 2 van ADR 0030.
+Bij modus "eigenaar" reviewt en merget de eigenaar; de hoofdsessie merget nooit. Een agent-modus komt er pas als ADR 0046 punt 30 aanstaat.
 
 ## Opruimen
 

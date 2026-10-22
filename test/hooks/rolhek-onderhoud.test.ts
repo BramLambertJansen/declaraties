@@ -5,7 +5,7 @@ import path from 'node:path';
 import { afterEach, describe, expect, test } from 'vitest';
 import { decide, loadConfig } from '../../rails/hooks/lib/rolhek.mjs';
 
-// ADR 0033 punt 2 tot 4 (contract B1 tot en met B3): de modus `onderhoud` (alleen in de template-repo) behandelt `voorReview` voor
+// ADR 0045 punt 8 tot 9 (contract B1 tot en met B3): de modus `onderhoud` (alleen in de template-repo) behandelt `voorReview` voor
 // de hoofdsessie en de developer zoals de andere gate-paden, behalve de paden in `altijdVragen`. Al het andere blijft zoals het is.
 const ROOT = '/repo';
 const ROLHEK_SCRIPT = path.join(process.cwd(), 'rails/hooks/rolhek.mjs');

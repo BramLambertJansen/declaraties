@@ -1,12 +1,12 @@
-// check-docs (framework §10, ADR 0011), via de ratchet (scripts/kit/ratchet.mjs): proza mag niet wijzen naar iets dat
+// check-docs (framework §10, ADR 0045), via de ratchet (scripts/kit/ratchet.mjs): proza mag niet wijzen naar iets dat
 // niet bestaat, en de gespiegelde lijsten mogen niet uit elkaar lopen.
 //  1. Elk pad en elk `pnpm <script>` tussen backticks in AGENTS.md, CLAUDE.md en .claude/**/*.md bestaat
 //     (een kale naam of relatief pad telt als een bestand in git erop eindigt; `/route` is een URL, geen pad).
 //  2. Relatieve links in docs/**/*.md en README.md wijzen naar een bestaand bestand.
 //  3. ADR- en spec-statussen komen uit de vaste woordenlijst; een goedgekeurde of gebouwde spec heeft "Hergebruik en UX".
-//  4. CODEOWNERS noemt precies de gates en jsonGates uit .claude/gates.json (de bron, ADR 0011); `voorReview` valt daarbinnen,
+//  4. CODEOWNERS noemt precies de gates en jsonGates uit .claude/gates.json (de bron, ADR 0045); `voorReview` valt daarbinnen,
 //     `altijdVragen` valt binnen `voorReview`, en de Edit-regels in `ask` van .claude/settings.json zijn precies `altijdVragen`
-//     (zonder die lijst: `voorReview`; ADR 0029 punt 8 en 9, ADR 0033 punt 4). `onderhoud` heeft de vorm { repository }.
+//     (zonder die lijst: `voorReview`; ADR 0046 punt 27 en 28, ADR 0045 punt 9). `onderhoud` heeft de vorm { repository }.
 //  5. `schrijfrecht` van een rol overlapt niet met `gates` (WS-02), op de uitzonderingen in SCHRIJFRECHT_VRIJ na.
 //  6. Elk AC-id van een gebouwde spec heeft een testbestand met `<namespace>/AC-n`, of met het AC-id samen met de specnaam
 //     of de namespace (sleutel `docs:ac:<spec>:<AC-n>`).
@@ -201,7 +201,7 @@ function statusViolations(files, read) {
 const MINI_KOPPEN = ['Doel', 'Rollen en wie wat ziet', 'Routes en foutcodes', 'Acceptatiecriteria', 'Hergebruik en UX'];
 
 /**
- * ADR 0029 punt 5: `sjabloon: mini` is de marker van de mini-spec (`docs/specs/_mini.md`); die heeft vaste koppen.
+ * ADR 0046 punt 13: `sjabloon: mini` is de marker van de mini-spec (`docs/specs/_mini.md`); die heeft vaste koppen.
  * @param {string} file @param {string} text
  * @returns {Violation[]}
  */
@@ -291,7 +291,7 @@ function mirrorViolations(files, read) {
 }
 
 /**
- * `voorReview` ⊆ gates + jsonGates, `altijdVragen` ⊆ `voorReview`, Edit-regels in `ask` = `altijdVragen` (ADR 0033 punt 4).
+ * `voorReview` ⊆ gates + jsonGates, `altijdVragen` ⊆ `voorReview`, Edit-regels in `ask` = `altijdVragen` (ADR 0045 punt 9).
  * @param {string} text
  * @param {readonly string[]} askPaths
  * @returns {Violation[]}
@@ -335,7 +335,7 @@ function gedektDoor(path, lijst) {
 }
 
 /**
- * De Edit-regels in `ask` zijn precies `altijdVragen`, of `voorReview` zolang die ontbreekt (ADR 0033 punt 4, ADR 0029 punt 9).
+ * De Edit-regels in `ask` zijn precies `altijdVragen`, of `voorReview` zolang die ontbreekt (ADR 0045 punt 9, ADR 0046 punt 28).
  * @param {ReadonlySet<string>} bron @param {string} naam @param {ReadonlySet<string>} ask
  * @returns {Violation[]}
  */
@@ -356,7 +356,7 @@ function askViolations(bron, naam, ask) {
   ];
 }
 
-/** `onderhoud` is ontbrekend of precies `{ "repository": "<owner>/<repo>" }` (ADR 0033 punt 2); dezelfde vormcheck als het rolhek. @param {unknown} value @returns {Violation[]} */
+/** `onderhoud` is ontbrekend of precies `{ "repository": "<owner>/<repo>" }` (ADR 0045 punt 8); dezelfde vormcheck als het rolhek. @param {unknown} value @returns {Violation[]} */
 function onderhoudViolations(value) {
   try {
     onderhoudVan(value);
@@ -402,7 +402,7 @@ function gatesViolations(owners, text) {
 }
 
 /**
- * `werkmapNegeer` (ADR 0031 besluit 5): een lijst paden onder `.claude/`, zonder `..`, waarvan niets getrackt is.
+ * `werkmapNegeer` (ADR 0045 punt 23): een lijst paden onder `.claude/`, zonder `..`, waarvan niets getrackt is.
  * @param {readonly string[]} files
  * @param {string} text
  * @returns {Violation[]}

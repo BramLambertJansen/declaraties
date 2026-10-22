@@ -4,7 +4,7 @@ import { isDev } from '#core/web/lib/env.ts';
 import type { RouterContext } from '#web/lib/session.ts';
 
 // Wortel van de bestandsroutes (framework §5). ErrorBoundary en "niet gevonden" per route via de router (main.tsx).
-// Lokaal staat op elk scherm de dev-rolwisselaar (ADR 0014); in de productiebundel is src/web/dev leeg.
+// Lokaal staat op elk scherm de dev-rolwisselaar (ADR 0043); in de productiebundel is src/web/dev leeg.
 const DevRoleSwitcher = isDev
   ? lazy(() => import('#web/dev/role-switcher.tsx').then((module) => ({ default: module.DevRoleSwitcher })))
   : null;

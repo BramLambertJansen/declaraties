@@ -49,7 +49,7 @@ function RoutedComponentIndex() {
 // Catalogus van de basiskit (framework §7, spec design-system), ook in productie achter guard('design-system:read'). Elke
 // component met elke variant; de e2e-test draait axe op 375 en 1280 px, in licht en donker. De teksten zijn voorbeelden, geen
 // app-teksten. Alleen voorbeelddata en geen API-aanroepen: de chunk is statisch en voor iedereen te downloaden (AC-10).
-// Layout en providers worden via de echte app-compositie gedemonstreerd (ADR 0028); schermcomponenten hebben previews.
+// Layout en providers worden via de echte app-compositie gedemonstreerd (ADR 0048); schermcomponenten hebben previews.
 
 const voorbeeld = z.object({
   naam: z.string().min(1, 'Vul een naam in.'),

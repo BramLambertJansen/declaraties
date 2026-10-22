@@ -1,4 +1,4 @@
-// Foutcoderegister (framework §6: naar buiten alleen `{ code, requestId }`; ADR 0008). Core levert de basiscodes; een app
+// Foutcoderegister (framework §6: naar buiten alleen `{ code, requestId }`; ADR 0040). Core levert de basiscodes; een app
 // voegt eigen codes toe met defineErrorCodes in src/shared/errors.ts, zonder core te wijzigen.
 export const coreErrorCodes = [
   'INTERNAL_ERROR',

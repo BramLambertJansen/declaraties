@@ -17,7 +17,7 @@ export function checkActor(actor: { readonly userId: string; readonly sessionStr
   }
 }
 
-// Zonder requestId kan een auditregel niet aan de request-log gekoppeld worden (ADR 0021): weigeren vóór een verbinding.
+// Zonder requestId kan een auditregel niet aan de request-log gekoppeld worden (ADR 0051): weigeren vóór een verbinding.
 export function checkRequestId(requestId: string): void {
   if (requestId === '') throw new Error('withUser: lege requestId');
 }
@@ -35,7 +35,7 @@ export async function enterActor(client: PoolClient, actor: Actor, requestId: st
   if (rows[0]?.clean !== true) throw new LeakedConnectionError();
   await client.query('set local role app_authenticated');
   // is_local = true: de waarden verdwijnen bij commit of rollback, ook achter een pooler in transaction mode.
-  // app.request_id: de server-gegenereerde requestId voor de auditregels (ADR 0021); app.request_id() leest hem.
+  // app.request_id: de server-gegenereerde requestId voor de auditregels (ADR 0051); app.request_id() leest hem.
   await client.query(
     "select set_config('app.user_id', $1, true), set_config('app.session_strength', $2, true), set_config('app.request_id', $3, true)",
     [actor.userId, actor.sessionStrength, requestId],

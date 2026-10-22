@@ -2,7 +2,7 @@ import { z } from 'zod';
 import { MAX_PASSWORD_LENGTH, MIN_PASSWORD_LENGTH } from '#core/shared/limits.ts';
 import { MAX_EMAIL_LENGTH } from '../limits.ts';
 
-// Formulieren rond inloggen (spec accountbeheer). De server controleert opnieuw (Better Auth, ADR 0013); dezelfde grenzen
+// Formulieren rond inloggen (spec accountbeheer). De server controleert opnieuw (Better Auth, ADR 0043); dezelfde grenzen
 // uit limits.ts (test in auth.test.ts).
 export const loginInput = z
   .object({

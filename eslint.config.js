@@ -158,7 +158,7 @@ const railConfigs = [
     'hono',
     SRC,
     ['src/core/**'],
-    'Hono alleen in src/core: een route ontstaat via defineRoute(), de app via createApp() (ADR 0008).',
+    'Hono alleen in src/core: een route ontstaat via defineRoute(), de app via createApp() (ADR 0040).',
     [fromModule('/^(hono|@hono\\/[^/]+)(\\/|$)/')],
   ),
   restrict(
@@ -209,7 +209,7 @@ export default defineConfig(
     'playwright-report/',
     'test-results/',
     '.runner-output/',
-    // Worktrees van subagents: eigen kopieën van de repo, met hun eigen lint (ADR 0016, gevolgen).
+    // Worktrees van subagents: eigen kopieën van de repo, met hun eigen lint (ADR 0047).
     '.claude/worktrees/',
     'test/rails/fixtures/',
     // Gegenereerd door @tanstack/router-plugin (vite.config.ts); niet bewerken.

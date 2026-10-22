@@ -1,4 +1,4 @@
-// check:new-resource (ADR 0016, OV-7): code uit `pnpm new:resource` haalt gate:fast. Kopieert de repo (git ls-files, ook
+// check:new-resource (ADR 0047 punt 9): code uit `pnpm new:resource` haalt gate:fast. Kopieert de repo (git ls-files, ook
 // nieuwe bestanden) naar een tijdelijke map met een link naar node_modules, draait daar beide fasen met een vaste naam, zet
 // de gate-wijzigingen zoals de hoofdsessie dat met Edit doet, en draait gate:fast. Duurt minuten: eigen job in CI, niet in
 // gate:fast. gate:slow hoort er bewust niet bij: check-policies faalt tot de tester de pgTAP-tests schrijft.

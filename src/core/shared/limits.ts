@@ -1,7 +1,7 @@
-// Harde grenzen van de template (framework §6). App-grenzen staan in src/shared/limits.ts (ADR 0008).
+// Harde grenzen van de template (framework §6). App-grenzen staan in src/shared/limits.ts (ADR 0040).
 export const MAX_BODY_BYTES = 100 * 1024;
 
-// Accounts en sessies (ADR 0003, ADR 0013, spec accountbeheer).
+// Accounts en sessies (ADR 0041, ADR 0043, spec accountbeheer).
 export const MIN_PASSWORD_LENGTH = 12;
 export const MAX_PASSWORD_LENGTH = 128;
 export const INVITATION_TTL_SECONDS = 7 * 24 * 60 * 60;
@@ -12,7 +12,7 @@ export const SESSION_FRESH_SECONDS = 10 * 60;
 // Geldigheid van de twee links van een e-mailwijziging (spec eigen-account, OV-5): stateless JWT's, dus kort.
 export const EMAIL_CHANGE_TTL_SECONDS = 60 * 60;
 
-// Audit log (ADR 0021, spec audit-log): dezelfde waarden als de CHECK's op `app.audit_log` (pgTAP test dat ze gelijk zijn).
+// Audit log (ADR 0051, spec audit-log): dezelfde waarden als de CHECK's op `app.audit_log` (pgTAP test dat ze gelijk zijn).
 export const MAX_AUDIT_DETAILS_BYTES = 2048;
 export const MAX_AUDIT_TARGET_ID_LENGTH = 128;
 

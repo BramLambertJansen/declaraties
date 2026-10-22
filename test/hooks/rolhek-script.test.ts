@@ -7,7 +7,7 @@ import { expect, test } from 'vitest';
 // Het echte hook-script (rails/hooks/rolhek.mjs) met echte stdin-payloads: exitcode en uitvoer zoals Claude Code ze leest.
 // Exit 2 blokkeert; een interne fout is ook exit 2 (faalt dicht, framework §8).
 const root = process.cwd();
-// De test hangt niet af van de echte origin: in de template-repo staat de onderhoudsmodus aan (ADR 0033 punt 2) en geeft een
+// De test hangt niet af van de echte origin: in de template-repo staat de onderhoudsmodus aan (ADR 0045 punt 8) en geeft een
 // voorReview-pad geen ask. Zo ziet het script de origin van een app, waar de modus uit staat.
 const APP_ORIGIN = {
   GIT_CONFIG_COUNT: '1',
@@ -69,7 +69,7 @@ test('gewoon commando: door, zonder uitvoer', () => {
   expect(run(bash('ls'))).toStrictEqual({ status: 0, stdout: '', stderr: '' });
 });
 
-// ADR 0016 (gevolgen): paden tellen vanaf de git-root van de sessie (een worktree), niet vanaf CLAUDE_PROJECT_DIR. Vanaf
+// ADR 0047 (gevolgen): paden tellen vanaf de git-root van de sessie (een worktree), niet vanaf CLAUDE_PROJECT_DIR. Vanaf
 // CLAUDE_PROJECT_DIR lag src/core/ van de worktree buiten de repo (of onder .claude/**) en klopte het oordeel niet.
 test('in een andere worktree: scripts/ van die worktree is een gate in voorReview (ask)', () => {
   const worktree = mkdtempSync(path.join(tmpdir(), 'rolhek-worktree-'));

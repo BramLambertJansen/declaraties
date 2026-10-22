@@ -2,7 +2,7 @@ import { describe, expect, test } from 'vitest';
 import { createApp } from './create-app.ts';
 import { parseErrorBody } from './error-body.test-helper.ts';
 
-// Testmatrix uit ADR 0007, rij voor rij, door de echte app heen. Er is geen POST-route: een toegestaan request
+// Testmatrix uit ADR 0041, rij voor rij, door de echte app heen. Er is geen POST-route: een toegestaan request
 // komt voorbij de CSRF-controle en krijgt 404, een geweigerd request krijgt 403 met CSRF_REJECTED.
 const APP_ORIGIN = 'http://localhost:5173';
 const app = createApp({ appOrigin: APP_ORIGIN });
@@ -62,7 +62,7 @@ const rows: Row[] = [
   { nr: 0, site: undefined, origin: `${APP_ORIGIN}/`, type: json, allowed: false },
 ];
 
-describe('CSRF-middleware (ADR 0007)', () => {
+describe('CSRF-middleware (ADR 0041)', () => {
   test.each(rows)('rij $nr: $method site=$site origin=$origin type=$type → toegestaan: $allowed', async (row) => {
     const response = await app.fetch(request(row));
 

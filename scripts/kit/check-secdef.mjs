@@ -12,7 +12,7 @@
 // (een do-blok, dynamische SQL) ook.
 //
 // Views (roadmap stuk 4): een view zonder `security_invoker = true` leest met de rechten van zijn eigenaar, net als een
-// security definer-functie (zoals app.accounts, ADR 0014). Zo'n view:
+// security definer-functie (zoals app.accounts, ADR 0043). Zo'n view:
 //  5. heeft een schemanaam en `security_barrier` (het filter gaat vóór filters van de aanroeper);
 //  6. noemt tabellen en functies alleen met schema (regel 2);
 //  7. filtert op de actor: de `where` roept een functie uit schema app aan (bijv. `(select app.is_mfa_admin())`);

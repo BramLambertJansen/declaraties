@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { expect, test } from 'vitest';
 
-// Het overzicht scripts/kit/meting.mjs (`pnpm meting`) als proces, met METING_DIR op een tijdelijke map (ADR 0029 punt 12).
+// Het overzicht scripts/kit/meting.mjs (`pnpm meting`) als proces, met METING_DIR op een tijdelijke map (ADR 0046).
 const root = process.cwd();
 
 type Regel = { t?: string; m?: string; e: string; s?: string; b?: string; k?: string; id?: string; tool?: string };

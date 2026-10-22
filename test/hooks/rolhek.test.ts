@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import { describe, expect, test } from 'vitest';
 import { decide, globMatch, loadConfig } from '../../rails/hooks/lib/rolhek.mjs';
 
-// Rolhek (framework §8, ADR 0011): per regel een echte payload met de verwachte beslissing, ook bekende omzeilingen.
+// Rolhek (framework §8, ADR 0045): per regel een echte payload met de verwachte beslissing, ook bekende omzeilingen.
 // De schijf is nagebootst: FILES zijn bestaande bestanden, COMMITTED staat in HEAD.
 const ROOT = '/repo';
 const config = loadConfig(readFileSync('.claude/gates.json', 'utf8'));
@@ -74,7 +74,7 @@ describe('bestanden: hoofdsessie', () => {
     { name: 'gegenereerd bestand', payload: write('src/api/db/schema.ts', 'x'), expected: 'deny' },
     { name: 'gecommitte migratie', payload: write('db/migrations/20261009000000_baseline.sql', 'x'), expected: 'deny' },
     { name: 'nieuwe migratie', payload: write('db/migrations/20261011000000_x.sql', 'x'), expected: 'allow' },
-    // GEWIJZIGD (ADR 0038 punt 6): de hoofdsessie mag een eigenaarstatus schrijven; de merge van de eigenaar is de acceptatie.
+    // GEWIJZIGD (ADR 0046 punt 6): de hoofdsessie mag een eigenaarstatus schrijven; de merge van de eigenaar is de acceptatie.
     { name: 'spec zelf goedkeuren', payload: edit('docs/specs/x.md', ['voorstel', 'goedgekeurd']), expected: 'allow' },
     { name: 'buiten de repo', payload: write('../elders.txt', 'x'), expected: 'allow' },
   ])('$name', ({ payload, expected }) => {
@@ -117,7 +117,7 @@ describe('rollen', () => {
       expected: 'allow',
     },
     {
-      name: 'architect keurt een spec goed (ADR 0038 punt 6)',
+      name: 'architect keurt een spec goed (ADR 0046 punt 6)',
       payload: edit('docs/specs/x.md', ['voorstel', 'goedgekeurd'], 'architect'),
       expected: 'allow',
     },
@@ -234,7 +234,7 @@ describe('Bash: alleen de hoofdsessie', () => {
     { name: 'reset --hard', command: 'git reset --hard HEAD~1' },
     // WS-04 punt 3: merge is voor elke rol dicht, dus ook voor de hoofdsessie.
     { name: 'gh pr merge', command: 'gh pr merge 12 --squash', expected: ['deny', 'deny'] },
-    // ADR 0016 (OV-4): de generator schrijft gate-bestanden niet, maar wel paden die het rolhek in een script niet ziet.
+    // ADR 0047 (OV-4): de generator schrijft gate-bestanden niet, maar wel paden die het rolhek in een script niet ziet.
     { name: 'new:resource', command: 'pnpm new:resource invoices --rollen user' },
     { name: 'new:resource via run', command: 'pnpm run new:resource invoices' },
     { name: 'new:resource via node', command: 'node scripts/kit/new-resource.mjs invoices' },

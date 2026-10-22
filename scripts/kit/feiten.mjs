@@ -1,4 +1,4 @@
-// Live feiten (framework §8, ADR 0011): elke rol begint hiermee, niet met wat in proza staat.
+// Live feiten (framework §8, ADR 0045): elke rol begint hiermee, niet met wat in proza staat.
 // Gebruik: node scripts/kit/feiten.mjs [gates|adr|specs|migraties|routes|permissies|foutcodes|componenten] [--json]
 import { readdirSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';

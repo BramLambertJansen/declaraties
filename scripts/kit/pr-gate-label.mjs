@@ -1,4 +1,4 @@
-// Het label is uitsluitend administratie; diff-guard blijft de echte eigenaarreview controleren (ADR 0027).
+// Het label is uitsluitend administratie; diff-guard blijft de echte eigenaarreview controleren (ADR 0046 punt 11).
 import { execFileSync } from 'node:child_process';
 import { readAuthority, gitText } from '../../rails/hooks/lib/authority-context.mjs';
 import { pullRequest } from './github-evidence.mjs';

@@ -75,7 +75,7 @@ export const reinviteContract = defineContract({
 
 const accountIdInput = z.object({ id: z.string().min(1).max(200) }).strict();
 
-// Blokkeren en deblokkeren (spec accountbeheer-uitbreiding, ADR 0026); idempotent.
+// Blokkeren en deblokkeren (spec accountbeheer-uitbreiding, ADR 0043); idempotent.
 export const blockContract = defineContract({
   method: 'POST',
   path: '/accounts/:id/block',

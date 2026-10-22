@@ -6,7 +6,7 @@ import { loadConfig } from '../../rails/hooks/lib/rolhek.mjs';
 import { laneVan, migratieOvertreding, recordAlleenBesluit } from '../../scripts/kit/lane.mjs';
 import { plan } from '../../scripts/kit/new-resource.mjs';
 
-// ADR 0029 punt 7: lane-herkenning. `laneVan({ changes, besluiten, mini, config })` is puur.
+// ADR 0046 punt 15: lane-herkenning. `laneVan({ changes, besluiten, mini, config })` is puur.
 //   changes   — de name-status-wijzigingen van de PR ({ status: 'A' | 'M' | 'D' | 'R' | 'C', pad, van? })
 //   besluiten — de documenten die in de PR een eigenaarstatus krijgen zonder record op main
 //   mini      — of dat ene besluitdocument `sjabloon: mini` heeft
@@ -105,7 +105,7 @@ describe('feature-lane: negatief (moet de strenge route geven)', () => {
     expect(resultaat.reden).not.toBe('');
   });
 
-  // GEWIJZIGD (ADR 0038 punt 5): twee specs zonder code zijn nu een besluit-PR (framework-lane); met code blijft het geen lane.
+  // GEWIJZIGD (ADR 0046 punt 5): twee specs zonder code zijn nu een besluit-PR (framework-lane); met code blijft het geen lane.
   test('5 twee specs naar een eigenaarstatus, zonder code: besluit-PR (framework)', () => {
     const resultaat = lane([A(SPEC), A('docs/specs/andere.md')], { besluiten: [SPEC, 'docs/specs/andere.md'] });
     expect(resultaat.lane).toBe('framework');
@@ -146,7 +146,7 @@ describe('framework-lane', () => {
     expect(lane([A(ADR), M('scripts/kit/check-docs.mjs')], { besluiten: [ADR], mini: false }).lane).toBeNull();
   });
 
-  // GEWIJZIGD (ADR 0038 punt 2 en 5): meerdere ADR's en specs per besluit-PR mogen, zolang er geen code bij zit.
+  // GEWIJZIGD (ADR 0046 punt 2 en 5): meerdere ADR's en specs per besluit-PR mogen, zolang er geen code bij zit.
   test('twee besluitdocumenten in één besluit-PR geven de framework-lane', () => {
     expect(
       lane([A(ADR), A('docs/adr/0098-demo.md')], { besluiten: [ADR, 'docs/adr/0098-demo.md'], mini: false }).lane,

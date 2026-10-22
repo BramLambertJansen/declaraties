@@ -1,4 +1,4 @@
-// Een status is afgeleid. Alleen de inhoud buiten die ene regel krijgt een digest (ADR 0027).
+// Een status is afgeleid. Alleen de inhoud buiten die ene regel krijgt een digest (ADR 0046).
 import { createHash } from 'node:crypto';
 
 const SPEC_STATES = new Set(['voorstel', 'goedgekeurd', 'gebouwd', 'vervallen']);
@@ -75,7 +75,7 @@ export function changeStatus(file, text, target) {
 }
 
 /**
- * ADR 0031 besluit 4: achter een nieuwe of gewijzigde ADR-statuswaarde alleen `(JJJJ-MM-DD)`, `#<nr>` en `[NNNN](NNNN-<slug>.md)`
+ * ADR 0045 punt 22: achter een nieuwe of gewijzigde ADR-statuswaarde alleen `(JJJJ-MM-DD)`, `#<nr>` en `[NNNN](NNNN-<slug>.md)`
  * naar een bestaand ADR, gescheiden door `, ` of ` — `. Een regel gelijk aan main en een spec-regel vallen erbuiten.
  * @param {string} nieuweRegel @param {string | null} oudeRegel
  * @param {readonly string[]} bestaandeAdrBestanden bestandsnamen in `docs/adr/` op HEAD, zoals `0017-diff-guard.md`
@@ -90,7 +90,7 @@ export function statusregelOvertreding(nieuweRegel, oudeRegel, bestaandeAdrBesta
   const fout = delen.find((deel) => !toegestaanDeel(deel, bestaandeAdrBestanden));
   return fout === undefined
     ? null
-    : `statusregel: "${fout}" mag niet achter de statuswaarde; alleen (JJJJ-MM-DD), #<nr> en [NNNN](NNNN-<slug>.md) naar een bestaand ADR (ADR 0031 besluit 4)`;
+    : `statusregel: "${fout}" mag niet achter de statuswaarde; alleen (JJJJ-MM-DD), #<nr> en [NNNN](NNNN-<slug>.md) naar een bestaand ADR (ADR 0045 punt 22)`;
 }
 
 /** @param {string} deel @param {readonly string[]} bestaandeAdrBestanden */
@@ -111,12 +111,12 @@ function bestaandeDatum(deel) {
 
 const VOORSTEL = new Set(['voorstel', 'voorgesteld']);
 
-/** De melding bij A4 (ADR 0038 punt 2), gedeeld door guard en rolhek. */
+/** De melding bij A4 (ADR 0046 punt 2), gedeeld door guard en rolhek. */
 export const A4_MELDING =
-  'de tekst of status van een geaccepteerd, vervallen of vervangen ADR wijzigt niet en gaat niet terug naar voorgesteld (A4, ADR 0038 punt 2); schrijf een nieuw ADR dat het vervangt (`vervangen door NNNN`)';
+  'de tekst of status van een geaccepteerd, vervallen of vervangen ADR wijzigt niet en gaat niet terug naar voorgesteld (A4, ADR 0046 punt 2); schrijf een nieuw ADR dat het vervangt (`vervangen door NNNN`)';
 
 /**
- * Hoe een document zonder record mag veranderen (ADR 0038 punt 1, 2 en 5). Puur; `voor`/`na` zijn de volledige teksten.
+ * Hoe een document zonder record mag veranderen (ADR 0046 punt 1, 2 en 5). Puur; `voor`/`na` zijn de volledige teksten.
  * - `vrij`: geen eigenaarbesluit (voorstel, of niets wezenlijks gewijzigd);
  * - `a4`: een ADR met een eigenaarstatus wijzigt van inhoud of gaat terug naar voorgesteld;
  * - `gebouwd`: alleen met bouwbewijs;

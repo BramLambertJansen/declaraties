@@ -5,7 +5,7 @@ import path from 'node:path';
 import { expect, test } from 'vitest';
 import { docsViolations } from '../../scripts/kit/check-docs.mjs';
 
-// check-docs: CODEOWNERS noemt precies de gates en jsonGates uit .claude/gates.json (framework §10, ADR 0011).
+// check-docs: CODEOWNERS noemt precies de gates en jsonGates uit .claude/gates.json (framework §10, ADR 0045).
 function repo(gates: Record<string, unknown>): string {
   const root = mkdtempSync(path.join(tmpdir(), 'check-docs-gates-'));
   const files: Record<string, string> = {

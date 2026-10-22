@@ -1,4 +1,4 @@
-// guard.yml voert uitsluitend deze versie uit main uit; PR-code wordt alleen als git-data gelezen (ADR 0027).
+// guard.yml voert uitsluitend deze versie uit main uit; PR-code wordt alleen als git-data gelezen (ADR 0046).
 import { appendFileSync } from 'node:fs';
 import {
   A4_MELDING,
@@ -46,7 +46,7 @@ function verifyBuilt(document, context) {
 
 /**
  * Controleert één document. Geeft een besluit terug als het document in deze PR een eigenaarstatus krijgt of een goedgekeurde
- * spec van inhoud wijzigt (ADR 0038 punt 1 en 5); `record` zegt of een record op main het al draagt.
+ * spec van inhoud wijzigt (ADR 0046 punt 1 en 5); `record` zegt of een record op main het al draagt.
  * @param {{ file: string, before: string | null, after: string | null }} document @param {Context} context
  * @returns {Besluit | null}
  */
@@ -80,7 +80,7 @@ function verifyDocument(document, context) {
 }
 
 /**
- * A4 (ADR 0038 punt 2): een ADR met een eigenaarstatus op main verdwijnt niet, ook niet via een rename.
+ * A4 (ADR 0046 punt 2): een ADR met een eigenaarstatus op main verdwijnt niet, ook niet via een rename.
  * @param {{ status: string, pad: string, van?: string }[]} changes @param {Context} context
  */
 function verifyGeenAdrWeg(changes, context) {
@@ -94,7 +94,7 @@ function verifyGeenAdrWeg(changes, context) {
   }
 }
 
-/** `vervangen door NNNN` wijst naar een ADR op main of in de PR (ADR 0038 punt 5). @param {string} file @param {string} status @param {Context} context */
+/** `vervangen door NNNN` wijst naar een ADR op main of in de PR (ADR 0046 punt 5). @param {string} file @param {string} status @param {Context} context */
 function verifyVervanger(file, status, context) {
   const nummer = /^vervangen door (\d{4})$/.exec(status)?.[1];
   if (nummer === undefined || file.startsWith(`docs/adr/${nummer}-`)) return;
@@ -160,7 +160,7 @@ function verifyRoadmap(changes, mandated, context) {
 }
 
 /**
- * Een besluitdocument zelf valt buiten de taakscope: verifyDocument en verifyInPrStatus beoordelen het (ADR 0038 punt 5).
+ * Een besluitdocument zelf valt buiten de taakscope: verifyDocument en verifyInPrStatus beoordelen het (ADR 0046 punt 5).
  * Wijzigt de inhoud van een gemandateerde spec, dan vervalt dat mandaat (punt 9): code eronder faalt hier tot er een nieuw record is.
  * @param {{ status: string, pad: string, van?: string }[]} changes @param {Context} context @param {readonly string[]} besluiten
  */
@@ -218,7 +218,7 @@ function verifyFeatureInhoud(file, changes, context) {
 }
 
 /**
- * Besluiten in de PR zelf (ADR 0038 punt 1 en 5): zonder record alleen in een besluit-PR (framework-lane: alleen `docs/adr/`,
+ * Besluiten in de PR zelf (ADR 0046 punt 1 en 5): zonder record alleen in een besluit-PR (framework-lane: alleen `docs/adr/`,
  * `docs/specs/` en het record) of in de feature-lane (één nieuwe mini-spec met code). De merge door de eigenaar is het besluit.
  * @param {{ besluiten: Besluit[], changes: { status: string, pad: string, van?: string }[] }} pr @param {Context} context
  * @returns {string | null} de melding voor de uitvoer, of null zonder besluit zonder record
@@ -248,7 +248,7 @@ function verifyInPrStatus({ besluiten, changes }, context) {
     })
   )
     throw new Error(`${RECORD}: wijzigt meer dan het record van ${bestanden.join(', ')}`);
-  return `statusovergang in de PR (${lane === 'framework' ? 'besluit-PR, framework' : lane}-lane): ${bestanden.join(', ')}; het besluit is de merge door de eigenaar (ADR 0038)`;
+  return `statusovergang in de PR (${lane === 'framework' ? 'besluit-PR, framework' : lane}-lane): ${bestanden.join(', ')}; het besluit is de merge door de eigenaar (ADR 0046)`;
 }
 
 /** Een GitHub Actions-foutannotatie; `%`, CR en LF worden geëscaped zoals `@actions/core` doet, zodat een bestandsnaam geen commando kan invoegen. @param {string} message */
@@ -257,7 +257,7 @@ export function annotatie(message) {
   return `::error title=document-status::${veilig}`;
 }
 
-/** Korte stapsamenvatting voor de job (ADR 0031 besluit 1). @param {string} tekst */
+/** Korte stapsamenvatting voor de job (ADR 0045 punt 20). @param {string} tekst */
 function samenvatting(tekst) {
   const bestand = process.env['GITHUB_STEP_SUMMARY'];
   if (bestand !== undefined && bestand !== '') appendFileSync(bestand, tekst);

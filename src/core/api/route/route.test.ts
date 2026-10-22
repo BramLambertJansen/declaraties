@@ -8,7 +8,7 @@ import { request } from '../http/request.test-helper.ts';
 import { appWith, defineContract, defineRoute, notesContract } from './fixture.test-helper.ts';
 import type { RouteDef } from './kit.ts';
 
-// De pipeline van een route (framework §6, ADR 0008): sessie → input → withUser (rol, can, handler, output).
+// De pipeline van een route (framework §6, ADR 0040): sessie → input → withUser (rol, can, handler, output).
 const notes = defineRoute(notesContract, ({ input, actor }) => ({ id: input.id, by: actor.name }));
 const user = { role: 'user', sessionStrength: 'password' } as const;
 
@@ -121,7 +121,7 @@ describe('defineRoute en createApp', () => {
     error.mockRestore();
   });
 
-  // ADR 0016 (OV-1): een gegenereerde handler gooit NOT_IMPLEMENTED; pas na sessie, input, rol en permissie.
+  // ADR 0047 (OV-1): een gegenereerde handler gooit NOT_IMPLEMENTED; pas na sessie, input, rol en permissie.
   test('een handler met NOT_IMPLEMENTED geeft 501 aan wie het recht heeft, 403 aan wie het niet heeft', async () => {
     const todo = defineRoute(notesContract, () => {
       throw new AppError('NOT_IMPLEMENTED');

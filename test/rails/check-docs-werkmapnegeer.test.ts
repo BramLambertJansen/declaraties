@@ -5,7 +5,7 @@ import path from 'node:path';
 import { afterEach, expect, test } from 'vitest';
 import { docsViolations } from '../../scripts/kit/check-docs.mjs';
 
-// ADR 0031 besluit 5: check-docs faalt als een pad in `werkmapNegeer` (.claude/gates.json) getrackt is of niet onder
+// ADR 0045 punt 23: check-docs faalt als een pad in `werkmapNegeer` (.claude/gates.json) getrackt is of niet onder
 // `.claude/` valt. Aanname: de overtreding heeft een sleutel met "werkmapNegeer" en een bericht met het pad.
 const GATES = ['docs/framework.md', 'scripts/**', 'test/**', '.claude/**'];
 const OWNERS = '/docs/framework.md @e\n/scripts/ @e\n/test/ @e\n/.claude/ @e\n';

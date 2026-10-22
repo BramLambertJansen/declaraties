@@ -28,7 +28,7 @@ describe('Button', () => {
     expect(link.className).toContain('border-input');
   });
 
-  test('een app leidt een variant af uit basis en variantkaart, zonder core te wijzigen (ADR 0008)', () => {
+  test('een app leidt een variant af uit basis en variantkaart, zonder core te wijzigen (ADR 0040)', () => {
     // Zoals in src/web/ui: de basis (44 px, focusring) blijft, de variantkaart krijgt er een bij.
     const appButton = cva(buttonBase, {
       variants: { ...buttonVariantMap, variant: { ...buttonVariantMap.variant, link: 'text-primary underline' } },

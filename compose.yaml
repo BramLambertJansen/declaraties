@@ -3,9 +3,9 @@
 # Poorten alleen op 127.0.0.1 en instelbaar, zodat meerdere apps naast elkaar draaien.
 # Wachtwoorden zijn lokale demo-waarden, nooit echt.
 # Starten: docker compose --env-file .env.local up -d --build --wait (zonder --env-file leest compose alleen .env).
-# Profiel test: de runner van ADR 0009, alleen via scripts/runner.sh (pnpm test:db, pnpm ui:check).
+# Profiel test: de runner van ADR 0044, alleen via scripts/runner.sh (pnpm test:db, pnpm ui:check).
 
-# Runner: draait door de agent geschreven tests en configs zonder rechten op de host (ADR 0009).
+# Runner: draait door de agent geschreven tests en configs zonder rechten op de host (ADR 0044).
 x-runner: &runner
   profiles: [test]
   user: "${RUNNER_UID:-65534}:${RUNNER_GID:-65534}"
@@ -72,7 +72,7 @@ services:
       timeout: 3s
       retries: 30
 
-  # Profiel pooler: PgBouncer in transaction mode voor api_user, zoals bij een beheerde provider (ADR 0012).
+  # Profiel pooler: PgBouncer in transaction mode voor api_user, zoals bij een beheerde provider (ADR 0042).
   # Starten: docker compose --env-file .env.local --profile pooler up -d; verbinden via 127.0.0.1:${POOLER_PORT:-54323}.
   pgbouncer:
     profiles: [pooler]
@@ -94,7 +94,7 @@ services:
       - "127.0.0.1:${MAIL_UI_PORT:-54324}:8025"
       - "127.0.0.1:${SMTP_PORT:-54325}:1025"
 
-  # --- Profiel test (ADR 0009) ---
+  # --- Profiel test (ADR 0044) ---
 
   test-db:
     profiles: [test]
@@ -160,7 +160,7 @@ services:
     user: postgres
     environment:
       DATABASE_URL: ${MIGRATOR_DATABASE_URL}
-      # pg_prove geeft een URL niet betrouwbaar door aan psql; libpq-variabelen wel (ADR 0012).
+      # pg_prove geeft een URL niet betrouwbaar door aan psql; libpq-variabelen wel (ADR 0042).
       PGHOST: test-db
       PGPORT: "5432"
       PGDATABASE: app
@@ -227,7 +227,7 @@ services:
     command: ["node", "node_modules/@playwright/test/cli.js", "test"]
 
 networks:
-  # Geen route naar internet of de host (ADR 0009).
+  # Geen route naar internet of de host (ADR 0044).
   test-net:
     internal: true
 

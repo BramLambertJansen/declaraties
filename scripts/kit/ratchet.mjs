@@ -1,4 +1,4 @@
-// Ratchet (framework §4, ADR 0011): bestaande overtredingen staan in .kit/baseline.json. Een nieuwe overtreding faalt;
+// Ratchet (framework §4, ADR 0045): bestaande overtredingen staan in .kit/baseline.json. Een nieuwe overtreding faalt;
 // een opgeloste die nog in de baseline staat ook, tot `pnpm ratchet:update` hem weghaalt. Zo daalt schuld alleen.
 // De baseline laten groeien is een gate-wijziging (.kit/ is beschermd). ESLint heeft een eigen ratchet:
 // eslint-suppressions.json met `pnpm lint:prune`.

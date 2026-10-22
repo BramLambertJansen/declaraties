@@ -176,7 +176,7 @@ describe.each(MODI)('mandate-follow-up/AC-17: genegeerde en onveilige hostbestan
     expect({ status: resultaat.status, reachedDocker: resultaat.reachedDocker }).toStrictEqual(STOPT);
     expect(resultaat.stderr).toContain('✗ Genegeerde bestanden in hostpaden; de host zou ze ongezien gebruiken:');
     expect(resultaat.stderr).toContain('scripts/x.log');
-    expect(resultaat.stderr).toContain('  → verwijder ze of gebruik de wegwerp-CI (ADR 0027).');
+    expect(resultaat.stderr).toContain('  → verwijder ze of gebruik de wegwerp-CI (ADR 0044 punt 6).');
   });
 
   test('(b) een in de basis gecommit hostbestand dat een symlink is: stopt met de letterlijke melding', () => {
@@ -188,7 +188,7 @@ describe.each(MODI)('mandate-follow-up/AC-17: genegeerde en onveilige hostbestan
 
     expect({ status: resultaat.status, reachedDocker: resultaat.reachedDocker }).toStrictEqual(STOPT);
     expect(resultaat.stderr).toContain('✗ Hostpad is een symlink of geen veilig pad: scripts/link.sh');
-    expect(resultaat.stderr).toContain('  → gebruik de wegwerp-CI (ADR 0027); geen agentoverride.');
+    expect(resultaat.stderr).toContain('  → gebruik de wegwerp-CI (ADR 0044 punt 6); geen agentoverride.');
   });
 });
 

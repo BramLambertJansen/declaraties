@@ -1,4 +1,4 @@
--- Functiecatalogus (framework §6, ADR 0011): elke functie in public en app is `client` (uitvoerbaar voor
+-- Functiecatalogus (framework §6, ADR 0045): elke functie in public en app is `client` (uitvoerbaar voor
 -- app_authenticated) of `intern` (geen API-rol). Een nieuwe functie zonder klasse faalt hier. Elke client-functie
 -- controleert de actor of heeft een vastgelegde reden waarom niet. Alles in één transactie die terugdraait.
 begin;

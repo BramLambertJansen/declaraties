@@ -1,4 +1,4 @@
--- app.audit_log en wie erin schrijft (spec audit-log, deel A en B: AC-5 t/m AC-20; ADR 0021): tabel, CHECKs, grants,
+-- app.audit_log en wie erin schrijft (spec audit-log, deel A en B: AC-5 t/m AC-20; ADR 0051): tabel, CHECKs, grants,
 -- exact vier policies op naam, de guard-triggers (append-only, behalve verwijderen na de termijn), app.request_id(), app.audit, app.audit_account_action en de
 -- regels van app.assign_role en app.set_account_blocked. Alles in één transactie die terugdraait.
 -- Alles wat de nieuwe objecten raakt staat als tekst in een assert of in een hulpfunctie die fouten vangt, zodat een
@@ -53,7 +53,7 @@ create function pg_temp.details_of_size(p_bytes integer) returns jsonb language 
 $$;
 
 -- Testgebruikers (better_auth heeft geen RLS; app_migrator is eigenaar). al-promote en al-invited hebben geen
--- credential-account en tellen dus niet mee als admin (ADR 0026, besluit 4).
+-- credential-account en tellen dus niet mee als admin (ADR 0043 punt 16).
 insert into better_auth."user" (id, name, email, "emailVerified") values
   ('al-admin', 'Admin Een', 'al-admin@test.local', true),
   ('al-admin2', 'Admin Twee', 'al-admin2@test.local', true),
@@ -111,7 +111,7 @@ select results_eq(
   $$select count(*)::integer from pg_catalog.pg_constraint
     where conrelid = to_regclass('app.audit_log') and contype = 'f'$$,
   $$values (0)$$,
-  'app.audit_log: geen foreign keys (ADR 0022 punt 4)'
+  'app.audit_log: geen foreign keys (ADR 0051)'
 );
 select results_eq(
   $$select (select count(*)::integer from pg_catalog.pg_indexes

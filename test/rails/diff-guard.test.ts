@@ -5,7 +5,7 @@ import path from 'node:path';
 import { describe, expect, test } from 'vitest';
 import { beoordeel, geraakt, leesConfig, parseNameStatus, samenvatting } from '../../scripts/kit/diff-guard.mjs';
 
-// Diff-guard (framework §10, ADR 0011 punt 9, ADR 0017): een tabeltest per geval tegen de echte .claude/gates.json.
+// Diff-guard (framework §10, ADR 0045 punt 15, ADR 0045): een tabeltest per geval tegen de echte .claude/gates.json.
 const config = leesConfig(readFileSync('.claude/gates.json', 'utf8'));
 const HEAD = 'a'.repeat(40);
 const OUD = 'b'.repeat(40);
@@ -174,9 +174,9 @@ describe('oordeel', () => {
     expect(tekst).toContain('**Gewijzigde of verwijderde tests**');
   });
 
-  test('de samenvatting bij overgang bevat de uitleg uit ADR 0031 besluit 2; bij groen en rood niet', () => {
+  test('de samenvatting bij overgang bevat de uitleg uit ADR 0045 punt 17; bij groen en rood niet', () => {
     const zin =
-      'Overgang (ADR 0017, OV-2): de auteur is zelf goedkeurder. Label `gate-wijziging` en review worden in deze fase niet gevraagd en niet gecontroleerd. Lees de geraakte paden hieronder; de eigenaar merget zelf.';
+      'Overgang (ADR 0045 punt 17): de auteur is zelf goedkeurder. Label `gate-wijziging` en review worden in deze fase niet gevraagd en niet gecontroleerd. Lees de geraakte paden hieronder; de eigenaar merget zelf.';
     const overgang = beoordeel(pr([core], { auteur: EIGENAAR }), config);
     const groen = beoordeel(pr([{ status: 'M', pad: 'README.md' }]), config);
     const rood = beoordeel(pr([core]), config);

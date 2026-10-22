@@ -5,7 +5,7 @@ import path from 'node:path';
 import { expect, test } from 'vitest';
 import { coreFouten, isTemplateRepo } from '../../scripts/kit/check-core.mjs';
 
-// check-core (ADR 0008 "Afdwingen"): bewijst dat een app-PR die src/core wijzigt faalt, ook via een merge van een andere
+// check-core (ADR 0040 "Afdwingen"): bewijst dat een app-PR die src/core wijzigt faalt, ook via een merge van een andere
 // branch of een eigen wijziging in de merge zelf, en dat een zuivere template-merge en een merge van main groen zijn.
 // De branch `tmpl` speelt template/main, `main` de main van de app en `werk` de PR-branch.
 const REFS = { base: 'main', head: 'werk', template: 'tmpl' };

@@ -5,7 +5,7 @@ import { Hono } from 'hono';
 import type { App } from './create-app.ts';
 import { securityHeaders } from './security-headers.ts';
 
-// Productieserver voor één origin (ADR 0019): /api gaat naar de API-app, de rest is de gebouwde SPA uit `vite build`
+// Productieserver voor één origin (ADR 0049): /api gaat naar de API-app, de rest is de gebouwde SPA uit `vite build`
 // (dist/web) met de headers uit security-headers.ts. Bestanden in /assets/ hebben een hash in de naam en mogen
 // onbeperkt in de cache; index.html en andere bestanden nooit zonder controle. Een schermroute zonder bestand
 // (bijv. /admin/accounts) krijgt index.html; de router in de browser neemt het over.

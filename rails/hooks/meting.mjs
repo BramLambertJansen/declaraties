@@ -1,4 +1,4 @@
-// Meethook (ADR 0029 punt 12): observeert alleen. Leest de payload van stdin en voegt één regel toe aan
+// Meethook (ADR 0046 punt 36): observeert alleen. Leest de payload van stdin en voegt één regel toe aan
 // `<git common dir>/agent-meting/<session_id>.jsonl` of `METING_DIR` (lib/meting.mjs); buiten een repo schrijft hij niets.
 // Schrijft nooit naar stdout, blokkeert nooit en eindigt altijd met exit 0, ook bij een fout of een lib die niet laadt
 // (fail-open; daarom de dynamische import binnen de try). Overzicht: `pnpm meting` (scripts/kit/meting.mjs).

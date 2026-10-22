@@ -9,7 +9,7 @@ insert into better_auth."user" (id, name, email, "emailVerified") values
   ('u-user', 'Gebruiker', 'user@test.local', true),
   ('u-admin', 'Admin', 'admin@test.local', true),
   ('u-admin2', 'Admin 2', 'admin2@test.local', true);
--- Telbare admin (ADR 0026, besluit 4): een admin met credential-account en zonder blocked_at.
+-- Telbare admin (ADR 0043 punt 16): een admin met credential-account en zonder blocked_at.
 insert into better_auth.account (id, "accountId", "providerId", "userId", password, "createdAt", "updatedAt") values
   ('u-acc-admin', 'u-admin', 'credential', 'u-admin', 'hash', now(), now()),
   ('u-acc-admin2', 'u-admin2', 'credential', 'u-admin2', 'hash', now(), now());

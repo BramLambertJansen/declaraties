@@ -25,7 +25,7 @@ import {
 } from './routes/me.ts';
 import type { AppServices } from './services.ts';
 
-// Compositie-root van de app (ADR 0008): routes, foutcodes en wat server.ts aanlevert (auth, withUser, services, devLogin).
+// Compositie-root van de app (ADR 0040): routes, foutcodes en wat server.ts aanlevert (auth, withUser, services, devLogin).
 export const routes = [
   meRoute,
   renameRoute,

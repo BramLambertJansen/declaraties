@@ -12,7 +12,7 @@ const ping = createPing(databaseUrl, PING_TIMEOUT_MS);
 // De enige ingang naar de database (framework §1, §6): de rest van de module is intern.
 export const withUser = createWithUser(pool);
 
-// Alleen voor readiness (GET /api/ready, ADR 0018): leest niets, zet geen gebruiker, eigen verbinding.
+// Alleen voor readiness (GET /api/ready, ADR 0049): leest niets, zet geen gebruiker, eigen verbinding.
 export const pingDatabase = ping.ping;
 
 // Alleen bij het stoppen van het proces (startServer, onStopped): daarna faalt elke withUser().

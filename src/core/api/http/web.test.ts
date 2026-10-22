@@ -7,7 +7,7 @@ import { request } from './request.test-helper.ts';
 import { contentSecurityPolicy } from './security-headers.ts';
 import { createWebApp } from './web.ts';
 
-// Productieserver voor één origin (ADR 0019): /api naar de API, de rest uit de build met de headers van de SPA.
+// Productieserver voor één origin (ADR 0049): /api naar de API, de rest uit de build met de headers van de SPA.
 
 const dir = mkdtempSync(path.join(tmpdir(), 'web-'));
 mkdirSync(path.join(dir, 'assets'));

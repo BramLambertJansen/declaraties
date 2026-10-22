@@ -9,7 +9,7 @@ import { request } from '../http/request.test-helper.ts';
 import { defineContract, fakeDeps, permissions } from './fixture.test-helper.ts';
 import { createRouteKit, type AuditFn } from './kit.ts';
 
-// ctx.audit (spec audit-log AC-29, ADR 0021): getypt op de geregistreerde acties, runtime-controle op de actie en op details.
+// ctx.audit (spec audit-log AC-29, ADR 0051): getypt op de geregistreerde acties, runtime-controle op de actie en op details.
 // Zonder database: tx.execute is een spy. Het effect in de database (geen regel bij een fout) staat in audit.int.test.ts.
 const audit = defineAuditActions({
   'note.archive': { target: 'note', details: z.object({ reason: z.string() }) },

@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, test } from 'vitest';
 
-// ADR 0031 besluit 1: guard.yml heeft de jobs `diff-guard` en `document-status`; `check-core` (ADR 0008) kwam erbij. Alle
+// ADR 0045 punt 20: guard.yml heeft de jobs `diff-guard` en `document-status`; `check-core` (ADR 0040) kwam erbij. Alle
 // draaien met pull_request_target en behandelen de PR als git-data: geen checkout van de PR, `persist-credentials: false`, geen install.
 const WORKFLOW = readFileSync(path.join(import.meta.dirname, '../../.github/workflows/guard.yml'), 'utf8');
 

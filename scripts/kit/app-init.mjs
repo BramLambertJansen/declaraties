@@ -119,7 +119,7 @@ export function planAppInit(root, options) {
       ),
     },
   ];
-  // De onderhoudsmodus hoort bij de template-repo, niet bij een app (ADR 0033 punt 2).
+  // De onderhoudsmodus hoort bij de template-repo, niet bij een app (ADR 0045 punt 8).
   const gates = readOptional(path.join(root, '.claude/gates.json'));
   if (gates !== null && /"onderhoud"\s*:/.test(gates)) {
     if (!gates.includes(ONDERHOUD)) throw new AppInitError('.claude/gates.json: de onderhoud-regel is niet gevonden');
