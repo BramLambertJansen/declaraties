@@ -28,12 +28,12 @@ Deze template bevat geen gekozen proefapp of appdata. Alleen wanneer de eigenaar
 
 | Stap | Uitvoering | Wanneer door? |
 | --- | --- | --- |
-| Intake en preflight | Agent controleert antwoorden, omgeving, bestaande tools, GitHub-login en template-instelling | Ontbrekende keuzes zijn beantwoord; bestaande installatie hoeft niet opnieuw |
+| Intake en preflight | Agent controleert antwoorden, omgeving, bestaande tools, GitHub-login, template-instelling en alle vijf lokale poorten | Ontbrekende keuzes zijn beantwoord; bestaande installatie hoeft niet opnieuw |
 | Machine en toegang | Volgens het playbook; eigenaar doet noodzakelijke installatie, login en goedkeuring | Resultaat per eigenaarstap gecontroleerd |
 | App-repo | GitHub-eerst via de templatefunctie, dan klonen naar `~/code/<slug>` | Juiste nieuwe repo, origin en bronversie vastgesteld |
 | Historie en naam | Bron-tree vergelijken, eenmalig koppelen, `app:init`, beschrijving toevoegen | Tree gelijk, merge met twee ouders, eigen appnaam en beschrijving |
-| Push en bescherming | Eigenaar doet eerste main-push en aangewezen beveiligingsstappen | Werkelijke push en instellingen gecontroleerd; beperkingen expliciet |
-| Bootstrap en stack | Eigenaar voert de bestaande installatie- en startstappen uit | Hooks, doctor, migraties en databasebewijs gecontroleerd |
+| Push en bescherming | Eerst CodeQL-beschikbaarheid vaststellen; eigenaar doet eerste main-push en aangewezen beveiligingsstappen | Bij ontbrekende of onbekende CodeQL stoppen; werkelijke push en instellingen gecontroleerd |
+| Bootstrap en stack | Eigenaar installeert eerst met machinecontrole en start daarna de app | Machinecontrole groen; vervolgens volledige doctor, migraties en databasebewijs groen |
 | Agent en browser | Runtimegrenzen controleren; browser-, login- en MFA-controle volgens playbook | Uitvoerder en uitslag vastgelegd; niet-uitgevoerde controles blijven open |
 | Overdracht | Locatie, URL's, bewijs, beperkingen en volgende actie samenvatten | Stoppen; featurewerk vraagt een vervolgopdracht |
 

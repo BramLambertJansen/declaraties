@@ -1,8 +1,9 @@
-import { spawnSync } from 'node:child_process';
-import { cpSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
+import { execFileSync, spawnSync } from 'node:child_process';
+import { cpSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { expect, test } from 'vitest';
+import { loadConfig } from '../../rails/hooks/lib/rolhek.mjs';
 
 // Het echte hook-script (rails/hooks/rolhek.mjs) met echte stdin-payloads: exitcode en uitvoer zoals Claude Code ze leest.
 // Exit 2 blokkeert; een interne fout is ook exit 2 (faalt dicht, framework §8).
@@ -44,12 +45,33 @@ test('beschermd pad in voorReview voor de hoofdsessie: permissionDecision ask', 
 });
 
 test('beschermd pad in voorReview in de template-repo (onderhoudsmodus): alleen een melding, geen ask', () => {
-  const template = { ...APP_ORIGIN, GIT_CONFIG_VALUE_0: 'https://github.com/BramLambertJansen/template.git' };
-  const result = run(bash('echo x > scripts/x.ts'), template);
+  const dir = mkdtempSync(path.join(tmpdir(), 'rolhek-onderhoud-'));
+  try {
+    mkdirSync(path.join(dir, '.claude'));
+    writeFileSync(
+      path.join(dir, '.claude/gates.json'),
+      JSON.stringify({
+        ...loadConfig(readFileSync('.claude/gates.json', 'utf8')),
+        onderhoud: { repository: 'BramLambertJansen/template' },
+      }),
+    );
+    for (const args of [
+      ['init', '-q'],
+      ['add', '.'],
+      ['-c', 'user.name=Test', '-c', 'user.email=test@example.test', 'commit', '-qm', 'test: maintenance fixture'],
+      ['update-ref', 'refs/remotes/origin/main', 'HEAD'],
+    ])
+      execFileSync('git', args, { cwd: dir });
+    const template = { ...APP_ORIGIN, GIT_CONFIG_VALUE_0: 'https://github.com/BramLambertJansen/template.git' };
+    const input = JSON.stringify({ tool_name: 'Bash', tool_input: { command: 'echo x > scripts/x.ts' }, cwd: dir });
+    const result = run(input, template);
 
-  expect(result.status).toBe(0);
-  expect(result.stdout).not.toContain('"permissionDecision":"ask"');
-  expect(result.stdout).toContain('noem het in de PR');
+    expect(result.status, result.stdout + result.stderr).toBe(0);
+    expect(result.stdout).not.toContain('"permissionDecision":"ask"');
+    expect(result.stdout).toContain('noem het in de PR');
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
 });
 
 test('bestaande test wijzigen: door, met context voor de PR', () => {
