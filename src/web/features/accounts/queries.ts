@@ -42,7 +42,7 @@ export function useReinvite() {
   });
 }
 
-// Blokkeren en deblokkeren (spec accountbeheer-uitbreiding, ADR 0026): de status komt uit de lijst, dus invalideren.
+// Blokkeren en deblokkeren (spec accountbeheer-uitbreiding, ADR 0043): de status komt uit de lijst, dus invalideren.
 export function useBlock() {
   const queryClient = useQueryClient();
   return useMutation({

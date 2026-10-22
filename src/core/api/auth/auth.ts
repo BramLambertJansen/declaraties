@@ -53,7 +53,7 @@ export interface SessionLookup {
   readonly setCookie: readonly string[];
 }
 
-// Wat createApp van auth nodig heeft (ADR 0003, 0013): de handler voor /api/auth/* en de sessie per request.
+// Wat createApp van auth nodig heeft (ADR 0041, 0043): de handler voor /api/auth/* en de sessie per request.
 export interface AuthGateway {
   readonly handler: (request: Request) => Promise<Response>;
   readonly getSession: (headers: Headers) => Promise<SessionLookup>;
@@ -73,12 +73,12 @@ export function authGateway(auth: Auth, now: () => number = Date.now): AuthGatew
       if (response === null) return { session: null, setCookie };
       const { session, user } = response;
       const rejection = sessionRejection(response, now());
-      // Absoluut 7 dagen na inloggen (ADR 0003), ook als de sessie actief bleef: intrekken en als uitgelogd behandelen.
+      // Absoluut 7 dagen na inloggen (ADR 0041), ook als de sessie actief bleef: intrekken en als uitgelogd behandelen.
       if (rejection === 'expired') {
         await (await auth.$context).internalAdapter.deleteSession(session.token);
         return { session: null, setCookie };
       }
-      // ADR 0026: een geblokkeerd account heeft geen sessie, ook niet een die na het blokkeren ontstond (AC-22).
+      // ADR 0043: een geblokkeerd account heeft geen sessie, ook niet een die na het blokkeren ontstond (AC-22).
       if (rejection === 'blocked') {
         await (await auth.$context).internalAdapter.deleteUserSessions(user.id);
         return { session: null, setCookie };

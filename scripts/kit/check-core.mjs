@@ -1,10 +1,10 @@
-// check-core (ADR 0008 "Afdwingen", .claude/rules/core.md): een PR in een app wijzigt `src/core/` niet; core-updates komen
+// check-core (ADR 0040 "Afdwingen", .claude/rules/core.md): een PR in een app wijzigt `src/core/` niet; core-updates komen
 // alleen via `git merge template/main`. Draait in guard.yml met de scripts van main. Per commit in de PR (head zonder wat al op main of template/main staat):
 // een gewone commit laat `src/core` gelijk aan zijn ouder; een merge die `src/core` verandert, telt alleen als zijn tweede
 // ouder P2 een voorouder is van `template/main` (opgehaald van TEMPLATE_URL) of al op main staat (een `git merge origin/main`
 // in de branch), en `src/core` in de merge gelijk is aan dat in P2 (geen eigen wijziging in de merge zelf).
 // Een commit zonder ouder (orphan) faalt altijd.
-// In de template zelf staat de check uit: daar staat `onderhoud.repository` in de vertrouwde `.claude/gates.json` (ADR 0033;
+// In de template zelf staat de check uit: daar staat `onderhoud.repository` in de vertrouwde `.claude/gates.json` (ADR 0045;
 // `pnpm app:init` haalt die regel in een app weg). Onleesbare geschiedenis of template telt als fout.
 import { execFileSync } from 'node:child_process';
 import { appendFileSync, readFileSync } from 'node:fs';
@@ -123,7 +123,7 @@ function meld(tekst) {
 function main() {
   const gates = readFileSync(path.join(import.meta.dirname, '../../.claude/gates.json'), 'utf8');
   if (isTemplateRepo(gates, env('REPO'))) {
-    meld('check-core: uit in de template zelf (onderhoud.repository, ADR 0008)');
+    meld('check-core: uit in de template zelf (onderhoud.repository, ADR 0040)');
     return;
   }
   try {
@@ -143,7 +143,7 @@ function main() {
     meld(`✓ check-core: ${CORE}/ alleen gewijzigd via template-merges`);
     return;
   }
-  meld(`✗ check-core: een app wijzigt ${CORE}/ niet (ADR 0008)\n${fouten.map((fout) => `  - ${fout}`).join('\n')}`);
+  meld(`✗ check-core: een app wijzigt ${CORE}/ niet (ADR 0040)\n${fouten.map((fout) => `  - ${fout}`).join('\n')}`);
   console.log(`::error title=check-core::${fouten.join('; ')}`);
   process.exitCode = 1;
 }

@@ -1,4 +1,4 @@
-# Build-context van de Dockerfile (ADR 0019): nooit geheimen of lokale staat in de image.
+# Build-context van de Dockerfile (ADR 0049): nooit geheimen of lokale staat in de image.
 .env
 .env.*
 .git

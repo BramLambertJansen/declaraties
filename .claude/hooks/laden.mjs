@@ -1,4 +1,4 @@
-// Gedeelde lader voor de hook-stubs (ADR 0033 punt 1): draait `rails/hooks/<naam>.mjs` zoals die op main van de remote staat,
+// Gedeelde lader voor de hook-stubs (ADR 0045 punt 3): draait `rails/hooks/<naam>.mjs` zoals die op main van de remote staat,
 // nooit de versie uit de werkmap, de branch of een omgebogen lokale `origin/main`. Anker en cache staan in `.claude/hooks/.cache/`,
 // een map die de sandbox van Claude Code niet laat beschrijven: `main` (de commit-SHA van de remote, ververst bij de start van een
 // sessie) en per tree-oid de uitgepakte versie, vóór elke run gecontroleerd tegen de blob-hashes. Rolhek en werkstraat falen dicht.
@@ -191,7 +191,7 @@ function leesStdin() {
 
 /** @param {string} naam @param {boolean} dicht @param {string} reden */
 function weiger(naam, dicht, reden) {
-  process.stderr.write(`hook ${naam} (ADR 0033): ${reden}${dicht ? '; de hook faalt dicht' : ''}\n`);
+  process.stderr.write(`hook ${naam} (ADR 0045): ${reden}${dicht ? '; de hook faalt dicht' : ''}\n`);
   process.exitCode = dicht ? 2 : 0;
 }
 

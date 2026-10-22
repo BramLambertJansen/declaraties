@@ -19,7 +19,7 @@ import {
 } from '#core/api/auth/index.ts';
 import { AppError } from '#core/api/errors.ts';
 
-// Wat handlers via ctx.services krijgen (ADR 0008): uitnodigen via Better Auth (ADR 0013). De fouten van core worden hier
+// Wat handlers via ctx.services krijgen (ADR 0040): uitnodigen via Better Auth (ADR 0043). De fouten van core worden hier
 // foutcodes uit het register; de handler vangt niets af.
 export interface AppServices {
   readonly invitations: {
@@ -45,7 +45,7 @@ export interface AppServices {
     readonly list: (who: SessionOwner) => Promise<OwnSession[]>;
     readonly revoke: (who: SessionOwner, id: string) => Promise<void>;
     readonly revokeOthers: (who: SessionOwner) => Promise<void>;
-    // Alle sessies van een account, na het blokkeren (ADR 0026); opruimen als auth_service, de garantie zit in getSession.
+    // Alle sessies van een account, na het blokkeren (ADR 0043); opruimen als auth_service, de garantie zit in getSession.
     readonly revokeAll: (userId: string) => Promise<void>;
   };
 }

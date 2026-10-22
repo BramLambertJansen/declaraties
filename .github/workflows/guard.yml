@@ -1,7 +1,7 @@
-# Diff-guard (framework §10, ADR 0011 punt 9, ADR 0017). pull_request_target draait altijd de workflow en de scripts van de
+# Diff-guard (framework §10, ADR 0045 punt 15–19). pull_request_target draait altijd de workflow en de scripts van de
 # default branch; de PR is hier alleen git-data: geen checkout van de PR, geen install, niets uit de PR uitvoeren.
-# Jobs `diff-guard` en `document-status` (ADR 0031 besluit 1) en `check-core` (ADR 0008), elk met een eigen naam in de checklijst.
-# Nog geen verplichte check (ADR 0017, OV-1): dat wordt hij bij de overstap op de GitHub App. Na een goedkeuring draait hij
+# Jobs `diff-guard` en `document-status` (ADR 0045 punt 20) en `check-core` (ADR 0040), elk met een eigen naam in de checklijst.
+# Nog geen verplichte check (ADR 0045 punt 17): dat wordt hij bij de overstap op de GitHub App. Na een goedkeuring draait hij
 # opnieuw bij het zetten van het label (OV-3), of via Re-run.
 name: guard
 
@@ -157,7 +157,7 @@ jobs:
           version: 2026.9.18
           install_args: node
       - name: check-core
-        # check-core (ADR 0008): een PR in een app wijzigt src/core/ niet, behalve via een template-merge. In de template zelf
+        # check-core (ADR 0040): een PR in een app wijzigt src/core/ niet, behalve via een template-merge. In de template zelf
         # uit (onderhoud.repository in .claude/gates.json van main). Zelfde vertrouwde basis als de jobs hierboven; het script
         # haalt template/main zelf op van de vaste template-URL.
         env:

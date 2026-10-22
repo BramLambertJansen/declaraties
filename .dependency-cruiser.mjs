@@ -1,4 +1,4 @@
-// Lagen en zones (framework §2, ADR 0008). Elke regel heeft fixtures in test/rails/depcruise.test.ts, ook voor
+// Lagen en zones (framework §2, ADR 0040). Elke regel heeft fixtures in test/rails/depcruise.test.ts, ook voor
 // bekende omzeilingen (alias, re-export). Draait via de ratchet (scripts/kit/ratchet.mjs), zodat een app een nieuwe
 // regel kan invoeren zonder eerst alles te repareren.
 const WEB = '^src/(core/)?web/';
@@ -21,7 +21,7 @@ const config = {
     },
     {
       name: 'core-niet-naar-app',
-      comment: 'src/core importeert nooit app-code; de app geeft wat core nodig heeft als argument mee (ADR 0008).',
+      comment: 'src/core importeert nooit app-code; de app geeft wat core nodig heeft als argument mee (ADR 0040).',
       severity: 'error',
       from: { path: '^src/core/' },
       to: { path: '^src/(api|web|shared)/' },
@@ -29,7 +29,7 @@ const config = {
     {
       name: 'web-niet-naar-api',
       comment:
-        'Web importeert niets uit de API, ook geen types: de contracten staan in src/shared/contracts (ADR 0008).',
+        'Web importeert niets uit de API, ook geen types: de contracten staan in src/shared/contracts (ADR 0040).',
       severity: 'error',
       from: { path: WEB },
       to: { path: API },

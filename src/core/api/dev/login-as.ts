@@ -3,7 +3,7 @@ import type { DevLogin } from '../http/create-app.ts';
 import { SEED_ACCOUNTS, SEED_ADMIN_TOTP_SLEUTEL, SEED_DEMO_WACHTWOORD } from './seed-accounts.ts';
 import { totpCode } from './totp.ts';
 
-// Dev-login (spec accountbeheer, ADR 0014): logt echt in via Better Auth als het seed-account van de rol, voor de admin met
+// Dev-login (spec accountbeheer, ADR 0043): logt echt in via Better Auth als het seed-account van de rol, voor de admin met
 // de TOTP-code uit het vaste lokale geheim. Alleen voor APP_ENV=local; server.ts geeft hem elders niet aan createApp.
 //
 // Via auth.api (server-side) en niet via de HTTP-handler: dezelfde hooks (session_strength 'mfa' na de TOTP-stap), maar

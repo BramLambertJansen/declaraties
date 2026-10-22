@@ -39,11 +39,11 @@ const api = buildApp({
   services: createServices(auth),
   log: writeJsonLine,
   ready: createReadiness(pingDatabase, { timeoutMs: READY_TIMEOUT_MS, cacheMs: READY_CACHE_MS }),
-  // Dev-login alleen lokaal (ADR 0014); in elke andere omgeving bestaat de route niet.
+  // Dev-login alleen lokaal (ADR 0043); in elke andere omgeving bestaat de route niet.
   ...(config.appEnv === 'local' ? { devLogin: createDevLogin(devAuthSteps(auth)) } : {}),
 });
 
-// Met WEB_DIR (de containerimage) serveert dezelfde server de SPA op dezelfde origin (ADR 0019); lokaal doet Vite dat.
+// Met WEB_DIR (de containerimage) serveert dezelfde server de SPA op dezelfde origin (ADR 0049); lokaal doet Vite dat.
 await startServer(config.webDir === undefined ? api : createWebApp(api, config.webDir), {
   host: config.apiHost,
   port: config.apiPort,

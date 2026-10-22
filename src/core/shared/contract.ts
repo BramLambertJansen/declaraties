@@ -2,7 +2,7 @@ import type { z } from 'zod';
 import type { Permissions } from './can.ts';
 import type { RateLimitCategory } from './limits.ts';
 
-// Route-contracten (framework §8 "Contract"; ADR 0008): methode, pad, input, output en permissie, zonder handler. Ze staan in
+// Route-contracten (framework §8 "Contract"; ADR 0040): methode, pad, input, output en permissie, zonder handler. Ze staan in
 // src/shared, zodat de web-client ze kan lezen zonder iets uit src/api te importeren; de API koppelt er met defineRoute een
 // handler aan.
 export type Method = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';

@@ -1,4 +1,4 @@
-// De caller leest de beslissingen uit main. Een status in de werkmap is geen toestemming (ADR 0027).
+// De caller leest de beslissingen uit main. Een status in de werkmap is geen toestemming (ADR 0046).
 import { documentInfo, documentKind, validStatus } from './document-state.mjs';
 
 export const TEMPLATE_REPOSITORY = 'BramLambertJansen/template';

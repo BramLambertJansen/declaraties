@@ -2,9 +2,9 @@ import { twoFactorClient } from 'better-auth/client/plugins';
 import { createAuthClient } from 'better-auth/react';
 import { ApiError } from './api-client.ts';
 
-// Enige plek met better-auth/react (framework §2, ADR 0013): inloggen, TOTP, wachtwoord instellen en wijzigen, uitloggen. Fouten van
+// Enige plek met better-auth/react (framework §2, ADR 0043): inloggen, TOTP, wachtwoord instellen en wijzigen, uitloggen. Fouten van
 // Better Auth worden foutcodes uit het register (ApiError), zodat Form en AsyncView dezelfde teksten tonen als bij de API.
-// Same-origin met cookie; de CSRF-controle (ADR 0007) ziet de headers die de browser zelf stuurt.
+// Same-origin met cookie; de CSRF-controle (ADR 0041) ziet de headers die de browser zelf stuurt.
 
 interface AuthFailure {
   readonly status: number;
@@ -18,7 +18,7 @@ type Step = 'signIn' | 'verifyTotp' | 'enableTotp' | 'setPassword' | 'signOut' |
 export function authErrorCode(step: Step, failure: AuthFailure): string {
   if (failure.status === 429) return 'RATE_LIMITED';
   if (failure.status >= 500) return 'INTERNAL_ERROR';
-  // Geweigerd vóór Better Auth (andere origin, ADR 0007): nooit vermommen als "wachtwoord klopt niet".
+  // Geweigerd vóór Better Auth (andere origin, ADR 0041): nooit vermommen als "wachtwoord klopt niet".
   if (failure.code === 'CSRF_REJECTED') return 'CSRF_REJECTED';
   if (step === 'verifyTotp') return failure.code === 'INVALID_TWO_FACTOR_COOKIE' ? 'UNAUTHENTICATED' : 'INVALID_TOTP';
   if (step === 'setPassword') return failure.code === 'PASSWORD_TOO_SHORT' ? 'VALIDATION' : 'INVITATION_INVALID';

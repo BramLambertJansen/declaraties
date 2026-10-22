@@ -1,7 +1,7 @@
 import { defineConfig } from 'vitest/config';
 import { catalogusIndex } from './scripts/kit/catalogus-index.ts';
 
-// unit en web draaien in de sandbox; int alleen via `pnpm test:db` in de runner (framework §4, Tests; ADR 0009).
+// unit en web draaien in de sandbox; int alleen via `pnpm test:db` in de runner (framework §4, Tests; ADR 0044).
 // In de runner is de repo read-only: de cache gaat dan naar RUNNER_CACHE_DIR.
 const runnerCache = process.env['RUNNER_CACHE_DIR'];
 // Repo-variabelen van een git-hook weg vóór elke test (test/setup/git-env.ts).

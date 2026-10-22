@@ -34,7 +34,7 @@ export function createPool(connectionString: string): pg.Pool {
   );
 }
 
-// Readiness (framework §3, ADR 0018): kan de API de database bereiken? Een eigen verbinding (max 1), los van de pool van
+// Readiness (framework §3, ADR 0049): kan de API de database bereiken? Een eigen verbinding (max 1), los van de pool van
 // withUser(): een volle pool onder belasting maakt de instantie niet "niet klaar", en een hangende ping houdt geen plek
 // van een request vast. Verbinden en de query zijn elk begrensd op timeoutMs; na een fout wordt de verbinding weggegooid,
 // zodat een half-open verbinding nooit blijft hangen. Draait als api_user zonder withUser(); `select 1` raakt geen tabel.

@@ -1,4 +1,4 @@
-// Gate-register (framework §4, ADR 0011): de enige gate-tabel. Per script wat het bewaakt en of het snel is
+// Gate-register (framework §4, ADR 0045): de enige gate-tabel. Per script wat het bewaakt en of het snel is
 // (zonder database of Docker, dus in gate:fast). test/rails/gates.test.ts eist dat `gate:fast` precies de snelle
 // gates in deze volgorde draait en dat elk script bestaat; check-docs neemt dat over (roadmap stuk 4).
 
@@ -40,17 +40,17 @@ export const gates = [
   {
     script: 'check:roadmap',
     bewaakt:
-      'een nieuw of gewijzigd [x] in docs/roadmap.md verwijst naar bewijs (testpad, checknaam of PR-nummer) en een spec die naar gebouwd gaat heeft status: gebouwd # #<PR>; gevalideerd: <sha>, t.o.v. origin/main (framework §8); heeft docs/roadmap.md een kop ## Nu, dan gelden ook de structuurregels: vereiste koppen, hooguit 3 open items onder Nu, terug als: bij geparkeerd, geen gedateerd statusproza en aanleiding: bij een nieuw open item (ADR 0029)',
+      'een nieuw of gewijzigd [x] in docs/roadmap.md verwijst naar bewijs (testpad, checknaam of PR-nummer) en een spec die naar gebouwd gaat heeft status: gebouwd # #<PR>; gevalideerd: <sha>, t.o.v. origin/main (framework §8); heeft docs/roadmap.md een kop ## Nu, dan gelden ook de structuurregels: vereiste koppen, hooguit 3 open items onder Nu, terug als: bij geparkeerd, geen gedateerd statusproza en aanleiding: bij een nieuw open item (ADR 0046)',
     snel: true,
   },
   { script: 'test:unit', bewaakt: 'unit-tests en de fixtures van de rails (test/rails)', snel: true },
   {
     script: 'test:db',
     bewaakt:
-      'integratietests (ook de isolatietest en check-policies) en pgTAP tegen een verse database, in de runner (ADR 0009)',
+      'integratietests (ook de isolatietest en check-policies) en pgTAP tegen een verse database, in de runner (ADR 0044)',
     snel: false,
   },
-  { script: 'ui:check', bewaakt: 'e2e met CSP aan tegen API en Vite, in de Playwright-runner (ADR 0009)', snel: false },
+  { script: 'ui:check', bewaakt: 'e2e met CSP aan tegen API en Vite, in de Playwright-runner (ADR 0044)', snel: false },
   {
     script: 'check:snapshot',
     bewaakt: 'db/schema.snapshot.sql en src/api/db/schema.ts gelijk aan wat de migraties opleveren (framework §6)',

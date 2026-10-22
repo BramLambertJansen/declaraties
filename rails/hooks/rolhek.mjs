@@ -1,4 +1,4 @@
-// PreToolUse-hook "rolhek" (framework §8, ADR 0011), voor Edit/Write/MultiEdit/NotebookEdit/Bash en mcp__* van elke rol.
+// PreToolUse-hook "rolhek" (framework §8, ADR 0045), voor Edit/Write/MultiEdit/NotebookEdit/Bash en mcp__* van elke rol.
 // deny → exit 2 met de reden op stderr (Claude ziet hem); ask → de eigenaar kiest; anders door, eventueel met context.
 // Faalt dicht: een interne fout is exit 2 (een hook die crasht mag niets doorlaten). Wat tekstheuristiek niet vangt,
 // vangt de diff-guard in CI.
@@ -42,7 +42,7 @@ function safe(probe) {
 function configuratie(root, basis, authority) {
   if (anker() !== null) {
     const text = basis?.read('.claude/gates.json') ?? null;
-    if (text === null) throw new Error('geen gecontroleerde .claude/gates.json in het anker (ADR 0033)');
+    if (text === null) throw new Error('geen gecontroleerde .claude/gates.json in het anker (ADR 0045)');
     return { config: loadConfig(text), vertrouwd: true };
   }
   const trusted = authority?.trusted('.claude/gates.json') ?? null;
@@ -52,7 +52,7 @@ function configuratie(root, basis, authority) {
 }
 
 /**
- * Onderhoudsmodus (ADR 0033 punt 2): alleen uit de configuratie van het anker en alleen als origin die repository is.
+ * Onderhoudsmodus (ADR 0045 punt 8): alleen uit de configuratie van het anker en alleen als origin die repository is.
  * @param {import('./lib/rolhek.mjs').Config} config
  * @param {boolean} vertrouwd
  * @param {string} root

@@ -3,7 +3,7 @@ import type { CanActor } from '../../shared/can.ts';
 import { uiTexts } from '../copy/ui.ts';
 import { NavLink } from './nav-link.tsx';
 
-// Navigatie per rol (ADR 0008): de app registreert items met een permissie; de sidebar toont alleen wat can() toestaat.
+// Navigatie per rol (ADR 0040): de app registreert items met een permissie; de sidebar toont alleen wat can() toestaat.
 // Verbergen is gemak, geen beveiliging: de guard van de route en de API blijven de controle.
 export interface NavItem<Permission extends string> {
   readonly label: string;

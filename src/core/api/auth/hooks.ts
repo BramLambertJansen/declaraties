@@ -4,7 +4,7 @@ import { SESSION_FRESH_SECONDS } from '../../shared/limits.ts';
 import type { Mailing } from './mailing.ts';
 import { dropRejectedSession, SESSION_RECOVERY_PATHS } from './session-guard.ts';
 
-// Hooks rond Better Auth (ADR 0013, ADR 0021, ADR 0024; spec eigen-account). Elke regel heeft een integratietest
+// Hooks rond Better Auth (ADR 0043, ADR 0051; spec eigen-account). Elke regel heeft een integratietest
 // (test/auth/*.int.test.ts, test/api/eigen-account*.int.test.ts). session_strength: 'password' bij inloggen; 'mfa' na TOTP;
 // bij /change-password neemt de nieuwe sessie sterkte en createdAt van de oude over (OV-8).
 
@@ -86,7 +86,7 @@ export function createHooks(mailing: Mailing | null, now: () => number = Date.no
       }
     }
     if (ctx.path === '/two-factor/verify-totp' && isTrustDeviceRequested(ctx.body)) {
-      fail('BAD_REQUEST', 'TRUST_DEVICE_DISABLED', 'trustDevice staat uit (ADR 0013)');
+      fail('BAD_REQUEST', 'TRUST_DEVICE_DISABLED', 'trustDevice staat uit (ADR 0043)');
     }
     if (ctx.path === '/verify-email') {
       // Vangnet naast disabledPaths: zonder sessie maakt Better Auth bij stap 2 zelf een sessie.

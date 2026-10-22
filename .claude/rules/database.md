@@ -33,9 +33,9 @@ paths:
   en eindigt met `reset search_path;` (dbmate schrijft `schema_migrations` in dezelfde transactie); nooit `auth migrate`.
 - Heeft een auth-hook data buiten `better_auth` nodig (bijv. rol uit `user_roles`), of de app gegevens uit `better_auth."user"`:
   via een `security definer`-functie of -view van `app_definer` (zoals `app.accounts`). `app_definer` leest uit `better_auth` alleen de
-  kolommen in de allowlist van `db/tests/invarianten.sql` (ADR 0014) en schrijft alleen `blocked_at` (ADR 0026); een extra kolom vraagt een ADR.
+  kolommen in de allowlist van `db/tests/invarianten.sql` (ADR 0043) en schrijft alleen `blocked_at` (ADR 0043); een extra kolom vraagt een ADR.
 - `set_config` en `current_setting` alleen in `src/core/api/db` en in de helpers in schema `app`; nooit in app-SQL of handlers.
-- Rijen in schema `better_auth` zijn van Better Auth (ADR 0010); lees of schrijf ze nooit vanuit `src/core/api/db` of app-code (uitzonderingen: `app.set_account_blocked` voor `blocked_at`, ADR 0026; `asUser` in de testkit, binnen een testtransactie die terugdraait). Geen provider-specifieke schema's of functies (`storage.*`, `realtime.*`, `auth.uid()`).
+- Rijen in schema `better_auth` zijn van Better Auth (ADR 0041); lees of schrijf ze nooit vanuit `src/core/api/db` of app-code (uitzonderingen: `app.set_account_blocked` voor `blocked_at`, ADR 0043; `asUser` in de testkit, binnen een testtransactie die terugdraait). Geen provider-specifieke schema's of functies (`storage.*`, `realtime.*`, `auth.uid()`).
 - Na een migratie: `pnpm db:generate` (verse test-database in de runner) schrijft `db/schema.snapshot.sql` en
   `src/api/db/schema.ts`; commit beide met de migratie, nooit met de hand bewerken. Een kolom `id` of `*_id` zonder
   foreign key naar een gebrande kolom: zet hem in `db/ids.json` met een ID gemaakt met `brandedId()` uit `src/core/shared/ids.ts`, of `null` met reden.
@@ -47,7 +47,7 @@ paths:
 
 ## Besloten, nog niet gebouwd
 
-Gebouwd: `withUser()` met Drizzle-`tx` en foutvertaling (ADR 0012); pgTAP-invarianten (`db/tests/invarianten.sql`: RLS
+Gebouwd: `withUser()` met Drizzle-`tx` en foutvertaling (ADR 0042); pgTAP-invarianten (`db/tests/invarianten.sql`: RLS
 geforceerd, geen TRUNCATE/REFERENCES/TRIGGER, `better_auth` dicht, niets voor PUBLIC) en de functiecatalogus
 (`db/tests/functies.sql`: een nieuwe functie krijgt daar een regel, in dezelfde PR als de migratie); de testkit in
 `testing.ts` (`beginTestDb(pool)`: `asUser(rol)`, `withUser` met een savepoint per aanroep, `rollback()`; de pool verbindt

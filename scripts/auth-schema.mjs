@@ -18,13 +18,13 @@ const options = createAuthOptions(
 const { compileMigrations, toBeCreated, toBeAdded } = await getMigrations(options);
 if (toBeAdded.length > 0) throw new Error('onverwacht: kolommen toevoegen aan een leeg schema');
 console.info(`-- migrate:up
--- Tabellen van Better Auth ${'1.7.7'} (ADR 0003, 0010, 0013), gegenereerd met scripts/auth-schema.mjs. Draait als app_migrator.
+-- Tabellen van Better Auth ${'1.7.7'} (ADR 0041, 0043), gegenereerd met scripts/auth-schema.mjs. Draait als app_migrator.
 -- Grants: default privileges uit de baseline geven auth_service DML op schema better_auth.
 set local search_path = better_auth;
 
 ${(await compileMigrations()).trim()}
 
--- Template: session_strength alleen 'password' of 'mfa', standaard 'password' (framework §6, ADR 0013).
+-- Template: session_strength alleen 'password' of 'mfa', standaard 'password' (framework §6, ADR 0043).
 alter table "session" alter column "session_strength" set default 'password';
 alter table "session" add constraint "session_strength_check" check ("session_strength" in ('password', 'mfa'));
 

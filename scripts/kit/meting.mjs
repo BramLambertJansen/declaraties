@@ -1,4 +1,4 @@
-// Overzicht van de meethook (ADR 0029 punt 12): `pnpm meting [--json] [--sessie <id>] [--branch <naam>]`.
+// Overzicht van de meethook (ADR 0046 punt 36): `pnpm meting [--json] [--sessie <id>] [--branch <naam>]`.
 // Leest `<opslagmap>/*.jsonl` (rails/hooks/lib/meting.mjs: METING_DIR of `<git common dir>/agent-meting`) en telt per
 // sessie en per branch: prompts (permissievragen) per pad of commandoprefix en per modus (`m`, ontbrekend → onbekend), weigeringen, beurten, eigenaarberichten na de
 // opdracht (een bovengrens), pushes (geslaagde `git push`) en CI-rondes via `gh run list` (METING_GH, METING_GH_TIMEOUT_MS):

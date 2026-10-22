@@ -1,4 +1,4 @@
-// De root waarin een hook werkt, voor het rolhek en de werkstraat-hooks (framework §8, ADR 0016 gevolgen).
+// De root waarin een hook werkt, voor het rolhek en de werkstraat-hooks (framework §8, ADR 0046 punt 22).
 import { execFileSync } from 'node:child_process';
 
 /**

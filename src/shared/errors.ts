@@ -7,7 +7,7 @@ export const errors = defineErrorCodes([
   'INVITATION_INVALID',
   'ALREADY_ACTIVE',
   'LAST_ADMIN',
-  // Spec accountbeheer-uitbreiding, ADR 0026.
+  // Spec accountbeheer-uitbreiding, ADR 0043.
   'OWN_ACCOUNT',
   'ACCOUNT_INVITED',
   'ACCOUNT_BLOCKED',

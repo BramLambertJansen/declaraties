@@ -12,14 +12,14 @@ export type AuditAction<Audit extends AuditActions> = Extract<keyof Audit, strin
 
 export type AuditDetails<Audit extends AuditActions, A extends AuditAction<Audit>> = z.input<Audit[A]['details']>;
 
-// Een auditregel in de transactie van de route (ADR 0021): alleen acties die de app met defineAuditActions registreerde.
+// Een auditregel in de transactie van de route (ADR 0051): alleen acties die de app met defineAuditActions registreerde.
 export type AuditFn<Audit extends AuditActions = AuditActions> = <A extends AuditAction<Audit>>(
   action: A,
   targetId: string,
   details: AuditDetails<Audit, A>,
 ) => Promise<void>;
 
-// Dezelfde patronen als de CHECK's op app.audit_log (spec audit-log, ADR 0021).
+// Dezelfde patronen als de CHECK's op app.audit_log (spec audit-log, ADR 0051).
 const ACTION_PATTERN = /^[a-z]+(\.[a-z_]+)+$/;
 const TARGET_PATTERN = /^[a-z_]+$/;
 

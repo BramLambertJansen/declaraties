@@ -1,4 +1,4 @@
-# Productie-image (ADR 0019): één proces serveert /api en de gebouwde SPA op één origin. Provider-neutraal: elke containerhost
+# Productie-image (ADR 0049): één proces serveert /api en de gebouwde SPA op één origin. Provider-neutraal: elke containerhost
 # die een poort en env-variabelen geeft, kan hem draaien. Migraties draaien niet hier, maar apart met dbmate als app_migrator
 # (framework §6). Bouwen: `docker build -t <app> .`; controleren: scripts/check-image.sh <image> (ook in CI).
 # Basisimage op digest, gelijk aan de runner in compose.yaml; Renovate werkt beide bij.

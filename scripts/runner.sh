@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
-# Draait door de agent geschreven tests en configs in de runner-container (ADR 0009): read-only repo, geen
+# Draait door de agent geschreven tests en configs in de runner-container (ADR 0044): read-only repo, geen
 # capabilities, alleen op het interne netwerk test-net met een eigen, verse test-database.
 # Gebruik: scripts/runner.sh db|ui|gen [--sta-wijzigingen-toe]   (via pnpm test:db, pnpm ui:check en pnpm db:generate)
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
-# Wat de host vóór de container uitvoert of leest, moet gelijk zijn aan wat al op main staat (ADR 0009, 0025 punt 4):
+# Wat de host vóór de container uitvoert of leest, moet gelijk zijn aan wat al op main staat (ADR 0044 punt 3–4):
 # lokaal aan de merge-base met origin/main, zodat ook een gecommitte wijziging niet ongelezen op de host draait; in CI
 # (ondiepe checkout zonder origin/main, wegwerp-runner) aan HEAD. Alleen de eigenaar mag dat met --sta-wijzigingen-toe
 # overslaan, na het lezen van de wijziging.
@@ -27,7 +27,7 @@ esac
 
 unsafe_host_path() {
   printf '✗ Hostpad is een symlink of geen veilig pad: %s\n' "$1" >&2
-  printf '  → gebruik de wegwerp-CI (ADR 0027); geen agentoverride.\n' >&2
+  printf '  → gebruik de wegwerp-CI (ADR 0044 punt 6); geen agentoverride.\n' >&2
   exit 1
 }
 
@@ -41,7 +41,7 @@ check_host_paths() {
   ignored="$(git ls-files --others --ignored --exclude-standard -- "${HOST_FILES[@]}")"
   if [[ -n "$ignored" ]]; then
     printf '✗ Genegeerde bestanden in hostpaden; de host zou ze ongezien gebruiken:\n%s\n' "$ignored" >&2
-    printf '  → verwijder ze of gebruik de wegwerp-CI (ADR 0027).\n' >&2
+    printf '  → verwijder ze of gebruik de wegwerp-CI (ADR 0044 punt 6).\n' >&2
     exit 1
   fi
   [[ "$(pwd -P)" == "$PWD" ]] || unsafe_host_path "$PWD"
@@ -75,7 +75,7 @@ check_host_files() {
   changed="$(git diff --name-status "$base" -- "${HOST_FILES[@]}")"
   if [[ -n "$changed" ]]; then
     printf '✗ Bestanden die de host uitvoert, wijken af van origin/main (merge-base):\n%s\n' "$changed" >&2
-    printf '  → gebruik de wegwerp-CI en verzamel de echte gate:slow-uitslag (ADR 0027); geen agentoverride.\n' >&2
+    printf '  → gebruik de wegwerp-CI en verzamel de echte gate:slow-uitslag (ADR 0044 punt 6); geen agentoverride.\n' >&2
     exit 1
   fi
 }

@@ -1,11 +1,11 @@
-// pnpm new:resource <naam> (ADR 0016): een resource volgens het gouden pad, in twee fasen (OV-2).
+// pnpm new:resource <naam> (ADR 0047; OV-n hieronder is 0016 OV-n): een resource volgens het gouden pad, in twee fasen (OV-2).
 //  - Zonder docs/specs/<naam>.md: alleen het spec-skelet (status voorstel). Bij status voorstel: weigeren.
 //  - Bij een goedgekeurde spec (met --rollen): werkstraat-stap 2 (framework §8, OV-1b): contract, handlers die 501 geven,
 //    migratie met het tabelpatroon (docs/reviews/2026-10-10-tabelpatroon.md), branded ID, queries, scherm, route, menu-item
 //    en teksten. Geen tests: die schrijft de tester.
 // Bestaande tests (permissions.test.ts, de menutest) schrijft hij niet: hij drukt de exacte wijziging af en de hoofdsessie
 // zet die met Edit en noemt ze met reden in de PR (OV-4). permissions.ts en app.ts schrijft hij wel: ze zijn
-// geen gate meer (ADR 0029 punt 18); het risico-overzicht van de diff-guard meldt een nieuwe permissie of route. Bestaat een doel al, dan schrijft hij niets (OV-5).
+// geen gate meer (ADR 0046 punt 32); het risico-overzicht van de diff-guard meldt een nieuwe permissie of route. Bestaat een doel al, dan schrijft hij niets (OV-5).
 // test/security/resources.ts (spec security-suite, PR 4) schrijft hij evenmin: hij drukt de declaratie af (routeClassificatie en
 // resources, samples als INVULLEN) en de tester neemt die over en vult de samples.
 // Templates in scripts/kit/templates/; check:new-resource bewijst dat de uitvoer gate:fast haalt (OV-7).
@@ -260,7 +260,7 @@ function nav(root, n) {
 }
 
 /**
- * permissions.ts en app.ts, die het script zelf schrijft (ADR 0029 punt 18).
+ * permissions.ts en app.ts, die het script zelf schrijft (ADR 0046 punt 32).
  * @param {string} root
  * @param {Namen} n
  * @param {readonly string[]} rollen

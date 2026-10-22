@@ -19,12 +19,12 @@
       "dependencyDashboardApproval": true
     },
     {
-      "description": "TypeScript 7 vraagt een ADR (ADR 0005)",
+      "description": "TypeScript 7 vraagt een ADR (ADR 0039)",
       "matchPackageNames": ["typescript"],
       "allowedVersions": "<7"
     },
     {
-      "description": "Node-major en @types/node volgen engines in package.json (ADR 0005)",
+      "description": "Node-major en @types/node volgen engines in package.json (ADR 0039)",
       "matchPackageNames": ["node", "@types/node"],
       "allowedVersions": "<27"
     },

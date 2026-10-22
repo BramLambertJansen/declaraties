@@ -1,6 +1,6 @@
 import type { Auth } from './auth.ts';
 
-// Uitnodigen via de reset-flow van Better Auth (ADR 0013): de gebruiker bestaat meteen, zonder credential-account
+// Uitnodigen via de reset-flow van Better Auth (ADR 0043): de gebruiker bestaat meteen, zonder credential-account
 // (status "uitgenodigd"), en krijgt een eenmalige link om zijn wachtwoord in te stellen.
 
 export class AccountAlreadyActiveError extends Error {

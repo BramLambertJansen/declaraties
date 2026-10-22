@@ -1,7 +1,7 @@
 import { z } from 'zod';
 
 // Enige plek met process.env (framework §4). Het schema draait bij opstart: `env()` faalt met alle fouten tegelijk.
-// Een app breidt uit met `readEnv(eigenSchema)` vanuit src/api/env.ts (ADR 0008).
+// Een app breidt uit met `readEnv(eigenSchema)` vanuit src/api/env.ts (ADR 0040).
 
 const DEFAULT_API_PORT = 8787;
 // Lokaal alleen bereikbaar vanaf de eigen machine; een containerimage zet API_HOST=0.0.0.0 expliciet.
@@ -64,7 +64,7 @@ const baseSchema = z.object({
   AUTH_BASE_URL: origin,
   AUTH_SECRET: z.string().min(1),
   SMTP_URL: url,
-  // Map met de build van de SPA (dist/web); gezet = de server serveert de SPA naast /api op één origin (ADR 0019).
+  // Map met de build van de SPA (dist/web); gezet = de server serveert de SPA naast /api op één origin (ADR 0049).
   // Lokaal leeg: dan serveert Vite de SPA.
   WEB_DIR: z.preprocess(unsetIfEmpty, z.string().min(1).optional()),
   // Header met het client-IP die de host zet en de client niet kan vervalsen (framework §6, Verharding); voor de rate limit.
@@ -179,7 +179,7 @@ export function onProcessSignal(
   });
 }
 
-// Uitbreidingsplek voor de app (ADR 0008): src/api/env.ts geeft een eigen schema mee.
+// Uitbreidingsplek voor de app (ADR 0040): src/api/env.ts geeft een eigen schema mee.
 export function readEnv<T>(schema: z.ZodType<T>): T {
   const result = schema.safeParse(process.env);
   if (!result.success) throw new Error(`Ongeldige omgeving (app-env):\n${describe(result.error)}`);
