@@ -113,22 +113,49 @@ const VOORSTEL = new Set(['voorstel', 'voorgesteld']);
 
 /** De melding bij A4 (ADR 0046 punt 2), gedeeld door guard en rolhek. */
 export const A4_MELDING =
-  'de tekst of status van een geaccepteerd, vervallen of vervangen ADR wijzigt niet en gaat niet terug naar voorgesteld (A4, ADR 0046 punt 2); schrijf een nieuw ADR dat het vervangt (`vervangen door NNNN`)';
+  'een geaccepteerd ADR herschrijven of een ADR met een eigenaarstatus verwijderen mag alleen in een besluit-PR, door architect of hoofdsessie, en een herschreven ADR krijgt een herzieningsregel (`Herzien: JJJJ-MM-DD (#NNN): wat`); een vervallen of vervangen ADR wijzigt niet en een ADR gaat nooit terug naar voorgesteld; buiten een besluit-PR schrijf je een nieuw ADR dat het vervangt (`vervangen door NNNN`) (A4, ADR 0046 punt 2)';
+
+const HERZIEN = /^Herzien: (\d{4}-\d{2}-\d{2}) \(#[1-9]\d*\): \S.*$/;
+
+/** Geldige herzieningsregels (`Herzien: JJJJ-MM-DD (#NNN): wat`, bestaande datum). @param {string} text */
+function herzieningen(text) {
+  const regels = text.replaceAll('\r\n', '\n').split('\n');
+  return new Set(regels.filter((line) => bestaandeDatum(`(${HERZIEN.exec(line)?.[1] ?? ''})`)));
+}
+
+/**
+ * Een geaccepteerd ADR dat geaccepteerd blijft met andere inhoud: de herschrijving die alleen in een besluit-PR mag (A4).
+ * @param {string} file @param {string | null} voor @param {string | null} na
+ */
+export function isHerschrijving(file, voor, na) {
+  const oud = voor === null ? null : documentInfo(file, voor);
+  const nieuw = na === null ? null : documentInfo(file, na);
+  return oud?.kind === 'adr' && oud.status === 'geaccepteerd' && nieuw?.status === 'geaccepteerd' && oud.digest !== nieuw.digest;
+}
+
+/** Elke oude geldige herzieningsregel staat er nog, en er is er minstens één bij. @param {string} voor @param {string} na */
+function nieuweHerzieningsregel(voor, na) {
+  const oud = herzieningen(voor);
+  const nieuw = herzieningen(na);
+  return [...oud].every((regel) => nieuw.has(regel)) && nieuw.size > oud.size;
+}
 
 /**
  * Hoe een document zonder record mag veranderen (ADR 0046 punt 1, 2 en 5). Puur; `voor`/`na` zijn de volledige teksten.
  * - `vrij`: geen eigenaarbesluit (voorstel, of niets wezenlijks gewijzigd);
  * - `a4`: een ADR met een eigenaarstatus wijzigt van inhoud of gaat terug naar voorgesteld;
+ * - `herzien`: een geaccepteerd ADR blijft geaccepteerd met andere inhoud en een nieuwe herzieningsregel (alleen in een besluit-PR);
  * - `gebouwd`: alleen met bouwbewijs;
  * - `besluit`: een eigenaarstatus die de merge van de eigenaar beslist (`nieuw`: een nieuw document of vanuit een voorstel);
  * - `geweigerd`: een andere overgang (bijv. vervallen terug naar goedgekeurd); alleen met een record.
  * @param {string} file @param {string | null} voor @param {string} na
- * @returns {{ uitslag: 'vrij' | 'a4' | 'gebouwd' | 'besluit' | 'geweigerd', nieuw: boolean }}
+ * @returns {{ uitslag: 'vrij' | 'a4' | 'herzien' | 'gebouwd' | 'besluit' | 'geweigerd', nieuw: boolean }}
  */
 export function beslisOvergang(file, voor, na) {
   const oud = voor === null ? null : documentInfo(file, voor);
   const nieuwInfo = documentInfo(file, na);
-  const uit = (/** @type {'vrij' | 'a4' | 'gebouwd' | 'besluit' | 'geweigerd'} */ uitslag, nieuw = false) => ({ uitslag, nieuw });
+  const uit = (/** @type {'vrij' | 'a4' | 'herzien' | 'gebouwd' | 'besluit' | 'geweigerd'} */ uitslag, nieuw = false) => ({ uitslag, nieuw });
+  if (voor !== null && isHerschrijving(file, voor, na)) return uit(nieuweHerzieningsregel(voor, na) ? 'herzien' : 'a4');
   if (oud?.kind === 'adr' && oud.status !== 'voorgesteld' &&
     (nieuwInfo === null || oud.digest !== nieuwInfo.digest || nieuwInfo.status === 'voorgesteld'))
     return uit('a4');

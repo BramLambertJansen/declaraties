@@ -788,21 +788,23 @@ const uniek = (prefix: string): string =>
     (_regel, index) => `${prefix} regel ${String(index)} met eigen woorden ${prefix}${String(index * 7)}.`,
   ).join('\n');
 
-describe('ADR 0046 punt 2: een ADR met een eigenaarstatus verwijderen is A4', () => {
+// GEWIJZIGD (eigenaarbesluit 2026-10-22, A4 in een besluit-PR): verwijderen mag in een besluit-PR (alleen docs/adr, docs/specs en
+// het record), maar niet naast een toegevoegd ADR met hetzelfde nummer (G3); de weigering met andere bestanden en de rename staan in lane-status-a4.test.ts (G2, G3).
+describe('ADR 0046 punt 2: een ADR met een eigenaarstatus verwijderen alleen in een besluit-PR', () => {
   test.each([['geaccepteerd'], ['vervallen'], ['vervangen door 0051']])(
-    'een ADR met Status: %s verwijderen: faalt',
+    'een ADR met Status: %s verwijderen, zonder ander bestand: slaagt (besluit-PR)',
     (status) => {
       const fixture = metBasis({ [ADR_OUD]: adrTekst('0050', status), [ADR_NIEUW]: adrTekst('0051', 'geaccepteerd') });
       git(fixture.root, ['rm', '-q', ADR_OUD]);
-      faalt(fixture, agent(fixture));
+      slaagt(fixture, agent(fixture));
     },
   );
 
-  test('0017-a.md verwijderen en 0017-b.md met andere inhoud en geaccepteerd toevoegen (geen rename): faalt', () => {
+  test('0017-a.md verwijderen en 0017-b.md met andere inhoud en geaccepteerd toevoegen (geen rename): faalt met de A4-melding', () => {
     const fixture = metBasis({ 'docs/adr/0017-a.md': adrTekst('0017', 'geaccepteerd', uniek('alfa')) });
     git(fixture.root, ['rm', '-q', 'docs/adr/0017-a.md']);
     write(fixture.root, 'docs/adr/0017-b.md', adrTekst('0017', 'geaccepteerd', uniek('beta')));
-    faalt(fixture, agent(fixture));
+    expect(faalt(fixture, agent(fixture))).toMatch(/A4/);
   });
 
   test('een voorgesteld ADR verwijderen: slaagt', () => {
