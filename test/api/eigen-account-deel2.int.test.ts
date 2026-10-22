@@ -5,6 +5,7 @@ import { Browser, uniqueEmail } from '../auth/harness.ts';
 import {
   confirmTokenFrom,
   countMails,
+  mailCountNow,
   createAccountTestApp,
   json,
   mailsTo,
@@ -304,7 +305,7 @@ describe('POST /api/auth/change-email en /api/me/email/bevestigen', () => {
   test('AC-9: een bezet adres: zelfde antwoord als bij een vrij adres, het bezette adres krijgt niets, het oude de neutrale mail', async () => {
     const { browser, email } = await t.account('user');
     const owner = await t.account('user');
-    const before = await countMails(owner.email);
+    const before = await mailCountNow(owner.email);
     const free = await requestChange((await t.account('user')).browser, uniqueEmail('vrij'));
 
     const response = await requestChange(browser, owner.email);
@@ -332,7 +333,7 @@ describe('POST /api/auth/change-email en /api/me/email/bevestigen', () => {
     const { browser, email, userId } = await t.account('user');
     const [session] = await t.sessionsOf(userId);
     await t.ageSession(session?.token ?? '', 11 * 60);
-    const before = await countMails(email);
+    const before = await mailCountNow(email);
 
     const response = await requestChange(browser, uniqueEmail('nieuw'));
 
@@ -354,7 +355,7 @@ describe('POST /api/auth/change-email en /api/me/email/bevestigen', () => {
     const { browser, email, userId } = await t.account('user');
     await t.enableTotp(browser);
     await t.authDb.query(`update session set session_strength = 'password' where "userId" = $1`, [userId]);
-    const before = await countMails(email);
+    const before = await mailCountNow(email);
 
     const response = await requestChange(browser, uniqueEmail('nieuw'));
 
@@ -364,7 +365,7 @@ describe('POST /api/auth/change-email en /api/me/email/bevestigen', () => {
 
   test('niet ingelogd: 401 en geen mail', async () => {
     const { email } = await t.account('user');
-    const before = await countMails(email);
+    const before = await mailCountNow(email);
 
     const response = await requestChange(new Browser(t.app), uniqueEmail('nieuw'));
 
@@ -377,7 +378,7 @@ describe('POST /api/auth/change-email en /api/me/email/bevestigen', () => {
     ['leeg', ''],
   ])('ongeldig nieuw adres (%s): 400 en geen mail', async (_, newEmail) => {
     const { browser, email } = await t.account('user');
-    const before = await countMails(email);
+    const before = await mailCountNow(email);
 
     const response = await requestChange(browser, newEmail);
 
@@ -387,7 +388,7 @@ describe('POST /api/auth/change-email en /api/me/email/bevestigen', () => {
 
   test('hetzelfde adres (ook met andere hoofdletters): 400 en geen mail', async () => {
     const { browser, email } = await t.account('user');
-    const before = await countMails(email);
+    const before = await mailCountNow(email);
 
     const response = await requestChange(browser, email.toUpperCase());
 
@@ -525,7 +526,7 @@ describe('dichte paden (AC-13), echte methode en met sessie', () => {
 
   test('POST /api/auth/send-verification-email met een sessie: 404 en geen mail', async () => {
     const { browser, email } = await t.account('user');
-    const before = await countMails(email);
+    const before = await mailCountNow(email);
 
     const response = await browser.post('/api/auth/send-verification-email', { email });
 

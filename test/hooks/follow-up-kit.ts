@@ -202,11 +202,12 @@ export interface Uitvoer {
 
 function env(stub: string, extra: Record<string, string>): Record<string, string> {
   const schoon = Object.fromEntries(Object.entries(process.env).flatMap(([k, v]) => (v === undefined ? [] : [[k, v]])));
+  delete schoon['PR_NUMBER'];
   return { ...schoon, PATH: `${stub}:${process.env['PATH'] ?? ''}`, ...extra };
 }
 
 /** `check-document-status` zoals guard.yml hem draait, met main als vertrouwde basis. */
-export function draaiChecker(fixture: Fixture, head: string): Uitvoer {
+export function draaiChecker(fixture: Fixture, head: string, extra: Record<string, string> = {}): Uitvoer {
   const stub = ghStub();
   const { status, stdout, stderr } = spawnSync(process.execPath, [CHECKER], {
     cwd: fixture.root,
@@ -217,6 +218,7 @@ export function draaiChecker(fixture: Fixture, head: string): Uitvoer {
       HEAD_REF: BRANCH,
       REPO: REPOSITORY,
       STUB_PR_HEAD: head,
+      ...extra,
     }),
   });
   return { status, stdout, stderr };

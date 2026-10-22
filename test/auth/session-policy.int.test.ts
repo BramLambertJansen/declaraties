@@ -2,7 +2,8 @@ import { afterAll, expect, test } from 'vitest';
 import { SESSION_ABSOLUTE_SECONDS } from '../../src/core/shared/limits.ts';
 import { createAccountTestApp, NEW_PASSWORD, PASSWORD } from '../api/account-harness.ts';
 
-const t = createAccountTestApp();
+// Twee tests houden een lock vast: lock_timeout van 1 s geeft 55P03 in plaats van 5 s wachten op statement_timeout.
+const t = createAccountTestApp({ lockTimeoutMs: 1000 });
 afterAll(() => t.close());
 
 // Laat de sessie bewust staan: dit is de toestand na een mislukte revokeAll na de block-commit.

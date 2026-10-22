@@ -1,12 +1,19 @@
 #!/usr/bin/env bash
-# Controleert de machine (framework §11). Volledig: toolchain, sandbox-pakketten, Docker, inotify, lokale stack.
+# Controleert de machine (framework §11). Zonder vlag ook de stack; --machine controleert alleen installatie en git-hooks.
 # --quick: alleen de status van de lokale stack, voor de SessionStart-hook (nooit Docker, nooit netwerk buiten 127.0.0.1).
-# Exit 1 bij een fout in de volledige modus; --quick meldt alleen en eindigt altijd met 0.
+# Exit 1 bij een fout in de volledige of machine-modus; --quick meldt alleen en eindigt altijd met 0.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
-quick=false
-[[ "${1:-}" == "--quick" ]] && quick=true
+mode="${1:-full}"
+if (($# > 1)); then
+  echo 'Gebruik: scripts/doctor.sh [--machine|--quick]' >&2
+  exit 2
+fi
+case "$mode" in
+  full|--machine|--quick) ;;
+  *) echo 'Gebruik: scripts/doctor.sh [--machine|--quick]' >&2; exit 2 ;;
+esac
 failures=0
 
 ok() { printf '✓ %s\n' "$1"; }
@@ -33,7 +40,7 @@ check_stack() {
   done
 }
 
-if $quick; then
+if [[ "$mode" == --quick ]]; then
   check_stack
   exit 0
 fi
@@ -76,7 +83,7 @@ if docker info >/dev/null 2>&1; then ok "Docker draait"; else fail "Docker draai
 
 if [[ -x .git/hooks/pre-commit ]] && grep -q lefthook .git/hooks/pre-commit; then ok "git-hooks (lefthook) geïnstalleerd"; else fail "git-hooks ontbreken" "pnpm exec lefthook install"; fi
 
-check_stack
+if [[ "$mode" != --machine ]]; then check_stack; fi
 
 if ((failures > 0)); then
   printf '\n%d probleem/problemen.\n' "$failures"

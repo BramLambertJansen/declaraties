@@ -69,7 +69,7 @@ commando's, paden, productnamen (Use this template, Settings → Rules → Rules
 | Zichtbaarheid | `private` |
 | Map | `~/code/<slug>` |
 | Distro (WSL) | `Ubuntu-24.04`; bestaat alleen `Ubuntu` en is dat 24.04, gebruik die |
-| Poorten | `54322` (Postgres), `54324` (Mailpit UI), `54325` (SMTP); bezet → +10 tot alle drie vrij zijn |
+| Poorten | `54322` (Postgres), `54324` (Mailpit UI), `54325` (SMTP), `8787` (API), `5173` (web); bezet → +10 bij alle vijf tot ze vrij zijn |
 | Git-identiteit | bestaande `git config --global`; ontbreekt die: naam en `<id>+<login>@users.noreply.github.com` uit `gh api user` |
 
 Slug: kebab-case van de app-naam, alleen `a-z0-9-`, begint met een letter, maximaal **50** tekens (zoals `scripts/kit/app-init.mjs`). Bestaat `~/code/<slug>` of `<owner>/<slug>` al: controleer eerst of dit een eerder begonnen, aantoonbaar juiste setup uit `SETUP-PROGRESS.md` is. Hervat alleen na verificatie van origin, branch, naam en laatste fase; anders stop en vraag de eigenaar hoe verder. Nooit een repo of map overschrijven.
@@ -102,7 +102,8 @@ Herschrijf het na elke fase:
 - Owner/repo: <owner>/<slug>
 - Agent/runtime: <werkelijk gebruikte agent en geverifieerde lokale grenzen>
 - Omgeving: wsl-binnen | windows | native — distro: <naam>
-- Poorten: PG <p>, Mail-UI <p>, SMTP <p>
+- Poorten: PG <p>, Mail-UI <p>, SMTP <p>, API <p>, web <p>
+- Publieke app-origin: http://localhost:<web>
 - Template-commit: <sha van template/main bij koppeling>
 
 ## Fasen
@@ -354,6 +355,16 @@ Controle: `git status` schoon; `git log --oneline -3` toont: hernoem, koppel (me
 
 ### 6.1 Push (overdracht)
 
+**Eerst CI-beschikbaarheid controleren.** Beide CodeQL-checks zijn verplicht in `.claude/decisions.json` en de workflow
+`.github/workflows/codeql.yml` draait ook voor private apps. Laat de eigenaar bevestigen dat CodeQL voor deze repo
+beschikbaar is. Bij onbekende of ontbrekende beschikbaarheid: stop vóór de eerste push en vraag om verificatie of een
+expliciete keuze. Maak de repo nooit zelf public en behandel ontbrekende checks niet als geslaagd.
+
+`--zonder-codeql` wijzigt alleen de ruleset, niet de workflow of de verplichte checks van `pnpm pr:verify`. Het is dus
+geen werkende afrondroute voor deze setup. Wil de eigenaar een profiel zonder CodeQL, dan vraagt dat eerst een
+appspecifiek ADR en een samenhangende aanpassing van workflow, ruleset en verificatieregister. Tot die route gebouwd
+en gecontroleerd is, blijft de setup hier open; een overdrachtsnotitie alleen lost dit niet op.
+
 > Ik heb twee commits lokaal klaargezet: de koppeling met de template (merge-commit) en de hernoeming.
 > Agents pushen nooit naar `main`, dus dit doe jij, één keer:
 > 1. `cd ~/code/<slug> && git log --oneline --graph -4` — controleer dat je een merge en een hernoem-commit ziet.
@@ -388,11 +399,10 @@ PR-plicht, opgeloste reviewgesprekken, merge en squash, en de verplichte checks 
 Het script schrijft naar GitHub met de login van de eigenaar; jij draait het niet.
 
 > 1. `cd ~/code/<slug> && scripts/github-ruleset.sh <owner>/<slug>`
->    Private repo zonder GitHub Advanced Security: voeg `--zonder-codeql` toe (CodeQL draait daar niet, `.github/workflows/codeql.yml`,
->    en een verplichte `codeql (…)` zou elke PR blokkeren).
 > 2. Typ *klaar*, of plak de uitvoer als er een ✗ staat.
 
-Met `--zonder-codeql`: zet in de overdracht dat de app per ADR kiest: GHAS, public, of `codeql.yml` uit.
+Controleer de werkelijke ruleset en de checknamen. De CI-beschikbaarheidscontrole uit 6.1 blijft van kracht; laat geen
+verplichte checks weg om deze stap groen te krijgen.
 
 Waarom 0 goedkeuringen en geen code-owner-review: zolang de agent nog onder het account van de eigenaar pusht, is de eigenaar ook de PR-auteur,
 en GitHub laat je je eigen PR niet goedkeuren. Zodra de GitHub App voor de agent bestaat (roadmap ST-01, ADR 0039 punt 8), gaan beide aan.
@@ -423,30 +433,44 @@ pre-commit en pre-push, en is de afdwinging lokaal zwakker dan in de template.
 ### 7.1 Poorten en `.env.local`
 
 ```bash
-ss -ltnH | awk '{print $4}' | grep -E ':(54322|54324|54325)$' || echo vrij
+ss -ltnH | awk '{print $4}' | grep -E ':(54322|54324|54325|8787|5173)$' || echo vrij
 ```
 
-Bezet (meestal een andere app van deze template): tel 10 op bij alle drie tot ze vrij zijn. Dan:
+Bezet (meestal een andere app): tel 10 op bij **alle vijf** en controleer de nieuwe kandidaten opnieuw. Stop nooit een andere
+app om poorten vrij te maken. API en Vite mogen niet op de oude poorten blijven staan terwijl alleen database en mail verschuiven.
+Leg de vijf gekozen poorten en de bijbehorende publieke app-origin vast in de voortgang. Maak daarna voor een nieuwe app:
 
 ```bash
 cp -n .env.example .env.local
-# Alleen bij afwijkende poorten — de poortvariabelen én de poort in de drie database-URL's en SMTP_URL:
-sed -i -e 's/54322/<pg>/g' -e 's/54324/<mailui>/g' -e 's/54325/<smtp>/g' .env.local
 ```
 
-Bestond `.env.local` al: niet overschrijven, alleen de poorten controleren. (`pnpm dev` maakt hem ook uit `.env.example` als hij
-ontbreekt, maar dan met de standaardpoorten; daarom maak jij hem eerst.)
+Pas uitsluitend de poortvelden en bijbehorende URL-poorten aan; vervang niet blind ieder voorkomen van een getal in het bestand.
+Deze samenhang is verplicht, ook als de API- en webpoort nog niet als aparte variabele in het voorbeeld staan:
+
+| Instelling in de nieuwe app | Waarde |
+|---|---|
+| `PG_PORT` en de poort in `DATABASE_URL`, `AUTH_DATABASE_URL`, `MIGRATOR_DATABASE_URL` | gekozen PG-poort |
+| `MAIL_UI_PORT` | gekozen Mailpit-UI-poort |
+| `SMTP_PORT` en de poort in `SMTP_URL` | gekozen SMTP-poort |
+| `API_PORT` | gekozen API-poort; voeg de variabele toe als die ontbreekt |
+| `WEB_PORT` | gekozen webpoort; voeg de variabele toe als die ontbreekt |
+| `APP_ORIGIN` en `AUTH_BASE_URL` | beide exact `http://localhost:<web>` |
+
+Behoud protocol, host, gebruikersnaam, wachtwoord en databasepad van de lokale voorbeeld-URL's. Lees of toon geen geheimen
+om poorten te controleren. Bestond `.env.local` al, overschrijf hem niet: bevestig eerst de vastgelegde poorten van die app;
+bij een afwijkende bestaande configuratie vraag je de eigenaar om de beperkte poortaanpassing. De agent verandert geen andere waarden.
+`pnpm dev` maakt een ontbrekend bestand met standaardpoorten; daarom is deze stap vóór het starten nodig.
 
 ### 7.2 Toolchain en git-hooks (overdracht)
 
 `scripts/bootstrap.sh` doet `mise trust`, `mise install` (Node, pnpm, dbmate, Betterleaks, osv-scanner uit `mise.toml`),
-`pnpm install --frozen-lockfile`, `pnpm exec lefthook install` (pre-commit en pre-push uit `lefthook.yml`) en daarna `scripts/doctor.sh`.
+`pnpm install --frozen-lockfile`, `pnpm exec lefthook install` (pre-commit en pre-push uit `lefthook.yml`) en daarna `scripts/doctor.sh --machine`.
+Deze installatiecontrole vereist de toolchain, sandbox, Docker en git-hooks, maar nog geen draaiende appdiensten.
 
 > De toolchain installeer jij, niet ik (framework §8):
 > 1. Open een nieuwe Ubuntu-terminal (dan is `mise activate` uit `~/.bashrc` geladen) en `cd ~/code/<slug>`.
 > 2. `scripts/bootstrap.sh`
-> 3. Doctor meldt aan het eind ✗ voor Postgres, Mailpit, API en Web: die stack draait nog niet, dat is verwacht.
->    Elke andere ✗: plak de uitvoer hier.
+> 3. De machinecontrole moet zonder fouten eindigen. Bij een ✗ of een foutcode: plak de uitvoer hier; ga nog niet verder.
 > 4. Typ *klaar*.
 
 Controle (jij): `test -x .git/hooks/pre-commit && grep -q lefthook .git/hooks/pre-commit && echo hooks-ok` en `ls -d node_modules`.
@@ -461,6 +485,9 @@ De template laat de agent geen Docker gebruiken; de stack is van de eigenaar. `p
 >    (eerste keer 1–3 minuten: het Postgres-image met pgTAP wordt gebouwd).
 > 2. In een tweede terminal: `cd ~/code/<slug> && scripts/doctor.sh` — alles ✓.
 > 3. Typ *klaar*, of plak de laatste regels als het faalt.
+
+De volledige doctor blijft hier verplicht en controleert ook de vier draaiende appdiensten. Gebruik `--machine` of de
+diagnostische `--quick` niet als vervanging voor die eindcontrole. De browser/login/MFA-controle volgt in Fase 9.
 
 ### Controle (jij, zonder docker)
 
@@ -534,6 +561,7 @@ Schrijf het voortgangsbestand af en stuur één bericht, ongeveer zo:
 
 > **<App-naam> staat klaar** in `~/code/<slug>` → github.com/<owner>/<slug>.
 > Draait: Postgres 17 + pgTAP op 127.0.0.1:<pg>, Mailpit op http://127.0.0.1:<mailui>. Migraties toegepast, rollen bewezen.
+> API: http://localhost:<api>; web en beide origins: http://localhost:<web>.
 > Afgedwongen zoals in de template: git-hooks (pre-commit: format, lint, secrets; pre-push: `pnpm gate:fast`), de hooks, sandbox en
 > permissies van Claude Code (`.claude/`), CI (`gate:fast`, `gate:slow`, `secrets`, `image`, `check:new-resource`, CodeQL, osv-scanner)
 > en de ruleset op `main` met die checks verplicht, uitsluitend voor zover hierboven werkelijk gecontroleerd.
@@ -551,7 +579,7 @@ Schrijf het voortgangsbestand af en stuur één bericht, ongeveer zo:
 > **Template-updates binnenhalen:** zie hieronder. Altijd **Create a merge commit**, nooit squash.
 >
 > **Later aanzetten:** goedkeuring en code-owner-review in de ruleset, en de diff-guard als verplichte check, zodra de agent via de GitHub App pusht.
-> <Alleen als de CodeQL-checks zijn weggelaten (Fase 6.2, `--zonder-codeql`): kies per ADR GHAS, public of `codeql.yml` uit.>
+> CodeQL: <beschikbaarheid en beide verplichte checks gecontroleerd, of setup nog geblokkeerd bij Fase 6.1>.
 >
 > **Bevindingen:** <notities uit het voortgangsbestand, of "geen">
 

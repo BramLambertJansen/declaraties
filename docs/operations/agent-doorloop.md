@@ -155,6 +155,9 @@ er verandert ([ADR 0045](../adr/0045-railwerk.md) punt 21):
    `Herzien: JJJJ-MM-DD (#NNN): wat` (bestaande datum, het PR-nummer, wat er verandert; oude regels blijven staan). Een nieuw ADR
    alleen voor een onderwerp dat in geen bestaand ADR past; `vervangen door NNNN` op het oude mag in dezelfde PR, zonder record.
    Een oud ADR verwijderen mag in een besluit-PR nadat een reviewer heeft bevestigd dat de inhoud volledig in het nieuwe staat.
+   De guard eist dat een nieuwe herzieningsregel deze PR noemt, dat een verwijderd nummer nooit terugkomt, en dat na een
+   verwijdering elke `vervangen door NNNN` nog naar een bestaand ADR wijst; `docs/adr/archief/` telt daarbij mee als doel en
+   als verwijzer, en een nummer dat alleen nog in het archief staat blijft bezet (`scripts/kit/check-document-status.mjs`).
 2. **Verwijzing naar een later ADR**: een ADR-link achter de statuswaarde, met alleen het nummer als linktekst en het
    bestand ernaast als doel (zoals `0045` naar het bestand van ADR 0045). Geen record nodig; de eigenaar ziet het in de gate-PR.
    Achter de statuswaarde mag verder alleen `(JJJJ-MM-DD)` en `#<nr>`, gescheiden door `, ` of ` — ` (punt 22,

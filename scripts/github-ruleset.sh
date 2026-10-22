@@ -9,7 +9,7 @@ set -euo pipefail
 
 usage() {
   echo "Gebruik: scripts/github-ruleset.sh <owner>/<repo> [--zonder-codeql]" >&2
-  echo "  --zonder-codeql  private repo zonder GitHub Advanced Security: CodeQL draait daar niet (codeql.yml)" >&2
+  echo "  --zonder-codeql  alleen de ruleset zonder CodeQL; wijzigt workflow en pr:verify niet" >&2
   exit 2
 }
 
@@ -18,7 +18,11 @@ repo="${1:-}"
 codeql=true
 case "${2:-}" in
   "") ;;
-  --zonder-codeql) codeql=false ;;
+  --zonder-codeql)
+    codeql=false
+    echo 'Let op: --zonder-codeql wijzigt alleen de ruleset, niet codeql.yml of de verplichte checks van pr:verify.' >&2
+    echo 'Dit is geen volledig CI-profiel; rond de setup niet af zonder een besloten en gecontroleerde appconfiguratie.' >&2
+    ;;
   *) usage ;;
 esac
 (($# <= 2)) || usage
