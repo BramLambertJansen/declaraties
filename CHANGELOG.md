@@ -21,11 +21,18 @@ Hier staan wijzigingen die van belang zijn bij het gebruiken of bijwerken van de
   `Herzien: JJJJ-MM-DD (#NNN): wat`) en een ADR met een eigenaarstatus mag in een besluit-PR worden verwijderd; lokaal mogen alleen
   architect en hoofdsessie dat (`check-document-status`, rolhek). De tekst van ADR 0046 punt 2 volgt in een besluit-PR. Bij een update:
   een eigen ADR herschrijven of opruimen gaat voortaan via een besluit-PR in plaats van een vervangend ADR.
+- `tsc -b` werkt incrementeel (`incremental` in `tsconfig.base.json`, buildinfo in `node_modules/.tmp/`): een tweede typecheck zonder wijziging duurt ~0,2 s in plaats van ~9 s, na een bronwijziging ~5 s. Dat geldt voor `pnpm typecheck`, `gate:fast`, `build` en de Stop- en SubagentStop-hooks. `tsc -b` ziet een gewijzigde `.d.ts` in `node_modules` niet als reden om opnieuw te controleren; na een dependency-update leeg je de cache met `rm -rf node_modules/.tmp` (CI begint altijd vers).
 - Unittests draaien parallel per bestand en Vitest gebruikt hooguit vier workers (`vitest.config.ts`); de integratietests (`int`) blijven serieel. Bij een update: eigen unittests (`src/**/*.test.ts`) mogen geen gedeelde state hebben (vaste poorten, vaste paden, de echte database); zie `docs/operations/testuitvoering.md`.
 - Beslisroute (ADR 0038): de merge door de eigenaar is de acceptatie. Architect en hoofdsessie schrijven de eigenaarstatus in het voorstel; `check-document-status` laat zonder record en zonder web-flow een besluit-PR met meerdere ADR's en specs toe, en guard en rolhek weigeren een ADR met eigenaarstatus terug naar `voorgesteld` of met nieuwe inhoud (`rails/hooks/lib/document-state.mjs`, `scripts/kit/lane.mjs`).
 
 ### Opgelost
 
+- Nieuwe-app-start: bootstrap controleert de machine met `doctor --machine`, zonder nog niet gestarte appdiensten als
+  installatiefout te melden. De volledige doctor blijft verplicht na het starten. De poortpreflight neemt ook API en web
+  mee en houdt beide origins gelijk aan de gekozen webpoort (`docs/nieuwe-app.md`, fase 7).
+- Hernoemen met `app:init` breekt de initialisatie-, onderhouds- en core-bewakingstests niet meer; uitnodigingstests volgen `APP_NAME`.
+  De setup stopt bij ontbrekende of onbekende CodeQL-beschikbaarheid vóór de eerste push: alleen de rulesetvlag is geen
+  compleet CI-profiel (`docs/nieuwe-app.md`, fase 6).
 - Vite bijgewerkt van 8.3.2 naar 8.3.3 voor GHSA-587h-7wmj-h5pm, GHSA-698v-4r3x-3vcv en GHSA-r825-w8mm-5pxw. De exacte versie staat in `package.json`; `pnpm-lock.yaml` legt de bijbehorende dependencyboom vast.
 - Directe authenticatieroutes weigeren nu ook geblokkeerde accounts en sessies ouder dan zeven dagen. Sessie-opvragingen geven dan geen gegevens terug en de browsercookie wordt gewist, ook als het opruimen van de sessierijen faalt. Geldige sessies en opnieuw inloggen blijven werken (`src/core/api/auth/hooks.ts`, `test/auth/session-policy.int.test.ts`).
 - Verbindingsverlies tijdens een API-handler stopt de request gecontroleerd in plaats van het hele proces. Geblokkeerde accounts blijven geblokkeerd als sessie-opruiming faalt; uitnodigingsmail volgt pas na commit en een half auth-account wordt na rollback opgeruimd (`src/core/api/db/with-user.ts`, `src/core/api/http/route-effects.ts`, `src/core/api/auth/invitations.ts`).
