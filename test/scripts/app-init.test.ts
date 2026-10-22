@@ -1,27 +1,29 @@
-import { cpSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { cpSync, mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, test } from 'vitest';
 import { AppInitError, planAppInit } from '../../scripts/kit/app-init.mjs';
 
-// pnpm app:init (roadmap stuk 6): de hernoemstap uit docs/nieuwe-app.md op een kopie van de echte bestanden.
+// pnpm app:init (roadmap stuk 6): vaste template-invoer, ook nadat de checkout zelf al een app geworden is.
 const ROOT = path.join(import.meta.dirname, '../..');
-const FILES = [
-  'package.json',
-  'README.md',
-  'CHANGELOG.md',
-  'src/shared/app.ts',
-  'src/web/index.html',
-  '.github/CODEOWNERS',
-];
+const FILES: Readonly<Record<string, string>> = {
+  'package.json': '{\n  "name": "app-template",\n  "type": "module"\n}\n',
+  'README.md':
+    '# App-template\n\nFundering voor apps.\n\n## Nieuwe app starten\n\nSetup.\n\n## Lokaal draaien\n\nStart.\n',
+  'CHANGELOG.md': '# Changelog\n\n## [Unreleased]\n\n- Template.\n\n## [0.1.0]\n\n- Basis.\n',
+  'src/shared/app.ts': "export const APP_NAME = 'App-template';\n",
+  'src/web/index.html': '<!doctype html><html lang="nl"><head><title>App-template</title></head></html>\n',
+  '.github/CODEOWNERS': '/AGENTS.md                @bramlambertjansen\n',
+};
+const TEMPLATE_GATES = '{\n  "onderhoud": { "repository": "BramLambertJansen/template" },\n  "altijdVragen": []\n}\n';
 const dirs: string[] = [];
 
 function copy(): string {
   const dir = mkdtempSync(path.join(tmpdir(), 'app-init-'));
   dirs.push(dir);
-  for (const file of FILES) {
+  for (const [file, content] of Object.entries(FILES)) {
     mkdirSync(path.dirname(path.join(dir, file)), { recursive: true });
-    cpSync(path.join(ROOT, file), path.join(dir, file));
+    writeFileSync(path.join(dir, file), content);
   }
   return dir;
 }
@@ -31,6 +33,31 @@ afterEach(() => {
 });
 
 const options = { slug: 'urenregistratie', name: 'Urenregistratie', sha: 'abc1234' };
+
+test('de initialisatietests blijven slagen in een hernoemde app', () => {
+  const dir = copy();
+  for (const change of planAppInit(dir, options)) writeFileSync(path.join(dir, change.pad), change.inhoud);
+  for (const file of ['scripts/kit/app-init.mjs', 'test/scripts/app-init.test.ts']) {
+    mkdirSync(path.dirname(path.join(dir, file)), { recursive: true });
+    cpSync(path.join(ROOT, file), path.join(dir, file));
+  }
+  writeFileSync(path.join(dir, 'vitest.config.mjs'), 'export default { test: { maxWorkers: 1 } };\n');
+  symlinkSync(path.join(ROOT, 'node_modules'), path.join(dir, 'node_modules'), 'dir');
+  const result = spawnSync(
+    process.execPath,
+    [
+      path.join(ROOT, 'node_modules/vitest/vitest.mjs'),
+      'run',
+      'test/scripts/app-init.test.ts',
+      '--config',
+      'vitest.config.mjs',
+      '--testNamePattern',
+      '^planAppInit',
+    ],
+    { cwd: dir, encoding: 'utf8' },
+  );
+  expect(result.status, `${result.stdout}\n${result.stderr}`).toBe(0);
+});
 
 function changed(plan: { pad: string; inhoud: string }[], file: string): string {
   const found = plan.find((change) => change.pad === file);
@@ -71,7 +98,7 @@ describe('planAppInit', () => {
   test('haalt de onderhoudsmodus uit .claude/gates.json: die hoort bij de template-repo (ADR 0045 punt 8)', () => {
     const dir = copy();
     mkdirSync(path.join(dir, '.claude'), { recursive: true });
-    cpSync(path.join(ROOT, '.claude/gates.json'), path.join(dir, '.claude/gates.json'));
+    writeFileSync(path.join(dir, '.claude/gates.json'), TEMPLATE_GATES);
     const gates: unknown = JSON.parse(changed(planAppInit(dir, options), '.claude/gates.json'));
     expect(typeof gates === 'object' && gates !== null && 'onderhoud' in gates).toBe(false);
     expect(typeof gates === 'object' && gates !== null && 'altijdVragen' in gates).toBe(true);
@@ -80,10 +107,7 @@ describe('planAppInit', () => {
   test('weigert luid als de onderhoud-regel in .claude/gates.json niet meer te vinden is', () => {
     const dir = copy();
     mkdirSync(path.join(dir, '.claude'), { recursive: true });
-    const gates = readFileSync(path.join(ROOT, '.claude/gates.json'), 'utf8').replace(
-      '"onderhoud": {',
-      '"onderhoud":{',
-    );
+    const gates = TEMPLATE_GATES.replace('"onderhoud": {', '"onderhoud":{');
     writeFileSync(path.join(dir, '.claude/gates.json'), gates);
     expect(() => planAppInit(dir, options)).toThrow(/onderhoud-regel/);
   });
@@ -136,3 +160,4 @@ describe('planAppInit', () => {
     expect(() => planAppInit(dir, options)).toThrow(/maar één keer/);
   });
 });
+import { spawnSync } from 'node:child_process';
