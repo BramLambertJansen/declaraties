@@ -17,6 +17,9 @@ op 2026-10-21 akkoord op de overige randgevallen, schermteksten en het technisch
 bouw het" gaf de eigenaar vervolgens opdracht vóór de voorafgaande besluitmerge te bouwen. Die uitzondering geldt voor
 deze taak en de bijbehorende beschermde bronbestanden; checks, review en de merge door de eigenaar blijven gelden.
 Het inhoudelijke akkoord is geen bouwbewijs.
+Op 2026-10-22 koos de eigenaar expliciet voor één implementatie-PR met documentatie in plaats van een aparte
+besluit-PR: "Trouwens, laat de besluit spec, ik wil het er gewoon doorheen duwen en documenteren". Deze
+taakuitzondering wordt in PR #261 vastgelegd; de bestaande CI-bewaking blijft intact en een rode check blijft rood.
 Blokkeren en deblokkeren bestaan al: [accountbeheer-uitbreiding](accountbeheer-uitbreiding.md) en
 [ADR 0026](../adr/0026-account-blokkeren.md). Dit voorstel bouwt daarop voort.
 
@@ -150,6 +153,9 @@ behouden. De generieke securitysuite krijgt uitsluitend de twee nieuwe admin-rou
 De fixture in `session-expiry.test.ts` biedt de vereiste gebruikerslookup en een oude sessiegeneratie;
 de oorspronkelijke assertions voor idle- en absoluut verval blijven intact. Een mislukte na-commit-opruiming
 blijft zoals op main een foutantwoord geven zonder de blokkade terug te draaien.
+De herlogin in de nieuwe lifecycle-browsertest gebruikt een nieuw apparaat met de bestaande per-client-fixture:
+zo raakt deze niet de limiet voor vier snelle logins van hetzelfde apparaat. De oude cookie wordt nog steeds
+na herstel geweigerd; zowel succesvolle herlogin als CSP-controle blijven vereist. Er is geen limiet verruimd.
 
 ## Lokale verificatie (2026-10-22)
 

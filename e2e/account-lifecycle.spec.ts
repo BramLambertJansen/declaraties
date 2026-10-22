@@ -114,10 +114,14 @@ test('account-lifecycle: laatste login, afzonderlijk uitschakelen en herstellen,
   await expect(row).toContainText('Actief');
   await userContext.addCookies(oldCookies);
   expect((await userPage.request.get('/api/me')).status()).toBe(401);
-  await attemptLogin(userPage, user);
-  await expect(userPage.getByRole('heading', { level: 1, name: 'Home' })).toBeVisible();
+  const recoveredContext = await browser.newContext({ extraHTTPHeaders: clientIpHeaders() });
+  const recoveredPage = await recoveredContext.newPage();
+  const recoveredCsp = collectCspViolations(recoveredPage);
+  await attemptLogin(recoveredPage, user);
+  await expect(recoveredPage.getByRole('heading', { level: 1, name: 'Home' })).toBeVisible();
+  expect((await recoveredPage.request.get('/api/me')).status()).toBe(200);
   await page.reload();
   await expect(row.getByRole('cell').nth(4)).not.toHaveText('Onbekend');
-  expect([...csp, ...userCsp]).toStrictEqual([]);
-  await userContext.close();
+  expect([...csp, ...userCsp, ...recoveredCsp]).toStrictEqual([]);
+  await Promise.all([userContext.close(), recoveredContext.close()]);
 });
