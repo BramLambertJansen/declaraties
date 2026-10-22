@@ -1,6 +1,6 @@
 # 0039 — Lintresultaten lokaal hergebruiken op basis van projectinhoud
 
-Status: geaccepteerd
+Status: vervallen
 
 Wijzigt [0011](0011-railwerk.md) punt 3 en de lokale feedbacklus uit framework §4 en §8.
 Drempel: A3 (een lokale controle mag een eerdere uitslag gebruiken) en A4. Staat los van de beslisroute van 0038.
