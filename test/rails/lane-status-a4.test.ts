@@ -245,14 +245,24 @@ describe('G5: elke nieuwe herzieningsregel draagt het PR-nummer uit de omgeving'
     (waarde) => {
       const fixture = basis();
       herschrijf(fixture.root, ADR_OUD, '0050');
-      faalt(fixture, agent(fixture), { PR_NUMBER: waarde });
+      expect(faalt(fixture, agent(fixture), { PR_NUMBER: waarde })).toContain('geen geldig PR_NUMBER');
     },
   );
 
-  test('G5 PR_NUMBER ontbreekt: een herzien ADR faalt (dicht)', () => {
+  test('G5 PR_NUMBER ontbreekt: een herzien ADR faalt (dicht) met geen geldig PR_NUMBER', () => {
     const fixture = basis();
     herschrijf(fixture.root, ADR_OUD, '0050');
-    faalt(fixture, agent(fixture));
+    expect(faalt(fixture, agent(fixture))).toContain('geen geldig PR_NUMBER');
+  });
+
+  test('G5 het nummer telt alleen uit de vaste plek na de datum: (#1) op die plek en (#262) in de omschrijving faalt', () => {
+    const fixture = basis();
+    write(
+      fixture.root,
+      ADR_OUD,
+      adrTekst('0050', 'geaccepteerd', 'Iets anders.\n\nHerzien: 2026-10-22 (#1): zie (#262): x'),
+    );
+    expect(faalt(fixture, agent(fixture), PR262)).toMatch(A4);
   });
 
   test('G5 een bestaande oude regel met een ander PR-nummer blijft geldig naast een nieuwe regel met het juiste nummer', () => {
@@ -333,6 +343,35 @@ describe('G7: een ADR met een eigenaarstatus mag niet naar een verwijderd ADR bl
     const stderr = faalt(fixture, agent(fixture));
     expect(stderr).toContain(VERWIJZER);
     expect(stderr).toContain('0060');
+  });
+
+  test('G7 het doel heeft status voorgesteld en wordt als enige verwijderd, de verwijzer blijft: faalt en noemt de verwijzer', () => {
+    const fixture = metBasis({
+      [DOEL]: adrTekst('0060', 'voorgesteld', uniek('doel')),
+      [VERWIJZER]: adrTekst('0061', 'vervangen door 0060', uniek('verwijzer')),
+    });
+    git(fixture.root, ['rm', '-q', DOEL]);
+    const stderr = faalt(fixture, agent(fixture));
+    expect(stderr).toContain(VERWIJZER);
+    expect(stderr).toContain('0060');
+  });
+
+  test('G7 het doel (voorgesteld) wordt hernoemd naar een ander nummer, de verwijzer blijft naar 0060 wijzen: faalt en noemt de verwijzer', () => {
+    const fixture = metBasis({
+      [DOEL]: adrTekst('0060', 'voorgesteld', uniek('doel')),
+      [VERWIJZER]: adrTekst('0061', 'vervangen door 0060', uniek('verwijzer')),
+    });
+    git(fixture.root, ['mv', DOEL, 'docs/adr/0066-hernoemd.md']);
+    expect(faalt(fixture, agent(fixture))).toContain(VERWIJZER);
+  });
+
+  test('G7 het doel (voorgesteld) wordt hernoemd met hetzelfde nummer 0060: slaagt (het nummer bestaat nog)', () => {
+    const fixture = metBasis({
+      [DOEL]: adrTekst('0060', 'voorgesteld', uniek('doel')),
+      [VERWIJZER]: adrTekst('0061', 'vervangen door 0060', uniek('verwijzer')),
+    });
+    git(fixture.root, ['mv', DOEL, 'docs/adr/0060-andere-naam.md']);
+    slaagt(fixture, agent(fixture));
   });
 
   test('G7 verwijzer en doel worden samen verwijderd: slaagt', () => {
