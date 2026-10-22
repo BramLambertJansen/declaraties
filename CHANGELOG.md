@@ -17,6 +17,7 @@ Hier staan wijzigingen die van belang zijn bij het gebruiken of bijwerken van de
 
 ### Gewijzigd
 
+- `docs/roadmap.md` is afgeslankt (55 → 31 KB): de afgevinkte items van de sectie Gebouwd en van Besluiten staan ongewijzigd in `docs/roadmap-archief.md`; open items, ook uit een afgerond stuk, blijven in de roadmap. Geldende ADR-besluiten komen uit `node scripts/kit/feiten.mjs adr`. De vereiste koppen van `check:roadmap` blijven.
 - A4 (ADR 0046 punt 2): een geaccepteerd ADR mag in een besluit-PR worden herschreven (met een herzieningsregel
   `Herzien: JJJJ-MM-DD (#NNN): wat`) en een ADR met een eigenaarstatus mag in een besluit-PR worden verwijderd; lokaal mogen alleen
   architect en hoofdsessie dat (`check-document-status`, rolhek). De tekst van ADR 0046 punt 2 volgt in een besluit-PR. Bij een update:
