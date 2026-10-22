@@ -22,6 +22,12 @@ Hier staan wijzigingen die van belang zijn bij het gebruiken of bijwerken van de
 
 ### Opgelost
 
+- Nieuwe-app-start: bootstrap controleert de machine met `doctor --machine`, zonder nog niet gestarte appdiensten als
+  installatiefout te melden. De volledige doctor blijft verplicht na het starten. De poortpreflight neemt ook API en web
+  mee en houdt beide origins gelijk aan de gekozen webpoort (`docs/nieuwe-app.md`, fase 7).
+- Hernoemen met `app:init` breekt de initialisatie-, onderhouds- en core-bewakingstests niet meer; uitnodigingstests volgen `APP_NAME`.
+  De setup stopt bij ontbrekende of onbekende CodeQL-beschikbaarheid vóór de eerste push: alleen de rulesetvlag is geen
+  compleet CI-profiel (`docs/nieuwe-app.md`, fase 6).
 - Vite bijgewerkt van 8.3.2 naar 8.3.3 voor GHSA-587h-7wmj-h5pm, GHSA-698v-4r3x-3vcv en GHSA-r825-w8mm-5pxw. De exacte versie staat in `package.json`; `pnpm-lock.yaml` legt de bijbehorende dependencyboom vast.
 - Directe authenticatieroutes weigeren nu ook geblokkeerde accounts en sessies ouder dan zeven dagen. Sessie-opvragingen geven dan geen gegevens terug en de browsercookie wordt gewist, ook als het opruimen van de sessierijen faalt. Geldige sessies en opnieuw inloggen blijven werken (`src/core/api/auth/hooks.ts`, `test/auth/session-policy.int.test.ts`).
 - Verbindingsverlies tijdens een API-handler stopt de request gecontroleerd in plaats van het hele proces. Geblokkeerde accounts blijven geblokkeerd als sessie-opruiming faalt; uitnodigingsmail volgt pas na commit en een half auth-account wordt na rollback opgeruimd (`src/core/api/db/with-user.ts`, `src/core/api/http/route-effects.ts`, `src/core/api/auth/invitations.ts`).

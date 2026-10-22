@@ -186,8 +186,10 @@ function lees(file: string): Record<string, unknown> {
   return typeof parsed === 'object' && parsed !== null ? { ...parsed } : {};
 }
 
-test('B4: de echte .claude/gates.json: onderhoud.repository is BramLambertJansen/template', () => {
-  expect(lees('.claude/gates.json')['onderhoud']).toStrictEqual({ repository: 'BramLambertJansen/template' });
+test('B4: onderhoud hoort bij de template, niet bij een hernoemde app', () => {
+  const expected =
+    lees('package.json')['name'] === 'app-template' ? { repository: 'BramLambertJansen/template' } : undefined;
+  expect(lees('.claude/gates.json')['onderhoud']).toStrictEqual(expected);
 });
 
 test('B4: de echte .claude/gates.json: altijdVragen is precies de lijst uit ADR 0045 punt 9', () => {

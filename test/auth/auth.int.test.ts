@@ -2,6 +2,7 @@ import { getMigrations } from 'better-auth/db/migration';
 import pg from 'pg';
 import { afterAll, describe, expect, test } from 'vitest';
 import { z } from 'zod';
+import { APP_NAME } from '../../src/shared/app.ts';
 import { createAuthOptions, DISABLED_PATHS } from '../../src/core/api/auth/options.ts';
 
 const CLOSED = [
@@ -78,7 +79,7 @@ describe('uitnodigen (spec accounts/AC-5, AC-6)', () => {
     await inviteUser(auth, { name: 'Nieuwe Gebruiker', email });
     const mail = await latestMailTo(email);
 
-    expect(mail.subject).toBe('Uitnodiging voor App-template');
+    expect(mail.subject).toBe(`Uitnodiging voor ${APP_NAME}`);
     expect(mail.text).toContain('Hallo Nieuwe Gebruiker,');
     expect(mail.text).toContain(`${APP_ORIGIN}/uitnodiging?token=`);
 
