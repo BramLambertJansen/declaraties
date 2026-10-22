@@ -1,12 +1,14 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, test } from 'vitest';
+import { A4_MELDING } from '../../rails/hooks/lib/document-state.mjs';
 import { decide, loadConfig } from '../../rails/hooks/lib/rolhek.mjs';
 
 // ADR 0046 punt 6 en 7: de merge van de eigenaar is de acceptatie. In het rolhek mogen alleen hoofdsessie en architect een
 // eigenaarstatus (geaccepteerd, goedgekeurd, vervallen, vervangen door NNNN) schrijven, ook zonder record en ook voor een
 // nieuw bestand, en de inhoud van een goedgekeurde spec wijzigen. Developer, tester en docs blijven geweigerd (de developer
-// houdt alleen `gebouwd` via `pnpm docs:status`). De lokale A4-weigering blijft voor elke rol: de tekst van een geaccepteerd
-// ADR verandert niet en `geaccepteerd` gaat niet terug naar `voorgesteld`.
+// houdt alleen `gebouwd` via `pnpm docs:status`). Lokale A4 (eigenaarbesluit 2026-10-22): hoofdsessie en architect mogen de tekst
+// van een geaccepteerd ADR wijzigen en een ADR met een eigenaarstatus verwijderen (de lane en de herzieningsregel controleert CI);
+// andere rollen niet. Voor iedere rol gaat `geaccepteerd` niet terug naar `voorgesteld` en wijzigt een vervallen of vervangen ADR niet.
 // De authority hieronder heeft een lege registry: er is geen record op main.
 const ROOT = '/repo';
 const config = loadConfig(readFileSync('.claude/gates.json', 'utf8'));
@@ -146,7 +148,7 @@ describe('developer, tester en docs: dezelfde schrijfacties blijven geweigerd (p
   });
 });
 
-describe('lokale A4 (punt 2): een geaccepteerd ADR wijzigt niet, voor iedere rol', () => {
+describe('lokale A4 (punt 2): een geaccepteerd ADR wijzigt niet, behalve voor hoofdsessie en architect', () => {
   const ROLLEN = [
     ['hoofdsessie', undefined],
     ['architect', 'architect'],
@@ -155,11 +157,14 @@ describe('lokale A4 (punt 2): een geaccepteerd ADR wijzigt niet, voor iedere rol
     ['docs', 'docs'],
   ] as const;
 
-  describe.each(ROLLEN)('%s', (_rol, agent) => {
+  // GEWIJZIGD (eigenaarbesluit 2026-10-22): de inhoud wijzigen is alleen nog geweigerd voor developer, tester en docs (R2).
+  describe.each(ROLLEN.filter(([rol]) => !['hoofdsessie', 'architect'].includes(rol)))('%s', (_rol, agent) => {
     test('de inhoud wijzigen, status blijft geaccepteerd: geweigerd', () => {
       expect(run(edit(ADR_GEACC, ['Iets.', 'Iets anders.'], agent)).deny).not.toHaveLength(0);
     });
+  });
 
+  describe.each(ROLLEN)('%s', (_rol, agent) => {
     test('geaccepteerd naar voorgesteld, alleen de statusregel: geweigerd', () => {
       expect(run(edit(ADR_GEACC, ['Status: geaccepteerd', 'Status: voorgesteld'], agent)).deny).not.toHaveLength(0);
     });
@@ -170,11 +175,14 @@ describe('lokale A4 (punt 2): een geaccepteerd ADR wijzigt niet, voor iedere rol
     });
   });
 
+  // GEWIJZIGD: 'de inhoud wijzigen' geldt alleen nog voor de developer; hoofdsessie en architect mogen dat (R1).
   describe.each(ROLLEN.filter(([rol]) => ['hoofdsessie', 'architect', 'developer'].includes(rol)))(
     'melding voor %s',
-    (_rol, agent) => {
+    (rol, agent) => {
       test.each([
-        ['de inhoud wijzigen', () => edit(ADR_GEACC, ['Iets.', 'Iets anders.'], agent)],
+        ...(rol === 'developer'
+          ? [['de inhoud wijzigen', () => edit(ADR_GEACC, ['Iets.', 'Iets anders.'], agent)] as const]
+          : []),
         ['terug naar voorgesteld', () => edit(ADR_GEACC, ['Status: geaccepteerd', 'Status: voorgesteld'], agent)],
         [
           'terug naar voorgesteld met inhoud',
@@ -258,7 +266,8 @@ describe.each(BESLISROLLEN)('A4 tegen main: %s', (_rol, agent) => {
   });
 });
 
-describe.each(ALLE_ROLLEN)('A4 tegen main: %s', (_rol, agent) => {
+// GEWIJZIGD (eigenaarbesluit 2026-10-22): voor hoofdsessie en architect is dit toegestaan (R1); developer, tester en docs blijven geweigerd.
+describe.each(ALLE_ROLLEN.filter(([rol]) => !['hoofdsessie', 'architect'].includes(rol)))('A4 tegen main: %s', (_rol, agent) => {
   const nieuweInhoud = adr('0090', 'geaccepteerd', 'Heel andere inhoud.');
   test.each([
     ['het bestand ontbreekt in de werkmap (na rm)', {}],
@@ -278,7 +287,7 @@ describe.each(ALLE_ROLLEN)('A4 tegen main: %s', (_rol, agent) => {
 
 describe('A4 tegen main: de A4-melding en de terugval zonder authority', () => {
   test('d. de melding bij een op main geaccepteerd ADR verwijst naar een nieuw ADR dat vervangt', () => {
-    const decision = runBasis(write(NIEUW_PAD, adr('0090', 'geaccepteerd', 'Heel andere inhoud.')), {
+    const decision = runBasis(write(NIEUW_PAD, adr('0090', 'geaccepteerd', 'Heel andere inhoud.'), 'developer'), {
       main: { [NIEUW_PAD]: adr('0090', 'geaccepteerd') },
       werkmap: {},
     });
@@ -288,8 +297,16 @@ describe('A4 tegen main: de A4-melding en de terugval zonder authority', () => {
   });
 
   test.each(BESLISROLLEN)(
-    'e. %s zonder authority: de werkmap is de terugval; inhoud van een geaccepteerd ADR wijzigen is geweigerd',
+    'e. %s zonder authority: de werkmap is de terugval; inhoud van een geaccepteerd ADR wijzigen is toegestaan (R1)',
     (_rol, agent) => {
+      const decision = run(edit(ADR_GEACC, ['Iets.', 'Iets anders.'], agent), 'zonder');
+      expect([decision.deny, decision.ask]).toStrictEqual([[], []]);
+    },
+  );
+
+  test.each(['developer', 'tester', 'docs'])(
+    'e. %s zonder authority: de werkmap is de terugval; inhoud van een geaccepteerd ADR wijzigen is geweigerd (R2, R4)',
+    (agent) => {
       const decision = run(edit(ADR_GEACC, ['Iets.', 'Iets anders.'], agent), 'zonder');
       expect(decision.deny).not.toHaveLength(0);
     },
@@ -302,4 +319,126 @@ describe('A4 tegen main: de A4-melding en de terugval zonder authority', () => {
       expect([decision.deny, decision.ask]).toStrictEqual([[], []]);
     },
   );
+});
+
+// --- A4 in een besluit-PR (eigenaarbesluit 2026-10-22, contract R1 t/m R4). ----------------------------------------------
+// Het rolhek controleert de lane en de herzieningsregel niet (CI doet dat); het weigert alleen de rollen die geen besluit
+// schrijven en blijft A4 tegen main vergelijken.
+
+const HERZIEN = 'Herzien: 2026-10-22 (#262): tekst aangepast.';
+const ANDERE_ROLLEN = [
+  ['developer', 'developer'],
+  ['tester', 'tester'],
+  ['reviewer', 'reviewer'],
+  ['docs', 'docs'],
+] as const;
+
+describe.each(BESLISROLLEN)('R1: %s mag een geaccepteerd ADR met andere inhoud schrijven', (_rol, agent) => {
+  test.each([
+    ['R1 Edit van de inhoud, status blijft geaccepteerd', () => edit(ADR_GEACC, ['Iets.', 'Iets anders.'], agent)],
+    [
+      'R1 Write met andere inhoud en een herzieningsregel',
+      () => write(ADR_GEACC, adr('0098', 'geaccepteerd', `Iets anders.\n\n${HERZIEN}`), agent),
+    ],
+    [
+      'R1 Write met andere inhoud zonder herzieningsregel (de guard controleert die)',
+      () => write(ADR_GEACC, adr('0098', 'geaccepteerd', 'Iets anders.'), agent),
+    ],
+  ])('%s: niet geweigerd', (_naam, maak) => {
+    const decision = run(maak());
+    expect([decision.deny, decision.ask]).toStrictEqual([[], []]);
+  });
+
+  test('R1 tegen main: op main geaccepteerd, werkmap afwijkend: een Write met nieuwe inhoud is niet geweigerd', () => {
+    const decision = runBasis(write(NIEUW_PAD, adr('0090', 'geaccepteerd', `Nieuw.\n\n${HERZIEN}`), agent), {
+      main: { [NIEUW_PAD]: adr('0090', 'geaccepteerd') },
+      werkmap: { [NIEUW_PAD]: adr('0090', 'geaccepteerd', 'Eerder aangepast.') },
+    });
+    expect([decision.deny, decision.ask]).toStrictEqual([[], []]);
+  });
+});
+
+describe.each(ANDERE_ROLLEN)('R2: %s mag een geaccepteerd ADR niet met andere inhoud schrijven', (_rol, agent) => {
+  test.each([
+    ['R2 Edit van de inhoud', () => edit(ADR_GEACC, ['Iets.', 'Iets anders.'], agent)],
+    [
+      'R2 Write met andere inhoud en een herzieningsregel',
+      () => write(ADR_GEACC, adr('0098', 'geaccepteerd', `Iets anders.\n\n${HERZIEN}`), agent),
+    ],
+  ])('%s: geweigerd met A4_MELDING', (_naam, maak) => {
+    expect(run(maak()).deny.join('\n')).toContain(A4_MELDING);
+  });
+});
+
+const VERWIJDER_ACTIES: [string, (pad: string) => string][] = [
+  ['rm', (pad) => `rm ${pad}`],
+  ['git rm', (pad) => `git rm -q ${pad}`],
+  ['unlink', (pad) => `unlink ${pad}`],
+  ['mv met het ADR als bron', (pad) => `mv ${pad} /tmp/weg.md`],
+];
+const EIGENAARSTATUS_ADRS = [
+  ['geaccepteerd', ADR_GEACC],
+  ['vervallen', ADR_VERVALLEN],
+  ['vervangen door NNNN', ADR_VERVANGEN],
+] as const;
+const bash = (command: string, agent?: string) => ({ tool_name: 'Bash', tool_input: { command }, ...as(agent) });
+
+describe.each(BESLISROLLEN)('R3: %s mag een ADR met een eigenaarstatus op main verwijderen', (_rol, agent) => {
+  describe.each(VERWIJDER_ACTIES)('%s', (_actie, commando) => {
+    test.each(EIGENAARSTATUS_ADRS)('R3 ADR met Status: %s: niet geweigerd', (_status, pad) => {
+      const decision = run(bash(commando(pad), agent));
+      expect([decision.deny, decision.ask]).toStrictEqual([[], []]);
+    });
+  });
+});
+
+describe.each(ANDERE_ROLLEN)('R3: %s mag een ADR met een eigenaarstatus op main niet verwijderen', (_rol, agent) => {
+  describe.each(VERWIJDER_ACTIES)('%s', (_actie, commando) => {
+    test.each(EIGENAARSTATUS_ADRS)('R3 ADR met Status: %s: geweigerd met A4_MELDING', (_status, pad) => {
+      expect(run(bash(commando(pad), agent)).deny.join('\n')).toContain(A4_MELDING);
+    });
+  });
+});
+
+describe('R3: verwijderen wordt vergeleken met main, niet met de werkmap', () => {
+  test.each(ANDERE_ROLLEN)('R3 %s: op main geaccepteerd, werkmap al voorgesteld: rm is geweigerd met A4_MELDING', (_rol, agent) => {
+    const decision = runBasis(bash(`rm ${NIEUW_PAD}`, agent), {
+      main: { [NIEUW_PAD]: adr('0090', 'geaccepteerd') },
+      werkmap: { [NIEUW_PAD]: adr('0090', 'voorgesteld') },
+    });
+    expect(decision.deny.join('\n')).toContain(A4_MELDING);
+  });
+
+  test.each(ANDERE_ROLLEN)('R3 %s: een voorgesteld ADR verwijderen blijft vrij van A4_MELDING', (_rol, agent) => {
+    expect(run(bash(`rm ${ADR_VOORSTEL}`, agent)).deny.join('\n')).not.toContain(A4_MELDING);
+  });
+});
+
+describe.each(ALLE_ROLLEN)('R4: %s, ongewijzigd', (_rol, agent) => {
+  test('R4 geaccepteerd naar voorgesteld met een herzieningsregel: geweigerd', () => {
+    const decision = run(write(ADR_GEACC, adr('0098', 'voorgesteld', `Iets anders.\n\n${HERZIEN}`), agent));
+    expect(decision.deny).not.toHaveLength(0);
+  });
+
+  test.each([
+    ['vervallen', ADR_VERVALLEN, 'Status: vervallen'],
+    ['vervangen door NNNN', ADR_VERVANGEN, 'Status: vervangen door 0098'],
+  ])('R4 inhoud van een %s ADR wijzigen: geweigerd met A4_MELDING', (_naam, pad, regel) => {
+    const nummer = pad.slice('docs/adr/'.length, 'docs/adr/'.length + 4);
+    const tekst = `# ${nummer} — Demo\n\n${regel}\n\n## Besluit\n\nIets anders.\n\n${HERZIEN}\n`;
+    expect(run(write(pad, tekst, agent)).deny.join('\n')).toContain(A4_MELDING);
+  });
+
+  test('R4 status van een vervallen ADR terug naar geaccepteerd: geweigerd met A4_MELDING', () => {
+    const decision = run(edit(ADR_VERVALLEN, ['Status: vervallen', 'Status: geaccepteerd'], agent));
+    expect(decision.deny.join('\n')).toContain(A4_MELDING);
+  });
+
+  test('R4 A4 blijft vergeleken met main: op main vervallen, werkmap voorgesteld: een Write met inhoud is geweigerd', () => {
+    const decision = runBasis(write(NIEUW_PAD, adr('0090', 'vervallen', `Iets anders.\n\n${HERZIEN}`), agent), {
+      main: { [NIEUW_PAD]: adr('0090', 'vervallen') },
+      werkmap: { [NIEUW_PAD]: adr('0090', 'voorgesteld') },
+    });
+    expect(decision.deny.join('\n')).toContain(A4_MELDING);
+  });
 });
