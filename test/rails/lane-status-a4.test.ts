@@ -1,4 +1,6 @@
 import { execFileSync } from 'node:child_process';
+import { mkdirSync } from 'node:fs';
+import { join } from 'node:path';
 import { afterEach, describe, expect, test } from 'vitest';
 import { draaiChecker, git, maakRepo, opruimen, write, type Fixture } from '../hooks/follow-up-kit';
 
@@ -384,5 +386,56 @@ describe('G7: een ADR met een eigenaarstatus mag niet naar een verwijderd ADR bl
     const fixture = basis();
     git(fixture.root, ['rm', '-q', ANDER]);
     slaagt(fixture, agent(fixture));
+  });
+});
+
+describe('G8: G6 en G7 houden rekening met docs/adr/archief/ (ADR 0053)', () => {
+  const DOEL = 'docs/adr/0060-doel.md';
+  const DOEL_ARCHIEF = 'docs/adr/archief/0060-doel.md';
+  const VERWIJZER = 'docs/adr/0061-verwijzer.md';
+  const VERWIJZER_ARCHIEF = 'docs/adr/archief/0061-verwijzer.md';
+  const ANDER = 'docs/adr/0062-ander.md';
+
+  test('G8a het doel (voorgesteld) verhuist naar archief/ met hetzelfde nummer 0060, de verwijzer blijft: slaagt', () => {
+    const fixture = metBasis({
+      [DOEL]: adrTekst('0060', 'voorgesteld', uniek('doel')),
+      [VERWIJZER]: adrTekst('0061', 'vervangen door 0060', uniek('verwijzer')),
+    });
+    mkdirSync(join(fixture.root, 'docs/adr/archief'), { recursive: true });
+    git(fixture.root, ['mv', DOEL, DOEL_ARCHIEF]);
+    slaagt(fixture, agent(fixture));
+  });
+
+  test('G8a het doel staat al in archief/ en een ander (voorgesteld) ADR wordt verwijderd, de verwijzer blijft: slaagt', () => {
+    const fixture = metBasis({
+      [DOEL_ARCHIEF]: adrTekst('0060', 'geaccepteerd', uniek('doel')),
+      [VERWIJZER]: adrTekst('0061', 'vervangen door 0060', uniek('verwijzer')),
+      [ANDER]: adrTekst('0062', 'voorgesteld', uniek('ander')),
+    });
+    git(fixture.root, ['rm', '-q', ANDER]);
+    slaagt(fixture, agent(fixture));
+  });
+
+  test('G8b een gearchiveerd ADR met vervangen door 0060 blijft staan terwijl ADR 0060 verdwijnt: faalt en noemt het archiefpad', () => {
+    const fixture = metBasis({
+      [DOEL]: adrTekst('0060', 'voorgesteld', uniek('doel')),
+      [VERWIJZER_ARCHIEF]: adrTekst('0061', 'vervangen door 0060', uniek('verwijzer')),
+    });
+    git(fixture.root, ['rm', '-q', DOEL]);
+    const stderr = faalt(fixture, agent(fixture));
+    expect(stderr).toContain(VERWIJZER_ARCHIEF);
+    expect(stderr).toContain('0060');
+  });
+
+  test('G8c een nummer dat op de basis alleen nog in archief/ bestaat (verhuisd) wordt niet hergebruikt: faalt, nummer 0070 is al gebruikt', () => {
+    const fixture = metGeschiedenis(
+      {
+        [ADR_OUD]: adrTekst('0050', 'voorgesteld'),
+        'docs/adr/archief/0070-oud-besluit.md': adrTekst('0070', 'geaccepteerd'),
+      },
+      { 'docs/adr/0070-oud-besluit.md': adrTekst('0070', 'geaccepteerd') },
+    );
+    write(fixture.root, 'docs/adr/0070-nieuw.md', adrTekst('0070', 'voorgesteld', 'Heel iets anders.'));
+    expect(faalt(fixture, agent(fixture))).toMatch(/nummer 0070 is al gebruikt/);
   });
 });
