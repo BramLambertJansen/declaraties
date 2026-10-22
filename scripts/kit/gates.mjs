@@ -1,6 +1,7 @@
 // Gate-register (framework §4, ADR 0045): de enige gate-tabel. Per script wat het bewaakt en of het snel is
-// (zonder database of Docker, dus in gate:fast). test/rails/gates.test.ts eist dat `gate:fast` precies de snelle
-// gates in deze volgorde draait en dat elk script bestaat; check-docs neemt dat over (roadmap stuk 4).
+// (zonder database of Docker, dus in gate:fast). scripts/kit/gate-fast.mjs draait de snelle gates (gate:fast);
+// test/rails/gates.test.ts eist dat dat precies de snelle gates in deze volgorde zijn en dat elk script bestaat;
+// check-docs neemt dat over (roadmap stuk 4).
 
 /** @typedef {{ script: string, bewaakt: string, snel: boolean }} Gate */
 

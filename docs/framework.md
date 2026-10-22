@@ -121,7 +121,9 @@ dependency-cruiser); checks op de database lezen de catalogus van de lokale data
 - `gate:slow` = `test:db` met `check-policies` en de functiecatalogus (de runtime-kant van `check-secdef`, op `pg_proc`), squawk op migraties, schema-snapshot zonder verschil, kleine e2e-set — tegen een verse database.
 - Verplicht naast CI: CodeQL en osv-scanner.
 - **Gate-register**: `scripts/kit/gates.mjs` beschrijft per script wat het bewaakt en of het snel is (zonder database, dus in `gate:fast`);
-  het is de enige gate-tabel. `check-docs` eist dat register en `gate:fast`/`gate:slow` gelijk zijn (ADR 0045).
+  het is de enige gate-tabel. `gate:fast` draait de snelle gates uit het register via `scripts/kit/gate-fast.mjs`, in drie banen
+  (`test:unit`, `lint`, de rest na elkaar), met de rode uitvoer eerst en daarna de lijst in registervolgorde; `gate:slow` is de &&-keten van de trage. `test/rails/gates.test.ts`,
+  `gate-fast.test.ts` en `gate-slow.test.ts` eisen dat beide precies het register volgen (ADR 0045).
 - **Ratchet**: bestaande overtredingen staan in `.kit/baseline.json` (stabiele sleutels: bestand, policynaam) of in ESLint bulk-suppressions.
   Een nieuwe overtreding faalt; een opgeloste die nog in de baseline staat, faalt ook tot `pnpm ratchet:update` hem weghaalt. Zo daalt schuld
   alleen, en kan een app een nieuwe template-regel invoeren zonder eerst alles te repareren. De baseline laten groeien is een gate-wijziging.
@@ -528,7 +530,7 @@ db/           docker/ (Postgres+pgTAP) init/ (rollen, alleen lokaal) migrations/
 e2e/          Playwright-tests tegen de echte lokale stack
 scripts/seed  testgebruikers per rol via de auth-API (wachtwoordhashes, vast lokaal TOTP-geheim voor admin)
 scripts/      dev bootstrap doctor runner (db, ui, gen) db-generate check-*
-scripts/kit/  gates.mjs (gate-register) feiten.mjs ratchet.mjs diff-guard.mjs check-*.mjs (ADR 0045)
+scripts/kit/  gates.mjs (gate-register) gate-fast.mjs feiten.mjs ratchet.mjs diff-guard.mjs check-*.mjs (ADR 0045)
 .kit/         baseline.json (ratchet)
 designs/      optioneel: prototype-exports
 docs/         framework.md roadmap.md dod.md nieuwe-app.md gouden-pad.md specs/ adr/ operations/ reviews/

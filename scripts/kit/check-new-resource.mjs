@@ -6,6 +6,7 @@ import { execFileSync } from 'node:child_process';
 import { cpSync, mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
+import { snelleGates } from './gate-fast.mjs';
 import { pasToe, plan, schrijf } from './new-resource.mjs';
 
 // Met een streepje, zodat ook de afleiding van tabel-, camel- en PascalCase-namen door gate:fast gaat.
@@ -84,7 +85,8 @@ async function genereer(root) {
 const root = kopie(process.cwd());
 try {
   await genereer(root);
-  script(root, 'gate:fast');
+  // De snelle gates uit het register na elkaar, elk zonder pnpm (zie script()); gate:fast zelf start pnpm per gate.
+  for (const gate of snelleGates()) script(root, gate);
   console.log(`check:new-resource: ${NAAM} haalt gate:fast`);
 } finally {
   if (!process.argv.includes('--bewaar')) rmSync(root, { recursive: true, force: true });
