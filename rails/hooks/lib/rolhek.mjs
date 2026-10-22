@@ -3,7 +3,7 @@
 // met echte payloads kan bewijzen. De stdin/stdout-kant staat in rails/hooks/rolhek.mjs.
 import path from 'node:path';
 import { gitSubcommand, parseCommands, programName, splitCommand, writeTargets } from './shell.mjs';
-import { A4_MELDING, beslisOvergang, documentInfo, documentKind } from './document-state.mjs';
+import { A4_MELDING, beslisOvergang, documentInfo, documentKind, isHerschrijving } from './document-state.mjs';
 import { canRecordStatus, canWriteProtected } from './task-authority.mjs';
 import { automaticRunner } from './runner-authority.mjs';
 
@@ -237,15 +237,29 @@ function decideFile({ rel, change, role }, ctx, decision) {
   // A4 en de overgang vergelijken met main (de vertrouwde basis); alleen zonder authority is de werkmap de terugval.
   const basis = ctx.authority == null ? ctx.read(rel) : ctx.authority.trusted(rel);
   const overgang = change.after === null || documentKind(rel) === null ? null : beslisOvergang(rel, basis, change.after);
-  if (overgang?.uitslag === 'a4') {
+  const beslisrol = ['hoofdsessie', 'architect'].includes(role);
+  // A4 (ADR 0046 punt 2): alleen architect en hoofdsessie herschrijven een geaccepteerd ADR of verwijderen een ADR met een
+  // eigenaarstatus; of dat in een besluit-PR gebeurt, met een herzieningsregel, controleert de guard in CI.
+  const a4Toegestaan = beslisrol && (isHerschrijving(rel, basis, change.after) || adrMetEigenaarstatusWeg(rel, basis, change));
+  if (!a4Toegestaan && (['a4', 'herzien'].includes(overgang?.uitslag ?? '') || adrMetEigenaarstatusWeg(rel, basis, change))) {
     decision.deny.push(`${rel}: ${A4_MELDING}`);
     return;
   }
   // ADR 0046 punt 6: architect en hoofdsessie schrijven de eigenaarstatus in het voorstel; de merge van de eigenaar beslist.
-  const eigenaarstatus = ['hoofdsessie', 'architect'].includes(role) && ['besluit', 'vrij'].includes(overgang?.uitslag ?? '');
+  const eigenaarstatus = beslisrol && (a4Toegestaan || ['besluit', 'vrij'].includes(overgang?.uitslag ?? ''));
   if (!eigenaarstatus && statusZonderBesluit({ rel, change, role }, ctx, decision)) return;
   if (matches(config.testpaden) && ctx.read(rel) !== null) existingTest({ rel, change, role }, ctx, decision);
   decideByRole({ rel, change, role }, ctx, decision);
+}
+
+/**
+ * Een ADR dat met een eigenaarstatus (niet `voorgesteld`) in de basis staat, wordt verwijderd.
+ * @param {string} rel @param {string | null} basis @param {Change} change
+ */
+function adrMetEigenaarstatusWeg(rel, basis, change) {
+  if (change.kind !== 'delete' || documentKind(rel) !== 'adr' || basis === null) return false;
+  const status = documentInfo(rel, basis)?.status;
+  return status !== undefined && status !== 'voorgesteld';
 }
 
 /**
