@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, expect, test } from 'vitest';
 
-// ADR 0033: een migratie is ook "gecommit" als hij in de merge-base met het anker staat, niet alleen met de lokale origin/main.
+// ADR 0045: een migratie is ook "gecommit" als hij in de merge-base met het anker staat, niet alleen met de lokale origin/main.
 // Een agent kan die ref terugzetten (`git update-ref`); het anker kan hij niet verleggen. Echte tijdelijke repo's.
 const hook = path.join(process.cwd(), 'rails/hooks/rolhek.mjs');
 const gates = path.join(process.cwd(), '.claude/gates.json');

@@ -15,7 +15,7 @@ import {
   routeTree,
 } from '../../scripts/kit/new-resource.mjs';
 
-// pnpm new:resource (ADR 0016): naam, fasen, rollen, weigeren zonder te schrijven, gate-wijzigingen die met Edit te zetten
+// pnpm new:resource (ADR 0047): naam, fasen, rollen, weigeren zonder te schrijven, gate-wijzigingen die met Edit te zetten
 // zijn, de route-tree zonder Vite en het bestandsplan in docs/gouden-pad.md. Dat de uitvoer gate:fast haalt, bewijst
 // check:new-resource (OV-7).
 
@@ -185,7 +185,7 @@ describe('plan', () => {
     expect(aan).toBeLessThan(sql.indexOf('-- migrate:down'));
   });
 
-  // ADR 0029 punt 18: permissions.ts en app.ts zijn geen gate meer; het script schrijft ze zelf (bestanden), de tests blijven gate.
+  // ADR 0046 punt 32: permissions.ts en app.ts zijn geen gate meer; het script schrijft ze zelf (bestanden), de tests blijven gate.
   test('permissions.ts en app.ts worden geschreven; alleen de tabeltest en de menutest blijven gate-wijziging', async () => {
     const root = kopie(goedgekeurd);
     const p = await plan(root, 'invoices', { rollen: ['user'] });

@@ -7,7 +7,7 @@ import { ensureAccount } from '../../src/core/api/dev/ensure-account.ts';
 import { SEED_ACCOUNTS, SEED_ADMIN_TOTP_SLEUTEL, SEED_DEMO_WACHTWOORD } from '../../src/core/api/dev/seed-accounts.ts';
 import { APP_ORIGIN, Browser, createTestApp } from './harness.ts';
 
-// Dev-rolwisselaar (ADR 0014) tegen de echte Better Auth: snel wisselen vanaf één IP loopt niet tegen de rate limit van
+// Dev-rolwisselaar (ADR 0043) tegen de echte Better Auth: snel wisselen vanaf één IP loopt niet tegen de rate limit van
 // het inloggen aan (dat gaf lokaal een 500 na drie wissels), en de admin krijgt een MFA-sessie.
 const { auth, pool, withUser } = createTestApp();
 const gateway = authGateway(auth);

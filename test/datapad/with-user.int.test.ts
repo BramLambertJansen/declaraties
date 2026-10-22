@@ -4,8 +4,8 @@ import { afterAll, describe, expect, test } from 'vitest';
 import { createPool, createWithUser } from '../../src/core/api/db/testing.ts';
 import { UserId } from '../../src/core/shared/ids.ts';
 
-// Fase 0, datapad (ADR 0012): withUser() lekt geen gebruiker of rol tussen requests, direct én via PgBouncer
-// (transaction mode). Draait alleen via `pnpm test:db` in de runner (ADR 0009).
+// Fase 0, datapad (ADR 0042): withUser() lekt geen gebruiker of rol tussen requests, direct én via PgBouncer
+// (transaction mode). Draait alleen via `pnpm test:db` in de runner (ADR 0044).
 const PARALLEL = 60;
 
 function url(name: string): string {
@@ -98,7 +98,7 @@ describe.each(targets)('withUser $name', ({ url: connectionString }) => {
   });
 });
 
-describe('meting (geen grens; de uitkomst gaat naar ADR 0012)', () => {
+describe('meting (geen grens; de uitkomst gaat naar ADR 0042)', () => {
   test.each(targets)('twee verbindingen per request, $name', async ({ name, url: connectionString }) => {
     const session = createPool(url('AUTH_DATABASE_URL'));
     const pool = createPool(connectionString);

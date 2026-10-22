@@ -1,4 +1,4 @@
--- app.set_account_blocked en wat eraan hangt (spec accountbeheer-uitbreiding AC-11 t/m AC-14 en AC-24, ADR 0026): de regels van
+-- app.set_account_blocked en wat eraan hangt (spec accountbeheer-uitbreiding AC-11 t/m AC-14 en AC-24, ADR 0043): de regels van
 -- besluit 3 in volgorde, de telbare-admin-definitie van user_roles_keep_one_admin (besluit 4), de status 'blocked' in
 -- app.accounts (besluit 5) en de grants (besluit 2). Alles in één transactie die terugdraait.
 -- Alles wat de nieuwe kolom of functie raakt staat als tekst in een pgTAP-assert (of in een do-blok met een afgevangen
@@ -54,7 +54,7 @@ select results_eq(
   $$select pg_catalog.has_column_privilege('app_definer', 'better_auth."user"', 'blocked_at', 'select'),
            pg_catalog.has_column_privilege('app_definer', 'better_auth."user"', 'blocked_at', 'update')$$,
   $$values (true, true)$$,
-  'app_definer: select en update op better_auth."user".blocked_at (ADR 0026, besluit 2)'
+  'app_definer: select en update op better_auth."user".blocked_at (ADR 0043)'
 );
 select results_eq(
   $$select pg_catalog.has_column_privilege('app_definer', 'better_auth."user"', 'name', 'update'),

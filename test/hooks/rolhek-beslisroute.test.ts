@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import { describe, expect, test } from 'vitest';
 import { decide, loadConfig } from '../../rails/hooks/lib/rolhek.mjs';
 
-// ADR 0038 punt 6 en 9: de merge van de eigenaar is de acceptatie. In het rolhek mogen alleen hoofdsessie en architect een
+// ADR 0046 punt 6 en 7: de merge van de eigenaar is de acceptatie. In het rolhek mogen alleen hoofdsessie en architect een
 // eigenaarstatus (geaccepteerd, goedgekeurd, vervallen, vervangen door NNNN) schrijven, ook zonder record en ook voor een
 // nieuw bestand, en de inhoud van een goedgekeurde spec wijzigen. Developer, tester en docs blijven geweigerd (de developer
 // houdt alleen `gebouwd` via `pnpm docs:status`). De lokale A4-weigering blijft voor elke rol: de tekst van een geaccepteerd
@@ -191,7 +191,7 @@ describe('lokale A4 (punt 2): een geaccepteerd ADR wijzigt niet, voor iedere rol
   );
 });
 
-describe('ADR 0038 punt 2: vervallen of vervangen ADR terug naar voorgesteld is geweigerd, voor iedere rol', () => {
+describe('ADR 0046 punt 2: vervallen of vervangen ADR terug naar voorgesteld is geweigerd, voor iedere rol', () => {
   describe.each([undefined, 'architect', 'developer', 'tester', 'docs'])('rol %s', (agent) => {
     test.each([
       ['vervallen', ADR_VERVALLEN, 'Status: vervallen'],
@@ -202,7 +202,7 @@ describe('ADR 0038 punt 2: vervallen of vervangen ADR terug naar voorgesteld is 
   });
 });
 
-// --- Review van ADR 0038: A4 tegen main (de vertrouwde basis), niet tegen de werkmap. ---------------------------------------
+// --- Review van ADR 0046: A4 tegen main (de vertrouwde basis), niet tegen de werkmap. ---------------------------------------
 // `read` is de werkmap, `authority.trusted` is main. Een ADR die op main nog geen eigenaarstatus heeft, is niet beschermd,
 // ook al staat hij in de werkmap al op `geaccepteerd`; een ADR die op main geaccepteerd is, blijft beschermd, ook als de
 // werkmap afwijkt of het bestand ontbreekt (na `rm`).

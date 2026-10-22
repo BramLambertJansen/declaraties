@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, test } from 'vitest';
 import { S1, SOURCE, basisRoadmap, bouw, commit, draaiChecker, maakRepo, opruimen, read, write } from './follow-up-kit';
 
-// Review van ADR 0038: een `--path`-record (mandaat) van een spec vervalt zodra de inhoud van die spec in de PR wijzigt
+// Review van ADR 0046: een `--path`-record (mandaat) van een spec vervalt zodra de inhoud van die spec in de PR wijzigt
 // (punt 9, 0027 punt 2), en een `gebouwd`-overgang met bouwbewijs blijft werken in de nieuwe route. Echte tijdelijke
 // repositories met een register op main, zoals mandate-follow-up-ci.test.ts.
 afterEach(opruimen);

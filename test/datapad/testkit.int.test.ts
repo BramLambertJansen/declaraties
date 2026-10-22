@@ -6,7 +6,7 @@ import { buildApp } from '../../src/api/app.ts';
 import type { AppServices } from '../../src/api/services.ts';
 import { APP_ORIGIN, required } from '../auth/harness.ts';
 
-// Testkit (framework §4, ADR 0012): één transactie per test, savepoint per withUser-aanroep, alles draait terug.
+// Testkit (framework §4, ADR 0042): één transactie per test, savepoint per withUser-aanroep, alles draait terug.
 const pool = createPool(required('MIGRATOR_DATABASE_URL'));
 afterAll(async () => {
   await pool.end();

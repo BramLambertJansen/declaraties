@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { expect, test } from 'vitest';
 
-// Het echte entry-script (rails/hooks/meting.mjs) via stdin; observeert alleen (ADR 0029 punt 12).
+// Het echte entry-script (rails/hooks/meting.mjs) via stdin; observeert alleen (ADR 0046).
 const root = process.cwd();
 const SESSIE = 'sess-1';
 

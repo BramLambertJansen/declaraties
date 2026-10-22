@@ -1,7 +1,7 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { describe, expect, test } from 'vitest';
 
-// ADR 0030 punten 1, 7 (PR 1) en 8: de skill `opleveren`, framework §8 stap 6 en CLAUDE.md.
+// ADR 0046 punten 1, 7 (PR 1) en 8: de skill `opleveren`, framework §8 stap 6 en CLAUDE.md.
 const SKILL = '.claude/skills/opleveren/SKILL.md';
 const skill = existsSync(SKILL) ? readFileSync(SKILL, 'utf8') : '';
 const framework = readFileSync('docs/framework.md', 'utf8');

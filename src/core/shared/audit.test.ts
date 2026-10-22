@@ -2,11 +2,11 @@ import { describe, expect, test } from 'vitest';
 import { z } from 'zod';
 import { defineAuditActions } from './audit.ts';
 
-// defineAuditActions (spec audit-log AC-28, ADR 0021 punt 5): het registratiepatroon van defineErrorCodes. Een app registreert
+// defineAuditActions (spec audit-log AC-28, ADR 0051): het registratiepatroon van defineErrorCodes. Een app registreert
 // eigen acties zonder core te wijzigen; een fout in de registratie gooit bij het aanmaken, dus bij het opstarten.
 const details = z.object({ reason: z.string() });
 
-describe('defineAuditActions (uitbreidingsplek, ADR 0008)', () => {
+describe('defineAuditActions (uitbreidingsplek, ADR 0040)', () => {
   test('een app registreert acties met een doeltype en een details-schema', () => {
     const actions = defineAuditActions({
       'note.archive': { target: 'note', details },

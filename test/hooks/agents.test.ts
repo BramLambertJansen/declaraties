@@ -1,7 +1,7 @@
 import { readdirSync, readFileSync } from 'node:fs';
 import { describe, expect, test } from 'vitest';
 
-// De vijf rollen en de skills (framework §8, ADR 0011): vaste frontmatter, zodat de werkstraat niet ongemerkt verschuift.
+// De vijf rollen en de skills (framework §8, ADR 0045): vaste frontmatter, zodat de werkstraat niet ongemerkt verschuift.
 // Schrijfrecht per rol bepaalt het rolhek (.claude/gates.json), niet de tools-lijst; alleen de reviewer is hier beperkt.
 function frontmatter(file: string): Record<string, string> {
   const text = readFileSync(file, 'utf8');

@@ -3,7 +3,7 @@ import pg from 'pg';
 import { createAuth } from '../../src/core/api/auth/index.ts';
 import { ensureAccount } from '../../src/core/api/dev/ensure-account.ts';
 
-// Accounts voor de e2e-tests in de runner (ADR 0009): direct via Better Auth en app.assign_role, zoals de lokale seed.
+// Accounts voor de e2e-tests in de runner (ADR 0044): direct via Better Auth en app.assign_role, zoals de lokale seed.
 function required(name: string): string {
   const value = process.env[name];
   if (value === undefined || value === '') throw new Error(`${name} ontbreekt (alleen in de runner: pnpm ui:check)`);

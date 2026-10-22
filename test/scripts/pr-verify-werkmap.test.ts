@@ -5,7 +5,7 @@ import path from 'node:path';
 import { afterEach, describe, expect, test } from 'vitest';
 import { onbekendeWerkmapBestanden, werkmapNegeer } from '../../scripts/kit/pr-verify.mjs';
 
-// ADR 0031 besluit 5: pr:verify weigert een vuile werkmap, behalve ongetrackte bestanden onder `werkmapNegeer`
+// ADR 0045 punt 23: pr:verify weigert een vuile werkmap, behalve ongetrackte bestanden onder `werkmapNegeer`
 // (uit origin/main). Pure functie: onbekendeWerkmapBestanden(statusPorcelain, negeer) → de paden die blokkeren.
 const NEGEER = ['.claude/launch.json', '.claude/loop.md', '.claude/output-styles/', '.claude/routines/'];
 const REPO = path.resolve(import.meta.dirname, '../..');
@@ -175,7 +175,7 @@ describe('werkmapNegeer: de lijst komt uit origin/main, nooit uit de werkmap', (
 });
 
 describe('repo-feiten: beginlijst en .gitignore', () => {
-  test('.claude/gates.json bevat precies de beginlijst van ADR 0031 besluit 5', () => {
+  test('.claude/gates.json bevat precies de beginlijst van ADR 0045 punt 23', () => {
     const gates: unknown = JSON.parse(readFileSync(path.join(REPO, '.claude/gates.json'), 'utf8'));
     const lijst = typeof gates === 'object' && gates !== null && 'werkmapNegeer' in gates ? gates.werkmapNegeer : null;
 

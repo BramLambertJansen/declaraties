@@ -7,7 +7,7 @@ import { accountsListContract } from '../../src/shared/contracts/accounts.ts';
 import { Browser, required } from '../auth/harness.ts';
 import { createAccountTestApp, json, PASSWORD } from './account-harness.ts';
 
-// Account blokkeren en deblokkeren (spec accountbeheer-uitbreiding, ADR 0026): AC-11, AC-12, AC-14, AC-22, AC-23, de
+// Account blokkeren en deblokkeren (spec accountbeheer-uitbreiding, ADR 0043): AC-11, AC-12, AC-14, AC-22, AC-23, de
 // permissies per rol en de race van twee admins, tegen de echte database en Better Auth (`pnpm test:db`).
 // De rest (AC-13 en AC-24 op database-niveau) staat in db/tests/account_blocking.sql.
 const t = createAccountTestApp();
@@ -51,7 +51,7 @@ function sessionCookieName(browser: Browser): string {
 describe.each([
   ['block', BLOCK],
   ['unblock', UNBLOCK],
-])('POST /api/accounts/:id/%s: rechten en invoer (spec accounts/AC-19, ADR 0026)', (_, route) => {
+])('POST /api/accounts/:id/%s: rechten en invoer (spec accounts/AC-19, ADR 0043)', (_, route) => {
   test('niet ingelogd: 401 UNAUTHENTICATED', async () => {
     const response = await t.call(new Browser(t.app), route('x'), {});
 

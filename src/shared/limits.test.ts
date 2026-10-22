@@ -2,7 +2,7 @@ import { expect, test } from 'vitest';
 import { invalidRateLimits, MAX_PAGE_SIZE, RATE_LIMIT_MAX } from '#core/shared/limits.ts';
 import { APP_LIMITS, RATE_LIMITS } from './limits.ts';
 
-test('geen app-grens boven de harde grens uit core (ADR 0008)', () => {
+test('geen app-grens boven de harde grens uit core (ADR 0040)', () => {
   expect(APP_LIMITS.ACCOUNTS_PAGE_SIZE).toBeLessThanOrEqual(MAX_PAGE_SIZE);
 });
 

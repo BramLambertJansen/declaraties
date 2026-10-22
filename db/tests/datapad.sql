@@ -1,4 +1,4 @@
--- Fase 0, datapad (ADR 0012): FORCE RLS geldt ook voor de eigenaar app_migrator (geen superuser), app_definer ziet
+-- Fase 0, datapad (ADR 0042): FORCE RLS geldt ook voor de eigenaar app_migrator (geen superuser), app_definer ziet
 -- rijen alleen via een eigen policy, en api_user heeft zonder withUser() geen enkel recht. Alles in één transactie
 -- die terugdraait: de probe-tabel bestaat alleen tijdens de test.
 begin;

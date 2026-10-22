@@ -72,7 +72,7 @@ describe('GET /api/me', () => {
     expect(await body(allowed)).toMatchObject({ rol: 'admin' });
   });
 
-  test('een sessie ouder dan 7 dagen: 401 en de sessie is ingetrokken (ADR 0003)', async () => {
+  test('een sessie ouder dan 7 dagen: 401 en de sessie is ingetrokken (ADR 0041)', async () => {
     const { browser, userId } = await signedIn('user');
     await authDb.query(`update session set "createdAt" = now() - interval '8 days' where "userId" = $1`, [userId]);
 

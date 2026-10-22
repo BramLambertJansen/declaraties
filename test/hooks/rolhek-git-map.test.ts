@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import { describe, expect, test } from 'vitest';
 import { decide, loadConfig } from '../../rails/hooks/lib/rolhek.mjs';
 
-// ADR 0033 (anker en onderhoudsmodus): remote-URL, refs en objecten staan in `.git`; de vertrouwensbasis mag nooit door een
+// ADR 0045 (anker en onderhoudsmodus): remote-URL, refs en objecten staan in `.git`; de vertrouwensbasis mag nooit door een
 // Edit/Write van welke rol ook worden gewijzigd, in of buiten de onderhoudsmodus.
 const ROOT = '/repo';
 const config = loadConfig(readFileSync('.claude/gates.json', 'utf8'));

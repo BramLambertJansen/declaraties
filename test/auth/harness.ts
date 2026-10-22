@@ -7,7 +7,7 @@ import { authGateway, createAuth } from '../../src/core/api/auth/index.ts';
 import { createPool, createWithUser } from '../../src/core/api/db/testing.ts';
 import { createSmtpMailer } from '../../src/core/api/mail/smtp.ts';
 
-// Testopzet voor de auth-integratietests (runner, ADR 0009): echte database als auth_service, echte SMTP naar Mailpit.
+// Testopzet voor de auth-integratietests (runner, ADR 0044): echte database als auth_service, echte SMTP naar Mailpit.
 export function required(name: string): string {
   const value = process.env[name];
   if (value === undefined || value === '') throw new Error(`${name} ontbreekt: draai via pnpm test:db`);
@@ -47,7 +47,7 @@ function nextIp(): string {
   return `10.${String(process.pid % 250)}.${String(Math.floor(ipCounter / 250))}.${String(ipCounter % 250)}`;
 }
 
-// Een browser met cookies, die de CSRF-headers stuurt zoals de SPA (ADR 0007).
+// Een browser met cookies, die de CSRF-headers stuurt zoals de SPA (ADR 0041).
 export class Browser {
   readonly cookies = new Map<string, string>();
   private readonly app: App;

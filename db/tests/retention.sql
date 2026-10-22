@@ -1,4 +1,4 @@
--- app.retention en app.retention_cutoff (spec achtergrondtaken, deel A: AC-1, AC-2, AC-3, AC-5; ADR 0022 punt 5): tabel,
+-- app.retention en app.retention_cutoff (spec achtergrondtaken, deel A: AC-1, AC-2, AC-3, AC-5; ADR 0051 punt 14): tabel,
 -- CHECKs, grants, policy op naam, de rijen van de bewaarcatalogus en de cutoff-functie. Alles in één transactie die
 -- terugdraait. Alles wat de nieuwe objecten raakt staat als tekst in een assert, zodat een ontbrekende migratie als
 -- falende assert verschijnt en niet als afgebroken script. De hulpfuncties wisselen per aanroep van rol (zoals de testkit);

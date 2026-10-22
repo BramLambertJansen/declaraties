@@ -1,7 +1,7 @@
 import { describe, expect, test } from 'vitest';
 import { coreErrorCodes, defineErrorCodes } from './errors.ts';
 
-describe('defineErrorCodes (uitbreidingsplek, ADR 0008)', () => {
+describe('defineErrorCodes (uitbreidingsplek, ADR 0040)', () => {
   test('een app voegt codes toe zonder core te wijzigen', () => {
     const registry = defineErrorCodes(['NOTE_LOCKED']);
 

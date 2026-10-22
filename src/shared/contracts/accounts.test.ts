@@ -35,7 +35,7 @@ test('onbekende sleutels en te lange of lege q: API weigert, web negeert', () =>
   expect(accountsSearch.web.parse({ onbekend: '1', q: '   ' })).toStrictEqual({});
 });
 
-// Spec accountbeheer-uitbreiding (ADR 0026): blokkeren en deblokkeren.
+// Spec accountbeheer-uitbreiding (ADR 0043): blokkeren en deblokkeren.
 describe.each([
   ['blockContract', blockContract, '/accounts/:id/block'],
   ['unblockContract', unblockContract, '/accounts/:id/unblock'],

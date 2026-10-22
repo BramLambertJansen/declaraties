@@ -5,7 +5,7 @@ import path from 'node:path';
 import { afterAll, describe, expect, test } from 'vitest';
 import { compare } from '../../scripts/kit/ratchet.mjs';
 
-// De ratchet faalt in beide richtingen (framework §4, ADR 0011): een nieuwe overtreding, én een opgeloste die nog
+// De ratchet faalt in beide richtingen (framework §4, ADR 0045): een nieuwe overtreding, én een opgeloste die nog
 // in de baseline staat.
 describe('ratchet: .kit/baseline.json', () => {
   const violation = (key: string) => ({ key, message: '' });

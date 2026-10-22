@@ -6,7 +6,7 @@ import { createPool, createWithUser } from '../../src/core/api/db/testing.ts';
 import { UserId } from '../../src/core/shared/ids.ts';
 
 // Een idle verbinding die wegvalt (herstart of failover van de database), stopt het proces niet: pg-pool meldt het als
-// 'error' op de pool, en zonder listener is dat een uncaught exception. Draait alleen via `pnpm test:db` (ADR 0009).
+// 'error' op de pool, en zonder listener is dat een uncaught exception. Draait alleen via `pnpm test:db` (ADR 0044).
 function url(): string {
   const value = process.env['DATABASE_URL'];
   if (value === undefined || value === '') throw new Error('DATABASE_URL ontbreekt: draai via pnpm test:db');
