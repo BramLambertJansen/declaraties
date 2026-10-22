@@ -478,6 +478,8 @@ const REVIEWER_COMMANDS = [
   /^pnpm (?:check:\S+|test\S*|gate:\S+)$/,
   /^git (?:diff|log|show|status)$/,
   /^gh pr (?:view|diff|checks)$/,
+  // De feiten voor stap 1 van .claude/agents/reviewer.md (gates, specs, fase); scripts/kit/feiten.mjs schrijft niets.
+  /^node scripts\/kit\/feiten\.mjs$/,
 ];
 
 /**
