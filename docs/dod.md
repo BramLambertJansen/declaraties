@@ -10,8 +10,8 @@ De reviewer bepaalt eerst welke fase uit `docs/roadmap.md` bij het werk hoort: d
 - [ ] Is het bewijs voor een roadmap-item beschikbaar (checkuitslag of test, eventueel met PR-nummer), dan vinkt dezelfde PR dat item af, met een verwijzing achter het vinkje (testpad, checknaam of PR-nummer; de uitslag staat in de PR) en met akkoord van de eigenaar. Een spec naar `gebouwd` heeft één vorm, die `pnpm docs:status` schrijft: `status: gebouwd # #<PR>; gevalideerd: <sha>`; een afgevinkt roadmap-item vervangt die niet. Binnen een taakmandaat wijzigt in `docs/roadmap.md` alleen het vinkje van het item dat de spec van het mandaat tussen backticks noemt (precies één open item per spec); `pnpm docs:status <spec> gebouwd --pr <nummer> --roadmap` zet status en vinkje samen (ADR 0027). Een item dat deze PR afrondt maar open blijft, is een bevinding van de reviewer, net als een vinkje zonder bewijs. `pnpm check:roadmap` (in `gate:fast`) en `check-document-status` (CI) lezen beide vormen met dezelfde code; of het juiste item is afgevinkt blijft een oordeel van de reviewer.
 - [ ] Elk acceptatiecriterium voor gewijzigd gedrag heeft een inhoudelijke test (geen lege of triviale assertie). Bij wijzigingen zonder gedragsverandering, zoals alleen documentatie, noteer je voor dit criterium “n.v.t.” met reden; toepasselijke documentatiechecks blijven verplicht.
 - [ ] Geen bestaande migratie gewijzigd. Een bestaande test is alleen gewijzigd als de spec of opdracht het geteste gedrag verandert, en staat met reden in de PR; geen test verwijderd of geskipt zonder akkoord van de eigenaar.
-- [ ] Runnerchecks volgen ADR 0009/0027: vaste opdracht, geïsoleerde teststack, ongewijzigde hostcode. Bij gewijzigde hostcode gebruikt de agent de wegwerp-CI. De hoofdsessie verzamelt werkelijke uitslagen op de juiste SHA; geen routineverzoek aan de eigenaar om tests zelf te draaien.
-- [ ] Bij migratie, nieuwe route of nieuwe permissie bestaat een goedgekeurde spec in `docs/specs/`; zonder die spec is de PR niet klaar. De status `goedgekeurd` staat in het voorstel en de merge door de eigenaar is het besluit (ADR 0038). Gebouwd via `pnpm docs:status` kan bij de geopende PR, na afgeronde implementatie en groene verplichte Actions-checks (ADR 0027).
+- [ ] Runnerchecks volgen ADR 0044: vaste opdracht, geïsoleerde teststack, ongewijzigde hostcode. Bij gewijzigde hostcode gebruikt de agent de wegwerp-CI. De hoofdsessie verzamelt werkelijke uitslagen op de juiste SHA; geen routineverzoek aan de eigenaar om tests zelf te draaien.
+- [ ] Bij migratie, nieuwe route of nieuwe permissie bestaat een goedgekeurde spec in `docs/specs/`; zonder die spec is de PR niet klaar. De status `goedgekeurd` staat in het voorstel en de merge door de eigenaar is het besluit (ADR 0046). Gebouwd via `pnpm docs:status` kan bij de geopende PR, na afgeronde implementatie en groene verplichte Actions-checks (ADR 0046 punt 10).
 
 ### Beveiliging en data (geldt in elke fase)
 
@@ -19,7 +19,7 @@ De reviewer bepaalt eerst welke fase uit `docs/roadmap.md` bij het werk hoort: d
 - [ ] Nieuwe tabellen hebben RLS aan en geforceerd, expliciete grants en een pgTAP-test per policy.
 - [ ] De securitysuite (`test/security/`, `db/tests/security.sql`) is groen in `pnpm test:db`; een nieuwe resource staat in `test/security/resources.ts` met ingevulde samples.
 - [ ] Nieuwe `unsafeCast`-aanroepen hebben een reden.
-- [ ] Een wijziging aan de CSRF-middleware heeft de testmatrix uit ADR 0007 als tests.
+- [ ] Een wijziging aan de CSRF-middleware heeft de testmatrix uit ADR 0041 als tests (`src/core/api/http/csrf.test.ts`).
 
 ## Fase 0 — Bewijs
 

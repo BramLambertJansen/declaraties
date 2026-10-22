@@ -5,7 +5,7 @@ Je bent Claude Code. Dit bestand is jouw instructie, geen documentatie voor de g
 De gebruiker is de eigenaar van de template (Bram): technisch, kent de stack, wil geen uitleg over wat een terminal is.
 Hij wil wél weten wát je doet en waarom, kort. Hij beslist; jij voert uit binnen dit bestand.
 
-Dit bestand staat in de template als `docs/nieuwe-app.md` en volgt de afspraken in [ADR 0006](adr/0006-app-uit-template.md).
+Dit bestand staat in de template als `docs/nieuwe-app.md` en volgt de afspraken in [ADR 0040](adr/0040-template-app-en-grens-core-app.md).
 Werk altijd met de versie op `main` van de template. De gebruiker zet hem zo klaar:
 `mkdir -p ~/setup && curl -fsSL https://raw.githubusercontent.com/BramLambertJansen/template/main/docs/nieuwe-app.md -o ~/setup/nieuwe-app.md`,
 start `claude` in `~/setup` en zegt: *Volg nieuwe-app.md*.
@@ -236,7 +236,7 @@ pwd                                        # nooit /mnt/c/...
 > 3. Typ *klaar*.
 
 Daarna zelf: `gh auth setup-git`. `workflow` is nodig omdat jij (de eigenaar) later template-updates met `.github/workflows/` pusht.
-Let op: tot de GitHub App voor de agent bestaat (ADR 0005), draait Claude Code als dezelfde WSL-gebruiker en gebruikt dus deze login,
+Let op: tot de GitHub App voor de agent bestaat (ADR 0039 punt 8), draait Claude Code als dezelfde WSL-gebruiker en gebruikt dus deze login,
 inclusief `workflow`. De grens is dan de ruleset en jouw review (framework §6, Agentveiligheid). Zeg dat in de overdracht van Fase 10.
 Zet de git-identiteit volgens *Standaardwaarden* als die ontbreekt.
 
@@ -301,7 +301,7 @@ Later in de app heet hetzelfde `pnpm app:init`. Het script (`scripts/kit/app-ini
 | `README.md` | Kop `# App-template` → `# <App-naam>`; eerste alinea → één zin over de app ("Gebouwd op [BramLambertJansen/template](https://github.com/BramLambertJansen/template)."); sectie **Nieuwe app starten** verwijderen (geldt alleen voor de template); de rest blijft |
 | `docs/nieuwe-app.md` | Niets — laten staan. Verwijderen geeft bij elke template-update een conflict |
 | `CHANGELOG.md` | Onder `## [Unreleased]` de template-regels vervangen door: `- Gestart vanaf template <sha>.` |
-| `.claude/gates.json` | De regel `"onderhoud": { … }` verwijderen: de onderhoudsmodus (ADR 0033) hoort bij de template-repo; het script weigert als die regel niet meer te vinden is |
+| `.claude/gates.json` | De regel `"onderhoud": { … }` verwijderen: de onderhoudsmodus (ADR 0045) hoort bij de template-repo; het script weigert als die regel niet meer te vinden is |
 | `.github/CODEOWNERS` | Alleen als de owner niet `bramlambertjansen` is (`--owner`): handle vervangen door `@<login>` of `@<org>/<team>` |
 
 Raak `docs/`, `AGENTS.md`, `CLAUDE.md`, `.claude/`, `db/`, `compose.yaml` niet aan. Die komen uit de template en worden via template-updates bijgehouden.
@@ -355,8 +355,18 @@ Het script schrijft naar GitHub met de login van de eigenaar; jij draait het nie
 Met `--zonder-codeql`: zet in de overdracht dat de app per ADR kiest: GHAS, public, of `codeql.yml` uit.
 
 Waarom 0 goedkeuringen en geen code-owner-review: zolang de agent nog onder het account van de eigenaar pusht, is de eigenaar ook de PR-auteur,
-en GitHub laat je je eigen PR niet goedkeuren. Zodra de GitHub App voor de agent bestaat (roadmap ST-01, ADR 0005), gaan beide aan.
-De diff-guard (`guard.yml`) is tot dan geen verplichte check (ADR 0017). Zet dat in de overdracht.
+en GitHub laat je je eigen PR niet goedkeuren. Zodra de GitHub App voor de agent bestaat (roadmap ST-01, ADR 0039 punt 8), gaan beide aan.
+De diff-guard (`guard.yml`) is tot dan geen verplichte check (ADR 0045 punt 17). Zet dat in de overdracht.
+
+Geplande inrichting van de App (**nog niet gebouwd**, roadmap ST-01; het besluit is ADR 0045 punt 19):
+
+- Rechten: `contents: write`, `pull_requests: write`, `issues: write` (labels, commentaar), `metadata: read`, `checks: read`,
+  `actions: read`. Geen `workflows`, `administration` of `secrets`. De App staat niet in `goedkeurders` (`.claude/gates.json`),
+  dus een goedkeuring door de App telt niet.
+- Sleutel buiten de repo (`~/.config/template-agent/app.pem`, modus 600), nooit leesbaar in de sandbox. Een token van één uur
+  via een script zonder dependency (`node:crypto`, JWT RS256) dat als git-credential-helper en als `GH_TOKEN` dient; dat script
+  komt in de App-PR.
+- Met de App: de ruleset met code-owner-review en 1 goedkeuring, en de diff-guard als verplichte check.
 
 Weigert de API iets:
 - ruleset op een private repo zonder Pro/Team → het script meldt het en stopt; meld de keuze aan de eigenaar (Pro, organisatie met Team, of public). Wijzig zelf de zichtbaarheid niet.
@@ -423,7 +433,7 @@ psql "postgres://app_migrator:app_migrator@127.0.0.1:<pg>/app" -Atc "select curr
 ## Fase 8 — Migraties en databasebewijs
 
 `pnpm dev` heeft de migraties al gedraaid. Moeten ze opnieuw zonder de rest van de stack, dan draait de eigenaar in zijn terminal
-`pnpm db:migrate` (`scripts/db-migrate.sh`, dbmate uit `mise.toml`; het script roept `mise` aan, dat in jouw niet-interactieve shell niet op `PATH` staat). Draai dbmate nooit los of met `pnpm dlx`: het script is het enige pad, met `MIGRATOR_DATABASE_URL` (ADR 0004).
+`pnpm db:migrate` (`scripts/db-migrate.sh`, dbmate uit `mise.toml`; het script roept `mise` aan, dat in jouw niet-interactieve shell niet op `PATH` staat). Draai dbmate nooit los of met `pnpm dlx`: het script is het enige pad, met `MIGRATOR_DATABASE_URL` (ADR 0042).
 
 Bewijs met `psql` (`M=postgres://app_migrator:app_migrator@127.0.0.1:<pg>/app`, `A=postgres://api_user:api_user@127.0.0.1:<pg>/app`):
 
@@ -464,7 +474,7 @@ Schrijf het voortgangsbestand af en stuur één bericht, ongeveer zo:
 > permissies van Claude Code (`.claude/`), CI (`gate:fast`, `gate:slow`, `secrets`, `image`, `check:new-resource`, CodeQL, osv-scanner)
 > en de ruleset op `main` met die checks verplicht.
 >
-> **Wat er nog níet is:** de GitHub App voor de agent (roadmap ST-01, ADR 0005) — tot dan pusht de agent onder jouw account, met jouw
+> **Wat er nog níet is:** de GitHub App voor de agent (roadmap ST-01, ADR 0039 punt 8; geplande inrichting in 6.2) — tot dan pusht de agent onder jouw account, met jouw
 > `gh`-login inclusief `workflow`, en is de diff-guard (`guard.yml`) geen verplichte check; `check-github`, dat controleert of de
 > ruleset blijft staan (ST-01); de proef-app als bewijs (ST-09). Bouw die in de **template**, niet in deze app — anders mis je ze bij
 > de volgende app en conflicteren de updates.
@@ -498,7 +508,7 @@ gh pr create --fill --title "chore: template-update $(git rev-parse --short temp
 
 De eigenaar merget met **Create a merge commit**. Zit er een wijziging in `.github/workflows/` in, dan pusht de eigenaar de branch (de agent heeft geen `workflows`-recht).
 
-App-eigen ADR's: begin bij `0100` (`docs/adr/0100-…`). `0001`–`0099` zijn van de template; zelfde nummers in de app geven bij een update een conflict (ADR 0006).
+App-eigen ADR's: begin bij `0100` (`docs/adr/0100-…`). `0001`–`0099` zijn van de template; zelfde nummers in de app geven bij een update een conflict (ADR 0040 punt 4).
 
 ## Fout → oorzaak
 

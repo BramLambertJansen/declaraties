@@ -29,7 +29,7 @@ De query- en submituitkomsten zijn lokale voorbeelddata. Ze doen geen API-aanroe
 
 ## Uitbreiden en controleren
 
-Bij een nieuw UI-onderdeel blijven bronindex, barrel-export en bereikbaar voorbeeld verplicht (ADR 0028).
+Bij een nieuw UI-onderdeel blijven bronindex, barrel-export en bereikbaar voorbeeld verplicht (ADR 0048).
 Voeg daarnaast in [example-targets.ts](../src/web/features/design-system/example-targets.ts) de vindplaats en korte bedieningsinstructie toe. Het doel is het `id` van een
 Section; die wordt alleen met een expliciet id programmatisch focusbaar. Nieuwe Section-aanroepen zonder id veranderen niet.
 
