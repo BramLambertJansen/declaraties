@@ -19,7 +19,7 @@ Peildatum: `main` op `0b348e2`. Alleen gelezen, niet gedraaid (zie "Testplan").
 
 | Dreiging | Status | Wat er is (bestand:regel) | Wat ontbreekt |
 |---|---|---|---|
-| **H1** A leest, lijst, wijzigt of verwijdert data van B, via de API | **niet gedekt** voor een resource | Alleen het eigen account: sessie van een ander account → 404 (`test/api/eigen-account-deel2.int.test.ts:151`, `:163`); rate limit per gebruiker (`test/api/rate-limit.int.test.ts:118`). | De template heeft geen owner-resource, dus er is niets om tegen te testen; een app krijgt geen A-tegen-B-test via `new:resource` (ADR 0016 OV-1). |
+| **H1** A leest, lijst, wijzigt of verwijdert data van B, via de API | **niet gedekt** voor een resource | Alleen het eigen account: sessie van een ander account → 404 (`test/api/eigen-account-deel2.int.test.ts:151`, `:163`); rate limit per gebruiker (`test/api/rate-limit.int.test.ts:118`). | De template heeft geen owner-resource, dus er is niets om tegen te testen; een app krijgt geen A-tegen-B-test via `new:resource` (ADR 0047 punt 1). |
 | **H2** A leest, wijzigt of verwijdert data van B, direct op de database onder de app-rol | **deels** | Alleen structuur: `db/tests/invarianten.sql:89-131` (`eigenaartabellen`: geen kolomrecht op `id`/`owner_id`/`created_at`, vier policies, index); gedrag alleen voor `user_roles` (`db/tests/user_roles.sql:25-32`). | Gedrag van de policies van een owner-tabel (B ziet 0 rijen). De structuurcheck leest geen predicaat en kijkt alleen naar `public.*` met een kolom precies `owner_id`; een tabel in `app` of met `user_id` valt erbuiten. |
 | **H3** A spooft de owner bij insert of update | **deels** | Kolomrechten sluiten `owner_id` uit (zelfde invariant, `invarianten.sql:94-103`); de `with check` van het sjabloon (`scripts/kit/templates/migratie.sql.tmpl`). | Geen gedragstest: een insert/update met `owner_id = B` is nergens geprobeerd. |
 | **V** Rol zonder permissie roept route aan | **deels** | `src/shared/permissions.test.ts:7-44`: elke permissie × rol × sterkte via `check()`, automatisch voor nieuwe permissies (unit). HTTP: een handgeschreven routelijst in `test/api/accounts.int.test.ts:57-64`, `me.int.test.ts:52-56`, `eigen-account.int.test.ts`. | Een nieuwe route staat niet in die lijsten; geen test dat elke route in het register zijn permissie afdwingt. |
@@ -168,7 +168,7 @@ Bestanden: `test/security/*.int.test.ts` (draaien in `pnpm test:db`, dus in `gat
 - **security/AC-11** — Gegeven een route die niet in `routeClassificatie` staat, een `eigenaar`-route zonder `resources`-regel of een owner-tabel zonder `resources`-regel, wanneer de suite draait, dan is ze rood met de naam van het ontbrekende item (fail-closed, nooit overslaan).
 - **security/AC-12** — Gegeven `db/tests/security.sql`, wanneer de catalogus een overtreding van C1, C2 of C3 bevat, dan faalt de test met de naam van tabel of policy; voor elke invariant is bewezen met een probe dat hij een opzettelijke fout vangt en de goede variant doorlaat.
 - **security/AC-13** — Gegeven de probe-resource uit de generatorsjabloon, wanneer ze door de volledige suite gaat, dan is ze groen; met een bewust gebroken variant (policy weg, kolomrecht op `owner_id`, `using (true)`, route zonder strict input) is de suite rood op de bijbehorende AC.
-- **security/AC-14** — Gegeven `pnpm gate:slow`, wanneer de suite draait, dan draait ze tegen de echte lokale stack (Postgres, Better Auth, Mailpit), zonder gemockte API of database, zonder `skip` of `todo`; de enige afwijking is de sessie van de probe-app via de test-gateway van `asUser` (zie "Datawijzigingen"), en valt ze binnen de bestaande runner (ADR 0009).
+- **security/AC-14** — Gegeven `pnpm gate:slow`, wanneer de suite draait, dan draait ze tegen de echte lokale stack (Postgres, Better Auth, Mailpit), zonder gemockte API of database, zonder `skip` of `todo`; de enige afwijking is de sessie van de probe-app via de test-gateway van `asUser` (zie "Datawijzigingen"), en valt ze binnen de bestaande runner (ADR 0044).
 - **security/AC-15** — Gegeven de PR, wanneer ze klaar is, dan staan de relevante docs erin bijgewerkt met `bestand:regel` (framework §4 Tests en §8, `docs/gouden-pad.md`, `docs/dod.md` Beveiliging, één regel in `AGENTS.md`, `CHANGELOG.md`).
 
 ## Randgevallen
@@ -192,11 +192,11 @@ Bestanden: `test/security/*.int.test.ts` (draaien in `pnpm test:db`, dus in `gat
 - `docs/gouden-pad.md` (stap voor de tester), `docs/dod.md` sectie Beveiliging en data, `AGENTS.md` regel onder **Tests** (één regel; geen budgetoverschrijding, framework §9).
 - `scripts/kit/new-resource.mjs` en zijn sjablonen: alleen het afdrukken van de declaratieregels (optie a, zie "Beslissing").
 - `docs/roadmap.md`: geen nieuw item; de suite hoort bij ST-09 (besluit eigenaar, zie "Open vragen").
-- ADR 0016 (OV-1: "geen tests"): blijft staan, want de eigenaar koos optie (a).
+- ADR 0047 (punt 1: "geen tests"): blijft staan, want de eigenaar koos optie (a).
 
 ## Buiten scope
 
-- Better Auth-routes (`/api/auth/*`), CSRF-matrix (ADR 0007), rate limit-gedrag zelf (spec `rate-limit`), e2e en UI-toegankelijkheid.
+- Better Auth-routes (`/api/auth/*`), CSRF-matrix (ADR 0041), rate limit-gedrag zelf (spec `rate-limit`), e2e en UI-toegankelijkheid.
 - Of de **gekozen** permissie bij een route de juiste is (spec-intentie, review), en het positieve gedrag van een resource (acceptatietests van de tester per spec).
 - Het aanscherpen van `check-policies` zodat de assert gedrag moet testen i.p.v. alleen de naam te noemen: gewenst, maar het wijzigt een bestaande check; apart voorleggen.
 - De mutatiecheck als herhaalbare job (stap 3 van de opdracht): pas na akkoord.
@@ -219,12 +219,12 @@ Bestanden: `test/security/*.int.test.ts` (draaien in `pnpm test:db`, dus in `gat
 **Besluit eigenaar (2026-10-20): optie (a).** De tester schrijft de resource-specifieke tests; `pnpm new:resource` drukt alleen de
 declaratieregels voor `test/security/resources.ts` af en schrijft geen testbestand.
 
-`new:resource` schrijft nu bewust geen tests (ADR 0016 OV-1; framework §8 stap 3 geeft ze aan de tester).
+`new:resource` schrijft nu bewust geen tests (ADR 0047 punt 1; framework §8 stap 3 geeft ze aan de tester).
 
 | Optie | Voor | Tegen |
 |---|---|---|
-| **(a) De tester, plus een door `new:resource` afgedrukte declaratieregel** (gekozen) | Houdt onafhankelijkheid: de bouwer schrijft niet de tests tegen zijn eigen werk (framework §8). `resources.ts` staat in een testpad, dus de developer kan er geen uitzondering in zetten (rolhek, diff-guard). Geen wijziging aan ADR 0016. De generieke tests dekken de standaardlaag; de tester schrijft alleen wat uit de spec komt (domeinregels, ACs, velden). Vergeet de tester de regel, dan is de suite rood (AC-11). | Eén handmatige stap per resource (de regel overnemen en `sample` invullen); gedekt door een rode suite, niet door discipline. |
-| (b) `new:resource` schrijft de tests | Geen handwerk; bouwagent hoeft nergens aan te denken. | De generator kent de velden en regels niet (OV-5: geen velden), dus schrijft hij óf lege óf generieke tests; de tester is niet meer onafhankelijk; een testbestand door een script is voor het rolhek onzichtbaar (ADR 0016 context 4, alleen de diff-guard vangt het); ADR 0016 OV-1 moet worden aangepast. |
+| **(a) De tester, plus een door `new:resource` afgedrukte declaratieregel** (gekozen) | Houdt onafhankelijkheid: de bouwer schrijft niet de tests tegen zijn eigen werk (framework §8). `resources.ts` staat in een testpad, dus de developer kan er geen uitzondering in zetten (rolhek, diff-guard). Geen wijziging aan ADR 0047. De generieke tests dekken de standaardlaag; de tester schrijft alleen wat uit de spec komt (domeinregels, ACs, velden). Vergeet de tester de regel, dan is de suite rood (AC-11). | Eén handmatige stap per resource (de regel overnemen en `sample` invullen); gedekt door een rode suite, niet door discipline. |
+| (b) `new:resource` schrijft de tests | Geen handwerk; bouwagent hoeft nergens aan te denken. | De generator kent de velden en regels niet (OV-5: geen velden), dus schrijft hij óf lege óf generieke tests; de tester is niet meer onafhankelijk; een testbestand door een script is voor het rolhek onzichtbaar (ADR 0047 Context, alleen de diff-guard vangt het); ADR 0047 punt 1 moet worden aangepast. |
 
 De "automatisch" zit in de suite zelf (register en catalogus), niet in het schrijven van testbestanden: een nieuwe route
 of tabel doet mee zonder iets te doen, en wat niet af te leiden is, laat de suite **rood** worden in plaats van stil over te slaan.

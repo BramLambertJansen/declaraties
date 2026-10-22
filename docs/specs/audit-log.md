@@ -2,14 +2,14 @@
 status: goedgekeurd # voorstel | goedgekeurd | gebouwd | vervallen — alleen de eigenaar zet goedgekeurd
 namespace: audit
 model: opus
-modelreden: nieuwe security definer-functies en aanpassing van app.assign_role en app.set_account_blocked (ADR 0025 punt 3d), en wijzigingen in src/core (withUser, route kit; punt 3c)
+modelreden: nieuwe security definer-functies en aanpassing van app.assign_role en app.set_account_blocked (ADR 0046 punt 18), en wijzigingen in src/core (withUser, route kit; punt 18)
 ---
 
 # Audit log van admin-acties
 
 Geen kop weglaten; "n.v.t. — reden" mag. Ontbreekt een antwoord, dan vraagt de agent het.
 
-Uitwerking van [ADR 0021](../adr/0021-audit-log.md) (leidend) voor [ADR 0020](../adr/0020-achtergrondtaken.md), sectie
+Uitwerking van [ADR 0051](../adr/0051-audit-log-en-avg.md) (leidend) voor [ADR 0020](../adr/0020-achtergrondtaken.md), sectie
 Bouwvolgorde, stap 2 t/m 4; roadmap ST-04, deel audit. Stap 1 (requestId van de server) is gebouwd in #83:
 `src/core/api/http/create-app.ts:155` gebruikt `requestId({ headerName: '' })` (geen `X-Request-Id` van de client), getest in
 `src/core/api/http/create-app.test.ts:38`.
@@ -36,9 +36,9 @@ De spec wordt in drie PR's gebouwd, in deze volgorde; elk deel heeft eigen accep
 |---|---|---|
 | `user` (`app_authenticated`) | niets (0 rijen) | alleen via `ctx.audit` van een route waartoe hij toegang heeft (app-acties, `actor_id` = hijzelf) |
 | `admin` zonder MFA (sessie `password`) | niets (0 rijen) | niets: `can()` geeft al `MFA_REQUIRED`, de functies 42501 |
-| `admin` met MFA | alle regels (policy `audit_log_select_admin`), nog zonder scherm (ADR 0021 OV-6) | indirect via de accountroutes en `app.assign_role`/`app.set_account_blocked` |
+| `admin` met MFA | alle regels (policy `audit_log_select_admin`), nog zonder scherm (ADR 0051 punt 7) | indirect via de accountroutes en `app.assign_role`/`app.set_account_blocked` |
 | `app_definer` (security definer-functies) | alle regels (`audit_log_definer_select`) | `insert` (`audit_log_definer_insert`) |
-| `app_migrator` (scripts: seed, `pnpm admin:create`) | als lid van `app_definer` | via `app.assign_role` zonder actor: regel met `actor_id` null en `db_role` `app_migrator`. Kan als eigenaar en lid van `app_definer` ook rechtstreeks invoegen of triggers uitzetten (ADR 0021 context 3, punt 6): zichtbaar via `db_role`, bewaakt door invariant en review van migraties |
+| `app_migrator` (scripts: seed, `pnpm admin:create`) | als lid van `app_definer` | via `app.assign_role` zonder actor: regel met `actor_id` null en `db_role` `app_migrator`. Kan als eigenaar en lid van `app_definer` ook rechtstreeks invoegen of triggers uitzetten (ADR 0051 Context, punt 5): zichtbaar via `db_role`, bewaakt door invariant en review van migraties |
 | `api_user`, `auth_service` | geen rechten | geen rechten |
 | `app_jobs` | bestaat nog niet (ADR 0020 stap 6) | — ; de negatieve tests voor deze rol komen in die stap |
 
@@ -63,13 +63,13 @@ Niemand kan een regel wijzigen of verwijderen: `update`, `delete` en `truncate` 
 
 ### Deel B — migratie `…_audit_log.sql`
 
-**Tabel `app.audit_log`** (ADR 0021 punt 1), RLS `enable` én `force`:
+**Tabel `app.audit_log`** (ADR 0051 punt 1), RLS `enable` én `force`:
 
 | Kolom | Type | Regel |
 |---|---|---|
 | `id` | `bigint generated always as identity primary key` | |
 | `at` | `timestamptz not null default pg_catalog.now()` | |
-| `actor_id` | `text` | null = script of taak; geen foreign key (ADR 0022 punt 4) |
+| `actor_id` | `text` | null = script of taak; geen foreign key (ADR 0051 punt 13) |
 | `db_role` | `text not null default session_user` | |
 | `action` | `text not null` | CHECK `action ~ '^[a-z]+(\.[a-z_]+)+$'` |
 | `target_type` | `text` | CHECK `target_type ~ '^[a-z_]+$'` |
@@ -77,9 +77,9 @@ Niemand kan een regel wijzigen of verwijderen: `update`, `delete` en `truncate` 
 | `request_id` | `text` | gevuld door de functies uit `app.request_id()` |
 | `details` | `jsonb not null default '{}'` | CHECK `jsonb_typeof(details) = 'object'` en `octet_length(details::text) <= 2048` (OV-B4, OV-B5) |
 
-Index: `(target_type, target_id, at)` en `(actor_id, at)` voor de latere export en het latere scherm (ADR 0022 stap 11, ADR 0021 OV-6).
+Index: `(target_type, target_id, at)` en `(actor_id, at)` voor de latere export en het latere scherm (ADR 0022 stap 11, ADR 0051 punt 7).
 
-**Grants** (ADR 0021 punt 6; alleen deze):
+**Grants** (ADR 0051 punt 5; alleen deze):
 - `app_definer`: `select`, en `insert` op de kolommen `actor_id, action, target_type, target_id, request_id, details` (OV-B2: kolomgrant,
   zodat `id`, `at` en `db_role` altijd hun standaard krijgen); **geen** `delete` in deel B (OV-B1).
 - `app_authenticated`: `select`.
@@ -90,7 +90,7 @@ Index: `(target_type, target_id, at)` en `(actor_id, at)` voor de latere export 
 - `audit_log_select_admin` — `for select to app_authenticated using ((select app.is_mfa_admin()))`;
 - `audit_log_definer_select` — `for select to app_definer using (true)`.
 
-**Guard-trigger** (ADR 0021 punt 6): triggerfunctie `app.audit_log_guard() returns trigger`, eigenaar `app_definer`, geen security
+**Guard-trigger** (ADR 0051 punt 5): triggerfunctie `app.audit_log_guard() returns trigger`, eigenaar `app_definer`, geen security
 definer, `set search_path = ''`, `raise exception 'audit log is append-only' using errcode = '42501'`. Triggers
 `audit_log_no_update` (`before update … for each statement`), `audit_log_no_delete` (`before delete … for each statement`) en
 `audit_log_no_truncate` (`before truncate … for each statement`). Statement-niveau, zodat ook een `update`/`delete` die door RLS 0 rijen
@@ -114,7 +114,7 @@ alleen bij een echte wijziging (OV-B3), een regel `core.role.assign`, `target_ty
 `{"role": <nieuw>, "previous": <oud>}` (`previous` weggelaten bij een nieuw account, OV-B3), `actor_id` = `app.current_user_id()`
 (null bij een script), `request_id` = `app.request_id()`.
 
-**`app.set_account_blocked`** (`create or replace`, zelfde signatuur, eigenaar en grants; ADR 0026 besluit 3 punt 6): regel
+**`app.set_account_blocked`** (`create or replace`, zelfde signatuur, eigenaar en grants; ADR 0043 punt 15): regel
 `core.account.block` resp. `core.account.unblock`, `target_type` `account`, `details` `{}`, **alleen bij een echte wijziging**: niet
 als het account al geblokkeerd was (blokkeren) of niet geblokkeerd was (deblokkeren). Bij blokkeren na de `LAST_ADMIN`-controle,
 zodat een geweigerde actie nooit een regel schrijft (de rollback ruimt hem anders ook op).
@@ -149,7 +149,7 @@ Foutvertaling (bestaand, `src/core/api/errors.ts:67`): 42501 → `FORBIDDEN`; 22
 
 ## Hergebruik en UX
 
-- **Bestaande componenten:** n.v.t. — deze spec heeft geen scherm (ADR 0021 OV-6). Een later `/admin/audit` krijgt een eigen spec op het
+- **Bestaande componenten:** n.v.t. — deze spec heeft geen scherm (ADR 0051 punt 7). Een later `/admin/audit` krijgt een eigen spec op het
   lijstpatroon (spec `lijstpagina`) met `PageHeader`, `ListToolbar`, `AsyncView`, `Table` (`TableHeader`, `TableBody`, `TableRow`,
   `TableHead`, `TableCell`) en `Notice`, uit de feiten.
 - **Hergebruik in de API en database:** `withUser()`/`enterActor` (set_config, één plek), `createRouteKit`/`defineRoute`, het
@@ -158,7 +158,7 @@ Foutvertaling (bestaand, `src/core/api/errors.ts:67`): 42501 → `FORBIDDEN`; 22
   Policies en functies volgen het patroon van `app.rate_limits`/`app.consume_rate_limit` en `app.set_account_blocked`.
 - **Staten per scherm:** n.v.t. — geen scherm; zichtbaar gedrag van de accountroutes verandert niet.
 - **Alle zichtbare tekst letterlijk:** n.v.t. — geen nieuwe UI-tekst en geen nieuwe foutcode. (Bij het latere scherm: "verwijderd account" voor een
-  actor of doel zonder rij in `app.accounts`, ADR 0021 punt 8.)
+  actor of doel zonder rij in `app.accounts`, ADR 0051 punt 7.)
 - **Focusvolgorde en toetsenbord:** n.v.t. — geen scherm.
 
 ## Acceptatiecriteria
@@ -231,14 +231,14 @@ Foutvertaling (bestaand, `src/core/api/errors.ts:67`): 42501 → `FORBIDDEN`; 22
 
 | Situatie | Gedrag | Foutcode |
 |---|---|---|
-| Uitnodigen: `auth_service` maakt het account (eigen verbinding, al gecommit), daarna faalt de commit van de route | account bestaat zonder rol en zonder auditregel; zichtbaar in de request-log met status 500 (ADR 0021 OV-7, geaccepteerd) | `INTERNAL_ERROR` |
+| Uitnodigen: `auth_service` maakt het account (eigen verbinding, al gecommit), daarna faalt de commit van de route | account bestaat zonder rol en zonder auditregel; zichtbaar in de request-log met status 500 (ADR 0051 punt 9, geaccepteerd) | `INTERNAL_ERROR` |
 | Uitnodigen: `beforeMail` faalt (rol of auditregel) | `inviteUser` verwijdert het account weer; rol en regel draaien terug | die van de fout |
 | Uitnodigen: mail versturen faalt na `beforeMail` | bestaand gedrag: route faalt, rol en regel draaien terug, account blijft (zelfde gat als hierboven, tot de outbox, ADR 0020 stap 9) | `INTERNAL_ERROR` |
-| Opnieuw uitnodigen: service slaagt (eigen verbinding), commit van de route faalt | token vernieuwd en mail weg zonder regel; gat tot de outbox (ADR 0021 OV-7) | `INTERNAL_ERROR` |
-| Blokkeren van een al geblokkeerd account | geen wijziging, geen regel (ADR 0026 besluit 3.6) | — (200) |
+| Opnieuw uitnodigen: service slaagt (eigen verbinding), commit van de route faalt | token vernieuwd en mail weg zonder regel; gat tot de outbox (ADR 0051 punt 9) | `INTERNAL_ERROR` |
+| Blokkeren van een al geblokkeerd account | geen wijziging, geen regel (ADR 0043 punt 15) | — (200) |
 | Rol toekennen gelijk aan de huidige (bijv. `admin:create` op een bestaande admin) | zie OV-B3 | — |
-| Account later verwijderd (ADR 0022, buiten scope) | regels blijven met het oude ID; geen foreign key | — |
-| `app_migrator` voegt rechtstreeks een regel in met verzonnen `actor_id` | mogelijk (erkend, ADR 0021 punt 6); `db_role` = `app_migrator` verraadt het; migraties zijn beschermd pad | — |
+| Account later verwijderd (ADR 0051, buiten scope) | regels blijven met het oude ID; geen foreign key | — |
+| `app_migrator` voegt rechtstreeks een regel in met verzonnen `actor_id` | mogelijk (erkend, ADR 0051 punt 5); `db_role` = `app_migrator` verraadt het; migraties zijn beschermd pad | — |
 | `app_migrator` zet de guard-trigger uit (`alter table … disable trigger`) | mogelijk als eigenaar; de invariant in pgTAP (`pnpm test:db`) faalt bij elke migratie die het achterlaat | — |
 | Request zonder database (`/api/health`, CSRF-weigering) | geen transactie, geen regel | — |
 | GET-route (read only) | `app.request_id` wordt ook gezet; schrijven kan niet (read only) en gebeurt niet | — |
@@ -263,21 +263,21 @@ Foutvertaling (bestaand, `src/core/api/errors.ts:67`): 42501 → `FORBIDDEN`; 22
 
 ## Buiten scope
 
-- **Bewaartermijn en opruimen** (ADR 0020 stap 5 en 8, ADR 0022): `app.retention`, `app.retention_cutoff(regclass)`, de rij voor
+- **Bewaartermijn en opruimen** (ADR 0020 stap 5 en 8, ADR 0051): `app.retention`, `app.retention_cutoff(regclass)`, de rij voor
   `app.audit_log` (1 jaar), de pgTAP-eis `keep ≥ 1 jaar`, `app.purge_expired`. **Verhouding tot deze spec:** in deel B kan niemand
   een regel verwijderen: geen `delete`-grant, geen delete-policy, en de guard-trigger `audit_log_no_delete` faalt altijd. Stap 5 voegt in
   één migratie toe: de policy `audit_log_definer_delete` (`using (at < app.retention_cutoff('app.audit_log'))`), `delete` aan
   `app_definer`, en vervangt `audit_log_no_delete` door een rij-trigger die alleen een rij binnen de termijn weigert; de policy-allowlist
-  in de invariant groeit dan naar de vier van ADR 0021 punt 6 (OV-B1).
+  in de invariant groeit dan naar de vier van ADR 0051 punt 5 (OV-B1).
   **Termijn en omvang tot stap 5:** de tabel groeit tot dan zonder opruimen; dat is bewust en klein (één rij per admin-actie, `details`
   ≤ 2 KB). De termijn is geen env-instelling: hij staat in `app.retention` en wijzigt met een migratie, zodat hij reviewbaar is en voor
   export en privacyregister één bron heeft. Een app mag verlengen; verkorten onder 1 jaar vraagt een wijziging van de pgTAP-eis en dus
   review van de eigenaar.
 - **Rol `app_jobs`**, de runner, de mail-outbox (ADR 0020 stap 6, 7, 9) en daarmee de test "mail faalt later, regel blijft" (ADR 0021 Tests).
-- **Export en verwijderen** (ADR 0022, ADR 0020 stap 11 en 12), inclusief `core.account.delete` en de definer-functie die de regels van een
+- **Export en verwijderen** (ADR 0051, ADR 0020 stap 11 en 12), inclusief `core.account.delete` en de definer-functie die de regels van een
   gebruiker leest.
-- **Scherm `/admin/audit`** (ADR 0021 OV-6): eigen spec.
-- **Lees-acties, inloggen, mislukte pogingen**, export naar externe onwijzigbare opslag (ADR 0021 punt 9).
+- **Scherm `/admin/audit`** (ADR 0051 punt 7): eigen spec.
+- **Lees-acties, inloggen, mislukte pogingen**, export naar externe onwijzigbare opslag (ADR 0051 punt 8).
 - De routes intrekken en resetlink zelf (spec `accountbeheer-uitbreiding`); alleen hun auditregel staat hier (OV-C1).
 
 ## Open vragen voor de eigenaar
@@ -294,7 +294,7 @@ Foutvertaling (bestaand, `src/core/api/errors.ts:67`): 42501 → `FORBIDDEN`; 22
   een (toekomstige) definer-functie tijd of databaserol vervalst. Aanbeveling: kolomgrant.
 - **OV-B3 — Regel bij een ongewijzigde rol en vorm van `details`.** Schrijft `app.assign_role` een regel als de rol gelijk blijft
   (`admin:create` op een bestaande admin, upsert)? En `previous` weglaten of `null` bij een nieuw account? Aanbeveling: alleen bij een echte
-  wijziging (zoals blokkeren, ADR 0026), en `previous` weglaten.
+  wijziging (zoals blokkeren, ADR 0043), en `previous` weglaten.
 - **OV-B4 — Inhoud van `details` in de database bewaken.** ADR 0021 laat de inhoud aan zod per actie. Extra: een CHECK dat elke
   stringwaarde in `details` het patroon van `target_id` volgt (geen `@`, geen spatie), via `jsonb_path_exists`; dan houdt ook een
   definer-functie van een app er een e-mailadres of vrije tekst uit. Aanbeveling: toevoegen, met platte objecten (geen geneste objecten of
@@ -310,7 +310,7 @@ Foutvertaling (bestaand, `src/core/api/errors.ts:67`): 42501 → `FORBIDDEN`; 22
 
 ## Testplan
 
-Bewijsmatrix (tester schrijft rood vóór de developer; bij de migraties één `pnpm test:db`-run, ADR 0025 punt 9).
+Bewijsmatrix (tester schrijft rood vóór de developer; bij de migraties één `pnpm test:db`-run, ADR 0046 punt 23).
 
 | Bewijs | Soort | Plaats | AC |
 |---|---|---|---|

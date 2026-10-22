@@ -9,7 +9,7 @@ namespace: ui-data-display
 
 De eigenaar vroeg alle vijf UI-uitbreidingen op te pakken. Dit voorstel concretiseert de bouw op branch
 `codex/ui-data-display`, als vervolg op [UI-collecties](ui-collections.md). Geen bouwrechten vóór eigenaarreview en merge
-van spec en exact mandaat naar main (ADR 0027). Volgorde: DataTable, Tabs, Gallery, ListToolbar, Carousel, gezamenlijke catalogus.
+van spec en exact mandaat naar main (ADR 0046). Volgorde: DataTable, Tabs, Gallery, ListToolbar, Carousel, gezamenlijke catalogus.
 
 ## Rollen en wie wat ziet
 
