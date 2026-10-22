@@ -5,7 +5,7 @@ import path from 'node:path';
 import { expect, test } from 'vitest';
 import { docsViolations } from '../../scripts/kit/check-docs.mjs';
 
-// ADR 0046 punt 27, 9 en 18 (stap 7): `voorReview` in .claude/gates.json is een deelverzameling van gates + jsonGates en
+// ADR 0046 punt 27, 28 en 32 (stap 7): `voorReview` in .claude/gates.json is een deelverzameling van gates + jsonGates en
 // de `Edit(...)`-regels in permissions.ask van .claude/settings.json zijn er exact aan gelijk. CODEOWNERS blijft = gates +
 // jsonGates. Sleutels (contract van de developer): `docs:spiegel:voorreview-gates:<pad>` (voorReview-item buiten gates en
 // jsonGates), `docs:spiegel:ask:<pad>` (voorReview-item zonder Edit-regel) en `docs:spiegel:voorreview:<pad>` (Edit-regel
