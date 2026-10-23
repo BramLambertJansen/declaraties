@@ -10,6 +10,8 @@
 //  5. `schrijfrecht` van een rol overlapt niet met `gates` (WS-02), op de uitzonderingen in SCHRIJFRECHT_VRIJ na.
 //  6. Elk AC-id van een gebouwde spec heeft een testbestand met `<namespace>/AC-n`, of met het AC-id samen met de specnaam
 //     of de namespace (sleutel `docs:ac:<spec>:<AC-n>`).
+//  7. Spec-discipline: geen lijstitem met `⚠ open` in "Open vragen" bij goedgekeurd of gebouwd (`:open-vraag`); elk pad in
+//     "Kopieer de vorm van" bestaat bij voorstel of goedgekeurd (`:vorm`).
 import { execFileSync } from 'node:child_process';
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
@@ -185,16 +187,62 @@ function statusViolations(files, read) {
             message: `${file}: status niet uit voorstel | goedgekeurd | gebouwd | vervallen`,
           },
         ];
-      const reuse = /^## Hergebruik en UX\n+(?!##)\S/m.test(text);
-      if ((status === 'goedgekeurd' || status === 'gebouwd') && !reuse)
-        return [
-          {
-            key: `docs:${file}:hergebruik`,
-            message: `${file}: ${status}, maar de sectie "Hergebruik en UX" ontbreekt of is leeg`,
-          },
-        ];
-      return sjabloonViolations(file, text);
+      return [...specVormViolations(file, text, status), ...disciplineViolations({ file, text, status }, files)];
     }),
+  ];
+}
+
+/**
+ * Hergebruik en UX bij goedgekeurd of gebouwd; zonder die sectie wordt het sjabloon niet getoetst.
+ * @param {string} file @param {string} text @param {string} status
+ * @returns {Violation[]}
+ */
+function specVormViolations(file, text, status) {
+  const reuse = /^## Hergebruik en UX\n+(?!##)\S/m.test(text);
+  if ((status === 'goedgekeurd' || status === 'gebouwd') && !reuse)
+    return [
+      {
+        key: `docs:${file}:hergebruik`,
+        message: `${file}: ${status}, maar de sectie "Hergebruik en UX" ontbreekt of is leeg`,
+      },
+    ];
+  return sjabloonViolations(file, text);
+}
+
+// Fenced codeblokken worden niet apart behandeld: een `## ` in een codeblok sluit de sectie ook af.
+/** De tekst onder `## <kop>…` tot de volgende `## `-kop, of undefined. @param {string} text @param {string} kop */
+function sectie(text, kop) {
+  const start = new RegExp(`^## ${kop}\\b[^\\n]*$`, 'm').exec(text);
+  if (start === null) return undefined;
+  const rest = text.slice(start.index + start[0].length);
+  const einde = /^## /m.exec(rest);
+  return einde === null ? rest : rest.slice(0, einde.index);
+}
+
+/**
+ * Spec-discipline: `⚠ open` (een vraag zonder aanbeveling) blokkeert goedgekeurd en gebouwd; elk pad in
+ * "Kopieer de vorm van" bestaat zolang er nog gebouwd moet worden (voorstel, goedgekeurd).
+ * @param {{ file: string, text: string, status: string }} spec @param {readonly string[]} files
+ * @returns {Violation[]}
+ */
+function disciplineViolations({ file, text, status }, files) {
+  const open = sectie(text, 'Open vragen') ?? '';
+  const vorm = sectie(text, 'Kopieer de vorm van') ?? '';
+  const ontbrekend = [...vorm.matchAll(/`([^`\n]+)`/g)]
+    .map((match) => (match[1] ?? '').replace(/:\d+(-\d+)?$/, ''))
+    .filter((id) => looksLikePath(id) && !pathExists(id, files));
+  return [
+    ...((status === 'goedgekeurd' || status === 'gebouwd') && /^\s*[-*] .*⚠ open/m.test(open)
+      ? [{ key: `docs:${file}:open-vraag`, message: `${file}: ${status}, maar "Open vragen" bevat nog "⚠ open"` }]
+      : []),
+    ...((status === 'voorstel' || status === 'goedgekeurd') && ontbrekend.length > 0
+      ? [
+          {
+            key: `docs:${file}:vorm`,
+            message: `${file}: "Kopieer de vorm van" noemt niet-bestaande paden: ${ontbrekend.join(', ')}`,
+          },
+        ]
+      : []),
   ];
 }
 

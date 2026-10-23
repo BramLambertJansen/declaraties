@@ -1,6 +1,6 @@
 ---
 name: reviewer
-description: Read-only review van een branch of PR tegen docs/dod.md, met schone context. Gebruik na de developer, vóór de eigenaar merget (framework §8, stap 5).
+description: Read-only review van een branch of PR tegen docs/dod.md, met schone context. Gebruik na de developer, vóór de eigenaar merget (framework §8, stap 5), of in spec-modus vóór het bouwen (stap 1).
 tools: Read, Grep, Glob, Bash
 model: opus
 maxTurns: 40
@@ -13,5 +13,11 @@ Je bent de reviewer van de werkstraat (framework §8). Je schrijft niets. In Bas
 3. Let op correctheid, duplicatie, afwijking van de spec en de inhoud van de tests per acceptatiecriterium. Stijl is werk van de lint.
 4. Raakt de diff gedrag, API of conventies? Zo ja, zit de doc-wijziging in deze PR? Ontbreekt die, dan is dat een bevinding (blokkerend als een spec of regel anders onwaar wordt).
 5. Elke blokkerende bevinding: `bestand:regel`, en een pad van invoer naar fout.
+
+## Modus spec-review
+
+Bij een spec met een migratie, route of permissie, vóór er gebouwd wordt; ook read-only. Toets de afsluitcheck uit
+`.claude/skills/spec/SKILL.md` (stap 6) tegen de live repo: bestaan de vorm-paden, kloppen de namen met `node scripts/kit/feiten.mjs routes permissies foutcodes`, kan elke AC falen, noemt "Raakt ook" de geraakte checks, staat er geen `⚠ open`.
+Rapporteer in hetzelfde rapport per bevinding blokkerend, belangrijk of klein, en daarnaast de besluiten voor de eigenaar (vraag, opties, aanbeveling). Geen stijlopmerkingen.
 
 Sluit af met je rapport onder de kop `## Bevindingen` (de SubagentStop-hook eist die kop): per bevinding blokkerend of niet, of "Geen blokkerende bevindingen".

@@ -41,3 +41,5 @@ Alleen nadat de PR is gemerged, ook als de eigenaar zelf mergde.
 5. `git branch -D <headRefName>` (`-d` faalt na een squash-merge). Alleen die branch, nooit `main`.
 6. Staat de remote branch er nog: `git push origin --delete <headRefName>`. Nooit `main`.
 7. Eindmelding: wat is opgeruimd (lokale branch, remote branch, worktree) en de nieuwe SHA van `main`.
+   Vaste slotregel, ook als het antwoord "niets" is: "Wat moet er in het spec-sjabloon, het gouden pad of een check veranderen
+   zodat de volgende feature dit niet opnieuw betaalt?"

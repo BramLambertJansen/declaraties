@@ -13,6 +13,8 @@ Hier staan wijzigingen die van belang zijn bij het gebruiken of bijwerken van de
   mini-spec, code, tests en gebruiksdocs in één PR (ADR 0056). Geen voorafgaand broncodemandaat; groene checks en
   eigenaarreview blijven vereist. Andere core, auth, dependencies, agentinstructies en bewaking houden hun bestaande route.
 
+- Spec-discipline: `check-docs` weigert een lijstitem met `⚠ open` in "Open vragen" (ook een kop als "Open vragen voor de eigenaar") van een goedgekeurde of gebouwde spec (`docs:<spec>:open-vraag`) en een niet-bestaand pad (een `:regel` of `:van-tot` erachter telt niet mee) in "Kopieer de vorm van" bij voorstel of goedgekeurd (`docs:<spec>:vorm`; `scripts/kit/check-docs.mjs`). Beide secties staan in `_template.md` en `_mini.md` (geen verplichte mini-kop); de architect en de spec-skill hebben een afsluitcheck, de reviewer een spec-review-modus vóór de besluit-PR, of bij een mini-spec vóór het bouwen (framework §8 stap 1); de afsluitcheck draait `pnpm ratchet`, en `opleveren` sluit af met de vraag wat sjabloon, gouden pad of een check moet leren. Bij een update: vervang in eigen specs `⚠ open` door een besluit of aanbeveling vóór `goedgekeurd`.
+
 - Laatste volledig geslaagde login in de accountlijst en afzonderlijk deactiveren/activeren naast blokkeren/deblokkeren
   (ADR 0052). Beide maatregelen behouden gegevens, trekken toegang direct in en zijn onafhankelijk omkeerbaar.
   Herstel maakt oude sessies en MFA-challenges niet opnieuw geldig; de laatste bruikbare beheerder blijft beschermd.
