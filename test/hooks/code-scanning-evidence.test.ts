@@ -56,6 +56,20 @@ describe('CodeQL-resultaten tellen mee naast het slagen van de analysejob', () =
     });
   });
 
+  test('een tussentijds neutraal resultaat blijft wachten zolang de analyse nog loopt', () => {
+    const checks = [{ ...ANALYSIS, status: 'in_progress', conclusion: null }, result({ conclusion: 'neutral' })];
+
+    expect(checkedCommit(checks, REQUIRED)).toBe(false);
+    expect(checkProgress(checks, REQUIRED).state).toBe('pending');
+  });
+
+  test('een neutraal eindresultaat geeft ook na een geslaagde analyse geen groen bewijs', () => {
+    const checks = [ANALYSIS, result({ conclusion: 'neutral' })];
+
+    expect(checkedCommit(checks, REQUIRED)).toBe(false);
+    expect(checkProgress(checks, REQUIRED).state).toBe('failure');
+  });
+
   test.each([
     { name: 'lopend resultaat', change: { status: 'in_progress', conclusion: null } },
     { name: 'overgeslagen resultaat', change: { conclusion: 'skipped' } },

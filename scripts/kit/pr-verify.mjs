@@ -6,6 +6,18 @@ import { setTimeout } from 'node:timers/promises';
 import { unchangedHead } from './status-git.mjs';
 
 /** @param {import('../../rails/hooks/lib/built-evidence.mjs').CheckRun[]} checks @param {{ names: string[], sha: string }} required */
+function codeqlAnalysisPending(checks, required) {
+  return required.names
+    .filter((name) => name.startsWith('codeql ('))
+    .some((name) => {
+      const latest = checks
+        .filter((check) => check.name === name && check.headSha === required.sha)
+        .toSorted((left, right) => right.id - left.id)[0];
+      return latest?.status !== 'completed';
+    });
+}
+
+/** @param {import('../../rails/hooks/lib/built-evidence.mjs').CheckRun[]} checks @param {{ names: string[], sha: string }} required */
 export function checkProgress(checks, required) {
   const names = requiredProofChecks(checks, required);
   if (checkedCommit(checks, required)) return { state: 'success', lines: names.map((name) => `${name}: success`) };
@@ -16,8 +28,10 @@ export function checkProgress(checks, required) {
     if (matching.some((check) => check.appId !== expectedCheckAppId(name)))
       return { failed: true, line: `${name}: ongeldige check-identiteit` };
     const latest = matching.toSorted((left, right) => right.id - left.id)[0];
+    const waitingForAnalysis =
+      name === 'CodeQL' && latest?.conclusion === 'neutral' && codeqlAnalysisPending(checks, required);
     return {
-      failed: latest?.status === 'completed' && latest.conclusion !== 'success',
+      failed: !waitingForAnalysis && latest?.status === 'completed' && latest.conclusion !== 'success',
       line: `${name}: ${latest === undefined ? 'ontbreekt' : (latest.conclusion ?? latest.status)}`,
     };
   });
