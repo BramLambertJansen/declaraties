@@ -21,6 +21,12 @@ volledige sjabloon (`_template.md`). Geen kop weglaten; "n.v.t. — reden" mag. 
 | Methode | Pad | Permissie | Foutcodes |
 |---|---|---|---|
 
+## Kopieer de vorm van
+
+Per regel een bestaand pad uit `docs/gouden-pad.md` (accountbeheer) en wat je overneemt; `check-docs` controleert het pad.
+
+- `src/api/routes/accounts.ts` — <wat je overneemt>
+
 ## Acceptatiecriteria
 
 Randgevallen zijn ook criteria.
@@ -39,3 +45,11 @@ Verplicht niet-leeg vanaf `goedgekeurd`; zonder UI: "n.v.t. — reden".
 ## Datawijzigingen (met grants)
 
 Alleen bij een nieuwe tabel: naam, kolommen, RLS-regel en grants zoals `pnpm new:resource` ze genereert. Anders weglaten.
+
+## Open vragen
+
+Een vraag zonder aanbeveling (de eigenaar kiest) blokkeert `goedgekeurd`; een vraag met aanbeveling mag blijven staan. `check-docs` telt alleen lijstitems.
+
+- **OV-1 ⚠ open** — <vraag>; <opties> (geen aanbeveling: de eigenaar kiest)
+- **OV-2** — <vraag>; <opties>. Aanbeveling: <keuze en reden>
+- **OV-3 ✅ besloten** — <besluit en reden>
