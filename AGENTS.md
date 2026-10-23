@@ -71,6 +71,9 @@ vangen het later toch, en dan is het werk verloren. Uitzonderingen staan limitat
 **Repo en grenzen** — zodat de kaders zelf niet ongemerkt verschuiven.
 - Bewerk geen gegenereerde bestanden en geen `.env*`; `.env.example` is beschermd (de demo-waarden zijn een securityregel).
 - Beschermde paden (`docs/framework.md` §10) vragen eigenaarakkoord; developer-broncode kan met exact taakmandaat (ADR 0046).
+  Functionele UI in deze template kan met een mini-spec (`scope: functionele-ui`), code, tests en gebruiksdocs in één PR,
+  zonder voorafgaand mandaat (ADR 0056). Auth, overige core, dependencies, agentinstructies en bewaking blijven erbuiten;
+  in een app blijft core gesloten. De eigenaar beoordeelt en merget de PR.
 - Geen nieuwe dependency zonder akkoord. Een eigenaarstatus schrijven alleen architect en hoofdsessie in het voorstel (ADR 0046); `gebouwd` via `pnpm docs:status` met bouwbewijs.
 - Push nooit naar `main`, gebruik nooit `--no-verify`, merge nooit. Eén onderwerp per PR, conventional commits.
 - Geen zelfreview of check-status. Gate-label alleen door hoofdsessie via `pnpm pr:label-gate` binnen het mandaat uit main.

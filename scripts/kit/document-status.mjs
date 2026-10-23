@@ -10,6 +10,7 @@ import { loadConfig } from '../../rails/hooks/lib/rolhek.mjs';
 import { pullRequest, checkRuns } from './github-evidence.mjs';
 import { kaderVan, ROADMAP, taakVinkje, tikAf } from './roadmap-item.mjs';
 import { statusOnlyDiff, isAncestor, unchangedHead } from './status-git.mjs';
+import { functionalUiApproval } from './functional-ui-status.mjs';
 
 const USAGE = 'Gebruik: pnpm docs:status <document> <status> [--pr <nummer> [--roadmap]]';
 const ROADMAP_ONLY = '--roadmap kan alleen met een spec, status gebouwd en --pr';
@@ -71,6 +72,14 @@ function nextStatus(target, context) {
     checks: checkRuns(context.authority.repository, sha),
     ancestor: isAncestor(context.root, commits),
     onlyStatuses: statusOnlyDiff(context.root, commits),
+    uiApproval: functionalUiApproval({
+      root: context.root,
+      base: 'origin/main',
+      sha,
+      repository: context.authority.repository,
+      file: target.file,
+      text: after,
+    }),
   };
   if (!canRecordBuilt({ file: target.file, text: after }, proof, context.authority))
     throw new Error('Gebouwd vereist de juiste geopende PR en alle verplichte GitHub Actions-checks groen op HEAD');

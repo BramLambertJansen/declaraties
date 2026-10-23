@@ -4,8 +4,9 @@
 import path from 'node:path';
 import { gitSubcommand, parseCommands, programName, splitCommand, writeTargets } from './shell.mjs';
 import { A4_MELDING, beslisOvergang, documentInfo, documentKind, isHerschrijving } from './document-state.mjs';
-import { canRecordStatus, canWriteProtected } from './task-authority.mjs';
+import { canRecordStatus, canWriteProtected, TEMPLATE_REPOSITORY } from './task-authority.mjs';
 import { automaticRunner } from './runner-authority.mjs';
+import { isCoreUiSource, testChangeRisk } from './functional-ui.mjs';
 
 /**
  * @typedef {{ gates: string[], testpaden: string[], jsonGates: Record<string, string[]>, gegenereerd: string[],
@@ -311,8 +312,6 @@ function approvesSpec(rel, change, ctx) {
   return approved.test(change.after) && !approved.test(ctx.read(rel) ?? '');
 }
 
-const SKIP = /\.(?:skip|todo|fixme)\s*\(|\b(?:xit|xtest|xdescribe)\s*\(|\bskip\s*\(/g;
-const CASES = /\b(?:test|it)(?:\.each\b[^(]*\([^)]*\))?\s*\(/g;
 
 // Testbestanden in testpaden; de rest daar is een hulpbestand (harness, fixture, setup, e2e/support).
 const TEST_FILES = ['**/*.test.*', '**/*.spec.*', 'db/tests/**'];
@@ -329,16 +328,16 @@ const LOCKED_HELPERS = ['test/rails/fixtures/**', 'test/setup/**'];
  */
 function existingTest({ rel, change, role }, ctx, decision) {
   const before = ctx.read(rel) ?? '';
-  const count = (/** @type {string} */ text, /** @type {RegExp} */ pattern) => (text.match(pattern) ?? []).length;
+  const risk = change.after === null ? null : testChangeRisk(before, change.after);
   const helper = !TEST_FILES.some((glob) => globMatch(glob, rel));
   // Vóór de indeling als testbestand: ook een fixture die `*.test.*` heet, blijft vergrendeld (WS-02 follow-up).
   if (LOCKED_HELPERS.some((glob) => globMatch(glob, rel))) {
     gate(decision, role, `${rel} is een fixture of setup: wijzigen of verwijderen alleen met akkoord van de eigenaar (WS-02)`);
   } else if (change.kind === 'delete') {
     gate(decision, role, `${rel} is een bestaande test: verwijderen alleen met akkoord van de eigenaar (AGENTS.md)`);
-  } else if (change.after !== null && count(change.after, SKIP) > count(before, SKIP)) {
+  } else if (risk === 'skip') {
     gate(decision, role, `${rel}: een test skippen alleen met akkoord van de eigenaar (AGENTS.md)`);
-  } else if (change.after !== null && count(change.after, CASES) < count(before, CASES)) {
+  } else if (risk === 'removed') {
     gate(decision, role, `${rel}: testgevallen weghalen alleen met akkoord van de eigenaar (AGENTS.md)`);
   } else if (helper) {
     decision.context.push(`${rel}: hulpbestand gewijzigd: noem het met reden in de PR (AGENTS.md, framework §8).`);
@@ -376,7 +375,9 @@ function decideByRole({ rel, change, role }, ctx, decision) {
   // ADR 0046 punt 28: buiten voorReview geen prompt, wel een melding; de eigenaar reviewt het in de PR.
   const voorReview = config.voorReview ?? config.gates;
   const melding = ctx.onbekendeRol !== true && (!voorReview.some((glob) => globMatch(glob, rel)) || inOnderhoud(rel, ctx));
-  if (melding && ctx.onderhoud === true && voorReview.some((glob) => globMatch(glob, rel)))
+  if (melding && isCoreUiSource(rel) && ctx.authority?.repository === TEMPLATE_REPOSITORY)
+    decision.context.push(`${rel}: functionele UI (ADR 0056): geen voorafgaand broncodemandaat; mini-spec en scope worden in CI en door de eigenaar beoordeeld`);
+  else if (melding && ctx.onderhoud === true && voorReview.some((glob) => globMatch(glob, rel)))
     decision.context.push(`${rel} is een beschermd pad (framework §10, onderhoudsmodus ADR 0045): noem het in de PR (eigenaarreview)`);
   else if (melding)
     decision.context.push(`${rel} is een beschermd pad (framework §10): noem het in de PR (eigenaarreview, ADR 0046 punt 28)`);

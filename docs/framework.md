@@ -80,6 +80,7 @@ Regels voor elke keuze:
 | Elke route vraagt login | `/api/auth/*` (inloggen, aanmelden, reset), de clientfouten-route, `GET /api/health` en `GET /api/ready` | Bestaan juist voor niet-ingelogden; auth en clientfouten met rate limit; health en ready geven alleen `{ ok }`, geen data en geen rate limit (ready: 503 als de database onbereikbaar is; uitkomst 1 s bewaard, hooguit één controle tegelijk, ADR 0049) |
 | Elke schermroute heeft een `can()`-guard | Inlog-, aanmeld- en resetschermen (`/login`, `/uitnodiging`) | Publiek; ze tonen geen data |
 | Spec vóór een nieuwe route | `GET /api/health` (skelet) en `GET /api/ready` (readiness, ADR 0049) | Infrastructuur zonder data of actor; health bestaat vóór `defineRoute`, de skeletpagina die hem toonde, is vervallen met de ingelogde startpagina (PR 7b) |
+| Voorafgaand broncodemandaat voor core | Functionele UI in de template: mini-spec met `scope: functionele-ui`, code, UI-tests en gebruiksdocs in één PR (ADR 0056) | Bestaande componenten in `src/core/web/ui` en vaste teksten in `src/core/web/copy`; overige core, auth, dependencies en bewaking blijven erbuiten; een app wijzigt core niet |
 | Elke route via `defineRoute` en met login | `POST /api/dev/login-as` (ADR 0043) | Alleen bij `APP_ENV=local` geregistreerd (elders 404); logt in als een seed-account, met CSRF-controle |
 
 ## 4. Codeerkaders
@@ -327,6 +328,16 @@ wijzigt zonder `docs/` of `CHANGELOG.md`. `check:roadmap` (in `gate:fast`) blokk
 
 Licht pad: geen migratie, route of permissie → plan, bouwen, review, opleveren.
 
+**Functionele UI in de template (ADR 0056):** een mini-spec met `scope: functionele-ui` mag samen met de implementatie,
+bijbehorende nieuwe of gewijzigde UI-tests en gebruiksdocumentatie in één feature-PR. Geen vooraf gemergde spec of record
+in `.claude/decisions.json`. De uitzondering omvat `src/core/web/ui`, `src/core/web/copy` en de aansluitende app-UI;
+auth, API/contracten, queries, overige core, dependencies, configuratie, rails en agentinstructies blijven erbuiten.
+`scripts/kit/lane.mjs` begrenst de paden; `scripts/kit/functional-ui-status.mjs` controleert reguliere bestanden en
+testwijzigingen. De guard noemt de corepaden en gewijzigde bestaande UI-tests voor eigenaarreview. Testkwaliteit en de
+functionele scope blijven ook een inhoudelijk oordeel; alleen een marker bewijst die niet. Verwijderen, skippen en
+afzwakken van tests krijgen geen vrijstelling. De eigenaar merget; een afgeleide app verandert core uitsluitend via een
+template-update. `gebouwd` blijft gekoppeld aan groene verplichte checks op de broncommit, ook bij een nieuwe UI-mini-spec.
+
 CI zet gewijzigde bestaande tests als lijst in de PR.
 
 **Eisen aan de rollen, ongeacht runtime:** de tester kan alleen in testpaden schrijven; de reviewer is read-only (geen schrijfrechten; alleen leescommando's, `git diff/log/show/status`, `gh pr view/diff/checks`, `node scripts/kit/feiten.mjs` en de checks uit `docs/dod.md`) met een begrensd aantal beurten; beide starten met schone context en alleen de afgebakende opdracht. Een rol telt alleen als onafhankelijk, ook als ad-hoc subagent, wanneer de runtime die eisen afdwingt. Is dat niet zo, of ontbreekt de rol, voer dan geen onafhankelijke review voor die rol op: benoem de ontbrekende stap expliciet en laat de eigenaar die uitvoeren vóór samenvoegen. De hoofdsessie reviewt nooit haar eigen werk.
@@ -451,7 +462,8 @@ Live feiten (gates, routes, componenten, nummers) komen uit `scripts/kit/feiten.
   die van inhoud wijzigt, verliest haar mandaat. Het register `.claude/decisions.json` blijft voor
   broncodemandaat (`--path`) en `requiredChecks`; het bindt inhoudsdigest, repository, exacte branch, status en exacte bronbestanden.
   `gebouwd` vereist de juiste PR en verplichte Actions-checks op de gevalideerde bron-SHA; uitsluitend latere statusregels mogen daarvan
-  afwijken. De CI-guard gebruikt
+  afwijken. Bij CodeQL moet ook de aparte resultaatcheck van GitHub Advanced Security groen zijn; alleen het slagen van de
+  analysejob bewijst niet dat er geen bevindingen zijn. `pr:verify` en bouwbewijs gebruiken dezelfde controle. De CI-guard gebruikt
   `scripts/kit/check-document-status.mjs` uit main, als eigen job `document-status` naast `diff-guard` (ADR 0045 punt 20); een werkversie of commit-auteur geeft zichzelf geen goedkeuring.
   Een nieuwe of gewijzigde ADR-statusregel draagt achter de statuswaarde alleen `(JJJJ-MM-DD)`, `#<nr>` en een link naar een bestaand
   ADR met alleen het nummer als linktekst, gescheiden door `, ` of ` — ` (`statusregelOvertreding`, ADR 0045 punt 22); een regel

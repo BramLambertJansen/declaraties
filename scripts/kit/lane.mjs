@@ -5,6 +5,7 @@
 // De overige gate-paden zonder voorReview (deploy, renovate, src/api/server.ts) vallen onder CODEOWNERS en de diff-guard.
 
 import { globMatch } from '../../rails/hooks/lib/rolhek.mjs';
+import { functionalUiReason } from '../../rails/hooks/lib/functional-ui.mjs';
 
 /** @typedef {{ status: string, pad: string, van?: string }} Wijziging */
 /** @typedef {{ lane: 'feature' | 'framework' | null, reden: string }} Uitslag */
@@ -18,14 +19,14 @@ const inLijst = (globs, pad) => globs.some((glob) => globMatch(glob, pad));
 
 /**
  * Waarom een pad buiten de feature-lane valt, of null als het erbinnen valt (punt 6 en 7).
- * @param {Wijziging} wijziging @param {import('../../rails/hooks/lib/rolhek.mjs').Config} config
+ * @param {Wijziging} wijziging @param {import('../../rails/hooks/lib/rolhek.mjs').Config} config @param {boolean} ui
  */
-function buitenBereik({ status, pad }, config) {
+function buitenBereik({ status, pad }, config, ui) {
   if (inLijst(config.voorReview ?? config.gates, pad)) return `${pad} staat in voorReview`;
-  if (pad.startsWith('src/core/')) return `${pad} ligt in src/core`;
+  if (!ui && pad.startsWith('src/core/')) return `${pad} ligt in src/core`;
   if (pad.startsWith('docs/adr/')) return `${pad} is een ADR`;
   if (inLijst(config.testpaden, pad))
-    return status === 'A' ? null : `${pad}: een bestaande test wijzigen of verwijderen`;
+    return status === 'A' || ui ? null : `${pad}: een bestaande test wijzigen of verwijderen`;
   if (inLijst(config.migraties, pad)) return status === 'A' ? null : `${pad}: een migratie wijzigen of verwijderen`;
   if (status === 'D' && pad.startsWith('docs/specs/')) return `${pad}: een bestaande spec verwijderen`;
   if (INSTRUCTIES.test(pad)) return `${pad} wijzigt instructies van de agent`;
@@ -47,10 +48,10 @@ function paden(changes) {
 }
 
 /**
- * @param {{ changes: Wijziging[], besluiten: readonly string[], mini: boolean, config: import('../../rails/hooks/lib/rolhek.mjs').Config }} invoer
+ * @param {{ changes: Wijziging[], besluiten: readonly string[], mini: boolean, config: import('../../rails/hooks/lib/rolhek.mjs').Config, repository?: string, functioneleUi?: boolean }} invoer
  * @returns {Uitslag}
  */
-export function laneVan({ changes, besluiten, mini, config }) {
+export function laneVan({ changes, besluiten, mini, config, repository, functioneleUi = false }) {
   const [besluit, ...rest] = besluiten;
   if (besluit === undefined) return { lane: null, reden: 'geen document krijgt een eigenaarstatus in deze PR' };
   const overige = paden(changes).filter(({ pad }) => !besluiten.includes(pad));
@@ -62,9 +63,13 @@ export function laneVan({ changes, besluiten, mini, config }) {
       reden: `${vreemd.pad} hoort niet in een besluit-PR met ${besluiten.join(', ')}; de feature-lane is één mini-spec`,
     };
   if (!mini) return { lane: null, reden: `${vreemd.pad} hoort niet in een PR met een in-PR-status (geen mini-spec)` };
-  const reden = overige.map((wijziging) => buitenBereik(wijziging, config)).find((melding) => melding !== null);
+  const scope = functioneleUi ? functionalUiReason({ changes, repository, spec: besluit }) : null;
+  if (scope !== null) return { lane: null, reden: scope };
+  const reden = overige
+    .map((wijziging) => buitenBereik(wijziging, config, functioneleUi))
+    .find((melding) => melding !== null);
   return reden === undefined
-    ? { lane: 'feature', reden: 'mini-spec binnen het bereik van punt 6' }
+    ? { lane: 'feature', reden: functioneleUi ? 'functionele UI (ADR 0056)' : 'mini-spec binnen het bereik van punt 6' }
     : { lane: null, reden };
 }
 

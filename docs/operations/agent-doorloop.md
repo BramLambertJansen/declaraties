@@ -34,7 +34,17 @@ Een besluit kost één PR: de merge is het besluit. Architect of hoofdsessie zet
 inhoud na de status en committer doen er niet toe (ADR 0046 punt 7). Zonder record herkent `check-document-status` twee gevallen
 (`scripts/kit/lane.mjs`); de samenvatting noemt elk document dat een eigenaarstatus krijgt. Een PR met een eigenaarstatus merget altijd de eigenaar.
 
-- **Feature-lane:** app-werk met een mini-spec (`docs/specs/_mini.md`, veld `sjabloon: mini`). Alles mag meewijzigen (ook docs,
+**Functionele UI in de template (ADR 0056):** gebruik de mini-spec met aanvullend `scope: functionele-ui` in de frontmatter.
+Beschrijf het gevraagde gedrag en de acceptatiecriteria en bouw in dezelfde PR; een vooraf gemergde spec en een record met
+bronpaden zijn hiervoor niet nodig. De scope omvat bestaande componenten in `src/core/web/ui`, vaste teksten in
+`src/core/web/copy`, aansluitende app-UI, UI-tests en gebruiksdocs. Gewijzigde bestaande UI-tests krijgen per bestand een
+reden en vervangend bewijs in de PR. Auth, API/contracten, queries, andere core, dependencies, agentinstructies, gedeelde
+fixtures en testsetup blijven erbuiten; een gemengde PR volgt de strengste route. De guard meldt de gebruikte uitzondering,
+corepaden en bestaande UI-tests voor eigenaarreview. Een app-repository krijgt deze core-uitzondering niet.
+Na groene verplichte checks werkt `pnpm docs:status` ook voor de nieuwe UI-mini-spec: het bewijs blijft aan dezelfde
+broncommit, repository en geopende PR gebonden. Een gewijzigde implementatie na die broncommit vraagt nieuw bewijs.
+
+- **Overige feature-lane:** app-werk met een mini-spec (`docs/specs/_mini.md`, veld `sjabloon: mini`). Alles mag meewijzigen (ook docs,
   `CHANGELOG.md`, de roadmap en gegenereerde bestanden zoals het schema-snapshot) behalve `src/core`, een pad uit `voorReview`
   (`.claude/gates.json`), een ADR, een gewijzigde of verwijderde bestaande test of migratie, en een tweede document met een eigenaarstatus.
   Een migratie mag alleen een nieuwe tabel maken (`create table (…)`, daarna index, RLS, grants aan `app_*`-rollen en policies, uitsluitend op die tabel; geen kopieën, functies of dollar-quotes) en de mini-spec heeft dan de kop
@@ -86,6 +96,8 @@ pnpm pr:verify 123 --watch
 
 Controleert huidige commit, PR-branch, repository en verplichte checks uit main. Alleen Actions-uitslagen op de juiste
 SHA tellen; een mislukte rerun maakt eerder groen ongeldig. Zonder `--watch` volgt direct de huidige toestand.
+Bij CodeQL telt ook de aparte `CodeQL`-resultaatcheck van GitHub Advanced Security mee: een geslaagde analysejob kan
+bevindingen hebben. Een rode, lopende of nog ontbrekende resultaatcheck geeft geen groen oplever- of bouwbewijs.
 Met `--watch` maximaal 30 minuten wachten; een deadline is onvoltooid, daarna controleert de agent opnieuw.
 Een veranderende PR of werkmap vraagt nieuwe verificatie.
 

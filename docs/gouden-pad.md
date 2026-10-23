@@ -1,5 +1,11 @@
 # Gouden pad: een feature door alle lagen
 
+Voor functionele UI-wijzigingen aan bestaande componenten in de template volstaat de mini-spec met
+`scope: functionele-ui`, samen met code, tests en gebruiksdocumentatie in één PR (ADR 0056). De
+[agentdoorloop](operations/agent-doorloop.md#feature-lane-en-mini-spec-adr-0046) beschrijft scope en bouwbewijs.
+De bestaande toast-API is `useToast().success/error`, met `ToastProvider` in `src/web/main.tsx` en `Toaster` in AppShell.
+Werk dit gebruiksvoorbeeld bij wanneer de plaatsing verandert; daarvoor hoeft de agentinstructie niet mee te wijzigen.
+
 Kopieer van accountbeheer (spec `docs/specs/accountbeheer.md`). Volgorde zoals de werkstraat (framework §8): eerst de spec,
 dan van database naar scherm. Elke stap verwijst naar het bestand dat het voordoet.
 

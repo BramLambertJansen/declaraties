@@ -6,8 +6,12 @@ sjabloon: mini
 
 # <Feature>
 
-Korte spec voor app-werk in de feature-lane (ADR 0046 punt 13–14): een route, een permissie of een nieuwe tabel via
-`pnpm new:resource`. Alles in `src/core`, een migratie op bestaande rijen, rollen/RLS-model of `security definer` vraagt het
+Korte spec voor app-werk in de feature-lane (ADR 0046 punt 13–14), of een functionele UI-wijziging in de template
+(ADR 0056). Voor die UI-scope voeg je `scope: functionele-ui` toe aan de frontmatter. Bestaande componenten in
+`src/core/web/ui` en vaste teksten in `src/core/web/copy` mogen dan met hun UI-tests en gebruiksdocumentatie in dezelfde PR,
+zonder voorafgaand broncodemandaat. De eigenaar beoordeelt het gedrag en de gewijzigde tests en merget de complete PR.
+Auth, API/contracten, overige core, queries, dependencies, agentinstructies en bewaking vallen buiten deze UI-scope;
+een app mag core niet wijzigen. Een migratie op bestaande rijen, rollen/RLS-model of `security definer` vraagt het
 volledige sjabloon (`_template.md`). Geen kop weglaten; "n.v.t. — reden" mag. Ontbreekt een antwoord, dan vraagt de agent het.
 
 ## Doel

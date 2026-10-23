@@ -18,6 +18,8 @@ import { pullRequest, checkRuns } from './github-evidence.mjs';
 import { kaderVan, ROADMAP, taakVinkje } from './roadmap-item.mjs';
 import { regularGitFile, statusOnlyDiff, isAncestor } from './status-git.mjs';
 import { laneVan, isMiniSpec, migratieOvertreding, recordAlleenBesluit } from './lane.mjs';
+import { isFunctionalUiSpec, isUiTest } from '../../rails/hooks/lib/functional-ui.mjs';
+import { functionalUiApproval, verifyFunctionalUiChanges } from './functional-ui-status.mjs';
 
 /** @typedef {{ root: string, base: string, sha: string, split: string, pr: number | null, adrBestanden: string[], adrArchief: string[], authority: import('../../rails/hooks/lib/task-authority.mjs').Authority, config: import('../../rails/hooks/lib/rolhek.mjs').Config }} Context */
 
@@ -39,6 +41,14 @@ function verifyBuilt(document, context) {
     headSha: context.sha,
     ancestor: isAncestor(context.root, commits),
     onlyStatuses: statusOnlyDiff(context.root, commits, { testpaden: context.config.testpaden }),
+    uiApproval: functionalUiApproval({
+      root: context.root,
+      base: context.base,
+      sha: reference.sha,
+      repository: context.authority.repository,
+      file: document.file,
+      text: document.text,
+    }),
   };
   return canRecordBuilt(document, evidence, context.authority);
 }
@@ -295,6 +305,7 @@ function verifyGeenRename(file, changes, context) {
 
 /** Inhoud van de lane: alleen een nieuwe tabel in migraties, en dan een kop "Datawijzigingen" in de mini-spec. @param {string} file @param {{ status: string, pad: string }[]} changes @param {Context} context */
 function verifyFeatureInhoud(file, changes, context) {
+  if (isFunctionalUiSpec(context.authority.working(file) ?? '')) verifyFunctionalUiChanges(context, changes);
   const migraties = changes.filter(
     ({ status, pad }) => status === 'A' && context.config.migraties.some((glob) => globMatch(glob, pad)),
   );
@@ -326,7 +337,15 @@ function verifyInPrStatus({ besluiten, changes }, context) {
     enige?.nieuw === true &&
     documentKind(enige.file) === 'spec' &&
     isMiniSpec(context.authority.working(enige.file) ?? '');
-  const { lane, reden } = laneVan({ changes, besluiten: bestanden, mini, config: context.config });
+  const functioneleUi = isFunctionalUiSpec(context.authority.working(eerste.file) ?? '');
+  const { lane, reden } = laneVan({
+    changes,
+    besluiten: bestanden,
+    mini,
+    config: context.config,
+    repository: context.authority.repository,
+    functioneleUi,
+  });
   if (lane === null) throw new Error(`${bestanden.join(', ')}: ${GEEN_BESLUIT}; geen herkende lane: ${reden}`);
   for (const { file } of open) verifyGeenRename(file, changes, context);
   if (lane === 'feature') verifyFeatureInhoud(eerste.file, changes, context);
@@ -341,6 +360,16 @@ function verifyInPrStatus({ besluiten, changes }, context) {
   )
     throw new Error(`${RECORD}: wijzigt meer dan het record van ${bestanden.join(', ')}`);
   return `statusovergang in de PR (${lane === 'framework' ? 'besluit-PR, framework' : lane}-lane): ${bestanden.join(', ')}; het besluit is de merge door de eigenaar (ADR 0046)`;
+}
+
+/** Ook een gebouwd-status rapporteert de gebruikte UI-uitzondering. @param {{ status: string, pad: string }[]} changes @param {Context} context */
+function functionalUiSummary(changes, context) {
+  const ui = changes.some(
+    ({ pad }) => documentKind(pad) === 'spec' && isFunctionalUiSpec(context.authority.working(pad) ?? ''),
+  );
+  if (!ui) return '';
+  const paths = changes.filter(({ status, pad }) => pad.startsWith('src/core/') || (status === 'M' && isUiTest(pad)));
+  return `; functionele UI (ADR 0056), corepaden en bestaande UI-tests: ${paths.map(({ pad }) => pad).join(', ')}`;
 }
 
 /** Een GitHub Actions-foutannotatie; `%`, CR en LF worden geëscaped zoals `@actions/core` doet, zodat een bestandsnaam geen commando kan invoegen. @param {string} message */
@@ -400,7 +429,12 @@ async function main() {
     return besluit === null ? [] : [besluit];
   });
   const besluiten = [...gewijzigd, ...verwijderd];
-  const melding = verifyInPrStatus({ besluiten, changes }, context);
+  const besluitmelding = verifyInPrStatus({ besluiten, changes }, context);
+  const ui = functionalUiSummary(changes, context);
+  const melding =
+    besluitmelding === null && ui === ''
+      ? null
+      : `${besluitmelding ?? 'besluiten, bouwbewijs en taakscope gecontroleerd vanuit main'}${ui}`;
   verifyScope(
     changes,
     context,
