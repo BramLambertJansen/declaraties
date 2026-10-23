@@ -13,6 +13,9 @@ const WORKFLOWS = path.join(ROOT, '.github/workflows');
 // .claude/decisions.json (pr:verify) na de gh api-verificatie van de eigenaar (ADR 0045 PR 2); in de ruleset staat hij nog niet.
 // `check-core` (ADR 0040 punt 17) is wel verplicht in de app-ruleset.
 const NIET_VERPLICHT = ['diff-guard', 'document-status'];
+// De matrixdelen van gate:slow (job `gate-slow-part`) zijn bewust geen verplichte check; de aggregatiejob `gate:slow` is dat wel.
+// Exact deze ene naam: een andere nieuwe matrixnaam blijft letterlijk staan en laat de test falen.
+const GATE_SLOW_DEEL = 'gate:slow (${{ matrix.script }})';
 const GITHUB_ACTIONS = 15368;
 const OPDRACHT = [
   'gate:fast',
@@ -75,6 +78,7 @@ function checksUitWorkflows(): string[] {
     const matrix = /language: \[([^\]]+)\]/.exec(source)?.[1] ?? '';
     const languages = matrix === '' ? [] : matrix.split(', ');
     for (const [, name = ''] of source.matchAll(/^ {4}name: (.+)$/gm)) {
+      if (name === GATE_SLOW_DEEL) continue;
       if (!name.includes('${{ matrix.language }}')) {
         names.push(name);
         continue;
