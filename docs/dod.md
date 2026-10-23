@@ -1,6 +1,6 @@
 # Definition of Done
 
-De reviewer bepaalt eerst welke fase uit `docs/roadmap.md` bij het werk hoort: de fase van de roadmap-items die de PR aanvinkt of raakt. Raakt de PR meer fases, loop dan al die fases af; een lagere fase kiezen dan het werk vereist is niet toegestaan. Noteer de gekozen fase met reden in de PR; bij twijfel beslist de eigenaar. Loop daarna "Altijd" en de criteria van de gekozen fase(s) af; noteer bewijs of een concrete reden waarom een criterium niet van toepassing is in de PR.
+De reviewer bepaalt eerst welke fase uit `docs/roadmap.md` bij het werk hoort: de fase van de roadmap-items die de PR aanvinkt of raakt. De open items met hun fase staan in `node scripts/kit/feiten.mjs fase`; staat het item daar niet of is de fase onbekend, lees dan de roadmap. Raakt de PR meer fases, loop dan al die fases af; een lagere fase kiezen dan het werk vereist is niet toegestaan. Noteer de gekozen fase met reden in de PR; bij twijfel beslist de eigenaar. Loop daarna "Altijd" en de criteria van de gekozen fase(s) af; noteer bewijs of een concrete reden waarom een criterium niet van toepassing is in de PR.
 
 ## Altijd
 

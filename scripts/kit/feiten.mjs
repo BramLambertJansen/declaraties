@@ -1,6 +1,8 @@
 // Live feiten (framework §8, ADR 0045): elke rol begint hiermee, niet met wat in proza staat.
-// Gebruik: node scripts/kit/feiten.mjs [gates|adr|specs|migraties|routes|permissies|foutcodes|componenten] [--json]
-import { readdirSync, readFileSync } from 'node:fs';
+// Gebruik: node scripts/kit/feiten.mjs [gates|adr|specs|migraties|routes|permissies|foutcodes|componenten|fase] [--alle] [--json]
+// Zonder sectie alles; elke rol vraagt in stap 1 van zijn agentbestand alleen wat hij nodig heeft (.claude/agents/*.md).
+// `--alle` toont bij `adr` ook de vervangen en vervallen ADR's; weergave en filters staan in feiten-tekst.mjs.
+import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { toolchainProbleemIn } from './toolchain.mjs';
 
@@ -12,8 +14,9 @@ if (probleem !== null) {
 }
 const { componenten } = await import('./catalogus.mjs');
 const { gates } = await import('./gates.mjs');
+const { adrOverzicht, componentenTekst, faseOverzicht, toText } = await import('./feiten-tekst.mjs');
 
-const TEMPLATE_ADR_MAX = 99;
+const CATALOGUS = '/design-system';
 
 /** @param {string} dir */
 function markdownFiles(dir) {
@@ -33,19 +36,16 @@ function adrs() {
   });
 }
 
-/** @param {readonly { nummer: string }[]} list */
-function nextAdr(list) {
-  const numbers = list.map((adr) => Number(adr.nummer));
-  const template = Math.max(0, ...numbers.filter((n) => n <= TEMPLATE_ADR_MAX)) + 1;
-  const app = Math.max(TEMPLATE_ADR_MAX, ...numbers.filter((n) => n > TEMPLATE_ADR_MAX)) + 1;
-  return `${String(template).padStart(4, '0')} (template, tot 0099) · ${String(app).padStart(4, '0')} (app, vanaf 0100)`;
-}
-
 function specs() {
   return markdownFiles('docs/specs').map((file) => {
     const status = /^status:\s*(\S+)/m.exec(readFileSync(`docs/specs/${file}`, 'utf8'))?.[1] ?? 'onbekend';
     return { spec: file, status };
   });
+}
+
+/** @param {string} file */
+function readOrNull(file) {
+  return existsSync(file) ? readFileSync(file, 'utf8') : null;
 }
 
 function migrations() {
@@ -82,64 +82,58 @@ async function foutcodes() {
   return { codes: errors.codes.join(', '), teksten: 'src/web/copy/errors.ts', nieuw: 'src/shared/errors.ts' };
 }
 
-/** @type {Record<string, () => unknown>} */
+const args = process.argv.slice(2);
+const alle = args.includes('--alle');
+
+/** @typedef {{ json: unknown, kop?: string, inhoud: unknown }} Result */
+/**
+ * JSON en tekst zijn gelijk, behalve waar een sectie een eigen tekstvorm heeft (componenten).
+ * @param {() => unknown} load
+ * @returns {() => Promise<Result>}
+ */
+function plain(load) {
+  return async () => {
+    const data = await load();
+    return { json: data, inhoud: data };
+  };
+}
+
+/** @type {Record<string, () => Promise<Result> | Result>} */
 const sections = {
-  gates: () =>
+  gates: plain(() =>
     gates.map(({ script, bewaakt, snel }) => ({ script: `pnpm ${script}`, soort: snel ? 'snel' : 'traag', bewaakt })),
-  adr: () => {
-    const list = adrs();
-    return { lijst: list, volgende: nextAdr(list) };
+  ),
+  adr: plain(() => adrOverzicht(adrs(), alle)),
+  specs: plain(specs),
+  migraties: plain(migrations),
+  routes: plain(routes),
+  permissies: plain(permissies),
+  foutcodes: plain(foutcodes),
+  componenten: () => {
+    const lijst = componenten();
+    return {
+      json: { catalogus: CATALOGUS, lijst },
+      kop: `catalogus ${CATALOGUS}; publiek = export uit src/web/ui, intern = alleen binnen de kit`,
+      inhoud: componentenTekst(lijst),
+    };
   },
-  specs,
-  migraties: migrations,
-  routes,
-  permissies,
-  foutcodes,
-  componenten: () =>
-    componenten().map(({ naam, bron, publiek, varianten, importnamen }) => ({
-      naam,
-      bron,
-      publiek,
-      varianten,
-      importnamen,
-      catalogus: '/design-system',
-    })),
+  fase: plain(() =>
+    faseOverzicht({ roadmap: readOrNull('docs/roadmap.md'), dod: readOrNull('docs/dod.md'), specs: specs() }),
+  ),
 };
 
-const args = process.argv.slice(2);
 const wanted = args.filter((arg) => !arg.startsWith('--'));
 const unknown = wanted.filter((name) => !(name in sections));
 if (unknown.length > 0) {
   console.error(`Onbekende sectie: ${unknown.join(', ')}. Kies uit: ${Object.keys(sections).join(', ')}`);
   process.exit(2);
 }
-const result = Object.fromEntries(
-  await Promise.all(
-    (wanted.length > 0 ? wanted : Object.keys(sections)).map(async (name) => [name, await sections[name]?.()]),
-  ),
-);
-console.info(args.includes('--json') ? JSON.stringify(result, null, 2) : toText(result));
-
-/** @param {unknown} value */
-function inline(value) {
-  return typeof value === 'object' && value !== null ? Object.values(value).map(String).join(' · ') : String(value);
-}
-
-/**
- * @param {unknown} value
- * @returns {string}
- */
-function render(value) {
-  if (Array.isArray(value)) return value.length === 0 ? '(geen)' : value.map((item) => `- ${inline(item)}`).join('\n');
-  if (typeof value !== 'object' || value === null) return String(value);
-  return Object.entries(value)
-    .map(([key, content]) => (Array.isArray(content) ? `${key}:\n${render(content)}` : `${key}: ${inline(content)}`))
-    .join('\n');
-}
-
-/** @param {Record<string, unknown>} value */
-function toText(value) {
-  return Object.entries(value)
-    .map(([name, content]) => `## ${name}\n${render(content)}`)
-    .join('\n\n');
+const names = wanted.length > 0 ? wanted : Object.keys(sections);
+const results = await Promise.all(names.map(async (naam) => ({ naam, ...(await sections[naam]?.()) })));
+if (args.includes('--json')) {
+  console.info(JSON.stringify(Object.fromEntries(results.map(({ naam, json }) => [naam, json])), null, 2));
+} else {
+  console.info(
+    toText(results.map(({ naam, kop, inhoud }) => ({ naam, ...(kop === undefined ? {} : { kop }), inhoud }))),
+  );
 }
