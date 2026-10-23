@@ -9,7 +9,8 @@ import { expect, test } from 'vitest';
 // de bescherming niet smaller dan vóór de wijziging (docs/reviews/2026-10-13-wrijving.md, S-2). De root-regel is `/*secret*`:
 // `./*secret*` is een kale bestandsnaam en matcht net als `.env` op elke diepte, dus ook in node_modules; een enkele `/`
 // verankert aan de projectroot en `*` gaat niet door `/` heen (code.claude.com/docs/en/permissions). Om dezelfde reden is
-// `.claude` per getrackte submap gedekt: `./.claude/**/*secret*` raakte de node_modules in `.claude/worktrees/`.
+// `.claude` per getrackte submap gedekt: `./.claude/**/*secret*` raakte de node_modules in `.claude/worktrees/`. "Niet
+// smaller" geldt dus voor getrackte inhoud; ongetrackte `.claude`-inhoud (de worktrees) valt alleen onder `.env*`.
 type Json = Record<string, unknown>;
 
 function section(value: unknown): Json {

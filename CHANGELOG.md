@@ -21,7 +21,8 @@ Hier staan wijzigingen die van belang zijn bij het gebruiken of bijwerken van de
   `./*secret*` matcht als kale bestandsnaam op elke diepte en maskeerde daardoor nog steeds `node_modules` (better-auth
   `secret-utils.mjs`): typed lint en de pre-push-hook faalden alleen in de sandbox. `.claude` is voortaan per getrackte
   submap gedekt (`agents`, `hooks`, `rules`, `skills`) plus `Read(./.claude/*secret*)`, zodat de node_modules in
-  `.claude/worktrees/` niet meer gemaskeerd worden. De overige regels per getrackte map blijven.
+  `.claude/worktrees/` niet meer gemaskeerd worden. Ongetrackte `.claude`-inhoud (de worktrees) valt daardoor alleen
+  nog onder de `.env*`-weigering. De overige regels per getrackte map blijven.
 - `docs/roadmap.md` is afgeslankt (55 → 31 KB): de afgevinkte items van de sectie Gebouwd en van Besluiten staan ongewijzigd in `docs/roadmap-archief.md`; open items, ook uit een afgerond stuk, blijven in de roadmap. Geldende ADR-besluiten komen uit `node scripts/kit/feiten.mjs adr`. De vereiste koppen van `check:roadmap` blijven.
 - A4 (ADR 0046 punt 2): een geaccepteerd ADR mag in een besluit-PR worden herschreven (met een herzieningsregel
   `Herzien: JJJJ-MM-DD (#NNN): wat`) en een ADR met een eigenaarstatus mag in een besluit-PR worden verwijderd; lokaal mogen alleen
