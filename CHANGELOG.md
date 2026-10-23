@@ -6,6 +6,9 @@ Hier staan wijzigingen die van belang zijn bij het gebruiken of bijwerken van de
 
 ### Toegevoegd
 
+- CI-bewijs controleert bij CodeQL ook de afzonderlijke resultaatcheck van GitHub Advanced Security op dezelfde commit.
+  Een geslaagde analysejob met een bevinding, of een nog ontbrekend resultaat, wordt niet meer als groen oplever- of bouwbewijs geaccepteerd.
+
 - Functionele UI-wijzigingen aan bestaande componenten in de template kunnen met `scope: functionele-ui` in hun
   mini-spec, code, tests en gebruiksdocs in één PR (ADR 0056). Geen voorafgaand broncodemandaat; groene checks en
   eigenaarreview blijven vereist. Andere core, auth, dependencies, agentinstructies en bewaking houden hun bestaande route.

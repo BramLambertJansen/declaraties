@@ -1,19 +1,19 @@
 // Leest werkelijk CI-bewijs op de huidige PR-commit; maakt nooit zelf een check-status (ADR 0046).
 import { readAuthority, gitText } from '../../rails/hooks/lib/authority-context.mjs';
-import { checkedCommit, GITHUB_ACTIONS_APP_ID } from '../../rails/hooks/lib/built-evidence.mjs';
+import { checkedCommit, expectedCheckAppId, requiredProofChecks } from '../../rails/hooks/lib/built-evidence.mjs';
 import { pullRequest, checkRuns } from './github-evidence.mjs';
 import { setTimeout } from 'node:timers/promises';
 import { unchangedHead } from './status-git.mjs';
 
 /** @param {import('../../rails/hooks/lib/built-evidence.mjs').CheckRun[]} checks @param {{ names: string[], sha: string }} required */
 export function checkProgress(checks, required) {
-  if (checkedCommit(checks, required))
-    return { state: 'success', lines: required.names.map((name) => `${name}: success`) };
+  const names = requiredProofChecks(checks, required);
+  if (checkedCommit(checks, required)) return { state: 'success', lines: names.map((name) => `${name}: success`) };
   if (required.names.length === 0 || !/^[0-9a-f]{40}$/.test(required.sha))
     throw new Error('Geen vertrouwde verplichte checks of geldige commit');
-  const entries = required.names.map((name) => {
+  const entries = names.map((name) => {
     const matching = checks.filter((check) => check.name === name && check.headSha === required.sha);
-    if (matching.some((check) => check.appId !== GITHUB_ACTIONS_APP_ID))
+    if (matching.some((check) => check.appId !== expectedCheckAppId(name)))
       return { failed: true, line: `${name}: ongeldige check-identiteit` };
     const latest = matching.toSorted((left, right) => right.id - left.id)[0];
     return {

@@ -461,7 +461,8 @@ Live feiten (gates, routes, componenten, nummers) komen uit `scripts/kit/feiten.
   die van inhoud wijzigt, verliest haar mandaat. Het register `.claude/decisions.json` blijft voor
   broncodemandaat (`--path`) en `requiredChecks`; het bindt inhoudsdigest, repository, exacte branch, status en exacte bronbestanden.
   `gebouwd` vereist de juiste PR en verplichte Actions-checks op de gevalideerde bron-SHA; uitsluitend latere statusregels mogen daarvan
-  afwijken. De CI-guard gebruikt
+  afwijken. Bij CodeQL moet ook de aparte resultaatcheck van GitHub Advanced Security groen zijn; alleen het slagen van de
+  analysejob bewijst niet dat er geen bevindingen zijn. `pr:verify` en bouwbewijs gebruiken dezelfde controle. De CI-guard gebruikt
   `scripts/kit/check-document-status.mjs` uit main, als eigen job `document-status` naast `diff-guard` (ADR 0045 punt 20); een werkversie of commit-auteur geeft zichzelf geen goedkeuring.
   Een nieuwe of gewijzigde ADR-statusregel draagt achter de statuswaarde alleen `(JJJJ-MM-DD)`, `#<nr>` en een link naar een bestaand
   ADR met alleen het nummer als linktekst, gescheiden door `, ` of ` — ` (`statusregelOvertreding`, ADR 0045 punt 22); een regel

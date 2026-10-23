@@ -31,7 +31,7 @@ export function isUiTest(file) {
 /** @param {string} file */
 function isUiSource(file) {
   return isCoreUiSource(file) || (/^src\/web\/(?:ui|copy|features|routes)\/.+\.(?:ts|tsx|css)$/.test(file) &&
-    !/\.(?:test|spec|gen)\.|\/queries\.ts$/.test(file));
+    !/\.(?:test|spec|gen)\./.test(file) && !file.endsWith('/queries.ts'));
 }
 
 /** @param {UiChange} change @param {string} spec */
