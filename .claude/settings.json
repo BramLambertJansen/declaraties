@@ -86,6 +86,7 @@
       "Bash(git push origin chore/mandate-adr-statusregel)",
       "Bash(gh pr create:*)",
       "Bash(node scripts/kit/feiten.mjs)",
+      "Bash(node scripts/kit/feiten.mjs *)",
       "Bash(pnpm gate:fast)",
       "Bash(pnpm format:check)",
       "Bash(pnpm format)",
