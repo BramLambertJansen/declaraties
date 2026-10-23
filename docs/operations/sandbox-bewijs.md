@@ -12,6 +12,7 @@ template-commit `bfa24b3`.
 | `cat .env >/dev/null` | geweigerd | geweigerd door de sandbox (`Permission denied`) |
 | `head -c 1 .env.example >/dev/null` (`allowRead`, `.claude/settings.json:134`) | toegestaan | toegestaan |
 | `cat src/probe-secret.txt` (bestond al bij de start van het commando) | geweigerd | geweigerd (`Permission denied`) |
+| `head -c 1 node_modules/better-auth/dist/context/secret-utils.mjs` (2026-10-23, met `Read(./*secret*)`) | toegestaan | geweigerd: `./*secret*` matcht op elke diepte; vervangen door `Read(/*secret*)` |
 | `ls ~/.ssh`, `ls ~/.aws` | geweigerd | niet te toetsen: de mappen bestaan op deze machine niet |
 | `touch ~/sandbox-probe`, `touch /etc/sandbox-probe` | geweigerd | geweigerd (`Read-only file system`) |
 | `touch .claude/settings.json` | geweigerd | geweigerd (`Read-only file system`) |

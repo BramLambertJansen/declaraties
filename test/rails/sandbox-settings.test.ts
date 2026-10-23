@@ -6,7 +6,9 @@ import { expect, test } from 'vitest';
 // repo (`./**/*secret*`) raakte dat ook node_modules (better-auth `secret-utils.mjs`, jose `generate_secret.js`): typed
 // lint, unit-tests en de pre-push-hook faalden alleen in de sandbox. `allowRead` kan dat niet heropenen (een specifiekere
 // weigering wint). Daarom één regel per getrackte map, en deze test faalt zodra een getrackte map niet gedekt is: zo is
-// de bescherming niet smaller dan vóór de wijziging (docs/reviews/2026-10-13-wrijving.md, S-2).
+// de bescherming niet smaller dan vóór de wijziging (docs/reviews/2026-10-13-wrijving.md, S-2). De root-regel is `/*secret*`:
+// `./*secret*` is een kale bestandsnaam en matcht net als `.env` op elke diepte, dus ook in node_modules; een enkele `/`
+// verankert aan de projectroot en `*` gaat niet door `/` heen (code.claude.com/docs/en/permissions).
 type Json = Record<string, unknown>;
 
 function section(value: unknown): Json {
@@ -33,11 +35,12 @@ const trackedDirs = [
 
 test('geen *secret*-weigering over de hele repo: die maskeert node_modules', () => {
   expect(deny).not.toContain('Read(./**/*secret*)');
+  expect(deny).not.toContain('Read(./*secret*)');
 });
 
 test('elke getrackte map en de root zijn gedekt door een *secret*-weigering', () => {
   expect(trackedDirs.length).toBeGreaterThan(5);
-  expect(deny).toContain('Read(./*secret*)');
+  expect(deny).toContain('Read(/*secret*)');
   expect(trackedDirs.filter((dir) => !deny.includes(`Read(./${dir}/**/*secret*)`))).toStrictEqual([]);
 });
 

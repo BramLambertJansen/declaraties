@@ -7,7 +7,7 @@
       "Read(.env.*)",
       "Edit(.env)",
       "Edit(.env.*)",
-      "Read(./*secret*)",
+      "Read(/*secret*)",
       "Read(./.claude/**/*secret*)",
       "Read(./.github/**/*secret*)",
       "Read(./.kit/**/*secret*)",

@@ -375,7 +375,7 @@ de branchversie. Rolhek en werkstraat falen dicht als het anker of de hook ontbr
 Elke hook heeft een tabeltest (`test/hooks/*.test.ts`): echte stdin-payloads met de verwachte exitcode, inclusief omzeilingen (tweede commando na
 een leesuitzondering, aanhalingstekens rond redirect-doelen). Wat tekstheuristiek niet vangt (`bash -c`, `node -e`), vangt de diff-guard in CI.
 
-Permissieregels in `.claude/settings.json` zijn gemak, geen grens (Claude Code-docs): deny op `.env*` en `*secret*` (per getrackte map en in de root, niet over `node_modules`: daar maskeerde de sandbox bibliotheekbestanden; `test/rails/sandbox-settings.test.ts` eist dat elke getrackte map gedekt is), pushes naar `main`,
+Permissieregels in `.claude/settings.json` zijn gemak, geen grens (Claude Code-docs): deny op `.env*` en `*secret*` (per getrackte map en in de root via `Read(/*secret*)`, niet over `node_modules`: daar maskeerde de sandbox bibliotheekbestanden, ook via `./*secret*`, dat op elke diepte matcht; `test/rails/sandbox-settings.test.ts` eist dat elke getrackte map gedekt is), pushes naar `main`,
 force, `--no-verify`, `LEFTHOOK=0`, mergen, zelfreview (`gh pr review`, labels, statuses) en `docker`; `disableBypassPermissionsMode: "disable"`; `ask` op de beschermde paden (§10), op `pnpm add/install/update/remove`, op `sed -i`/`perl -pi`
 (Edit-regels dekken Bash-schrijfacties niet) en op elk commando uit `excludedCommands`. Het rolhek kan alleen de drie vaste
 runnerchecks expliciet toestaan wanneer main `autoRunner` toestaat en de hostcode ongewijzigd is (ADR 0044 punt 5).
