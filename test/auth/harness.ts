@@ -17,14 +17,29 @@ export function required(name: string): string {
 
 export const APP_ORIGIN = required('APP_ORIGIN');
 
-export function createTestApp() {
+export interface TestAppOptions {
+  // Opt-in voor tests die bewust een lock vasthouden: de app-verbindingen (api_user én auth_service) falen dan na zoveel
+  // ms met 55P03 (lock_timeout) in plaats van na de statement_timeout van 5 s uit db/init/01-roles.sql. Voor de route
+  // is dat dezelfde klasse fout: een niet-vertaalde pg-fout wordt INTERNAL_ERROR met rollback, net als 57014.
+  readonly lockTimeoutMs?: number;
+}
+
+// Zet lock_timeout als sessieparameter in de verbindings-URL (pg geeft `options` door in het startpakket).
+export function connectionUrl(url: string, { lockTimeoutMs }: TestAppOptions = {}): string {
+  if (lockTimeoutMs === undefined) return url;
+  const parsed = new URL(url);
+  parsed.searchParams.set('options', `-c lock_timeout=${String(lockTimeoutMs)}ms`);
+  return parsed.toString();
+}
+
+export function createTestApp(options: TestAppOptions = {}) {
   const sendMail = createSmtpMailer(required('SMTP_URL'), 'no-reply@template.test');
-  const pool = createPool(required('DATABASE_URL'));
+  const pool = createPool(connectionUrl(required('DATABASE_URL'), options));
   const withUser = createWithUser(pool);
   const auth = createAuth({
     origin: APP_ORIGIN,
     secret: required('AUTH_SECRET'),
-    databaseUrl: required('AUTH_DATABASE_URL'),
+    databaseUrl: connectionUrl(required('AUTH_DATABASE_URL'), options),
     clientIpHeader: required('CLIENT_IP_HEADER'),
     sendInvitation: (invitation) => sendMail(invitationMail(invitation)),
     // Spec eigen-account: de algemene `sendMail` van AuthConfig (de vier mails van de e-mailwijziging). Als spread, zodat

@@ -6,6 +6,9 @@
   "engines": {
     "node": ">=26.11 <27"
   },
+  "sideEffects": [
+    "**/*.css"
+  ],
   "browserslist": [
     "safari >= 16.4",
     "chrome >= 111",

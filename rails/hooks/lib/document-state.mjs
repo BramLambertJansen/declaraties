@@ -130,7 +130,15 @@ function herzieningen(text) {
 export function isHerschrijving(file, voor, na) {
   const oud = voor === null ? null : documentInfo(file, voor);
   const nieuw = na === null ? null : documentInfo(file, na);
-  return oud?.kind === 'adr' && oud.status === 'geaccepteerd' && nieuw?.status === 'geaccepteerd' && oud.digest !== nieuw.digest;
+  const kopNummer = (/** @type {string} */ text) => /^# (\d{4}) — /.exec(text)?.[1];
+  return oud?.kind === 'adr' && oud.status === 'geaccepteerd' && nieuw?.status === 'geaccepteerd' &&
+    oud.digest !== nieuw.digest && kopNummer(voor ?? '') === kopNummer(na ?? '');
+}
+
+/** De geldige herzieningsregels die de nieuwe tekst toevoegt. @param {string} voor @param {string} na */
+export function nieuweHerzieningsregels(voor, na) {
+  const oud = herzieningen(voor);
+  return [...herzieningen(na)].filter((regel) => !oud.has(regel));
 }
 
 /** Elke oude geldige herzieningsregel staat er nog, en er is er minstens één bij. @param {string} voor @param {string} na */

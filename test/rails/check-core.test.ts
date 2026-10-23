@@ -149,10 +149,13 @@ test.each([
   expect(isTemplateRepo(json, repository)).toBe(verwacht);
 });
 
-test('in deze template staat check-core uit (onderhoud.repository in .claude/gates.json)', () => {
+test('check-core staat alleen in de template uit, niet in een hernoemde app', () => {
   const gates = readFileSync(path.join(import.meta.dirname, '../../.claude/gates.json'), 'utf8');
+  const pkg: unknown = JSON.parse(readFileSync(path.join(import.meta.dirname, '../../package.json'), 'utf8'));
+  const template = typeof pkg === 'object' && pkg !== null && 'name' in pkg && pkg.name === 'app-template';
 
-  expect(isTemplateRepo(gates, 'BramLambertJansen/template')).toBe(true);
+  expect(isTemplateRepo(gates, 'BramLambertJansen/template')).toBe(template);
+  expect(isTemplateRepo(gates, 'eigenaar/app')).toBe(false);
 });
 
 test('een orphan-commit met eigen src/core, daarna gemerged met main, faalt', () => {

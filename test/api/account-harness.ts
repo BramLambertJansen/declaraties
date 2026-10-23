@@ -5,6 +5,7 @@ import {
   APP_ORIGIN,
   Browser,
   createTestApp,
+  type TestAppOptions,
   latestMailTo,
   required,
   tokenFrom,
@@ -17,8 +18,8 @@ import {
 export const PASSWORD = 'ab-'.repeat(6);
 export const NEW_PASSWORD = 'cd-'.repeat(6);
 
-export function createAccountTestApp() {
-  const setup = createTestApp();
+export function createAccountTestApp(options: TestAppOptions = {}) {
+  const setup = createTestApp(options);
   const migrator = new pg.Pool({ connectionString: required('MIGRATOR_DATABASE_URL'), max: 1 });
   const authDb = new pg.Pool({ connectionString: required('AUTH_DATABASE_URL'), max: 1 });
   type App = typeof setup.app;
@@ -141,11 +142,19 @@ export async function waitForMail(email: string, subject: string): Promise<MailS
   throw new Error(`geen mail "${subject}" aan ${email}`);
 }
 
-// Geeft na een pauze het aantal mails met dit onderwerp (voor "er gaat niets heen").
-export async function countMails(email: string, subject?: string): Promise<number> {
-  await new Promise((resolve) => setTimeout(resolve, 500));
+// Het aantal mails nu, zonder pauze: voor de nulmeting vóór de handeling, zolang de mails van de opzet al zijn
+// afgewacht (waitForMail). Een late opzetmail kan de latere telling alleen hoger maken (de test faalt dan luid),
+// nooit een mail verbergen die de handeling zelf verstuurt.
+export async function mailCountNow(email: string, subject?: string): Promise<number> {
   const mails = await mailsTo(email);
   return subject === undefined ? mails.length : mails.filter((mail) => mail.subject === subject).length;
+}
+
+// Geeft na een pauze het aantal mails met dit onderwerp (voor "er gaat niets heen"): de pauze geeft een asynchroon
+// verzonden mail de tijd om aan te komen, dus blijft hier staan voor elke bewering dat er géén mail is.
+export async function countMails(email: string, subject?: string): Promise<number> {
+  await new Promise((resolve) => setTimeout(resolve, 500));
+  return mailCountNow(email, subject);
 }
 
 // De link uit een bevestigingsmail: `${APP_ORIGIN}/email-bevestigen?token=…` (spec eigen-account).

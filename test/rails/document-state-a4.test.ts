@@ -136,6 +136,23 @@ describe('B3: ongewijzigd gedrag voor de overige overgangen', () => {
   });
 });
 
+describe('B5: een ander nummer in de kop is a4, ook met herzieningsregel', () => {
+  const metKop = (kop: string, extra: string[] = []): string =>
+    `${kop}\n\nStatus: geaccepteerd\n\n## Besluit\n\nIets anders.\n${extra.map((regel) => `\n${regel}\n`).join('')}`;
+
+  test('B5 kop # 0099 wordt # 0098, mét nieuwe herzieningsregel: a4', () => {
+    expect(uitkomst(adr('geaccepteerd'), metKop('# 0098 — Demo', [HERZIEN])).uitslag).toBe('a4');
+  });
+
+  test('B5 kop # 0099 wordt # 0098, zonder herzieningsregel: a4', () => {
+    expect(uitkomst(adr('geaccepteerd'), metKop('# 0098 — Demo')).uitslag).toBe('a4');
+  });
+
+  test('B5 dezelfde kopnummer met een andere titel en een herzieningsregel blijft herzien', () => {
+    expect(uitkomst(adr('geaccepteerd'), metKop('# 0099 — Andere titel', [HERZIEN])).uitslag).toBe('herzien');
+  });
+});
+
 describe('B4: A4_MELDING noemt de nieuwe regel', () => {
   test.each([
     ['besluit-PR', /besluit-PR/i],
