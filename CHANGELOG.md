@@ -18,6 +18,7 @@ Hier staan wijzigingen die van belang zijn bij het gebruiken of bijwerken van de
 ### Gewijzigd
 
 - `docs/roadmap.md` is afgeslankt (55 → 31 KB): de afgevinkte items van de sectie Gebouwd en van Besluiten staan ongewijzigd in `docs/roadmap-archief.md`; open items, ook uit een afgerond stuk, blijven in de roadmap. Geldende ADR-besluiten komen uit `node scripts/kit/feiten.mjs adr`. De vereiste koppen van `check:roadmap` blijven.
+- `pnpm gate:fast` draait de snelle gates uit het register in drie banen (`test:unit`, `lint`, de rest na elkaar) via `scripts/kit/gate-fast.mjs`, in plaats van een &&-keten: gemeten 92 → 61 s op 16 cores. Eerst de uitvoer van de rode gates, dan de lijst in registervolgorde; een rode gate stopt de andere niet meer, zodat één ronde alle fouten toont. Bij een update: `gate:fast` in `package.json` is nu `node scripts/kit/gate-fast.mjs`; een eigen snelle gate komt in `scripts/kit/gates.mjs`.
 - A4 (ADR 0046 punt 2): een geaccepteerd ADR mag in een besluit-PR worden herschreven (met een herzieningsregel
   `Herzien: JJJJ-MM-DD (#NNN): wat`) en een ADR met een eigenaarstatus mag in een besluit-PR worden verwijderd; lokaal mogen alleen
   architect en hoofdsessie dat (`check-document-status`, rolhek). De tekst van ADR 0046 punt 2 volgt in een besluit-PR. Bij een update:
