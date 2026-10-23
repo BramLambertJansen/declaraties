@@ -44,7 +44,9 @@ Gebouwd (stuk 4): `pnpm check:catalogus` ontdekt UI uit beide UI-mappen en eist 
 stringvarianten; geen uitzonderingen. Dezelfde bronindex staat in `feiten.mjs componenten` en op `/design-system` (ADR 0046). De woordenlijsttest
 `src/web/copy/woordenlijst.test.ts`.
 `scanAxe` zonder uitzonderingen: twee lintregels (axe-import en axe-uitzondering in `eslint.config.js`) houden ze tegen.
-Gebouwd (#129): Toast, `useToast().success/error` met `Toaster` in de AppShell en `ToastProvider` in `main.tsx`.
+Toastgebruik en de plaatsing van `Toaster` staan in `docs/gouden-pad.md`; gebruik de bestaande `useToast`-API.
+Functionele UI-wijzigingen in deze template volgen ADR 0056 en `docs/operations/agent-doorloop.md`: mini-spec, code,
+tests en gebruiksdocs in één PR. Bij nieuwe architectuur, auth, dependencies of bewaking blijft de bestaande beslisroute gelden.
 Gebouwd (#145, #146, #150): Checkbox, RadioGroup, Textarea, StatusBadge, EmptyState, `busy` op Button en DropdownMenu, de
 bijbehorende Form-velden, Combobox, FormComboboxField, Accordion, List en DescriptionList; vindbare catalogusvoorbeelden. De
 actuele lijst staat in `pnpm check:catalogus` en `node scripts/kit/feiten.mjs componenten`.

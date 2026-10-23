@@ -80,6 +80,7 @@ Regels voor elke keuze:
 | Elke route vraagt login | `/api/auth/*` (inloggen, aanmelden, reset), de clientfouten-route, `GET /api/health` en `GET /api/ready` | Bestaan juist voor niet-ingelogden; auth en clientfouten met rate limit; health en ready geven alleen `{ ok }`, geen data en geen rate limit (ready: 503 als de database onbereikbaar is; uitkomst 1 s bewaard, hooguit één controle tegelijk, ADR 0049) |
 | Elke schermroute heeft een `can()`-guard | Inlog-, aanmeld- en resetschermen (`/login`, `/uitnodiging`) | Publiek; ze tonen geen data |
 | Spec vóór een nieuwe route | `GET /api/health` (skelet) en `GET /api/ready` (readiness, ADR 0049) | Infrastructuur zonder data of actor; health bestaat vóór `defineRoute`, de skeletpagina die hem toonde, is vervallen met de ingelogde startpagina (PR 7b) |
+| Voorafgaand broncodemandaat voor core | Functionele UI in de template: mini-spec met `scope: functionele-ui`, code, UI-tests en gebruiksdocs in één PR (ADR 0056) | Bestaande componenten in `src/core/web/ui` en vaste teksten in `src/core/web/copy`; overige core, auth, dependencies en bewaking blijven erbuiten; een app wijzigt core niet |
 | Elke route via `defineRoute` en met login | `POST /api/dev/login-as` (ADR 0043) | Alleen bij `APP_ENV=local` geregistreerd (elders 404); logt in als een seed-account, met CSRF-controle |
 
 ## 4. Codeerkaders
@@ -325,6 +326,16 @@ diezelfde PR afgevinkt, en nooit zonder bewijs (`docs/dod.md`, Altijd). `check:d
 wijzigt zonder `docs/` of `CHANGELOG.md`. `check:roadmap` (in `gate:fast`) blokkeert wel: een nieuw of gewijzigd `[x]` zonder testpad, checknaam of PR-nummer, en een spec die naar `gebouwd` gaat zonder bewijs (`scripts/kit/check-roadmap.mjs`). Er is geen docs-stap na de merge.
 
 Licht pad: geen migratie, route of permissie → plan, bouwen, review, opleveren.
+
+**Functionele UI in de template (ADR 0056):** een mini-spec met `scope: functionele-ui` mag samen met de implementatie,
+bijbehorende nieuwe of gewijzigde UI-tests en gebruiksdocumentatie in één feature-PR. Geen vooraf gemergde spec of record
+in `.claude/decisions.json`. De uitzondering omvat `src/core/web/ui`, `src/core/web/copy` en de aansluitende app-UI;
+auth, API/contracten, queries, overige core, dependencies, configuratie, rails en agentinstructies blijven erbuiten.
+`scripts/kit/lane.mjs` begrenst de paden; `scripts/kit/functional-ui-status.mjs` controleert reguliere bestanden en
+testwijzigingen. De guard noemt de corepaden en gewijzigde bestaande UI-tests voor eigenaarreview. Testkwaliteit en de
+functionele scope blijven ook een inhoudelijk oordeel; alleen een marker bewijst die niet. Verwijderen, skippen en
+afzwakken van tests krijgen geen vrijstelling. De eigenaar merget; een afgeleide app verandert core uitsluitend via een
+template-update. `gebouwd` blijft gekoppeld aan groene verplichte checks op de broncommit, ook bij een nieuwe UI-mini-spec.
 
 CI zet gewijzigde bestaande tests als lijst in de PR.
 

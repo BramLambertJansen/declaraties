@@ -6,6 +6,10 @@ Hier staan wijzigingen die van belang zijn bij het gebruiken of bijwerken van de
 
 ### Toegevoegd
 
+- Functionele UI-wijzigingen aan bestaande componenten in de template kunnen met `scope: functionele-ui` in hun
+  mini-spec, code, tests en gebruiksdocs in één PR (ADR 0056). Geen voorafgaand broncodemandaat; groene checks en
+  eigenaarreview blijven vereist. Andere core, auth, dependencies, agentinstructies en bewaking houden hun bestaande route.
+
 - Laatste volledig geslaagde login in de accountlijst en afzonderlijk deactiveren/activeren naast blokkeren/deblokkeren
   (ADR 0052). Beide maatregelen behouden gegevens, trekken toegang direct in en zijn onafhankelijk omkeerbaar.
   Herstel maakt oude sessies en MFA-challenges niet opnieuw geldig; de laatste bruikbare beheerder blijft beschermd.

@@ -1,12 +1,13 @@
 // Gebouwd betekent: implementatie gecontroleerd en aangeboden in een PR. Het is geen release of nieuw mandaat.
 import { builtReference, documentInfo } from './document-state.mjs';
-import { canRecordStatus } from './task-authority.mjs';
+import { canRecordStatus, TEMPLATE_REPOSITORY } from './task-authority.mjs';
+import { isFunctionalUiSpec } from './functional-ui.mjs';
 
 export const GITHUB_ACTIONS_APP_ID = 15368;
 
 /** @typedef {{ id: number, name: string, headSha: string, status: string, conclusion: string | null, appId: number }} CheckRun */
 /** @typedef {{ number: number, repository: string, branch: string, headSha: string, state: string, merged: boolean }} PullRequest */
-/** @typedef {{ pr: PullRequest, checks: CheckRun[], headSha: string, onlyStatuses: boolean, ancestor: boolean }} BuiltEvidence */
+/** @typedef {{ pr: PullRequest, checks: CheckRun[], headSha: string, onlyStatuses: boolean, ancestor: boolean, uiApproval?: string | null }} BuiltEvidence */
 
 /** @param {CheckRun[]} checks @param {{ names: string[], sha: string }} required */
 export function checkedCommit(checks, required) {
@@ -31,7 +32,9 @@ export function canRecordBuilt(document, evidence, authority) {
   const approved = document.text.replace(/^status:[^\r\n]*$/m, 'status: goedgekeurd');
   const { pr } = evidence;
   if (!/^[0-9a-f]{40}$/.test(evidence.headSha) || !/^[0-9a-f]{40}$/.test(pr.headSha)) return false;
-  if (!canRecordStatus({ file: document.file, text: approved }, authority)) return false;
+  const ui = authority.repository === TEMPLATE_REPOSITORY && authority.safe(document.file) &&
+    isFunctionalUiSpec(approved) && evidence.uiApproval === info.digest;
+  if (!ui && !canRecordStatus({ file: document.file, text: approved }, authority)) return false;
   if (pr.number !== reference.pr || pr.repository !== authority.repository || pr.branch !== authority.branch ||
     pr.headSha !== evidence.headSha || (pr.state !== 'open' && !pr.merged)) return false;
   return evidence.ancestor && evidence.onlyStatuses && checkedCommit(evidence.checks, { names: authority.registry.requiredChecks, sha: reference.sha });
