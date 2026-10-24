@@ -28,7 +28,7 @@ export interface AppServices {
       beforeMail: (userId: string) => Promise<void>,
       lifecycle?: InvitationLifecycle,
     ) => Promise<{ userId: string }>;
-    readonly reinvite: (userId: string) => Promise<void>;
+    readonly reinvite: (userId: string, lifecycle?: Pick<InvitationLifecycle, 'afterCommit'>) => Promise<void>;
   };
   // Het eigen account (spec eigen-account); userId komt altijd uit ctx.actor.
   readonly profile: {
@@ -74,8 +74,8 @@ export function createServices(auth: Auth): AppServices {
         inviteUser(auth, input, { beforeMail, ...lifecycle }).catch((error: unknown) => {
           throw translate(error);
         }),
-      reinvite: (userId) =>
-        reinviteUser(auth, userId).catch((error: unknown) => {
+      reinvite: (userId, lifecycle) =>
+        reinviteUser(auth, userId, lifecycle).catch((error: unknown) => {
           throw translate(error);
         }),
     },

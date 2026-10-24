@@ -242,6 +242,8 @@ Ankers: OWASP Top 10:2025, OWASP API Security Top 10, ASVS 5.0 niveau 1 (checkli
   `/design` bestaat alleen in dev-builds, `/design-system` staat achter `guard('design-system:read')` en toont alleen voorbeelddata (ADR 0048); de clientfouten-route (fase 2, nog niet gebouwd) is de enige data-route zonder login, met maximale grootte per melding, limiet per IP per minuut en geen onnodige vrije tekst.
 - **Logging**: per request `requestId`, gebruiker-ID, duur, databasetijd. Clientfouten via `reportClientError()` naar een eigen tabel (fase 2, nog niet gebouwd); lint verbiedt kale `console.error` in `queries.ts` en de API-client.
   Een clientfout bevat alleen velden van een allowlist (bron, soort, foutcode, pad zonder query, telling, build-SHA), geen PII of vrije tekst, en wordt per 5 minuten ontdubbeld.
+  Onverwachte fouten in `createApp` en in de route-cleanup gaan via `logUnexpectedError()` (`src/core/api/http/safe-error-log.ts`): alleen requestId, route (patroon), errorClass, code (SQLSTATE of AppError) en label; nooit message, detail, stack, query of cause.
+  Nog niet gedekt: de eigen foutlog van Better Auth onder `/api/auth/*`, de stopmelding in `src/core/api/env.ts` en de standaardfout van `src/core/api/http/web.ts`.
 - **Secrets**: env-schema bij opstart; alleen publieke waarden krijgen `VITE_`. Geen productiegeheimen in de werkmap.
   `APP_ENV` (`local` | `test` | `staging` | `production`) is verplicht. Buiten `local`/`test` weigert het env-schema bij opstart:
   een `AUTH_SECRET` korter dan 32 bytes of met een demo-waarde erin; database-URL's met een demo-wachtwoord (URL geparsed, niet als

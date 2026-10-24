@@ -150,9 +150,9 @@ export const inviteRoute = defineRoute(inviteContract, async ({ input, tx, servi
 });
 
 // De regel staat vóór de service: NOT_FOUND of ALREADY_ACTIVE rolt de transactie terug, dus ook de regel.
-export const reinviteRoute = defineRoute(reinviteContract, async ({ input, tx, services }) => {
+export const reinviteRoute = defineRoute(reinviteContract, async ({ input, tx, services, afterCommit }) => {
   await tx.execute(sql`select app.audit_account_action('core.account.reinvite', ${input.id})`);
-  await services.invitations.reinvite(input.id);
+  await services.invitations.reinvite(input.id, { afterCommit });
   return null;
 });
 
