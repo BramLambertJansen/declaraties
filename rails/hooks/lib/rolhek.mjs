@@ -16,7 +16,7 @@ import { isCoreUiSource, testChangeRisk } from './functional-ui.mjs';
  * voorReview-pad een gate (faalt dicht). `onderhoud`: de repository waarin de onderhoudsmodus geldt (ADR 0045 punt 8).
  * @typedef {{ root: string, cwd: string, config: Config, read: (rel: string) => string | null,
  *   committed: (rel: string) => boolean | 'zonder-origin', isDir: (rel: string) => boolean, branch: string,
- *   authority?: import('./task-authority.mjs').Authority | null, runnerTrusted?: boolean,
+ *   authority?: import('./task-authority.mjs').Authority | null, runnerTrusted?: boolean | (() => boolean),
  *   onbekendeRol?: boolean, onderhoud?: boolean }} Ctx
  * `onderhoud`: de onderhoudsmodus is actief (vertrouwde configuratie en origin is die repository, ADR 0045 punt 8–9).
  * `onbekendeRol`: een subagent zonder bekende rol; telt als developer, maar zonder de melding buiten voorReview.
@@ -95,7 +95,7 @@ export function decide(payload, ctx) {
     const command = field(input, 'command');
     decideBash({ command, role }, context, decision);
     if (command.includes('--sta-wijzigingen-toe')) decision.deny.push('De agent omzeilt de hostcontrole van de runner nooit; gebruik voor gewijzigd railwerk de CI-runner');
-    if (ctx.cwd === ctx.root && ctx.runnerTrusted === true && automaticRunner(command) && decision.ask.length + decision.deny.length === 0)
+    if (ctx.cwd === ctx.root && automaticRunner(command) && decision.ask.length + decision.deny.length === 0 && runnerIsTrusted(ctx))
       decision.allow = true;
   }
   else if (['Edit', 'Write', 'MultiEdit', 'NotebookEdit'].includes(tool)) {
@@ -104,6 +104,15 @@ export function decide(payload, ctx) {
       decision.allow = true;
   }
   return decision;
+}
+
+/**
+ * Alleen `true` telt als vertrouwd (fail-closed); een functie wordt pas hier uitgevoerd (de aanroeper memoïseert).
+ * @param {{ runnerTrusted?: boolean | (() => boolean) }} ctx
+ */
+function runnerIsTrusted(ctx) {
+  const value = typeof ctx.runnerTrusted === 'function' ? ctx.runnerTrusted() : ctx.runnerTrusted;
+  return value === true;
 }
 
 /**
