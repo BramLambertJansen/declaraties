@@ -6,6 +6,8 @@ Hier staan wijzigingen die van belang zijn bij het gebruiken of bijwerken van de
 
 ### Toegevoegd
 
+- De skill `security-review` draait als aparte, read-only `reviewer`-subagent (`context: fork`, `agent: reviewer`; read-only via de toolslijst van de agent en het rolhek) en heeft extra controlepunten voor MFA en sessiesterkte, IDOR, auditregels, rate limits en tokenflows (`.claude/skills/security-review/SKILL.md`, `test/rails/security-review-skill.test.ts`).
+
 - Onverwachte fouten in `createApp` en de route-cleanup worden gelogd via `logUnexpectedError()` (`src/core/api/http/safe-error-log.ts`) met alleen requestId, route, errorClass, code en label.
   Het foutobject zelf (message, SQL, parameters, detail, stack, cause) gaat niet meer naar de log; zie framework §6.
   Voor een app: de logregel op stderr heeft een nieuwe vorm, wie op het foutbericht zocht vindt dat niet meer; zoek op requestId.
