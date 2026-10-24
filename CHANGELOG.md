@@ -8,6 +8,11 @@ Hier staan wijzigingen die van belang zijn bij het gebruiken of bijwerken van de
 
 - Het rolhek berekent het runnervertrouwen (`trustedRunner`, enkele git-aanroepen) alleen nog wanneer een Bash-opdracht een automatische runner is, en hoogstens eens per hookaanroep; de beslissing blijft fail-closed (`rails/hooks/rolhek.mjs`, `rails/hooks/lib/rolhek.mjs`).
 
+- Onverwachte fouten in `createApp` en de route-cleanup worden gelogd via `logUnexpectedError()` (`src/core/api/http/safe-error-log.ts`) met alleen requestId, route, errorClass, code en label.
+  Het foutobject zelf (message, SQL, parameters, detail, stack, cause) gaat niet meer naar de log; zie framework §6.
+  Voor een app: de logregel op stderr heeft een nieuwe vorm, wie op het foutbericht zocht vindt dat niet meer; zoek op requestId.
+  Niet gedekt: de eigen foutlog van Better Auth onder `/api/auth/*`.
+
 - CI-bewijs controleert bij CodeQL ook de afzonderlijke resultaatcheck van GitHub Advanced Security op dezelfde commit.
   Een geslaagde analysejob met een bevinding, of een nog ontbrekend resultaat, wordt niet meer als groen oplever- of bouwbewijs geaccepteerd.
 
@@ -93,6 +98,8 @@ Hier staan wijzigingen die van belang zijn bij het gebruiken of bijwerken van de
 - Beslisroute (ADR 0038): de merge door de eigenaar is de acceptatie. Architect en hoofdsessie schrijven de eigenaarstatus in het voorstel; `check-document-status` laat zonder record en zonder web-flow een besluit-PR met meerdere ADR's en specs toe, en guard en rolhek weigeren een ADR met eigenaarstatus terug naar `voorgesteld` of met nieuwe inhoud (`rails/hooks/lib/document-state.mjs`, `scripts/kit/lane.mjs`).
 
 ### Opgelost
+
+- Opnieuw uitnodigen verwijdert de oude reset-tokens en mailt pas na commit van de route-transactie (`reinviteUser(auth, userId, lifecycle?)`), en SMTP heeft time-outs (`SMTP_TIMEOUTS`), zodat een hangende mailserver geen transactie vasthoudt. Een app die `services.invitations.reinvite` aanroept: nieuwe signatuur `reinvite(userId, lifecycle?)`, geef `{ afterCommit }` uit de route-ctx mee.
 
 - Nieuwe-app-start: bootstrap controleert de machine met `doctor --machine`, zonder nog niet gestarte appdiensten als
   installatiefout te melden. De volledige doctor blijft verplicht na het starten. De poortpreflight neemt ook API en web
