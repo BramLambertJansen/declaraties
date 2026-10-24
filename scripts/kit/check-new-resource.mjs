@@ -71,7 +71,11 @@ async function genereer(root) {
   // Fase 1 via de commandoregel: het spec-skelet. De eigenaar zet hem op goedgekeurd; hier doet de check dat.
   draai(root, 'node', ['scripts/kit/new-resource.mjs', NAAM]);
   const spec = path.join(root, 'docs/specs', `${NAAM}.md`);
-  writeFileSync(spec, readFileSync(spec, 'utf8').replace(/^status: voorstel\b/m, 'status: goedgekeurd'));
+  // Ook OV-1 gaat op besloten, zoals de eigenaar na zijn antwoorden doet (anders weigert check-docs de goedgekeurde spec).
+  const goedgekeurd = readFileSync(spec, 'utf8')
+    .replace(/^status: voorstel\b/m, 'status: goedgekeurd')
+    .replace('**OV-1 ⚠ open**', '**OV-1 ✅ besloten**');
+  writeFileSync(spec, goedgekeurd);
   draai(root, 'node', ['scripts/kit/new-resource.mjs', NAAM, '--rollen', ROLLEN.join(','), '--dry-run']);
   // Fase 2 met het plan zelf, zodat de check de afgedrukte gate-wijzigingen kan zetten.
   const p = await plan(root, NAAM, { rollen: ROLLEN });
