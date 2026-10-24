@@ -68,6 +68,15 @@ describe('reinviteUser met lifecycle', () => {
     expect(send).not.toHaveBeenCalled();
   });
 
+  test('faalt het verwijderen in het effect na commit: niet versturen en run gooit', async () => {
+    const { auth, deleteMany, send } = fixture();
+    deleteMany.mockRejectedValueOnce(new Error('delete failed'));
+    const effects = createRouteEffects();
+    await expect(effects.run(() => reinviteUser(auth, 'u1', effects))).rejects.toThrow('delete failed');
+    expect(deleteMany).toHaveBeenCalledTimes(1);
+    expect(send).not.toHaveBeenCalled();
+  });
+
   test('onbekende gebruiker: AccountNotFoundError en geen effect geregistreerd', async () => {
     const { auth } = fixture({ user: false });
     const afterCommit = vi.fn();
