@@ -234,7 +234,7 @@ Foutvertaling (bestaand, `src/core/api/errors.ts:67`): 42501 → `FORBIDDEN`; 22
 | Uitnodigen: `auth_service` maakt het account (eigen verbinding, al gecommit), daarna faalt de commit van de route | account bestaat zonder rol en zonder auditregel; zichtbaar in de request-log met status 500 (ADR 0051 punt 9, geaccepteerd) | `INTERNAL_ERROR` |
 | Uitnodigen: `beforeMail` faalt (rol of auditregel) | `inviteUser` verwijdert het account weer; rol en regel draaien terug | die van de fout |
 | Uitnodigen: mail versturen faalt na `beforeMail` | bestaand gedrag: route faalt, rol en regel draaien terug, account blijft (zelfde gat als hierboven, tot de outbox, ADR 0020 stap 9) | `INTERNAL_ERROR` |
-| Opnieuw uitnodigen: commit van de route faalt | tokenverwijdering en mail gaan na commit (`afterCommit`), dus er gebeurt niets zonder regel; restgat: faalt de mail na de commit, dan 500 terwijl de regel staat en de oude links al weg zijn (structureel opgelost door de outbox, `docs/specs/mail-outbox.md`) | `INTERNAL_ERROR` |
+| Opnieuw uitnodigen: service slaagt (eigen verbinding), commit van de route faalt | token vernieuwd en mail weg zonder regel; gat tot de outbox (ADR 0051 punt 9) | `INTERNAL_ERROR` |
 | Blokkeren van een al geblokkeerd account | geen wijziging, geen regel (ADR 0043 punt 15) | — (200) |
 | Rol toekennen gelijk aan de huidige (bijv. `admin:create` op een bestaande admin) | zie OV-B3 | — |
 | Account later verwijderd (ADR 0051, buiten scope) | regels blijven met het oude ID; geen foreign key | — |
