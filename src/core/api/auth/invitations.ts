@@ -60,18 +60,28 @@ export async function inviteUser(
   return { userId: user.id };
 }
 
-export async function reinviteUser(auth: Auth, userId: string): Promise<void> {
+// Met lifecycle.afterCommit gaan tokenverwijdering en mail pas na commit van de route-transactie (een trage mailserver
+// houdt dan geen transactie vast); de controles blijven synchroon en gooien vóór er iets geregistreerd wordt.
+export async function reinviteUser(
+  auth: Auth,
+  userId: string,
+  lifecycle?: Pick<InvitationLifecycle, 'afterCommit'>,
+): Promise<void> {
   const context = await auth.$context;
   const user = await context.internalAdapter.findUserById(userId);
   if (user === null) throw new AccountNotFoundError();
   if ((await context.internalAdapter.findCredentialAccount(userId)) !== null) throw new AccountAlreadyActiveError();
-  // Alleen de nieuwste link werkt: oude reset-tokens van deze gebruiker gaan eerst weg.
-  await context.adapter.deleteMany({
-    model: 'verification',
-    where: [
-      { field: 'value', value: userId },
-      { field: 'identifier', operator: 'starts_with', value: 'reset-password:' },
-    ],
-  });
-  await auth.api.requestPasswordReset({ body: { email: user.email } });
+  const resend = async () => {
+    // Alleen de nieuwste link werkt: oude reset-tokens van deze gebruiker gaan eerst weg.
+    await context.adapter.deleteMany({
+      model: 'verification',
+      where: [
+        { field: 'value', value: userId },
+        { field: 'identifier', operator: 'starts_with', value: 'reset-password:' },
+      ],
+    });
+    await auth.api.requestPasswordReset({ body: { email: user.email } });
+  };
+  if (lifecycle === undefined) await resend();
+  else lifecycle.afterCommit(resend);
 }

@@ -1,6 +1,6 @@
 import { afterAll, expect, test } from 'vitest';
-import { createAccountTestApp } from './account-harness.ts';
-import { uniqueEmail } from '../auth/harness.ts';
+import { createAccountTestApp, NEW_PASSWORD } from './account-harness.ts';
+import { Browser, latestMailTo, tokenFrom, uniqueEmail } from '../auth/harness.ts';
 
 // De fouten worden met echte database-locks opgewekt; app, Better Auth en Mailpit zijn de echte teststack.
 // Elke test hier houdt een lock vast: lock_timeout van 1 s geeft 55P03 in plaats van 5 s wachten op statement_timeout.
@@ -94,3 +94,28 @@ test('een door de idle-termijn verlopen sessie staat niet meer bij actieve appar
   const stored = await t.sessionsOf(account.userId);
   expect(stored).toHaveLength(2);
 });
+
+test('mislukte tokenopslag bij opnieuw uitnodigen: geen nieuwe mail en de oude link werkt nog', async () => {
+  const owner = await admin();
+  const email = uniqueEmail('reinvite-failure');
+  const invite = await t.call(owner.browser, 'POST /api/accounts/invite', { naam: 'Opnieuw', email, rol: 'user' });
+  expect(invite.status).toBe(200);
+  const oldToken = tokenFrom((await latestMailTo(email)).text);
+  const id = (await t.migrator.query<{ id: string }>('select id from better_auth."user" where email = $1', [email]))
+    .rows[0]?.id;
+  const lock = await t.migrator.connect();
+  try {
+    await lock.query('begin');
+    await lock.query('lock table better_auth.verification in access exclusive mode');
+    expect((await t.call(owner.browser, `POST /api/accounts/${id ?? ''}/reinvite`, {})).status).toBe(500);
+  } finally {
+    await lock.query('rollback');
+    lock.release();
+  }
+  expect(tokenFrom((await latestMailTo(email)).text)).toBe(oldToken);
+  const reset = await new Browser(t.app).post('/api/auth/reset-password', {
+    token: oldToken,
+    newPassword: NEW_PASSWORD,
+  });
+  expect(reset.status).toBe(200);
+}, 20000);

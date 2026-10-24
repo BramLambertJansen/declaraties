@@ -27,7 +27,7 @@ ADR 0003 kiest Better Auth (1.7.7) met alleen de plugin two-factor. Gecontroleer
    `${APP_ORIGIN}/uitnodiging?token=<token>` (niet de GET-redirect van Better Auth), met de tekst uit de spec.
 3. Accepteren is `POST /api/auth/reset-password` (bestaande uitzondering `/api/auth/*`, framework §3). `onPasswordReset` zet
    `emailVerified: true`. Daarna naar `/login`; er ontstaat geen sessie uit de link.
-4. `resetPasswordTokenExpiresIn` = 7 dagen (uit `limits.ts`). Opnieuw uitnodigen verwijdert eerst de open `reset-password:*`-tokens van die
+4. `resetPasswordTokenExpiresIn` = 7 dagen (uit `limits.ts`). Opnieuw uitnodigen verwijdert (na commit van de route, `reinviteUser` met `afterCommit`) eerst de open `reset-password:*`-tokens van die
    gebruiker (verbinding als `auth_service`, alleen schema `better_auth`), zodat alleen de nieuwste link werkt.
 5. Wachtwoord minstens 12 tekens (`minPasswordLength`, uit `limits.ts`; besluit eigenaar).
 
