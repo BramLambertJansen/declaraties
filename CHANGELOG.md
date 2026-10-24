@@ -6,6 +6,8 @@ Hier staan wijzigingen die van belang zijn bij het gebruiken of bijwerken van de
 
 ### Toegevoegd
 
+- Het spec-skelet van `pnpm new:resource` volgt `docs/specs/_template.md`: sectie "Kopieer de vorm van" (verwijzing naar `src/api/routes/accounts.ts`) en een `OV-1 ⚠ open`-regel onder "Open vragen", zodat een gegenereerd voorstel niet ongemerkt als besluit kan doorgaan (`scripts/kit/templates/spec.md.tmpl`). De status blijft `voorstel`.
+
 - CI-bewijs controleert bij CodeQL ook de afzonderlijke resultaatcheck van GitHub Advanced Security op dezelfde commit.
   Een geslaagde analysejob met een bevinding, of een nog ontbrekend resultaat, wordt niet meer als groen oplever- of bouwbewijs geaccepteerd.
 
