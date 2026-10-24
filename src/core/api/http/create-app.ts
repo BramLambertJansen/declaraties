@@ -1,6 +1,7 @@
 import { Hono, type Context } from 'hono';
 import { bodyLimit } from 'hono/body-limit';
 import { requestId } from 'hono/request-id';
+import { routePath } from 'hono/route';
 import { secureHeaders } from 'hono/secure-headers';
 import { coreErrorCodes, type ErrorRegistry } from '../../shared/errors.ts';
 import {
@@ -18,6 +19,7 @@ import { z } from 'zod';
 import { ROLES, type Role } from '../../shared/can.ts';
 import { rateLimitCategory, type Contract } from '../../shared/contract.ts';
 import { requestLog, timeDatabase, type RequestLog } from '../obs/request-log.ts';
+import { logUnexpectedError } from './safe-error-log.ts';
 import { createAuditFn } from '../db/audit.ts';
 import { isRouteDef, type RouteDef } from '../route/kit.ts';
 import { csrf } from './csrf.ts';
@@ -175,7 +177,7 @@ export function createApp<Services>(config: BaseConfig<Services> & { readonly se
         if (error.retryAfter !== undefined) c.header('Retry-After', String(error.retryAfter));
         return fail(c, error.code);
       }
-      console.error(`[${c.get('requestId')}]`, error);
+      logUnexpectedError({ requestId: c.get('requestId'), route: routePath(c) }, error);
       return fail(c, 'INTERNAL_ERROR');
     })
     .notFound((c) => fail(c, 'NOT_FOUND'))

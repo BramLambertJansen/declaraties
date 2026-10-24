@@ -71,3 +71,31 @@ test('een externe stap die pas na een disconnect afrondt wordt alsnog gecompense
   await cleanup.promise;
   expect(mail).not.toHaveBeenCalled();
 });
+
+test('een mislukte cleanup na rollback lekt geen persoonsgegevens naar de log', async () => {
+  const log = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+  try {
+    const effects = createRouteEffects();
+    effects.afterRollback(() =>
+      Promise.reject(
+        Object.assign(new Error('duplicate key value (alice@example.com)'), {
+          code: '23505',
+          detail: 'Key (email)=(alice@example.com) already exists.',
+        }),
+      ),
+    );
+    const error = new Error('commit failed');
+    await expect(effects.run(() => Promise.reject(error))).rejects.toBe(error);
+
+    expect(log).toHaveBeenCalledOnce();
+    const logged = JSON.stringify(log.mock.calls);
+    expect(logged).not.toContain('alice');
+    expect(logged).not.toContain('example.com');
+    expect(logged).not.toContain('detail');
+    expect(logged).not.toContain('already exists');
+    expect(logged).not.toContain('"stack"');
+    expect(log.mock.calls[0]?.[1]).toMatchObject({ errorClass: 'Error', code: '23505' });
+  } finally {
+    log.mockRestore();
+  }
+});

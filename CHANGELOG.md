@@ -6,6 +6,9 @@ Hier staan wijzigingen die van belang zijn bij het gebruiken of bijwerken van de
 
 ### Toegevoegd
 
+- Onverwachte serverfouten worden gelogd via `logUnexpectedError()` (`src/core/api/http/safe-error-log.ts`) met alleen requestId, route, errorClass, code en label.
+  Het foutobject zelf (message, SQL, parameters, detail, stack, cause) gaat niet meer naar de log; zie framework §6.
+
 - CI-bewijs controleert bij CodeQL ook de afzonderlijke resultaatcheck van GitHub Advanced Security op dezelfde commit.
   Een geslaagde analysejob met een bevinding, of een nog ontbrekend resultaat, wordt niet meer als groen oplever- of bouwbewijs geaccepteerd.
 

@@ -26,6 +26,35 @@ describe('createApp: verharding', () => {
     error.mockRestore();
   });
 
+  test('een fout met een e-mailadres in message en detail lekt niet naar de log, de requestId wel', async () => {
+    const error = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    try {
+      const boom = defineRoute(notesContract, () => {
+        throw Object.assign(new Error('duplicate key value (alice@example.com)'), {
+          code: '23505',
+          detail: 'Key (email)=(alice@example.com) already exists.',
+        });
+      });
+      const { app } = appWith({ role: 'user', sessionStrength: 'password' }, [boom]);
+
+      const response = await request(app, '/api/notes/n1');
+      const body = parseErrorBody(await response.json());
+
+      expect(response.status).toBe(500);
+      expect(body.code).toBe('INTERNAL_ERROR');
+      expect(error).toHaveBeenCalledOnce();
+      const logged = JSON.stringify(error.mock.calls);
+      expect(logged).toContain(body.requestId);
+      expect(logged).not.toContain('alice');
+      expect(logged).not.toContain('example.com');
+      expect(logged).not.toContain('detail');
+      expect(logged).not.toContain('already exists');
+      expect(logged).not.toContain('"stack"');
+    } finally {
+      error.mockRestore();
+    }
+  });
+
   test('onbekende route geeft NOT_FOUND met requestId', async () => {
     const response = await request(createApp(), '/api/onbekend');
 
