@@ -1,10 +1,12 @@
+import { logUnexpectedError } from './safe-error-log.ts';
+
 type Effect = () => Promise<unknown>;
 
 async function cleanUp(effect: Effect): Promise<void> {
   try {
     await effect();
   } catch (error) {
-    console.error('route: cleanup na rollback mislukt', error);
+    logUnexpectedError({ label: 'route: cleanup na rollback mislukt' }, error);
   }
 }
 
