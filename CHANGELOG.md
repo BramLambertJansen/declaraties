@@ -6,6 +6,8 @@ Hier staan wijzigingen die van belang zijn bij het gebruiken of bijwerken van de
 
 ### Toegevoegd
 
+- Het rolhek berekent het runnervertrouwen (`trustedRunner`, enkele git-aanroepen) alleen nog wanneer een Bash-opdracht een automatische runner is, en hoogstens eens per hookaanroep; de beslissing blijft fail-closed (`rails/hooks/rolhek.mjs`, `rails/hooks/lib/rolhek.mjs`).
+
 - De skill `security-review` draait als aparte, read-only `reviewer`-subagent (`context: fork`, `agent: reviewer`; read-only via de toolslijst van de agent en het rolhek) en heeft extra controlepunten voor MFA en sessiesterkte, IDOR, auditregels, rate limits en tokenflows (`.claude/skills/security-review/SKILL.md`, `test/rails/security-review-skill.test.ts`).
 
 - Onverwachte fouten in `createApp` en de route-cleanup worden gelogd via `logUnexpectedError()` (`src/core/api/http/safe-error-log.ts`) met alleen requestId, route, errorClass, code en label.
