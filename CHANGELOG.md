@@ -6,8 +6,10 @@ Hier staan wijzigingen die van belang zijn bij het gebruiken of bijwerken van de
 
 ### Toegevoegd
 
-- Onverwachte serverfouten worden gelogd via `logUnexpectedError()` (`src/core/api/http/safe-error-log.ts`) met alleen requestId, route, errorClass, code en label.
+- Onverwachte fouten in `createApp` en de route-cleanup worden gelogd via `logUnexpectedError()` (`src/core/api/http/safe-error-log.ts`) met alleen requestId, route, errorClass, code en label.
   Het foutobject zelf (message, SQL, parameters, detail, stack, cause) gaat niet meer naar de log; zie framework §6.
+  Voor een app: de logregel op stderr heeft een nieuwe vorm, wie op het foutbericht zocht vindt dat niet meer; zoek op requestId.
+  Niet gedekt: de eigen foutlog van Better Auth onder `/api/auth/*`.
 
 - CI-bewijs controleert bij CodeQL ook de afzonderlijke resultaatcheck van GitHub Advanced Security op dezelfde commit.
   Een geslaagde analysejob met een bevinding, of een nog ontbrekend resultaat, wordt niet meer als groen oplever- of bouwbewijs geaccepteerd.

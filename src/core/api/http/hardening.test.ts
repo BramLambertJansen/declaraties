@@ -45,6 +45,8 @@ describe('createApp: verharding', () => {
       expect(error).toHaveBeenCalledOnce();
       const logged = JSON.stringify(error.mock.calls);
       expect(logged).toContain(body.requestId);
+      expect(logged).toContain('/api/notes/:id');
+      expect(logged).not.toContain('/notes/n1');
       expect(logged).not.toContain('alice');
       expect(logged).not.toContain('example.com');
       expect(logged).not.toContain('detail');

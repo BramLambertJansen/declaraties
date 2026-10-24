@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
+import { AppError } from '../errors.ts';
 import { logUnexpectedError } from './safe-error-log.ts';
 
 // Foutlogging mag nooit persoonsgegevens bevatten: alleen requestId, route, errorClass, code en label.
@@ -118,7 +119,16 @@ describe('logUnexpectedError', () => {
       logUnexpectedError({ requestId: 'r' }, getter);
       logUnexpectedError({ requestId: 'r' }, proxy);
     }).not.toThrow();
+    expect(spy).toHaveBeenCalledTimes(2);
+    expect(spy.mock.calls[0]?.[1]).toEqual({ requestId: 'r', errorClass: 'Error' });
+    expect(spy.mock.calls[1]?.[1]).toEqual({ requestId: 'r', errorClass: 'NonError' });
     expect(JSON.stringify(spy.mock.calls)).not.toContain('alice');
+  });
+
+  test('een AppError-code komt in het logobject', () => {
+    logUnexpectedError({ requestId: 'r' }, new AppError('LAST_ADMIN'));
+
+    expect(spy.mock.calls[0]?.[1]).toEqual({ requestId: 'r', errorClass: 'AppError', code: 'LAST_ADMIN' });
   });
 
   test('een gooiende console.error breekt het request ook niet', () => {
