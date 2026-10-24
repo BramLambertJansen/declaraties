@@ -15,7 +15,7 @@ export const SMTP_TIMEOUTS = { connectionTimeout: 10_000, greetingTimeout: 10_00
 
 // Lokaal en in de runner: Mailpit (framework §3, poort E-mail). Per app een SMTP-dienst via SMTP_URL.
 export function createSmtpMailer(smtpUrl: string, from: string): SendMail {
-  const transport = createTransport(smtpUrl, SMTP_TIMEOUTS);
+  const transport = createTransport({ url: smtpUrl, ...SMTP_TIMEOUTS });
   return async (mail) => {
     await transport.sendMail({ from, ...mail });
   };
