@@ -6,6 +6,8 @@ Hier staan wijzigingen die van belang zijn bij het gebruiken of bijwerken van de
 
 ### Toegevoegd
 
+- Het rolhek berekent het runnervertrouwen (`trustedRunner`, enkele git-aanroepen) alleen nog wanneer een Bash-opdracht een automatische runner is, en hoogstens eens per hookaanroep; de beslissing blijft fail-closed (`rails/hooks/rolhek.mjs`, `rails/hooks/lib/rolhek.mjs`).
+
 - CI-bewijs controleert bij CodeQL ook de afzonderlijke resultaatcheck van GitHub Advanced Security op dezelfde commit.
   Een geslaagde analysejob met een bevinding, of een nog ontbrekend resultaat, wordt niet meer als groen oplever- of bouwbewijs geaccepteerd.
 

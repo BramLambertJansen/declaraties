@@ -68,6 +68,8 @@ function onderhoudActief(config, vertrouwd, root) {
  * @param {string} cwd
  */
 function context(root, cwd) {
+  /** @type {boolean | undefined} */
+  let trusted;
   const authority = readAuthority({ root });
   const basis = trustedBase(root, undefined);
   const { config, vertrouwd } = configuratie(root, basis, authority);
@@ -87,7 +89,7 @@ function context(root, cwd) {
     isDir: (/** @type {string} */ rel) => safe(() => statSync(path.join(root, rel)).isDirectory()),
     branch: gitBranch(root),
     authority,
-    runnerTrusted: trustedRunner(root),
+    runnerTrusted: () => (trusted ??= trustedRunner(root)),
   };
 }
 
