@@ -6,6 +6,8 @@ Hier staan wijzigingen die van belang zijn bij het gebruiken of bijwerken van de
 
 ### Toegevoegd
 
+- De skill `security-review` draait als geforkte, read-only subagent met schone context (`context: fork`, `agent: reviewer`) en heeft extra controlepunten voor MFA en sessiesterkte, IDOR, auditregels, rate limits en tokenflows (`.claude/skills/security-review/SKILL.md`, `test/rails/security-review-skill.test.ts`).
+
 - CI-bewijs controleert bij CodeQL ook de afzonderlijke resultaatcheck van GitHub Advanced Security op dezelfde commit.
   Een geslaagde analysejob met een bevinding, of een nog ontbrekend resultaat, wordt niet meer als groen oplever- of bouwbewijs geaccepteerd.
 
