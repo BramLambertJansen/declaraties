@@ -15,7 +15,7 @@ Voor een resource met een eigenaar per rij (ADR 0047). Naam: meervoud, kebab-cas
 draait hem; `--dry-run` toont het plan zonder te schrijven, en bestaat een doel al, dan schrijft hij niets.
 
 1. **Zonder spec:** `pnpm new:resource <naam>` maakt `docs/specs/<naam>.md` (status `voorstel`) met de afgeleide routes,
-   permissies en policies; rollen, velden, zichtbaarheid voor een admin, verwijderde accounts en teksten staan als open vraag.
+   permissies en policies; rollen, velden, zichtbaarheid voor een admin, verwijderde accounts en teksten staan als open vraag, bewust vooraan, onder een `OV-1 ⚠ open`-regel die `goedgekeurd` blokkeert tot de eigenaar ze beantwoordt; de sectie "Kopieer de vorm van" verwijst naar `src/api/routes/accounts.ts`.
 2. **Spec `goedgekeurd`:** `pnpm new:resource <naam> --rollen user,admin` maakt werkstraat-stap 2 (contract, handlers die 501
    geven), zonder tests:
    - nieuw: `src/shared/contracts/<naam>.ts`, `db/migrations/<tijdstempel>_<naam>.sql` (tabelpatroon uit

@@ -6,12 +6,13 @@ namespace: __naam__
 # __naam__
 
 Skelet van `pnpm new:resource __naam__` (fase 1, ADR 0047). Routes, permissies en de tabel zijn afgeleid uit de naam; de
-vragen onder "Open vragen" beantwoordt de eigenaar. Geen kop weglaten; "n.v.t. — reden" mag. Ontbreekt een antwoord, dan
+vragen onder "Open vragen" (bewust vooraan, anders dan in `_template.md`) beantwoordt de eigenaar. Geen kop weglaten; "n.v.t. — reden" mag. Ontbreekt een antwoord, dan
 vraagt de agent het. Na `goedgekeurd` maakt `pnpm new:resource __naam__ --rollen <rollen>` het contract, de 501-handlers,
 de migratie, de queries, het scherm, de route en het menu-item; de tests schrijft de tester.
 
 ## Open vragen
 
+- **OV-1 ⚠ open** — de eigenaar beantwoordt de onderstaande vragen; daarna gaat OV-1 op `✅ besloten` (pas dan laat `check-docs` `goedgekeurd` toe); opties: zie de vragen (geen aanbeveling: de eigenaar kiest)
 - **Rollen:** welke rollen mogen `__naam__:read` en `__naam__:write`? (wordt `--rollen`; de generator kiest niet zelf)
 - **Velden:** welke kolommen, met type, grens (`src/shared/limits.ts`) en of de gebruiker ze bij aanmaken en wijzigen zet?
 - **Admin:** ziet een admin rijen van anderen? Zo ja: een aparte policy `__tabel___select_admin` met
@@ -56,6 +57,12 @@ Een rij van een ander bestaat voor de gebruiker niet: `NOT_FOUND`, niet `FORBIDD
 Zoeken en sorteren (spec lijstpagina): `GET` neemt `/api/__naam__?q=&sort=&cursor=` (`q` zoekt, `sort` is `nieuwste` of `oudste`).
 De cursor is aan de sortering gebonden: een cursor van een andere sortering, een vreemde cursor of een ongeldige `sort` geeft `VALIDATION`.
 In `q` worden `%`, `_` en `\` ge-escaped, zodat ze letterlijk worden gezocht. Velden en filters: zie "Open vragen", vraag "Zoeken en filters".
+
+## Kopieer de vorm van
+
+Per regel een bestaand pad uit `docs/gouden-pad.md` (accountbeheer) en wat je overneemt; `check-docs` controleert het pad.
+
+- `src/api/routes/accounts.ts` — de vorm van een route met `defineRoute`, permissie en foutcodes
 
 ## Hergebruik en UX
 
