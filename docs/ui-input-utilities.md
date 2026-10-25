@@ -15,8 +15,8 @@ tussenruimte. Het invoerveld vult de resterende breedte; de knop behoudt zijn aa
 - `DateInput` gebruikt Input met `type="date"`. De browser verzorgt de datumweergave en kalender; formulierwaarden zijn
   `YYYY-MM-DD` of een lege string. Er is geen omzetting naar Date, UTC of Europe/Amsterdam. Geef `min`, `max`, `step`,
   disabled en readOnly waar nodig door. Validatie in Form blijft van het zod-schema; native grenzen vervangen die niet.
-  De losse kalenderknop opent de native kalender via `showPicker()`; het ingebouwde kalendericoon is verborgen.
-  Zonder beschikbare picker blijft het veld gefocust en handmatig invulbaar. Disabled en readOnly schakelen de
+  De extra kalenderknop gebruikt `showPicker()` als de functie beschikbaar is; het ingebouwde kalendericoon is dan verborgen.
+  Ontbreekt de functie of weigert de aanroep, dan blijft de native kalenderbediening zichtbaar en het veld handmatig invulbaar. Disabled en readOnly schakelen de
   kalenderknop uit. `pickerLabel` kan de toegankelijke standaardnaam “Kalender openen” vervangen.
 - `Breadcrumbs` ontvangt voorouders als `items` met stabiele `id`, `label` en interne `href`, plus `currentPage`.
   NavLink verzorgt de routernavigatie en native modifierklikken. Alleen de huidige pagina heeft `aria-current="page"`

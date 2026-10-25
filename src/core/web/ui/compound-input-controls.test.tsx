@@ -1,10 +1,20 @@
 import { createRef } from 'react';
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
-import { afterEach, expect, test, vi } from 'vitest';
+import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 import { DateInput } from './date-input.tsx';
 import { PasswordInput } from './password-input.tsx';
 
-afterEach(cleanup);
+// datumkiezer-fallback/AC-3: ondersteund openen, vergrendeling en handmatige invoer blijven werken.
+
+const originalPicker = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'showPicker');
+beforeEach(() => {
+  Object.defineProperty(HTMLInputElement.prototype, 'showPicker', { configurable: true, value: vi.fn() });
+});
+afterEach(() => {
+  cleanup();
+  if (originalPicker === undefined) Reflect.deleteProperty(HTMLInputElement.prototype, 'showPicker');
+  else Object.defineProperty(HTMLInputElement.prototype, 'showPicker', originalPicker);
+});
 
 test('het wachtwoordlabel blijft het invoerveld vinden naast de toegankelijke oogknop', () => {
   render(<PasswordInput aria-label="Wachtwoord" />);

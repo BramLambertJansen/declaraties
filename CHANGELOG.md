@@ -6,6 +6,9 @@ Hier staan wijzigingen die van belang zijn bij het gebruiken of bijwerken van de
 
 ### Toegevoegd
 
+- DateInput behoudt de native kalender als `showPicker` ontbreekt of wordt geweigerd. De extra kalenderknop verschijnt
+  bij een beschikbare showPicker-functie; een geweigerde aanroep herstelt de native indicator en behoudt waarde en focus.
+
 - De snelle gate laat lint en tests bij weinig beschikbaar geheugen na elkaar draaien. Alle bestaande controles en
   faalvoorwaarden blijven gelden; met voldoende geheugen blijven de drie parallelle banen beschikbaar.
 - Dezelfde geheugengrens begrenst browserworkers tot één bij weinig ruimte; anders hooguit vier, binnen de CPU-capaciteit.
