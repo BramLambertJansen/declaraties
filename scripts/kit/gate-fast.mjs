@@ -1,5 +1,6 @@
 // gate:fast (framework §4, ADR 0045): draait de snelle gates uit het register (scripts/kit/gates.mjs) in drie banen:
-// test:unit en lint (de twee langste) elk apart, de rest na elkaar in de derde. Gemeten op 16 cores (2026-10-22): 92 s na
+// test:unit en lint (de twee langste) elk apart, de rest na elkaar in de derde. Bij weinig beschikbaar geheugen delen de
+// zware gates een wachtrij; geen check wordt overgeslagen of anders aangeroepen. Gemeten op 16 cores (2026-10-22): 92 s na
 // elkaar, 71 s alles tegelijk (CPU-druk), 61 s in drie banen. Elke gate is een eigen `pnpm <script>` met dezelfde
 // exitcode als los; de uitvoer wordt gebufferd: eerst die van de rode gates, dan de lijst, beide in registervolgorde. Anders dan de oude &&-keten
 // stopt een rode gate de andere niet, zodat één ronde alle fouten laat zien.
@@ -85,4 +86,29 @@ export async function gateFast(scripts, run = draai, write = (text) => process.s
   return rood.length === 0 ? 0 : 1;
 }
 
-if (import.meta.main) process.exitCode = await gateFast(snelleGates());
+/** @param {(script: string) => Promise<Uitslag>} run */
+function begrensZwareBanen(run) {
+  let vorige = Promise.resolve();
+  return (/** @type {string} */ script) => {
+    if (!EIGEN_BAAN.has(script)) return run(script);
+    const result = vorige.then(() => run(script));
+    vorige = result.then(
+      () => undefined,
+      () => undefined,
+    );
+    return result;
+  };
+}
+
+/** Dezelfde geheugengrens voor lokale gates en browserworkers. @param {number} [beschikbaar] */
+export function weinigGeheugen(beschikbaar = process.availableMemory()) {
+  return beschikbaar < 6 * 1024 ** 3;
+}
+
+if (import.meta.main) {
+  // Tijdens deze hardening: een ESLint-proces van 1,8 GiB naast de tests op een gedeelde 8-GiB-host vulde ook de swap.
+  // Laat ruimte voor de derde baan en andere processen. Deze grens verandert uitsluitend de planning.
+  const beperkt = weinigGeheugen();
+  if (beperkt) console.info('gate:fast: minder dan 6 GiB beschikbaar; lint en tests draaien na elkaar');
+  process.exitCode = await gateFast(snelleGates(), beperkt ? begrensZwareBanen(draai) : draai);
+}

@@ -5,6 +5,25 @@ het voorstel, bouwt, verzamelt bewijs en zet `gebouwd` zodra het bouwbewijs best
 
 ## Besluit en taakscope voorbereiden
 
+`pnpm gate:fast` meldt het wanneer minder dan 6 GiB geheugen beschikbaar is: lint en tests wachten dan op elkaar,
+terwijl de overige snelle gates hun bestaande baan houden. Alle controles draaien precies eenmaal, ook na rood.
+Aanleiding: op de gedeelde 8-GiB-host liep een ESLint-proces van 1,8 GiB naast de tests; de swap was vol en de gate
+duurde 486 s met time-outs. Dit is een lokale waarneming, geen vaste looptijd. De CLI-regressies in
+`test/rails/gate-fast-memory.test.ts` bewaken beide planningen en het behoud van alle gates en exitcodes.
+
+Dezelfde geheugengrens begrenst Playwright: één worker onder de grens, anders hooguit vier en nooit meer dan beschikbare
+CPU's. Alle e2e-tests, CSP, axe en time-outs blijven behouden. Aanleiding: de lokale run met acht workers op de gedeelde
+8-GiB-host eindigde na 10,3 minuten met 67 time-outs/fouten en zeven geslaagde tests; de gewone pre-commitcontrole duurde
+tegelijk 422 s. De nieuwe planning is op de echte configuratie getest; uitvoering in de runner vraagt CI-bewijs, omdat
+`playwright.config.ts` hostcode is (ADR 0044). Een nieuwe planning maakt de oude rode run niet groen.
+
+Vraag bij `node scripts/kit/feiten.mjs` alleen de secties die de taak nodig heeft. De UI-catalogus en TypeScript-compiler
+worden pas geladen bij `componenten` of bij een aanroep zonder secties; tekst- en JSON-uitvoer blijven gelijk.
+
+Lokale vergelijking op 25 oktober 2026 (Node 26.11.1, vijf losse processen per versie, `gates --json`): mediaan 426 ms
+vóór en 32 ms na uitgesteld laden. Dit is een momentopname. `test/scripts/feiten-lazy.test.ts` bewaakt de vermeden import;
+de bestaande feiten- en toolchaintests bewaken de uitvoer en foutafhandeling.
+
 Begin met `node scripts/kit/feiten.mjs`. Architect schrijft spec of ADR direct met de bedoelde status; de eigenaar merget
 (besluit) of sluit de PR (afwijzen). Alleen voor een broncodemandaat (`--path`) bereidt de hoofdsessie een besluitrecord voor:
 

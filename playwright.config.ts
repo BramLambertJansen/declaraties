@@ -1,4 +1,6 @@
 import { defineConfig, devices } from '@playwright/test';
+import { availableParallelism } from 'node:os';
+import { weinigGeheugen } from './scripts/kit/gate-fast.mjs';
 
 // E2E draait altijd tegen de echte lokale stack, nooit met een gemockte API. Lokaal start de eigenaar die met
 // `pnpm dev`; in de runner van `pnpm ui:check` (ADR 0044) start Playwright de API en Vite zelf.
@@ -11,6 +13,7 @@ const outputDir = process.env['RUNNER_OUTPUT_DIR'];
 export default defineConfig({
   testDir: 'e2e',
   forbidOnly: true,
+  workers: weinigGeheugen() ? 1 : Math.min(4, availableParallelism()),
   // Overgangen ingekort (styles/index.css): axe meet anders kleuren halverwege transition-colors (flaky contrast).
   use: { baseURL, reducedMotion: 'reduce' },
   projects: [{ name: 'chromium', use: devices['Desktop Chrome'] }],

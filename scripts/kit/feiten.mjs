@@ -12,7 +12,6 @@ if (probleem !== null) {
   console.error(probleem);
   process.exit(1);
 }
-const { componenten } = await import('./catalogus.mjs');
 const { gates } = await import('./gates.mjs');
 const { adrOverzicht, componentenTekst, faseOverzicht, toText } = await import('./feiten-tekst.mjs');
 
@@ -109,7 +108,8 @@ const sections = {
   routes: plain(routes),
   permissies: plain(permissies),
   foutcodes: plain(foutcodes),
-  componenten: () => {
+  componenten: async () => {
+    const { componenten } = await import('./catalogus.mjs');
     const lijst = componenten();
     return {
       json: { catalogus: CATALOGUS, lijst },
