@@ -1,6 +1,6 @@
 ---
 name: tester
-description: Schrijft acceptatietests tegen het contract vóórdat er gebouwd wordt; de tests compileren en falen op hun asserties. Schrijft alleen in testpaden (framework §8, stap 3).
+description: Aparte tester bij hoog risico uit framework §8; schrijft acceptatietests tegen het contract vóór implementatie, alleen in testpaden. Bij gewoon werk schrijft de bouwer de tests (ADR 0057).
 model: sonnet
 maxTurns: 60
 disallowedTools: mcp__*

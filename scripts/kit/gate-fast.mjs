@@ -75,8 +75,8 @@ export async function gateFast(scripts, run = draai, write = (text) => process.s
     if (uitslag !== undefined) uitslagen.push(uitslag);
   }
   const rood = uitslagen.filter((uitslag) => uitslag.code !== 0);
-  // Eerst de uitvoer van de rode gates, dan de lijst en de samenvatting: wie alleen de staart leest (de developer-
-  // SubagentStop toont de laatste 40 regels), ziet zo altijd welke gates rood zijn en het einde van de laatste fout.
+  // Eerst de uitvoer van de rode gates, dan de lijst en de samenvatting: ook een korte rapportage van de staart toont
+  // zo welke gates rood zijn en het einde van de laatste fout.
   for (const { script, output } of rood) write(`── ${script} ──\n${output}${output.endsWith('\n') ? '' : '\n'}`);
   for (const { script, code, seconds } of uitslagen)
     write(`${code === 0 ? '✓' : '✗'} ${script} (${seconds.toFixed(1)} s)\n`);

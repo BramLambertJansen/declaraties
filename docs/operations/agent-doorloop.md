@@ -41,7 +41,10 @@ De app-initialisatie heeft naast geïsoleerde fixtures ook een compatibiliteitsp
 (`test/scripts/app-init-template.test.ts`). Na initialisatie vindt die proef de oorspronkelijke invoer in de gekoppelde
 Git-geschiedenis. CI haalt hiervoor de volledige geschiedenis op; er wordt niets teruggeschreven naar de eigen checkout.
 
-Begin met `node scripts/kit/feiten.mjs`. Architect schrijft spec of ADR direct met de bedoelde status; de eigenaar merget
+Begin met de taakrelevante secties van `node scripts/kit/feiten.mjs`, bijvoorbeeld `gates specs fase`.
+De hoofdsessie bepaalt het risicopad uit framework §8: gewoon werk door één bouwer met tests; bij hoog risico ook architect
+en aparte tester. Spec-review, negatieve securitytests en onafhankelijke review blijven. Een classificatie geeft geen extra rechten.
+Architect of hoofdsessie schrijft spec of ADR direct met de bedoelde status; de eigenaar merget
 (besluit) of sluit de PR (afwijzen). Alleen voor een broncodemandaat (`--path`) bereidt de hoofdsessie een besluitrecord voor:
 
 ```sh
@@ -63,6 +66,29 @@ Werkmap en HEAD moeten overeenkomen. Commit de status voordat je een volgende re
 YAML-regel te typen. Intrekking van een mandaat: eigenaar
 verwijdert of vervangt het record op main; lokaal verversen, CI gebruikt de actuele basis. Een verouderde lokale
 basis kan nog oud akkoord zien.
+
+### Gerichte feedback en één volledige lokale eindgate
+
+Developer-stop gebruikt dezelfde typecheck, lint op gewijzigde code en gerelateerde unit-/DOM-tests als Stop.
+Daarbij worden de volledige unit-suite en overige `gate:fast`-onderdelen niet bij iedere overdracht herhaald.
+De gerichte feedback kijkt naar nog gewijzigde bestanden; voer vóór review ook toepasselijke controles op de
+gecommitte branchdiff uit. Geen codewijziging betekent geen feedback, nooit een volledige groene einduitslag.
+
+Pre-push blijft ongewijzigd en start de volledige `pnpm gate:fast`. Alle CI-workflows en vereiste checks blijven
+ongewijzigd op iedere PR. Toepasselijke runnerchecks blijven verplicht. Een codewijziging of ongeldige controle-invoer
+vraagt nieuw bewijs; geen hergebruik van een oude groene uitslag of generieke cache.
+
+Overdracht bevat alleen doel, spec/contract, gewijzigde paden, open keuzes en echte checkuitslagen. Een ontbrekende
+onafhankelijke reviewer blijft een taak voor de eigenaar; de bouwer claimt geen onafhankelijke controle.
+
+Deze implementatie volgt ADR 0057: eerst de afzonderlijke besluit-PR mergen, daarna de implementatie. De vertrouwde
+hooklader gebruikt main; een branch activeert geen nieuwe rechten. De App, live ruleset en strikte build-proof uit dat
+ADR zijn afzonderlijk vervolgwerk en worden door deze hookwijziging niet als gebouwd of actief verklaard.
+
+`test/hooks/lean-workflow.test.ts` bewaakt de gerichte feedback en het blokkeren op type-, lint- en testfouten,
+en voert de echte pre-push-config in een tijdelijke repository uit met groene en rode gate-uitvoer.
+De bestaande tests in `werkstraat.test.ts` en `werkstraat-script.test.ts` zijn aangepast omdat developer-stop
+nu gerichte controles uitvoert; de controle op de git-root uit de payload blijft behouden.
 
 ### Feature-lane en mini-spec (ADR 0046)
 

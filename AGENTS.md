@@ -66,7 +66,7 @@ vangen het later toch, en dan is het werk verloren. Uitzonderingen staan limitat
   reden in de PR. Verwijderen of skippen alleen met akkoord van de eigenaar. Lijkt een test fout, leg het de eigenaar voor.
 - Unit `*.test.ts(x)` naast de code; integratie `*.int.test.ts` (via `pnpm test:db`); e2e in `e2e/`.
 - E2E en integratietests draaien tegen de echte lokale stack, nooit met gemockte API of database.
-- Een nieuwe resource staat in `test/security/resources.ts` (declaratie uit `pnpm new:resource`, samples door de tester).
+- Een nieuwe resource staat in `test/security/resources.ts` (declaratie uit `pnpm new:resource`, samples door de bouwer of vereiste tester).
 
 **Repo en grenzen** — zodat de kaders zelf niet ongemerkt verschuiven.
 - Bewerk geen gegenereerde bestanden en geen `.env*`; `.env.example` is beschermd (de demo-waarden zijn een securityregel).
@@ -87,9 +87,9 @@ vangen het later toch, en dan is het werk verloren. Uitzonderingen staan limitat
 - Migratie, nieuwe route of nieuwe permissie: eerst een spec (`docs/specs/_template.md`), bouwen pas bij `status: goedgekeurd`.
 - UI-tekst Nederlands; code, commits en branchnamen Engels. Naamgeving: `docs/framework.md` §5.
 - Volg `docs/dod.md` fasebewust: voer bestaande, toepasselijke checks uit, lever alleen op met een geslaagde uitslag (of expliciet akkoord van de eigenaar) en vermeld exact wat nog niet beschikbaar is; verzin geen commando's of uitslagen.
-- Volg de platformneutrale werkstraat in `docs/framework.md` §8. Agentrollen zijn onafhankelijk waar de runtime dat ondersteunt; ontbreekt een onafhankelijke reviewer, vraag de eigenaar om die review en claim niet dat je eigen werk onafhankelijk is gecontroleerd.
+- Volg de risicotriage in `docs/framework.md` §8: gewoon werk door één bouwer met tests en onafhankelijke review; bij hoog risico ook architect en aparte tester. Een lichte taak geeft geen extra rechten. Ontbreekt een afgedwongen onafhankelijke reviewer, laat de eigenaar die review doen en claim geen zelfreview als onafhankelijk bewijs.
 - Voordat je een roadmap-item, rail of ADR toevoegt: toets aan framework §1; ontbreekt een aanleiding, vraag de eigenaar.
-- Begin met de feiten: `node scripts/kit/feiten.mjs` in plaats van wat in proza staat.
+- Begin met taakrelevante feiten uit `node scripts/kit/feiten.mjs`, bijvoorbeeld `gates specs fase`; `componenten` alleen bij UI. Zonder secties komt alles.
 - Runtime-specifieke instructies gelden alleen voor die runtime. De hooks in `.claude/` werken niet in andere runtimes (Codex, sommige
   cloudsessies); daar zijn CI, de diff-guard en GitHub de enige grens. Claim nooit dat een instelling klopt die je niet kunt lezen.
 

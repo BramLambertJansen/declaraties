@@ -108,15 +108,19 @@ describe('stop', () => {
 });
 
 describe('subagent-stop', () => {
-  test('developer: groen vóór klaar, ook bij een schone werkmap', () => {
-    const green = fakeDeps();
-    const red = fakeDeps({ failing: ['gate:fast'] });
+  test('developer: gerichte feedback vóór klaar; volledige eindgate blijft bij pre-push', () => {
+    const green = fakeDeps({ changed: ['src/a.ts'] });
+    const red = fakeDeps({ changed: ['src/a.ts'], failing: ['vitest'] });
 
     expect([subagentStop({ agent_type: 'developer' }, green.deps), green.calls]).toStrictEqual([
       {},
-      ['pnpm gate:fast'],
+      [
+        'pnpm exec tsc -b',
+        'pnpm exec eslint --max-warnings 0 --no-warn-ignored src/a.ts',
+        'pnpm exec vitest related --run --project unit --project web src/a.ts',
+      ],
     ]);
-    expect(blocked(subagentStop({ agent_type: 'developer' }, red.deps))).toContain('Groen vóór klaar');
+    expect(blocked(subagentStop({ agent_type: 'developer' }, red.deps))).toContain('✗ unit');
   });
 
   test('tester: rode lint of typecheck blokkeert', () => {

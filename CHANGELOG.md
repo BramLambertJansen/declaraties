@@ -133,6 +133,13 @@ Hier staan wijzigingen die van belang zijn bij het gebruiken of bijwerken van de
 
 ### Gewijzigd
 
+- Gewoon werk door één bouwer met tests en onafhankelijke review; architect en aparte tester bij hoog risico.
+  De specplicht, broncodemandaten en eigenaarmerge blijven gelden.
+- Developer-stop geeft gerichte type-, lint- en testfeedback. De volledige lokale gate blijft in pre-push en
+  volledige CI blijft op iedere PR; geen oude groene uitslagen of testcache als vervanging.
+- Taakgerichte feiten en compacte overdracht in agentprofielen en skills. Activering volgt na de afzonderlijke
+  eigenaarmerge van ADR 0057; GitHub App, ruleset en build-proof zijn nog vervolgwerk.
+
 - ADR's geconsolideerd: 0001–0038 zijn `vervangen door` de geldende 0039–0051 (#249–#253, #255; verwijzingen in code, docs en tests bijgewerkt in #258–#260). Afgesloten ADR's mogen ongewijzigd naar `docs/adr/archief/` (ADR 0053, #269). Bij een update: verwijs in eigen code en docs naar de nieuwe nummers; `node scripts/kit/feiten.mjs adr` toont welke gelden.
 - Sandbox: de root-weigering op `*secret*` is `Read(/*secret*)` in plaats van `Read(./*secret*)` (`.claude/settings.json`).
   `./*secret*` matcht als kale bestandsnaam op elke diepte en maskeerde daardoor nog steeds `node_modules` (better-auth

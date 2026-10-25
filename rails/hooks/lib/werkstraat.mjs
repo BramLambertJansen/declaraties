@@ -1,8 +1,8 @@
-// De werkstraat-hooks uit framework §8 (ADR 0045), behalve het rolhek: na elke bewerking, bij stoppen, "groen vóór klaar"
-// voor de developer, de stopcontrole van tester en reviewer, en de feiten bij de start van een sessie. Puur: elk commando
+// De werkstraat-hooks uit framework §8 (ADR 0045/0057), behalve het rolhek: na elke bewerking, gerichte stopfeedback
+// voor de bouwer, de stopcontrole van tester en reviewer, en de feiten bij de start van een sessie. Puur: elk commando
 // gaat via `deps.run`, zodat test/hooks/werkstraat.test.ts elke beslissing zonder echte pnpm of git bewijst.
 // Nooit database. Netwerk alleen voor de fetch van session-start (harde timeout, nooit om credentials vragen); de rest is
-// lint, typecheck, unit (gate:fast) en git.
+// lint, typecheck, gerelateerde unit-tests en git. De volledige gate:fast blijft in pre-push en CI.
 
 /**
  * @typedef {{ code: number, output: string }} RunResult
@@ -91,7 +91,7 @@ export function stop(payload, deps) {
 }
 
 /**
- * SubagentStop per rol: developer → gate:fast groen ("groen vóór klaar", ook bij een schone werkmap); tester → lint en
+ * SubagentStop per rol: developer → gerichte Stop-feedback, zonder volledige eindgate; tester → lint en
  * typecheck groen, nieuwe tests falen alleen op asserties; reviewer → rapport met de kop "## Bevindingen".
  * @param {unknown} payload
  * @param {Deps} deps
@@ -99,16 +99,10 @@ export function stop(payload, deps) {
  */
 export function subagentStop(payload, deps) {
   const role = get(payload, 'agent_type');
-  if (role === 'developer') return developerStop(deps);
+  if (role === 'developer') return stop({}, deps);
   if (role === 'tester') return testerStop(deps);
   if (role === 'reviewer') return reviewerStop(payload);
   return {};
-}
-
-/** @param {Deps} deps */
-function developerStop(deps) {
-  const gate = deps.run('pnpm', ['gate:fast']);
-  return gate.code === 0 ? {} : block(`Groen vóór klaar: pnpm gate:fast faalt.\n${lastLines(gate.output)}`);
 }
 
 /** @param {Deps} deps */
@@ -223,7 +217,7 @@ export function sessionStart(deps) {
       specs,
       status,
       doctor,
-      'Begin met de feiten: node scripts/kit/feiten.mjs (framework §8).',
+      'Vraag alleen taakrelevante feiten: node scripts/kit/feiten.mjs gates specs fase; componenten alleen bij UI (framework §8).',
     ]
       .filter((line) => line !== '')
       .join('\n'),

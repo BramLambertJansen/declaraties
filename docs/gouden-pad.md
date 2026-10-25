@@ -33,7 +33,8 @@ draait hem; `--dry-run` toont het plan zonder te schrijven, en bestaat een doel 
      verplicht voor de cursorproef: A en B krijgen ieder twee verschillende rijen. `rol` kiest een toegestane testrol
      (`user` indien toegestaan, anders de opgegeven rol); admin-acteurs krijgen echte MFA-sessies. De generator schrijft
      dit bestand niet (`scripts/kit/new-resource.mjs`, `declaratieInhoud`).
-3. Daarna de werkstraat: de tester schrijft de tests (pgTAP per policy, integratie, e2e), zet de declaratie in
+3. Daarna het risicopad uit framework §8: de bouwer of, bij hoog risico, aparte tester schrijft de tests
+   (pgTAP per policy, integratie, e2e), zet de declaratie in
    `test/security/resources.ts` en vult de samples in (tot dan is `pnpm test:db` rood), de developer voegt de velden toe in
    een nieuwe migratie met kolomgrants en bouwt de handlers. De stappen hieronder gelden dan per bestand.
 

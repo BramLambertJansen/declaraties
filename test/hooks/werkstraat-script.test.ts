@@ -65,11 +65,11 @@ function tempRepo(branch: string, gateFast: string): string {
   return dir;
 }
 
-const FAILS = 'node -e "process.exit(1)"';
 const PASSES = 'node -e "process.exit(0)"';
 
-test('subagent-stop developer: draait gate:fast in de git-root van payload.cwd, niet in CLAUDE_PROJECT_DIR', () => {
-  const worktree = tempRepo('worktree-branch', FAILS);
+test('subagent-stop developer: controleert gewijzigde code in payload.cwd, niet in CLAUDE_PROJECT_DIR', () => {
+  const worktree = tempRepo('worktree-branch', PASSES);
+  writeFileSync(path.join(worktree, 'nieuw.ts'), 'export const x: number = "geen getal";\n');
   const projectDir = tempRepo('project-branch', PASSES);
 
   const result = run('subagent-stop', JSON.stringify({ agent_type: 'developer', cwd: worktree }), projectDir);

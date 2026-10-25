@@ -8,6 +8,9 @@ allowed-tools: Bash(node scripts/kit/feiten.mjs *)
 
 Wanneer: elke migratie, nieuwe route of nieuwe permissie (AGENTS.md). Bouwen pas als de spec met status `goedgekeurd` op main staat (een mini-spec mag met haar code in één feature-lane-PR): de merge door de eigenaar is het besluit (ADR 0046).
 
+De hoofdsessie kan een gewone spec zelf schrijven. Gebruik een aparte architect bij hoog risico volgens framework §8;
+de taakroute verandert niets aan spec-review, broncodemandaat of eigenaarbesluit (ADR 0057).
+
 Feiten nu:
 
 !`node scripts/kit/feiten.mjs specs routes permissies foutcodes`
