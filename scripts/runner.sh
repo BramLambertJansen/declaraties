@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Draait door de agent geschreven tests en configs in de runner-container (ADR 0044): read-only repo, geen
+# Draait door de agent geschreven tests en configs in de runner-container (ADR 0044): beperkte read-only invoer, geen
 # capabilities, alleen op het interne netwerk test-net met een eigen, verse test-database.
 # Gebruik: scripts/runner.sh db|ui|gen [--sta-wijzigingen-toe]   (via pnpm test:db, pnpm ui:check en pnpm db:generate)
 set -euo pipefail
@@ -82,12 +82,50 @@ check_host_files() {
 
 if [[ "${2:-}" != "--sta-wijzigingen-toe" ]]; then check_host_files; fi
 
+# Alleen benodigde bronpaden; nooit .git, persoonlijke instellingen of losse bestanden uit de werkmap.
+# Git selecteert getrackte en nieuwe niet-genegeerde bestanden. Een gewijzigde test blijft dus gewoon meedraaien.
+RUNNER_INPUTS=(src test e2e public scripts rails db package.json pnpm-workspace.yaml
+  tsconfig.base.json tsconfig.json tsconfig.node.json tsconfig.web.json
+  vitest.config.ts playwright.config.ts vite.config.ts .prettierrc.json index.html)
+
+check_input_path() {
+  local prefix="$1"
+  while true; do
+    [[ -L "$prefix" ]] && unsafe_host_path "$prefix"
+    [[ "$prefix" == */* ]] || break
+    prefix="${prefix%/*}"
+  done
+  return 0
+}
+
+# Ook bij een eigenaaroverride blijven mountbronnen en de uitvoermap echte mappen, geen symlinks naar hostbestanden.
+for input in "${RUNNER_INPUTS[@]}" node_modules .runner-output; do check_input_path "$input"; done
+
+export RUNNER_INPUT_DIR RUNNER_PRIVATE_CANARY RUNNER_PRIVATE_CANARY_NAME
+RUNNER_INPUT_DIR="$(mktemp -d /tmp/template-runner-inputs.XXXXXXXX)"
+RUNNER_PRIVATE_CANARY="$(mktemp "$PWD/.runner-canary.XXXXXXXX")"
+RUNNER_PRIVATE_CANARY_NAME="$(basename "$RUNNER_PRIVATE_CANARY")"
+cleanup_inputs() { rm -rf -- "$RUNNER_INPUT_DIR"; rm -f -- "$RUNNER_PRIVATE_CANARY"; }
+trap cleanup_inputs EXIT
+printf 'synthetische leesgrenscontrole\n' > "$RUNNER_PRIVATE_CANARY"
+
+git ls-files --cached --others --exclude-standard -z -- "${RUNNER_INPUTS[@]}" > "$RUNNER_INPUT_DIR/files"
+while IFS= read -r -d '' input; do
+  case "/$input/" in */.env/*|*/.env.*/*) continue ;; esac
+  check_input_path "$input"
+  [[ -e "$input" ]] || continue # lokaal verwijderd bestand
+  [[ -f "$input" ]] || unsafe_host_path "$input"
+  cp --parents --no-dereference -- "$input" "$RUNNER_INPUT_DIR/"
+done < "$RUNNER_INPUT_DIR/files"
+rm -- "$RUNNER_INPUT_DIR/files"
+mkdir -p "$RUNNER_INPUT_DIR/node_modules"
+
 # Geen invloed van de shell op compose: vaste bestanden, eigen projectnaam, nooit .env of .env.local.
 while IFS= read -r name; do unset "$name"; done < <(compgen -e | grep '^COMPOSE_' || true)
 export RUNNER_UID RUNNER_GID
 RUNNER_UID="$(id -u)"
 RUNNER_GID="$(id -g)"
-project="$(basename "$PWD")-test"
+project="template-test-$(printf '%s' "$PWD" | sha256sum | cut -c1-12)"
 COMPOSE=(docker compose -f compose.yaml --project-directory . --project-name "$project" --env-file db/test.env --profile test)
 compose() { "${COMPOSE[@]}" "$@"; }
 
@@ -104,7 +142,11 @@ pull_images() {
 }
 
 mkdir -p .runner-output
-trap 'compose down --volumes --remove-orphans >/dev/null 2>&1 || true' EXIT
+cleanup() {
+  compose down --volumes --remove-orphans >/dev/null 2>&1 || true
+  cleanup_inputs
+}
+trap cleanup EXIT
 compose down --volumes --remove-orphans >/dev/null 2>&1 || true
 pull_images
 for service in "${services[@]}"; do

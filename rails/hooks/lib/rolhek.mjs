@@ -541,6 +541,15 @@ function forbidden({ assignments, argv }, { role, ctx }, decision) {
     decision.deny.push('De agent zet CI niet lokaal; dit kan de hostcontrole van de runner omzeilen');
   if (program === 'git') decision.deny.push(...gitForbidden(args, { role, branch: ctx.branch }));
   if (program === 'gh') decision.deny.push(...ghForbidden(args));
+  if (program === 'gh' && role !== 'hoofdsessie' &&
+    (args.some((arg, index) => arg === 'pr' && args[index + 1] === 'create') ||
+      (args[0] === 'api' && apiMutates(args.slice(1)))))
+    decision.deny.push('subagent: PR-creatie en schrijvende GitHub-API-opdrachten doet alleen de hoofdsessie');
+  if (program === 'pnpm' && (args[0] === 'format' || (args[0] === 'run' && args[1] === 'format'))) {
+    const melding = 'pnpm format schrijft de hele repository, inclusief beschermde paden; gebruik gerichte formattering';
+    if (role === 'hoofdsessie') decision.ask.push(melding);
+    else decision.deny.push(melding);
+  }
   if (role !== 'hoofdsessie' && isNewResource(program, args))
     decision.deny.push('pnpm new:resource: alleen de hoofdsessie (ADR 0047 punt 6); wat hij schrijft, ziet het rolhek niet');
   if (role !== 'hoofdsessie' &&
@@ -634,6 +643,8 @@ function movesTrustedBase(subcommand, rest) {
   const operands = rest.filter((arg) => !arg.startsWith('-'));
   switch (subcommand) {
     case 'update-ref':
+      if (rest.some((arg) => arg.length > 2 && '--stdin'.startsWith(arg))) return true;
+      return rest.some((arg) => /^refs\/remotes\/origin\//.test(arg));
     case 'symbolic-ref':
       return rest.some((arg) => /^refs\/remotes\/origin\//.test(arg));
     case 'branch':
@@ -731,12 +742,20 @@ function apiMerges(args) {
 /** @param {readonly string[]} args */
 function apiWritesSelfReview(args) {
   const endpoint = apiEndpoint(args);
-  const method = args.findIndex((arg) => arg === '-X' || arg === '--method');
-  const writes =
-    (method !== -1 && (args[method + 1] ?? 'GET').toUpperCase() !== 'GET') ||
-    args.some((arg) => ['-f', '-F', '--field', '--raw-field', '--input'].includes(arg) || /^--?(?:f|F|field|raw-field)=/.test(arg));
   if (endpoint === 'graphql') return args.some((arg) => /mutation[\s\S]*(?:Review|Label|Status|CheckRun)/i.test(arg));
-  return writes && SELF_REVIEW_API.test(endpoint);
+  return apiMutates(args) && SELF_REVIEW_API.test(endpoint);
+}
+
+/** REST met schrijfargumenten, of GraphQL-mutatie/onleesbare invoer; inline queries blijven lezen. @param {readonly string[]} args */
+function apiMutates(args) {
+  if (apiEndpoint(args) === 'graphql')
+    return args.some((arg) => /\bmutation\b/i.test(arg) || /query=@/.test(arg) || arg === '--input' || arg.startsWith('--input='));
+  const method = args.findIndex((arg) => arg === '-X' || arg === '--method');
+  return (
+    (method !== -1 && (args[method + 1] ?? 'GET').toUpperCase() !== 'GET') ||
+    args.some((arg) => /^--method=(?!GET$)/i.test(arg) || /^-X(?!GET$).+/i.test(arg)) ||
+    args.some((arg) => arg.startsWith('-f') || arg.startsWith('-F') || ['--field', '--raw-field', '--input'].includes(arg) || /^--(?:field|raw-field|input)=/.test(arg))
+  );
 }
 
 const API_OPTIONS_WITH_VALUE = new Set(['-X', '--method', '-H', '--header', '-f', '-F', '--field', '--raw-field', '--input', '-q', '--jq', '-t', '--template', '--hostname', '--cache', '-p', '--preview']);

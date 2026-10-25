@@ -24,6 +24,23 @@ Lokale vergelijking op 25 oktober 2026 (Node 26.11.1, vijf losse processen per v
 vóór en 32 ms na uitgesteld laden. Dit is een momentopname. `test/scripts/feiten-lazy.test.ts` bewaakt de vermeden import;
 de bestaande feiten- en toolchaintests bewaken de uitvoer en foutafhandeling.
 
+`docs/roadmap-archief.md` bevat historisch bouwbewijs en is net als de actieve roadmap een beschermd gate-pad.
+De diff-guard beoordeelt ook verwijderen en weg-hernoemen; CODEOWNERS volgt dezelfde lijst in `.claude/gates.json`.
+
+ADR-nummers worden samen gecontroleerd voor de actieve map en het archief. Verwijderde nummers blijven gereserveerd via
+de Git-geschiedenis van de vertrouwde basis. Heeft main een nummer inmiddels gebruikt, werk de branch dan eerst bij.
+Alleen het bestaande paar 0039-bestanden blijft een ratchet-afwijking; nieuwe dubbelen worden geweigerd.
+Een vervangingsverwijzing eindigt bij een bestaand ADR, zonder zelfverwijzing of cyclus. De besluit-lane accepteert
+uitsluitend records die ook door de bestaande registervalidator komen.
+
+De ADR-sectie van `feiten.mjs` gebruikt dezelfde nummerherkenning en reserveert nummers uit het werkmaparchief en de
+bekende Git-geschiedenis van HEAD en origin/main. Die nummerreservering voegt geen fictieve documenten toe aan de lijst.
+Onleesbare geschiedenis is een fout; haal bij een verse of onvolledige checkout de geschiedenis eerst op.
+
+De app-initialisatie heeft naast geïsoleerde fixtures ook een compatibiliteitsproef met de echte templatebestanden
+(`test/scripts/app-init-template.test.ts`). Na initialisatie vindt die proef de oorspronkelijke invoer in de gekoppelde
+Git-geschiedenis. CI haalt hiervoor de volledige geschiedenis op; er wordt niets teruggeschreven naar de eigen checkout.
+
 Begin met `node scripts/kit/feiten.mjs`. Architect schrijft spec of ADR direct met de bedoelde status; de eigenaar merget
 (besluit) of sluit de PR (afwijzen). Alleen voor een broncodemandaat (`--path`) bereidt de hoofdsessie een besluitrecord voor:
 
@@ -66,13 +83,33 @@ broncommit, repository en geopende PR gebonden. Een gewijzigde implementatie na 
 - **Overige feature-lane:** app-werk met een mini-spec (`docs/specs/_mini.md`, veld `sjabloon: mini`). Alles mag meewijzigen (ook docs,
   `CHANGELOG.md`, de roadmap en gegenereerde bestanden zoals het schema-snapshot) behalve `src/core`, een pad uit `voorReview`
   (`.claude/gates.json`), een ADR, een gewijzigde of verwijderde bestaande test of migratie, en een tweede document met een eigenaarstatus.
-  Een migratie mag alleen een nieuwe tabel maken (`create table (…)`, daarna index, RLS, grants aan `app_*`-rollen en policies, uitsluitend op die tabel; geen kopieën, functies of dollar-quotes) en de mini-spec heeft dan de kop
+  Een PR bevat hoogstens één nieuwe migratie. Die maakt precies één owner-tabel in `public` volgens `pnpm new:resource`:
+  vaste id-, owner_id- en created_at-kolommen, ENABLE en FORCE RLS, vier afzonderlijke eigenaarpolicies met
+  `(select app.current_user_id())` en expliciete SELECT/DELETE-grants aan `app_authenticated`. INSERT/UPDATE-grants
+  zijn alleen per app-kolom toegestaan. Eenvoudige extra velden mogen text, integer/int, bigint, boolean, uuid of
+  timestamptz zijn, eventueel met NOT NULL en een letterlijke default. Indexen bevatten alleen kolomnamen;
+  quoted objectnamen, expressies en andere SQL-vormen volgen de framework-lane (`scripts/kit/lane.mjs`). De vaste
+  verwijzing naar `better_auth."user" (id)` blijft toegestaan. Een retentionregistratie heeft precies de volgorde
+  NO FORCE → één rij voor de nieuwe tabel → FORCE; losse of herhaalde toggles worden geweigerd. De mini-spec heeft de kop
   "Datawijzigingen (met grants)". Een geneste `CLAUDE.md` of `AGENTS.md` valt eruit. Een onbekend pad buiten `gates` en buiten `src/`, `docs/` en `db/` (zoals `.vscode/` of `.mcp.json`) valt eruit. Diff-guard en
   CODEOWNERS blijven gelden voor elk gate-pad in de PR. Het bereik is ruimer dan de letter van ADR 0046 punt 14 (eigenaarbesluit).
 - **Besluit-PR (framework-lane):** een of meer ADR's en specs die een eigenaarstatus krijgen (ook `vervangen door NNNN` of `vervallen`, of nieuwe inhoud van een goedgekeurde spec), met hooguit hun eigen records in `.claude/decisions.json` (andere records of `requiredChecks` wijzigen telt niet), zonder code of andere bestanden: alleen documenten in `docs/adr/` en `docs/specs/` die zelf een besluit krijgen, ook geen index of ander document. Wijzigt de inhoud van een spec met een `--path`-mandaat, dan vervalt dat mandaat; code eronder vraagt een nieuw record. Bouwen volgt in een volgende PR.
 - Past de PR in geen van beide, dan geldt de strenge route: de status heeft een record op main nodig (ADR 0046, hierboven).
 
 ## Ontwikkelen en runnerchecks
+
+`check-core` weigert een core-veranderende merge die een eerder geïmporteerde templateversie terugdraait, ook als de
+oudere ouder zelf vertrouwd is of de merge-ouders omgedraaid zijn (`scripts/kit/check-core.mjs`). De controle gebruikt
+de gedeelde Git-geschiedenis van beide ouders en `template/main`, zonder extra versieregister. Een template-update
+zonder core-wijziging en een nieuwere core met behoud van app-code blijven mogelijk; ontbrekende geschiedenis vraagt
+een volledige fetch. Dit bewaakt core; het vervangt de inhoudelijke review van app-code niet.
+
+Het rolhek reserveert PR-creatie en schrijvende `gh api`-opdrachten voor de hoofdsessie; inline GraphQL-queries
+blijven voor subagents leesbaar, oncontroleerbare GraphQL-invoerbestanden niet. `pnpm format` en `pnpm run format`
+vragen de hoofdsessie expliciet akkoord omdat ze ook beschermde bestanden schrijven; subagents gebruiken gerichte
+formattering. De padcontrole volgt bij cp/mv/ln/install ook `-t` en `--target-directory`.
+`git update-ref --stdin` (ook afgekort) wordt geweigerd omdat de te wijzigen refs niet in de opdracht staan.
+Dit sluit bekende omwegen; de bestaande sandbox en CI blijven nodig voor niet-geclassificeerde programma's.
 
 Een geldig broncodemandaat geeft alleen de bekende developer toegang tot genoemde beschermde bronbestanden.
 Core kan uitsluitend in de template zelf worden ontwikkeld. App-uitbreidingen blijven via registratie en app-code

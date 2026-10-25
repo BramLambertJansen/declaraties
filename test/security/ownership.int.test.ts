@@ -89,15 +89,21 @@ describe('security/AC-9: eigenaarschap via de API', { timeout: LANG }, () => {
     }
     const t = createSecurityFixtures();
     try {
-      const opzet = {
-        zend: echteZender(t),
-        classificatie: routeClassificatie,
-        resources,
-        gebruikers: { A: (await t.A()).userId, B: (await t.B()).userId },
-      };
-
-      expect(await eigenaarApiProblemen(opzet)).toStrictEqual([]);
-      expect(await spoofApiProblemen(opzet)).toStrictEqual([]);
+      for (const [naam, regel] of Object.entries(resources)) {
+        const classificatie = Object.fromEntries(
+          eigenaarRoutes.filter(([, klasse]) => klasse.scope === 'eigenaar' && klasse.resource === naam),
+        );
+        if (Object.keys(classificatie).length === 0) continue;
+        const rol = regel.rol ?? 'user';
+        const opzet = {
+          zend: echteZender(t, rol),
+          classificatie,
+          resources: { [naam]: regel },
+          gebruikers: { A: (await t.A(rol)).userId, B: (await t.B(rol)).userId },
+        };
+        expect(await eigenaarApiProblemen(opzet)).toStrictEqual([]);
+        expect(await spoofApiProblemen(opzet)).toStrictEqual([]);
+      }
     } finally {
       await t.close();
     }

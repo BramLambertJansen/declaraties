@@ -77,6 +77,10 @@ describe('feature-lane: positief', () => {
 
 describe('feature-lane: negatief (moet de strenge route geven)', () => {
   test.each([
+    [
+      'twee nieuwe migraties in één feature',
+      [A(SPEC), A('db/migrations/20261018120000_demo.sql'), A('db/migrations/20261018120001_more.sql')],
+    ],
     ['1 een pad in src/core', [A(SPEC), M('src/core/web/ui/toast.tsx')]],
     ['2a een pad uit voorReview: scripts', [A(SPEC), M('scripts/kit/check-docs.mjs')]],
     ['2b een pad uit voorReview: .claude', [A(SPEC), M('.claude/gates.json')]],
@@ -200,15 +204,28 @@ describe('framework-lane', () => {
   });
 });
 
+// Het lichte migratiepad is voortaan uitsluitend het bestaande owner-patroon. Historische positieve fixtures met
+// using (true), onbeschermde tabellen of meerdere tabellen zijn daarom aangepast of hieronder negatief gemaakt.
+function ownerTabel(naam = 'public.notes', veld = 'body text not null'): string {
+  return `create table ${naam} (
+    id uuid primary key default gen_random_uuid(),
+    owner_id text not null default app.current_user_id() references better_auth."user" (id) on delete cascade,
+    created_at timestamptz not null default now(), ${veld}
+  );
+  alter table ${naam} enable row level security;
+  alter table ${naam} force row level security;
+  grant select, delete on ${naam} to app_authenticated;
+  create policy notes_select on ${naam} for select to app_authenticated using (owner_id = (select app.current_user_id()));
+  create policy notes_insert on ${naam} for insert to app_authenticated with check (owner_id = (select app.current_user_id()));
+  create policy notes_update on ${naam} for update to app_authenticated using (owner_id = (select app.current_user_id())) with check (owner_id = (select app.current_user_id()));
+  create policy notes_delete on ${naam} for delete to app_authenticated using (owner_id = (select app.current_user_id()));`;
+}
+
 describe('migratieOvertreding: alleen een nieuwe tabel', () => {
   const tabel = [
     '-- migrate:up',
-    'create table public.notes (id uuid primary key, body text not null);',
-    'alter table public.notes enable row level security;',
-    'alter table public.notes force row level security;',
+    ownerTabel(),
     'create index notes_body_idx on public.notes (body);',
-    'grant select on public.notes to app_authenticated;',
-    'create policy notes_select_own on public.notes for select to app_authenticated using (true);',
     '-- migrate:down',
     'drop table public.notes;',
   ].join('\n');
@@ -261,7 +278,7 @@ describe('migratieOvertreding: alleen een nieuwe tabel', () => {
 });
 
 describe('migratieOvertreding: bewaarcatalogus (AC-10)', () => {
-  const MAAK = 'create table public.notes (id uuid primary key);';
+  const MAAK = ownerTabel();
   const NO_FORCE = 'alter table app.retention no force row level security;';
   const FORCE = 'alter table app.retention force row level security;';
   const RIJ = "insert into app.retention values ('public.notes', null, null, 'app', 'verdwijnt met het account');";
@@ -282,10 +299,15 @@ describe('migratieOvertreding: bewaarcatalogus (AC-10)', () => {
       'een reden met puntkomma en -- erin',
       [MAAK, NO_FORCE, "insert into app.retention values ('public.notes', null, null, 'app', 'a; b -- c');", FORCE],
     ],
+  ])('%s: geen overtreding', (_naam, delen) => {
+    expect(migratieOvertreding(migratie(...delen))).toBeNull();
+  });
+
+  test.each([
     [
-      'een eigen tabel in een ander schema',
+      'een eigen tabel in een ander schema (buiten het generatorpatroon)',
       [
-        'create table app.things (id uuid primary key);',
+        ownerTabel('app.things'),
         NO_FORCE,
         "insert into app.retention values ('app.things', null, null, 'app', 'reden');",
         FORCE,
@@ -295,18 +317,13 @@ describe('migratieOvertreding: bewaarcatalogus (AC-10)', () => {
       'twee eigen tabellen, elk met eigen rij',
       [
         MAAK,
-        'create table public.more (id uuid primary key);',
+        ownerTabel('public.more'),
         NO_FORCE,
         RIJ,
         "insert into app.retention values ('public.more', null, null, 'app', 'reden');",
         FORCE,
       ],
     ],
-  ])('%s: geen overtreding', (_naam, delen) => {
-    expect(migratieOvertreding(migratie(...delen))).toBeNull();
-  });
-
-  test.each([
     [
       'rij voor een andere tabel dan de eigen nieuwe',
       [MAAK, NO_FORCE, "insert into app.retention values ('public.other', null, null, 'app', 'reden');", FORCE],
@@ -369,11 +386,11 @@ describe('migratieOvertreding: bewaarcatalogus (AC-10)', () => {
   // Een cijfer in de tabelnaam (controleerNaam staat dat toe, bijv. invoices2) mag de rij niet doen afwijzen.
   test.each([
     ['public.invoices2', 'eindigt op een cijfer'],
-    ['app.things2', 'eindigt op een cijfer in app'],
+    ['public.things2', 'eindigt op een cijfer in een tweede tabelnaam'],
     ['public.line_items_v2', 'heeft een cijfer middenin'],
   ])('tabel %s (%s): geen overtreding', (tabel) => {
     const delen = [
-      `create table ${tabel} (id uuid primary key);`,
+      ownerTabel(tabel),
       NO_FORCE,
       `insert into app.retention values ('${tabel}', null, null, 'app', 'reden');`,
       FORCE,
@@ -431,21 +448,26 @@ describe('migratieOvertreding: bewaarcatalogus (AC-10)', () => {
 
   test.each([
     ['no force, insert, force', [MAAK, NO_FORCE, RIJ, FORCE]],
+    ['geen toggle en geen insert, tabel met cijfers', [ownerTabel('public.invoices2')]],
+  ])('%s: geen overtreding (de laatste toggle is force)', (_naam, delen) => {
+    expect(migratieOvertreding(migratie(...delen))).toBeNull();
+  });
+
+  test.each([
     [
       'no force, twee inserts voor eigen tabellen, force',
       [
         MAAK,
-        'create table public.more (id uuid primary key);',
+        ownerTabel('public.more'),
         NO_FORCE,
         RIJ,
         "insert into app.retention values ('public.more', null, null, 'app', 'reden');",
         FORCE,
       ],
     ],
-    ['geen toggle en geen insert, tabel met cijfers', ['create table public.invoices2 (id uuid primary key);']],
     ['no force, force, no force, force', [MAAK, NO_FORCE, FORCE, NO_FORCE, RIJ, FORCE]],
-  ])('%s: geen overtreding (de laatste toggle is force)', (_naam, delen) => {
-    expect(migratieOvertreding(migratie(...delen))).toBeNull();
+  ])('%s: vraagt nu de zwaardere route', (_naam, delen) => {
+    expect(migratieOvertreding(migratie(...delen))).toBeTypeOf('string');
   });
 
   // De reden: een kale waarde met cijfer en een tekst met spaties of leestekens (wordt `?`) zijn beide toegestaan.
@@ -473,17 +495,17 @@ describe('migratieOvertreding: dbmate-marker en template', () => {
   });
 
   test('een tekst met puntkomma en -- in een kolomdefault blijft één statement', () => {
-    expect(migratieOvertreding("create table public.n (a text default 'x; -- y');")).toBeNull();
+    expect(migratieOvertreding(ownerTabel('public.n', "body text default 'x; -- y'"))).toBeNull();
   });
 });
 
 describe('recordAlleenBesluit', () => {
   const record = (file: string, digest = 'a') => ({
     file,
-    digest,
+    digest: digest.repeat(64),
     repository: 'r/r',
     branch: 'b/c',
-    status: 'x',
+    status: 'goedgekeurd',
     paths: [],
   });
   const register = (decisions: unknown[], requiredChecks = ['gate:fast']) =>

@@ -6,6 +6,7 @@
 
 import { globMatch } from '../../rails/hooks/lib/rolhek.mjs';
 import { functionalUiReason } from '../../rails/hooks/lib/functional-ui.mjs';
+import { readRegistry } from '../../rails/hooks/lib/task-authority.mjs';
 
 /** @typedef {{ status: string, pad: string, van?: string }} Wijziging */
 /** @typedef {{ lane: 'feature' | 'framework' | null, reden: string }} Uitslag */
@@ -63,6 +64,8 @@ export function laneVan({ changes, besluiten, mini, config, repository, function
       reden: `${vreemd.pad} hoort niet in een besluit-PR met ${besluiten.join(', ')}; de feature-lane is één mini-spec`,
     };
   if (!mini) return { lane: null, reden: `${vreemd.pad} hoort niet in een PR met een in-PR-status (geen mini-spec)` };
+  const migraties = overige.filter(({ status, pad }) => status === 'A' && inLijst(config.migraties, pad));
+  if (migraties.length > 1) return { lane: null, reden: 'de feature-lane bevat hoogstens één nieuwe migratie' };
   const scope = functioneleUi ? functionalUiReason({ changes, repository, spec: besluit }) : null;
   if (scope !== null) return { lane: null, reden: scope };
   const reden = overige
@@ -84,7 +87,7 @@ const RETENTION_INSERT = /(?:^|;)\s*insert\s+into\s+app\.retention\s+values\s*\(
 
 /** Een tekstwaarde wordt `?`; alleen een kale naam (`public.notes`, `app`) in een insert op `app.retention` blijft letterlijk. @param {string} inhoud @param {string} tot */
 function waarde(inhoud, tot) {
-  return /^[a-z0-9_.]+$/i.test(inhoud) && RETENTION_INSERT.test(tot) ? `'${inhoud}'` : '?';
+  return /^[a-z0-9_.]+$/.test(inhoud) && RETENTION_INSERT.test(tot) ? `'${inhoud}'` : '?';
 }
 
 /**
@@ -107,6 +110,10 @@ function statementsVan(sql) {
       while (einde < sql.length && !(sql[einde] === teken && sql[einde + 1] !== teken))
         einde += sql[einde] === teken ? 2 : 1;
       if (einde >= sql.length) return null;
+      // Alleen de vaste FK uit het generatorsjabloon is quoted. Anders zou lowercasing twee verschillende
+      // PostgreSQL-objecten gelijk maken, zoals better_auth."twoFactor" en better_auth."twofactor".
+      if (teken === '"' && (sql.slice(i, einde + 1) !== '"user"' || !/\breferences\s+better_auth\.$/i.test(uit)))
+        return null;
       uit += teken === "'" ? waarde(sql.slice(i + 1, einde), uit) : sql.slice(i, einde + 1);
       i = einde;
     } else uit += teken;
@@ -114,42 +121,120 @@ function statementsVan(sql) {
   return uit.split(';').map((deel) => deel.replace(/\s+/g, ' ').trim().toLowerCase());
 }
 
-const NAAM = '((?:[a-z_][a-z0-9_]*|"[^"]+")(?:\\.(?:[a-z_][a-z0-9_]*|"[^"]+"))?)';
+const NAAM = '(public\\.[a-z_][a-z0-9_]*)';
 const NAAM_ZONDER_QUOTES = '([a-z_][a-z0-9_]*\\.[a-z_][a-z0-9_]*)';
-const ROLLEN = '(?:app_[a-z_]+)(?:, app_[a-z_]+)*';
-const REGELS = [
-  { patroon: new RegExp(`^create table ${NAAM} \\(.*\\)$`), doel: 'maak' },
-  { patroon: new RegExp(`^create (?:unique )?index [a-z0-9_]+ on ${NAAM} `), doel: 'op' },
-  { patroon: new RegExp(`^alter table ${NAAM} (?:enable|force) row level security$`), doel: 'op' },
-  { patroon: new RegExp(`^grant [a-z_, ()]+ on (?:table )?${NAAM} to ${ROLLEN}$`), doel: 'op' },
-  { patroon: new RegExp(`^create policy [a-z0-9_]+ on ${NAAM} `), doel: 'op' },
-];
+const MAAK = new RegExp(`^create table ${NAAM} \\((.*)\\)$`);
+const KOLOMMEN = '[a-z_][a-z0-9_]*(?:, [a-z_][a-z0-9_]*)*';
+const INDEX = new RegExp(`^create (?:unique )?index [a-z_][a-z0-9_]* on ${NAAM} \\((${KOLOMMEN})\\)$`);
+const GRANT = new RegExp(`^grant (.+) on (?:table )?${NAAM} to app_authenticated$`);
+const KOLOMGRANT = `(?:insert|update) \\(${KOLOMMEN}\\)`;
+const KOLOMGRANTS = new RegExp(`^${KOLOMGRANT}(?:, ${KOLOMGRANT})*$`);
+const POLICY = new RegExp(
+  `^create policy [a-z_][a-z0-9_]* on ${NAAM} for (select|insert|update|delete) to app_authenticated (.+)$`,
+);
+const EIGENAAR = '(owner_id = (select app.current_user_id()))';
+const PREDICATEN = {
+  select: `using ${EIGENAAR}`,
+  insert: `with check ${EIGENAAR}`,
+  update: `using ${EIGENAAR} with check ${EIGENAAR}`,
+  delete: `using ${EIGENAAR}`,
+};
+const BASISKOLOMMEN =
+  /^\s*id uuid primary key default gen_random_uuid\(\)\s*,\s*owner_id text not null default app\.current_user_id\(\) references better_auth\."user"\s*\(id\) on delete cascade\s*,\s*created_at timestamptz not null default now\(\)(.*)$/;
+const EXTRA_KOLOM =
+  /^([a-z_][a-z0-9_]*) (?:text|integer|int|bigint|boolean|uuid|timestamptz)(?: not null)?(?: default (?:\?|true|false|-?\d+))?$/;
+const VASTE_KOLOMMEN = ['id', 'owner_id', 'created_at'];
 const RETENTION_FORCE = /^alter table app\.retention (?:no )?force row level security$/;
+const NO_FORCE = 'alter table app.retention no force row level security';
+const FORCE = 'alter table app.retention force row level security';
 const RETENTION_RIJ = new RegExp(
   `^insert into app\\.retention values\\s*\\(\\s*'${NAAM_ZONDER_QUOTES}'\\s*,\\s*null\\s*,\\s*null\\s*,\\s*'app'\\s*,\\s*(?:\\?|'[a-z0-9_.]+')\\s*\\)$`,
 );
-const NIET_IN_TABEL = /\b(?:inherits|partition|like)\b/;
+
+/** Alleen de vaste owner-kolommen plus eenvoudige app-velden; expressies en andere vormen vragen review. @param {string} statement */
+function eigenaarTabel(statement) {
+  const match = MAAK.exec(statement);
+  if (match?.[1] === undefined || match[2] === undefined) return null;
+  const rest = BASISKOLOMMEN.exec(match[2])?.[1]?.trim();
+  if (rest === undefined || (rest !== '' && !rest.startsWith(','))) return null;
+  const extra =
+    rest === ''
+      ? []
+      : rest
+          .slice(1)
+          .split(',')
+          .map((kolom) => EXTRA_KOLOM.exec(kolom.trim())?.[1]);
+  if (extra.some((naam) => naam === undefined || VASTE_KOLOMMEN.includes(naam))) return null;
+  if (new Set(extra).size !== extra.length) return null;
+  return { naam: match[1], kolommen: [...VASTE_KOLOMMEN, ...extra], statement };
+}
+
+/** @typedef {NonNullable<ReturnType<typeof eigenaarTabel>>} EigenaarTabel */
+
+/** @param {string} deel @param {EigenaarTabel} tabel */
+function grantToegestaan(deel, tabel) {
+  const match = GRANT.exec(deel);
+  const rechten = match?.[1] ?? '';
+  if (match?.[2] !== tabel.naam) return false;
+  if (/^(?:select|delete)(?:, (?:select|delete))*$/.test(rechten)) return true;
+  if (!KOLOMGRANTS.test(rechten)) return false;
+  return [...rechten.matchAll(/\(([^)]+)\)/g)].every(([, kolommen = '']) =>
+    kolommen.split(', ').every((kolom) => tabel.kolommen.includes(kolom) && !VASTE_KOLOMMEN.includes(kolom)),
+  );
+}
+
+/** @param {string} deel @param {EigenaarTabel} tabel */
+function policyActie(deel, tabel) {
+  const match = POLICY.exec(deel);
+  const actie = match?.[2];
+  if (match?.[1] !== tabel.naam || actie === undefined) return null;
+  const predicaat = Object.entries(PREDICATEN).find(([naam]) => naam === actie)?.[1];
+  return match[3] === predicaat ? actie : null;
+}
 
 /** Het eerste deel van een migratie: dbmate leest `-- migrate:down` als regel met eventueel tekst erachter. @param {string} tekst */
 function upDeel(tekst) {
   return tekst.replaceAll('\r\n', '\n').split(/^--[ \t]*migrate:down(?:[ \t]*$|[ \t]+\S)/m)[0] ?? '';
 }
 
-/** Mag dit statement? Eigen nieuwe tabel via REGELS, plus de smalle bewaarcatalogus-uitzondering (alleen `no force`/`force` op `app.retention` en een rij voor een eigen tabel). @param {string} deel @param {Set<string>} gemaakt */
-function toegestaan(deel, gemaakt) {
+/** @param {string} deel @param {EigenaarTabel} tabel */
+function toegestaan(deel, tabel) {
+  if (deel === tabel.statement) return true;
   if (RETENTION_FORCE.test(deel)) return true;
   const rij = RETENTION_RIJ.exec(deel)?.[1];
-  if (rij !== undefined) return gemaakt.has(rij);
-  if (NIET_IN_TABEL.test(deel) && deel.startsWith('create table')) return false;
-  const regel = REGELS.find(({ patroon }) => patroon.test(deel));
-  const naam = regel?.patroon.exec(deel)?.[1];
-  return regel !== undefined && naam !== undefined && gemaakt.has(naam);
+  if (rij !== undefined) return rij === tabel.naam;
+  if (['enable', 'force'].some((actie) => deel === `alter table ${tabel.naam} ${actie} row level security`))
+    return true;
+  const index = INDEX.exec(deel);
+  if (index?.[1] === tabel.naam) return (index[2] ?? '').split(', ').every((kolom) => tabel.kolommen.includes(kolom));
+  return grantToegestaan(deel, tabel) || policyActie(deel, tabel) !== null;
 }
 
-/** Laat de migratie `app.retention` met `no force` achter? Dan is de laatste toggle geen `force`. @param {string[]} statements */
-function eindigtOpNoForce(statements) {
-  const toggles = statements.filter((deel) => RETENTION_FORCE.test(deel));
-  return toggles.at(-1)?.includes(' no force ') === true;
+/** @param {string[]} statements @param {EigenaarTabel} tabel */
+function eigenaarIsolatie(statements, tabel) {
+  if (
+    !['enable', 'force'].every((actie) => statements.includes(`alter table ${tabel.naam} ${actie} row level security`))
+  )
+    return 'de nieuwe tabel moet ENABLE en FORCE ROW LEVEL SECURITY hebben';
+  const acties = new Set(statements.flatMap((deel) => policyActie(deel, tabel) ?? []));
+  if (!Object.keys(PREDICATEN).every((actie) => acties.has(actie)))
+    return 'de nieuwe tabel vraagt vier afzonderlijke eigenaarpolicies voor select, insert, update en delete';
+  const grants = statements.flatMap((deel) => GRANT.exec(deel)?.[1]?.split(', ') ?? []);
+  return ['select', 'delete'].every((recht) => grants.includes(recht))
+    ? null
+    : 'de nieuwe tabel vraagt expliciete select- en delete-grants aan app_authenticated';
+}
+
+/** Geen losstaande toggles, dubbele registratie of insert onder FORCE RLS. @param {string[]} statements */
+function retentionVolgorde(statements) {
+  const retention = statements.filter((deel) => RETENTION_FORCE.test(deel) || RETENTION_RIJ.test(deel));
+  if (retention.length === 0) return null;
+  return retention.length === 3 &&
+    retention[0] === NO_FORCE &&
+    RETENTION_RIJ.test(retention[1] ?? '') &&
+    retention[2] === FORCE
+    ? null
+    : 'app.retention vraagt precies NO FORCE, één registratie van de nieuwe tabel, en FORCE in die volgorde';
 }
 
 /**
@@ -160,14 +245,16 @@ function eindigtOpNoForce(statements) {
  */
 export function migratieOvertreding(tekst) {
   const statements = statementsVan(upDeel(tekst));
-  if (statements === null) return 'migratie met dollar-quotes, blokcommentaar of E-strings is niet te beoordelen';
+  if (statements === null)
+    return 'migratie met quoted identifiers, dollar-quotes, blokcommentaar of E-strings vraagt review';
   const gevuld = statements.filter((deel) => deel !== '');
-  const gemaakt = new Set(gevuld.flatMap((deel) => REGELS[0]?.patroon.exec(deel)?.[1] ?? []));
-  const fout = gevuld.find((deel) => !toegestaan(deel, gemaakt));
-  if (gemaakt.size === 0) return 'migratie maakt geen nieuwe tabel';
-  if (fout === undefined && eindigtOpNoForce(gevuld))
-    return 'migratie laat app.retention met `no force row level security` achter: de laatste toggle moet `force` zijn';
-  return fout === undefined ? null : `migratie bevat meer dan een nieuwe tabel: "${fout.slice(0, 60)}"`;
+  const gemaakt = gevuld.filter((deel) => deel.startsWith('create table '));
+  if (gemaakt.length !== 1) return 'migratie moet precies één nieuwe tabel maken';
+  const tabel = eigenaarTabel(gevuld[0] ?? '');
+  if (tabel === null) return 'migratie moet beginnen met het owner-tabelpatroon uit new:resource';
+  const fout = gevuld.find((deel) => !toegestaan(deel, tabel));
+  if (fout !== undefined) return `migratie valt buiten het owner-tabelpatroon: "${fout.slice(0, 60)}"`;
+  return eigenaarIsolatie(gevuld, tabel) ?? retentionVolgorde(gevuld);
 }
 
 /**
@@ -177,8 +264,8 @@ export function migratieOvertreding(tekst) {
 export function recordAlleenBesluit({ basis, head, file }) {
   const bestanden = typeof file === 'string' ? [file] : file;
   try {
-    const oud = JSON.parse(basis ?? '');
-    const nieuw = JSON.parse(head ?? '');
+    const oud = readRegistry(basis ?? '');
+    const nieuw = readRegistry(head ?? '');
     const rest = (/** @type {{ decisions: { file: string }[] }} */ register) =>
       JSON.stringify({ ...register, decisions: register.decisions.filter((entry) => !bestanden.includes(entry.file)) });
     return rest(oud) === rest(nieuw);

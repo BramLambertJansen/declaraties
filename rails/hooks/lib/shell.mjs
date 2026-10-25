@@ -217,6 +217,8 @@ export function writeTargets(command) {
   return { writes: [...command.redirects, ...targets.writes], deletes: targets.deletes };
 }
 
+const DIRECTORY_WRITERS = new Set(['cp', 'mv', 'ln', 'install']);
+
 /**
  * @param {string} program
  * @param {string[]} args
@@ -224,6 +226,7 @@ export function writeTargets(command) {
  */
 function fileTargets(program, args) {
   const operands = args.filter((arg) => !arg.startsWith('-'));
+  const directory = DIRECTORY_WRITERS.has(program) ? targetDirectory(args) : null;
   switch (program) {
     case 'tee':
     case 'touch':
@@ -235,11 +238,11 @@ function fileTargets(program, args) {
       return { writes: [], deletes: operands };
     case 'cp':
     case 'install':
-      return { writes: operands.slice(-1), deletes: [] };
+      return { writes: directory === null ? operands.slice(-1) : [directory], deletes: [] };
     case 'mv':
-      return { writes: operands.slice(-1), deletes: operands.slice(0, -1) };
+      return { writes: directory === null ? operands.slice(-1) : [directory], deletes: directory === null ? operands.slice(0, -1) : operands };
     case 'ln':
-      return { writes: operands, deletes: [] };
+      return { writes: directory === null ? operands : [...operands, directory], deletes: [] };
     case 'dd':
       return { writes: args.filter((arg) => arg.startsWith('of=')).map((arg) => arg.slice(3)), deletes: [] };
     case 'sed':
@@ -250,6 +253,19 @@ function fileTargets(program, args) {
     default:
       return { writes: [], deletes: [] };
   }
+}
+
+/** GNU cp/mv/ln/install kiezen met -t/--target-directory een ander schrijfdoel dan het laatste operand. @param {readonly string[]} args */
+function targetDirectory(args) {
+  for (const [index, arg] of args.entries()) {
+    if (arg === '--') break;
+    const option = arg.split('=')[0] ?? '';
+    if (option.length > 2 && '--target-directory'.startsWith(option))
+      return arg.includes('=') ? arg.slice(option.length + 1) : (args[index + 1] ?? null);
+    const short = /^-[a-su-zA-Z]*t(.*)$/.exec(arg);
+    if (short !== null) return short[1] || (args[index + 1] ?? null);
+  }
+  return null;
 }
 
 /**

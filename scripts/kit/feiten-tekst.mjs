@@ -27,9 +27,10 @@ export function nextAdr(list) {
  * Standaard alleen geldende en voorgestelde ADR's plus een telling; `alle` toont ook de vervangen en vervallen.
  * @param {readonly Adr[]} list
  * @param {boolean} alle
+ * @param {readonly string[]} [gereserveerd]
  */
-export function adrOverzicht(list, alle) {
-  const volgende = nextAdr(list);
+export function adrOverzicht(list, alle, gereserveerd = []) {
+  const volgende = nextAdr([...list, ...gereserveerd.map((nummer) => ({ nummer }))]);
   if (alle) return { lijst: list, volgende };
   const historisch = list.filter((adr) => isHistorisch(adr.status)).length;
   return {

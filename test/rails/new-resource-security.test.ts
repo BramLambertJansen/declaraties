@@ -284,20 +284,37 @@ describe('resources: één regel voor de tabel', () => {
 });
 
 describe('sample: als in te vullen markering, geen verzonnen veldwaarden', () => {
-  test.each(['create', 'spoof', 'update'])('sample.%s is een leeg object met de markering INVULLEN', (soort) => {
-    const regel = objectVan(eigenschap(letterlijkVan(invoices.na, 'resources'), 'invoices'));
-    const sample = objectVan(eigenschap(objectVan(eigenschap(regel, 'sample')), soort));
+  test.each(['create', 'createTweede', 'spoof', 'update'])(
+    'sample.%s is een leeg object met de markering INVULLEN',
+    (soort) => {
+      const regel = objectVan(eigenschap(letterlijkVan(invoices.na, 'resources'), 'invoices'));
+      const sample = objectVan(eigenschap(objectVan(eigenschap(regel, 'sample')), soort));
 
-    expect(sample).toBeDefined();
-    expect(sample?.properties).toHaveLength(0);
-    expect(sample?.getText()).toContain(MARKERING);
+      expect(sample).toBeDefined();
+      expect(sample?.properties).toHaveLength(0);
+      expect(sample?.getText()).toContain(MARKERING);
+    },
+  );
+
+  test('alle verplichte samples en de toegestane testrol; geen verzonnen resourcevelden', () => {
+    const regel = objectVan(eigenschap(letterlijkVan(invoices.na, 'resources'), 'invoices'));
+
+    expect(sleutels(objectVan(eigenschap(regel, 'sample'))).sort()).toStrictEqual([
+      'create',
+      'createTweede',
+      'spoof',
+      'update',
+    ]);
+    expect(sleutels(regel).sort()).toStrictEqual(['lijst', 'rol', 'sample', 'tabel']);
   });
 
-  test('geen andere velden dan wat de suite eist (create, spoof, update); de velden van de resource staan er niet in', () => {
-    const regel = objectVan(eigenschap(letterlijkVan(invoices.na, 'resources'), 'invoices'));
-
-    expect(sleutels(objectVan(eigenschap(regel, 'sample'))).sort()).toStrictEqual(['create', 'spoof', 'update']);
-    expect(sleutels(regel).sort()).toStrictEqual(['lijst', 'sample', 'tabel']);
+  test.each([
+    { naam: 'admin-notes', rollen: ['admin'], rol: 'admin', tabel: 'admin_notes' },
+    { naam: 'mixed-notes', rollen: ['admin', 'user'], rol: 'user', tabel: 'mixed_notes' },
+  ])('declaratie kiest een toegestane testrol voor $naam', async ({ naam, rollen, rol, tabel }) => {
+    const result = await bereken(naam, rollen);
+    const rule = objectVan(eigenschap(letterlijkVan(result.na, 'resources'), tabel));
+    expect(eigenschap(rule, 'rol')?.getText()).toBe(`'${rol}'`);
   });
 
   test('de markering staat ook in de afgedrukte wijziging zelf, zodat een gemiste invulling vindbaar is', () => {

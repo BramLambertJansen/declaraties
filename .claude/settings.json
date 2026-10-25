@@ -59,6 +59,10 @@
     ],
     "disableBypassPermissionsMode": "disable",
     "ask": [
+      "Bash(pnpm format)",
+      "Bash(pnpm format *)",
+      "Bash(pnpm run format)",
+      "Bash(pnpm run format *)",
       "Bash(pnpm add *)",
       "Bash(pnpm install *)",
       "Bash(pnpm i *)",
@@ -93,7 +97,6 @@
       "Bash(node scripts/kit/feiten.mjs *)",
       "Bash(pnpm gate:fast)",
       "Bash(pnpm format:check)",
-      "Bash(pnpm format)",
       "Bash(pnpm lint)",
       "Bash(pnpm typecheck)",
       "Bash(pnpm ratchet)",

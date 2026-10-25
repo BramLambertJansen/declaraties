@@ -265,10 +265,16 @@ describe('ongewijzigd: de strenge route', () => {
 
 const TABEL = [
   '-- migrate:up',
-  'create table public.notes (id uuid primary key);',
+  'create table public.notes (id uuid primary key default gen_random_uuid(),',
+  'owner_id text not null default app.current_user_id() references better_auth."user" (id) on delete cascade,',
+  'created_at timestamptz not null default now());',
   'alter table public.notes enable row level security;',
   'alter table public.notes force row level security;',
-  'grant select on public.notes to app_authenticated;',
+  'grant select, delete on public.notes to app_authenticated;',
+  'create policy notes_select on public.notes for select to app_authenticated using (owner_id = (select app.current_user_id()));',
+  'create policy notes_insert on public.notes for insert to app_authenticated with check (owner_id = (select app.current_user_id()));',
+  'create policy notes_update on public.notes for update to app_authenticated using (owner_id = (select app.current_user_id())) with check (owner_id = (select app.current_user_id()));',
+  'create policy notes_delete on public.notes for delete to app_authenticated using (owner_id = (select app.current_user_id()));',
   '-- migrate:down',
   'drop table public.notes;',
   '',

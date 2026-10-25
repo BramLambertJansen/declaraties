@@ -15,7 +15,8 @@ x-runner: &runner
   working_dir: /repo
   networks: [test-net]
   volumes:
-    - .:/repo:ro
+    - ${RUNNER_INPUT_DIR:-./.runner-output/empty-input}:/repo:ro
+    - ./node_modules:/repo/node_modules:ro
     - ./.runner-output:/output
   tmpfs:
     - /tmp
@@ -25,6 +26,7 @@ x-runner: &runner
     RUNNER: "1"
     RUNNER_CACHE_DIR: /tmp/cache
     RUNNER_OUTPUT_DIR: /output
+    RUNNER_PRIVATE_CANARY: /repo/${RUNNER_PRIVATE_CANARY_NAME:-missing-canary}
     APP_ENV: ${APP_ENV}
     APP_ORIGIN: ${APP_ORIGIN}
     AUTH_BASE_URL: ${AUTH_BASE_URL}
@@ -105,8 +107,8 @@ services:
       POSTGRES_DB: app
     command: ["postgres", "-c", "hba_file=/etc/postgresql/pg_hba.test.conf"]
     volumes:
-      - ./db/init:/docker-entrypoint-initdb.d:ro
-      - ./db/docker/pg_hba.test.conf:/etc/postgresql/pg_hba.test.conf:ro
+      - ${RUNNER_INPUT_DIR:-./.runner-output/empty-input}/db/init:/docker-entrypoint-initdb.d:ro
+      - ${RUNNER_INPUT_DIR:-./.runner-output/empty-input}/db/docker/pg_hba.test.conf:/etc/postgresql/pg_hba.test.conf:ro
     # Verse database bij elke run: geen volume, data in tmpfs; scripts/runner.sh ruimt op.
     tmpfs:
       - /var/lib/postgresql/data
@@ -148,7 +150,7 @@ services:
       DATABASE_URL: ${MIGRATOR_DATABASE_URL}
     command: ["--migrations-dir", "/db/migrations", "--no-dump-schema", "--wait", "up"]
     volumes:
-      - ./db/migrations:/db/migrations:ro
+      - ${RUNNER_INPUT_DIR:-./.runner-output/empty-input}/db/migrations:/db/migrations:ro
     depends_on:
       test-db:
         condition: service_healthy
@@ -176,7 +178,7 @@ services:
         echo "pgTAP verbindt als: $$who";
         exec pg_prove --failures --ext .sql --recurse /db/tests
     volumes:
-      - ./db/tests:/db/tests:ro
+      - ${RUNNER_INPUT_DIR:-./.runner-output/empty-input}/db/tests:/db/tests:ro
     tmpfs:
       - /tmp
     depends_on:

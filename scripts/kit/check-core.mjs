@@ -49,6 +49,34 @@ function isVoorouder(root, voorouder, commit) {
   }
 }
 
+/** De al geïmporteerde templategeschiedenis per ouder, ook bij meerdere merge-bases. @param {string} root @param {string} parent @param {string} template */
+function templateBases(root, parent, template) {
+  try {
+    return git(root, ['merge-base', '--all', parent, template]).split('\n').filter(Boolean);
+  } catch (error) {
+    // Geen gedeelde geschiedenis kan voorkomen bij de eenmalige app-koppeling. Andere leesfouten falen dicht.
+    if (typeof error === 'object' && error !== null && 'status' in error && error.status === 1) return [];
+    throw error;
+  }
+}
+
+/** @param {string} root @param {string} base */
+function coreBron(root, base) {
+  const bron = git(root, ['rev-list', '--topo-order', '-1', base, '--', CORE]) || base;
+  if (coreTree(root, bron) !== coreTree(root, base))
+    throw new Error('Geen eenduidige coreversie in templategeschiedenis');
+  return bron;
+}
+
+/** Een gekozen core moet alle reeds geïmporteerde templateversies omvatten; geen nieuw versieregister. @param {string} root @param {{ parents: string[], template: string, core: string }} merge */
+function oudereCore(root, merge) {
+  // Docs-only zijtakken dragen geen nieuwe coreversie. Vergelijk de laatste echte corewijziging, niet hun tip.
+  const gedeeld = merge.parents.flatMap((parent) => templateBases(root, parent, merge.template));
+  const bases = [...new Set(gedeeld.map((base) => coreBron(root, base)))];
+  const bronnen = bases.filter((base) => coreTree(root, base) === merge.core);
+  return bases.length > 0 && !bronnen.some((bron) => bases.every((base) => isVoorouder(root, base, bron)));
+}
+
 /**
  * Staat de onderhoudsmodus voor deze repository in de (vertrouwde) gates.json, dan is dit de template zelf.
  * @param {string} gatesJson
@@ -77,13 +105,18 @@ function commitFout(root, refs, commit) {
   const kort = commit.slice(0, 12);
   // Een root-commit (orphan) in de PR heeft geen ouder om mee te vergelijken; die hoort nooit in een app-PR.
   if (eerste === undefined) return `${kort} is een commit zonder ouder (orphan); die kan ${CORE}/ ongezien vervangen`;
-  if (eigen === coreTree(root, eerste)) return undefined;
-  if (tweede === undefined || ouders.length > 2) return `${kort} wijzigt ${CORE}/ buiten een template-merge`;
-  const vertrouwd = isVoorouder(root, tweede, refs.template) || isVoorouder(root, tweede, refs.base);
-  if (!vertrouwd)
-    return `${kort}: merge van ${tweede.slice(0, 12)}, dat niet in template/main of main staat, wijzigt ${CORE}/`;
-  if (eigen !== coreTree(root, tweede))
-    return `${kort}: de merge wijzigt ${CORE}/ zelf (verschilt van ${tweede.slice(0, 12)})`;
+  const verschilt = ouders.some((parent) => coreTree(root, parent) !== eigen);
+  if (ouders.length > 2 && verschilt) return `${kort} wijzigt ${CORE}/ buiten een template-merge (octopus)`;
+  if (eigen !== coreTree(root, eerste)) {
+    if (tweede === undefined || ouders.length > 2) return `${kort} wijzigt ${CORE}/ buiten een template-merge`;
+    const vertrouwd = isVoorouder(root, tweede, refs.template) || isVoorouder(root, tweede, refs.base);
+    if (!vertrouwd)
+      return `${kort}: merge van ${tweede.slice(0, 12)}, dat niet in template/main of main staat, wijzigt ${CORE}/`;
+    if (eigen !== coreTree(root, tweede))
+      return `${kort}: de merge wijzigt ${CORE}/ zelf (verschilt van ${tweede.slice(0, 12)})`;
+  }
+  if (tweede !== undefined && verschilt && oudereCore(root, { parents: ouders, template: refs.template, core: eigen }))
+    return `${kort}: de merge kiest een oudere core dan een reeds geïmporteerde templateversie`;
   return undefined;
 }
 

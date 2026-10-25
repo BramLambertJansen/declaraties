@@ -158,7 +158,7 @@ describe('security/AC-13: de suite test zichzelf', { timeout: LANG }, () => {
     const problemen = await metProbe([], (ep) => {
       const regel = resources.security_probes;
       if (regel === undefined) throw new Error('resources.security_probes ontbreekt');
-      const zonderSpoof = { create: regel.sample.create };
+      const zonderSpoof = { create: regel.sample.create, createTweede: regel.sample.createTweede };
       return spoofApiProblemen({ ...ep.opzet(), resources: { security_probes: { ...regel, sample: zonderSpoof } } });
     });
 

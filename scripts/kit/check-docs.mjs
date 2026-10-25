@@ -16,6 +16,7 @@ import { execFileSync } from 'node:child_process';
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { onderhoudVan } from '../../rails/hooks/lib/rolhek.mjs';
+import { adrNumber, duplicateAdrNumbers } from './adr-numbers.mjs';
 
 /** @typedef {{ key: string, message: string }} Violation */
 
@@ -142,32 +143,12 @@ function linkViolations(root, files, read) {
 }
 
 /**
- * Twee branches kiezen onafhankelijk hetzelfde volgende nummer; git merget dat zonder conflict (twee bestandsnamen).
- * @param {readonly string[]} adrs
- * @returns {Violation[]}
- */
-function duplicateAdrNumbers(adrs) {
-  /** @type {Map<string, string[]>} */
-  const byNumber = new Map();
-  for (const file of adrs) {
-    const number = /^docs\/adr\/(\d{4})-/.exec(file)?.[1] ?? '';
-    byNumber.set(number, [...(byNumber.get(number) ?? []), file]);
-  }
-  return [...byNumber]
-    .filter(([, files]) => files.length > 1)
-    .map(([number, files]) => ({
-      key: `docs:adr:${number}:dubbel`,
-      message: `ADR-nummer ${number} komt in meer dan één bestand voor: ${files.join(', ')}`,
-    }));
-}
-
-/**
  * @param {readonly string[]} files
  * @param {(file: string) => string} read
  * @returns {Violation[]}
  */
 function statusViolations(files, read) {
-  const adrs = files.filter((file) => /^docs\/adr\/\d{4}-[^/]+\.md$/.test(file));
+  const adrs = files.filter((file) => adrNumber(file) !== undefined);
   const specs = files.filter((file) => /^docs\/specs\/[^_/][^/]*\.md$/.test(file));
   return [
     ...duplicateAdrNumbers(adrs),
@@ -230,9 +211,11 @@ function disciplineViolations({ file, text, status }, files) {
   const vorm = sectie(text, 'Kopieer de vorm van') ?? '';
   const ontbrekend = [...vorm.matchAll(/`([^`\n]+)`/g)]
     .map((match) => (match[1] ?? '').replace(/:\d+(-\d+)?$/, ''))
-    .filter((id) => looksLikePath(id) && !pathExists(id, files));
+    .filter(
+      (id) => looksLikePath(id) && !files.some((file) => file === doelPad(id) || file.startsWith(`${doelPad(id)}/`)),
+    );
   return [
-    ...((status === 'goedgekeurd' || status === 'gebouwd') && /^\s*[-*] .*⚠ open/m.test(open)
+    ...((status === 'goedgekeurd' || status === 'gebouwd') && /^\s*(?:[-*+]|\d+[.)])\s+.*⚠\s*open\b/m.test(open)
       ? [{ key: `docs:${file}:open-vraag`, message: `${file}: ${status}, maar "Open vragen" bevat nog "⚠ open"` }]
       : []),
     ...((status === 'voorstel' || status === 'goedgekeurd') && ontbrekend.length > 0

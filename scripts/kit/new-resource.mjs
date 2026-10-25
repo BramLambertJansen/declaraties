@@ -340,11 +340,14 @@ const ACTIES = [
  * wijziging los op het huidige bestand past. Leeg als het bestand er niet is.
  * @param {string} root
  * @param {Namen} n
+ * @param {readonly string[]} rollen
  * @returns {Record<string, string>[]} per wijziging: pad → nieuwe inhoud
  */
-function declaratieInhoud(root, n) {
+function declaratieInhoud(root, n, rollen) {
   const tekst = leesAls(root, RESOURCES);
   if (tekst === null) return [];
+  const rol = rollen.includes('user') ? 'user' : rollen[0];
+  if (rol === undefined) throw new NewResourceError('Geen testrol voor de securitysuite');
   const routes = ACTIES.map(
     ({ methode, achter, actie }) =>
       `\n  '${methode} /${n.naam}${achter}': { scope: 'eigenaar', resource: '${n.tabel}', actie: '${actie}' },`,
@@ -353,8 +356,10 @@ function declaratieInhoud(root, n) {
     `\n  // ${n.naam} (pnpm new:resource): de tester vult de samples in (INVULLEN), de suite is rood tot dan.`,
     `\n  ${n.tabel}: {`,
     `\n    tabel: 'public.${n.tabel}',`,
+    `\n    rol: '${rol}',`,
     '\n    sample: {',
     '\n      create: {\n        // INVULLEN: geldige velden voor de create-route\n      },',
+    '\n      createTweede: {\n        // INVULLEN: een tweede, unieke geldige create-input voor paginering\n      },',
     '\n      spoof: {\n        // INVULLEN: een andere, unieke geldige create-input\n      },',
     '\n      update: {\n        // INVULLEN: geldige velden voor de update-route\n      },',
     '\n    },',
@@ -507,7 +512,7 @@ export async function plan(root, naam, opties = {}) {
     ),
   );
   const declaratie = await Promise.all(
-    declaratieInhoud(root, n)
+    declaratieInhoud(root, n, rollen)
       .flatMap(Object.entries)
       .map(async ([pad, inhoud]) => hunk(pad, lees(root, pad), await opgemaakt(root, pad, inhoud))),
   );

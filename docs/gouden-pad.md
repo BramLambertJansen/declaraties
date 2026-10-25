@@ -29,7 +29,9 @@ draait hem; `--dry-run` toont het plan zonder te schrijven, en bestaat een doel 
    - bestaande tests, als afgedrukte wijziging die de hoofdsessie met Edit zet: `src/shared/permissions.test.ts` en
      `src/web/routes.test.tsx` (menu per rol). Noem de twee testwijzigingen met reden in de PR;
    - de declaratie voor de securitysuite, als afgedrukte wijziging (`--- test/security/resources.ts`): één regel per route in
-     `routeClassificatie` (scope `eigenaar`) en één regel in `resources`, met de samples als `INVULLEN`. De generator schrijft
+     `routeClassificatie` (scope `eigenaar`) en één regel in `resources`, met de samples als `INVULLEN`. `createTweede` is
+     verplicht voor de cursorproef: A en B krijgen ieder twee verschillende rijen. `rol` kiest een toegestane testrol
+     (`user` indien toegestaan, anders de opgegeven rol); admin-acteurs krijgen echte MFA-sessies. De generator schrijft
      dit bestand niet (`scripts/kit/new-resource.mjs`, `declaratieInhoud`).
 3. Daarna de werkstraat: de tester schrijft de tests (pgTAP per policy, integratie, e2e), zet de declaratie in
    `test/security/resources.ts` en vult de samples in (tot dan is `pnpm test:db` rood), de developer voegt de velden toe in

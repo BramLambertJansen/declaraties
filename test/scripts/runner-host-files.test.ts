@@ -192,8 +192,8 @@ describe.each(MODI)('mandate-follow-up/AC-17: genegeerde en onveilige hostbestan
   });
 });
 
-describe('mandate-follow-up/AC-17: --sta-wijzigingen-toe slaat de nieuwe controles over', () => {
-  test('genegeerd bestand en symlink: gaat door naar docker', () => {
+describe('mandate-follow-up/AC-17: eigenaaroverride behoudt de leesgrens van de runner', () => {
+  test('een override voor gewijzigde hostcode staat geen symlink in de invoer toe', () => {
     const omgeving = maakRepo((repo) => {
       schrijf(repo, '.gitignore', '*.log\n');
       symlinkSync('elders.sh', path.join(repo, 'scripts/link.sh'));
@@ -203,9 +203,10 @@ describe('mandate-follow-up/AC-17: --sta-wijzigingen-toe slaat de nieuwe control
     const resultaat = run(omgeving, { flag: '--sta-wijzigingen-toe' });
 
     expect({ status: resultaat.status, reachedDocker: resultaat.reachedDocker }).toStrictEqual({
-      status: 0,
-      reachedDocker: true,
+      status: 1,
+      reachedDocker: false,
     });
+    expect(resultaat.stderr).toContain('symlink');
   });
 });
 

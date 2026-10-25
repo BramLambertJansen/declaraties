@@ -1,5 +1,5 @@
 import { spawnSync } from 'node:child_process';
-import { chmodSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { chmodSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, test } from 'vitest';
@@ -24,6 +24,12 @@ const DOCKER = 'echo "docker $*" >> "$STUB_DIR/log"';
 function run(suite: string, hangs: number) {
   const dir = mkdtempSync(path.join(tmpdir(), 'runner-'));
   dirs.push(dir);
+  mkdirSync(path.join(dir, 'scripts'));
+  mkdirSync(path.join(dir, 'node_modules'));
+  const script = path.join(dir, 'scripts/runner.sh');
+  writeFileSync(script, readFileSync(SCRIPT, 'utf8'));
+  const init = spawnSync('git', ['init', '-q'], { cwd: dir, encoding: 'utf8' });
+  if (init.status !== 0) throw new Error(init.stderr);
   writeFileSync(path.join(dir, 'timeout'), `#!/usr/bin/env bash\n${TIMEOUT}`);
   writeFileSync(path.join(dir, 'docker'), `#!/usr/bin/env bash\n${DOCKER}\n`);
   chmodSync(path.join(dir, 'timeout'), 0o755);
@@ -31,8 +37,9 @@ function run(suite: string, hangs: number) {
   writeFileSync(path.join(dir, 'hangs'), String(hangs));
   writeFileSync(path.join(dir, 'log'), '');
   // --sta-wijzigingen-toe: de test gaat over de pull, niet over de HEAD-controle (en een werkmap kan vuil zijn).
-  const result = spawnSync('bash', [SCRIPT, suite, '--sta-wijzigingen-toe'], {
+  const result = spawnSync('bash', [script, suite, '--sta-wijzigingen-toe'], {
     encoding: 'utf8',
+    cwd: dir,
     env: { HOME: dir, PATH: `${dir}:/usr/bin:/bin`, STUB_DIR: dir },
   });
   const calls = readFileSync(path.join(dir, 'log'), 'utf8').split('\n').filter(Boolean);

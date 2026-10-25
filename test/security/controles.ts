@@ -5,6 +5,7 @@ import { z } from 'zod';
 import { routes } from '../../src/api/app.ts';
 import type { TestDb, TestUser } from '../../src/core/api/db/testing.ts';
 import type { Contract, Method } from '../../src/core/shared/contract.ts';
+import type { Role } from '../../src/core/shared/can.ts';
 import { routeLabel, type Antwoord, type SecurityFixtures } from './fixtures.ts';
 import {
   codeVan,
@@ -24,6 +25,7 @@ import type { Actie, ResourceRegel, RouteKlasse } from './resources.ts';
 
 export type Resources = Readonly<Record<string, ResourceRegel>>;
 export type Classificatie = Readonly<Record<string, RouteKlasse>>;
+const tweedeSample = z.object({ createTweede: z.record(z.string(), z.unknown()) });
 
 // ---------------------------------------------------------------------------------------------------------------------
 // Catalogus en directe databasetoegang (AC-8, AC-10).
@@ -273,7 +275,10 @@ export function classificatieProblemen(inventaris: Inventaris): string[] {
   const verouderd = Object.keys(classificatie)
     .filter((label) => !inventaris.routes.includes(label))
     .map((label) => `routeClassificatie bevat '${label}', maar die route staat niet in het register`);
-  return [...ontbreekt, ...verouderd, ...zonderResource, ...zonderRegel];
+  const zonderTweede = Object.entries(resources)
+    .filter(([, regel]) => !tweedeSample.safeParse(regel.sample).success)
+    .map(([naam]) => `${naam}: sample.createTweede ontbreekt; twee rijen per eigenaar zijn vereist voor paginering`);
+  return [...ontbreekt, ...verouderd, ...zonderResource, ...zonderRegel, ...zonderTweede];
 }
 
 // Een route zonder strict input laat een onbekend veld (owner_id!) stilletjes door: createApp en defineContract weigeren dat bij
@@ -309,12 +314,12 @@ export interface EigenaarOpzet {
 }
 
 // De zender voor het echte register: echte Better Auth-sessies en cookies van A en B uit de fixtures.
-export function echteZender(t: SecurityFixtures): Zender {
+export function echteZender(t: SecurityFixtures, rol: Role = 'user'): Zender {
   return async (wie, aanroep) => {
     const label = `${aanroep.method} ${aanroep.pad}`;
     const route = routes.find((kandidaat) => routeLabel(kandidaat) === label);
     if (route === undefined) throw new Error(`route '${label}' staat niet in het register`);
-    const actor = await (wie === 'A' ? t.A() : t.B());
+    const actor = await (wie === 'A' ? t.A(rol) : t.B(rol));
     return t.stuurMetBrowser(actor.browser, route, { sample: { params: aanroep.params, invoer: aanroep.invoer } });
   };
 }
@@ -362,13 +367,15 @@ async function maakRij(ctx: Context, wie: Wie, invoer: Readonly<Record<string, u
       `${ctx.naam}: ${wie} kon geen rij maken (${String(antwoord.status)} ${antwoord.tekst.slice(0, 160)})`,
     );
   }
+  if (ctx.ids[wie].includes(gelezen.data.id)) throw new Error(`${ctx.naam}: create gaf tweemaal hetzelfde id`);
   ctx.ids[wie].push(gelezen.data.id);
 }
 
-// Het bereiden van een resource: de routes per actie, en twee rijen voor A en voor B (of één zonder createTweede).
+// Het bereiden van een resource: de routes per actie, en altijd twee verschillende rijen voor A en voor B.
 async function bereid(o: EigenaarOpzet, naam: string): Promise<Context> {
   const regel = Object.entries(o.resources).find(([sleutel]) => sleutel === naam)?.[1];
   if (regel === undefined) throw new Error(`resource '${naam}' staat niet in resources (test/security/resources.ts)`);
+  if (!tweedeSample.safeParse(regel.sample).success) throw new Error(`${naam}: sample.createTweede ontbreekt`);
   const kaart = new Map<Actie, string>();
   for (const [label, klasse] of Object.entries(o.classificatie)) {
     if (klasse.scope !== 'eigenaar' || klasse.resource !== naam) continue;
@@ -379,7 +386,7 @@ async function bereid(o: EigenaarOpzet, naam: string): Promise<Context> {
   if (labelVan(ctx, 'list') !== regel.lijst) throw new Error(`${naam}: lijst '${regel.lijst}' is niet de list-route`);
   for (const wie of ['A', 'B'] as const) {
     await maakRij(ctx, wie, regel.sample.create);
-    if (regel.sample.createTweede !== undefined) await maakRij(ctx, wie, regel.sample.createTweede);
+    await maakRij(ctx, wie, regel.sample.createTweede);
   }
   return ctx;
 }

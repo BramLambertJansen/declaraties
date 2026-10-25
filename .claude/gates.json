@@ -6,6 +6,7 @@
     "docs/framework.md",
     "docs/dod.md",
     "docs/roadmap.md",
+    "docs/roadmap-archief.md",
     "docs/adr/**",
     "docs/specs/**",
     ".github/**",

@@ -20,6 +20,7 @@ import { regularGitFile, statusOnlyDiff, isAncestor } from './status-git.mjs';
 import { laneVan, isMiniSpec, migratieOvertreding, recordAlleenBesluit } from './lane.mjs';
 import { isFunctionalUiSpec, isUiTest } from '../../rails/hooks/lib/functional-ui.mjs';
 import { functionalUiApproval, verifyFunctionalUiChanges } from './functional-ui-status.mjs';
+import { adrNumber, duplicateAdrNumbers } from './adr-numbers.mjs';
 
 /** @typedef {{ root: string, base: string, sha: string, split: string, pr: number | null, adrBestanden: string[], adrArchief: string[], authority: import('../../rails/hooks/lib/task-authority.mjs').Authority, config: import('../../rails/hooks/lib/rolhek.mjs').Config }} Context */
 
@@ -111,11 +112,19 @@ function verifyHerzieningPr(file, regels, pr) {
  * @param {{ status: string, pad: string }[]} changes @param {Context} context
  */
 function verifyNummerVrij(changes, context) {
-  const nummer = (/** @type {string} */ pad) => /^docs\/adr\/(\d{4})-/.exec(pad)?.[1];
-  const opBasis = new Set(adrFiles(context.root, context.base).map((f) => f.slice(0, 4)));
+  const dubbel = duplicateAdrNumbers([
+    ...context.adrBestanden.map((file) => `docs/adr/${file}`),
+    ...context.adrArchief.map((file) => `${ARCHIEF}${file}`),
+  ]).find(({ key }) => key !== 'docs:adr:0039:dubbel');
+  if (dubbel !== undefined) throw new Error(dubbel.message);
+  const nummersOp = (/** @type {string} */ sha) =>
+    new Set([...adrFiles(context.root, sha), ...adrFiles(context.root, sha, ARCHIEF)].map((file) => file.slice(0, 4)));
+  const opBasis = nummersOp(context.base);
+  const opSplit = nummersOp(context.split);
   const log = gitText(context.root, [
     'log',
     context.base,
+    '--full-history',
     '--no-renames',
     '--diff-filter=D',
     '--format=',
@@ -124,10 +133,13 @@ function verifyNummerVrij(changes, context) {
     'docs/adr/',
   ]);
   if (log === null) throw new Error('Geschiedenis van docs/adr/ is niet leesbaar (nummers blijven, ADR 0046 punt 2)');
-  const gebruikt = new Set(log.split('\n').flatMap((pad) => nummer(pad) ?? []));
+  const gebruikt = new Set(log.split('\n').flatMap((pad) => adrNumber(pad) ?? []));
   for (const { status, pad } of changes) {
-    const n = nummer(pad);
-    if (['A', 'R'].includes(status) && n !== undefined && gebruikt.has(n) && !opBasis.has(n))
+    const n = adrNumber(pad);
+    if (!['A', 'R'].includes(status) || n === undefined) continue;
+    if (!opSplit.has(n) && opBasis.has(n) && context.authority.trusted(pad) !== context.authority.working(pad))
+      throw new Error(`${pad}: nummer ${n} is inmiddels op main gebruikt; werk eerst de branch bij`);
+    if (gebruikt.has(n) && !opBasis.has(n))
       throw new Error(`${pad}: nummer ${n} is al gebruikt door een verwijderd ADR; kies het volgende vrije nummer`);
   }
 }
@@ -144,12 +156,25 @@ function verifyVervangersBestaan(context) {
     ...context.adrBestanden.map((f) => ({ file: `docs/adr/${f}`, alsAdr: `docs/adr/${f}` })),
     ...context.adrArchief.map((f) => ({ file: `${ARCHIEF}${f}`, alsAdr: `docs/adr/${f}` })),
   ];
+  /** @type {Map<string, string>} */
+  const vervangers = new Map();
   for (const { file, alsAdr } of paden) {
-    const doel = /^vervangen door (\d{4})$/.exec(
-      documentInfo(alsAdr, context.authority.working(file) ?? '')?.status ?? '',
-    )?.[1];
+    const info = documentInfo(alsAdr, context.authority.working(file) ?? '');
+    if (info === null) throw new Error(`${file}: ongeldige ADR-status`);
+    const doel = /^vervangen door (\d{4})$/.exec(info.status)?.[1];
     if (doel !== undefined && !nummers.has(doel))
       throw new Error(`${file}: vervangen door ${doel}, maar ADR ${doel} bestaat na deze PR niet meer; ${A4_MELDING}`);
+    const nummer = adrNumber(file);
+    if (doel !== undefined && nummer !== undefined) vervangers.set(nummer, doel);
+  }
+  for (const begin of vervangers.keys()) {
+    const gezien = new Set();
+    let nummer = begin;
+    while (vervangers.has(nummer)) {
+      if (gezien.has(nummer)) throw new Error(`ADR ${begin}: cyclus in vervangen-door-verwijzingen`);
+      gezien.add(nummer);
+      nummer = vervangers.get(nummer) ?? nummer;
+    }
   }
 }
 
@@ -212,7 +237,8 @@ const ARCHIEF = 'docs/adr/archief/';
 
 /** Bestandsnamen van de ADR's op HEAD in `map` (standaard `docs/adr/`, zonder archief). @param {string} root @param {string} sha @param {string} [map] */
 function adrFiles(root, sha, map = 'docs/adr/') {
-  const names = gitText(root, ['ls-tree', '--name-only', '-z', sha, map]) ?? '';
+  const names = gitText(root, ['ls-tree', '--name-only', '-z', sha, map]);
+  if (names === null) throw new Error(`ADR-bestanden op ${sha} zijn niet leesbaar`);
   return names
     .split('\0')
     .flatMap((file) => (file.startsWith(map) ? (/^(\d{4}-[^/]+\.md)$/.exec(file.slice(map.length))?.[1] ?? []) : []));
@@ -384,6 +410,19 @@ function samenvatting(tekst) {
   if (bestand !== undefined && bestand !== '') appendFileSync(bestand, tekst);
 }
 
+/** @param {{ status: string, pad: string }[]} changes @param {Context} context */
+function verifyDocuments(changes, context) {
+  const gewijzigd = changes.flatMap(({ pad }) => {
+    const besluit = verifyDocument(
+      { file: pad, before: context.authority.trusted(pad), after: context.authority.working(pad) },
+      context,
+    );
+    return besluit === null ? [] : [besluit];
+  });
+  verifyVervangersBestaan(context);
+  return gewijzigd;
+}
+
 async function main() {
   const root = process.cwd();
   const base = requiredEnv('BASE_SHA');
@@ -421,13 +460,7 @@ async function main() {
   const context = { root, base, sha, split, pr, ...adrLijsten(root, sha), authority: snapshot, config };
   verifyNummerVrij(changes, context);
   const verwijderd = verifyAdrWeg(changes, context);
-  const gewijzigd = changes.flatMap(({ pad }) => {
-    const besluit = verifyDocument(
-      { file: pad, before: authority.trusted(pad), after: snapshot.working(pad) },
-      context,
-    );
-    return besluit === null ? [] : [besluit];
-  });
+  const gewijzigd = verifyDocuments(changes, context);
   const besluiten = [...gewijzigd, ...verwijderd];
   const besluitmelding = verifyInPrStatus({ besluiten, changes }, context);
   const ui = functionalUiSummary(changes, context);

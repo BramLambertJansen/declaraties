@@ -14,6 +14,38 @@ Hier staan wijzigingen die van belang zijn bij het gebruiken of bijwerken van de
 - De feitenopdracht laadt de UI-catalogus alleen wanneer componentinformatie wordt gevraagd. Gerichte vragen over
   gates, ADR's, specs, migraties, routes, permissies, foutcodes en fase starten zonder de TypeScript-compiler te laden.
 
+- De SQL-feature-lane laat alleen één migratie met één owner-tabel volgens het generatorpatroon toe. Owner-policies,
+  ENABLE/FORCE RLS en grants worden expliciet gecontroleerd; quoted objectnamen, brede schrijfgrants, meerdere tabellen
+  en ongeldige retentionvolgordes gaan naar de framework-lane. Afwijkende SQL blijft mogelijk via de bestaande zwaardere
+  reviewroute (`scripts/kit/lane.mjs`, `docs/operations/agent-doorloop.md`).
+
+- `check-core` weigert een oudere core via een vertrouwde template- of app-main-merge, ook bij omgedraaide ouders.
+  Git-geschiedenis bepaalt welke templateversies al geïmporteerd zijn; er komt geen extra versieregister bij.
+  Een geldige nieuwere update en een merge zonder core-wijziging blijven toegestaan (`scripts/kit/check-core.mjs`).
+
+- Het rolhek weigert PR-creatie en schrijvende GitHub-API-opdrachten door subagents. Brede formattering vraagt
+  expliciet eigenaarakkoord via de hoofdsessie; de automatische toestemming voor `pnpm format` is verwijderd.
+  De Git-padcontrole herkent `--target-directory` en weigert ondoorzichtige refmutaties via `git update-ref --stdin`.
+
+- Het roadmaparchief valt onder de beschermde gate-paden en CODEOWNERS, ook bij verwijderen of weg-hernoemen.
+
+- Documentcontroles bewaken ADR-nummers in actieve bestanden, archief en verwijdergeschiedenis, ook als main sinds het
+  aftakken verderging. De historische dubbele 0039 geeft geen vrijstelling voor nieuwe dubbelen. Vervangingsketens mogen
+  geen cycli bevatten; de besluit-lane valideert het volledige besluitregister. Genummerde open vragen en onjuiste
+  bronvoorbeelden blokkeren nu eveneens een goedgekeurde spec.
+
+- De initialisatietests controleren ook de echte README, CHANGELOG, appnamen, CODEOWNERS en gateconfiguratie. De proef
+  blijft werken na initialisatie van de checkout en detecteert incompatibele wijzigingen aan de template-invoer.
+
+- De resourcegenerator vraagt ook een tweede create-sample voor echte cursorpaginering. De securitysuite weigert een
+  ontbrekend sample en gelijke create-ID's. Resourcemetadata kiest de toegestane rol voor A en B, inclusief admin met MFA.
+
+- De componentskill verwijst naar de verplichte catalogusdekking voor alle componenten en eindige varianten. De oude
+  aanwijzing om een uitzondering in het controlescript te maken is verwijderd; die mogelijkheid bestaat niet.
+
+- De testrunner ziet een tijdelijke selectie van bronbestanden in plaats van de hele werkmap. Privébestanden en
+  Git-metadata blijven erbuiten; symlinkomwegen worden geweigerd. Worktrees krijgen ieder een eigen testprojectnaam.
+
 - Het spec-skelet van `pnpm new:resource` volgt `docs/specs/_template.md`: sectie "Kopieer de vorm van" (verwijzing naar `src/api/routes/accounts.ts`) en een `OV-1 ⚠ open`-regel onder "Open vragen", zodat een gegenereerd voorstel niet ongemerkt als besluit kan doorgaan (`scripts/kit/templates/spec.md.tmpl`). De status blijft `voorstel`.
 
 - Het rolhek berekent het runnervertrouwen (`trustedRunner`, enkele git-aanroepen) alleen nog wanneer een Bash-opdracht een automatische runner is, en hoogstens eens per hookaanroep; de beslissing blijft fail-closed (`rails/hooks/rolhek.mjs`, `rails/hooks/lib/rolhek.mjs`).

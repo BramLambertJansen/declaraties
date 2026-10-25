@@ -1,4 +1,5 @@
 import { routeLabel, sampleFor, type AppRoute, type RouteSample } from './fixtures.ts';
+import type { Role } from '../../src/core/shared/can.ts';
 
 // Wat alleen de spec weet (spec security-suite, "Wat niet generiek kan"): welke route bij welke tabel hoort en wie de eigenaar is.
 // Alleen gegevens, geen asserties; een testpad, dus een developer kan hier geen uitzondering in zetten (rolhek, diff-guard).
@@ -16,13 +17,15 @@ export type RouteKlasse =
   | { readonly scope: 'eigenaar'; readonly resource: string; readonly actie: Actie };
 
 export interface ResourceRegel {
+  // Twee acteurs met deze toegestane rol; admin-acteurs hebben echte MFA-sessies. Standaard user.
+  readonly rol?: Role;
   // 'schema.tabel', zoals de catalogus hem geeft (public.invoices).
   readonly tabel: string;
   readonly sample: {
     // Geldige velden voor de create-route (en, tenzij `rij` er is, de kolommen van een directe insert).
     readonly create: Readonly<Record<string, unknown>>;
     // Een tweede, andere geldige rij: B en A krijgen er twee, zodat paginering via cursor echt meer dan één pagina geeft.
-    readonly createTweede?: Readonly<Record<string, unknown>>;
+    readonly createTweede: Readonly<Record<string, unknown>>;
     // Een geldige, van create en createTweede verschillende (unieke) create-input voor de spoof-controle (AC-10): die voegt er een
     // onbekend veld aan toe en eist 400 VALIDATION. Verplicht zodra er een create-route is; ontbreekt hij, dan is de suite rood.
     readonly spoof?: Readonly<Record<string, unknown>>;

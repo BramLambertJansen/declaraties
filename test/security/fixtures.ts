@@ -370,13 +370,15 @@ export function createSecurityFixtures() {
     return browser;
   }
 
-  const benoemd = new Map<'A' | 'B', Promise<Actor>>();
-  // A en B: twee gebruikers met rol `user` (A is de eerste uit de pool; B een eigen account voor A-tegen-B-tests).
-  function eerste(naam: 'A' | 'B'): Promise<Actor> {
-    const bestaand = benoemd.get(naam);
+  const benoemd = new Map<string, Promise<Actor>>();
+  // A en B blijven per rol dezelfde twee accounts; admin-acteurs hebben MFA.
+  function eerste(naam: 'A' | 'B', rol: Role): Promise<Actor> {
+    const sleutel = `${naam}:${rol}`;
+    const bestaand = benoemd.get(sleutel);
     if (bestaand !== undefined) return bestaand;
-    const nieuw = naam === 'A' ? actor('user', 'lezen') : maak('user');
-    benoemd.set(naam, nieuw);
+    const soort = rol === 'admin' ? 'adminMfa' : 'user';
+    const nieuw = naam === 'A' ? actor(soort, 'lezen') : maak(soort);
+    benoemd.set(sleutel, nieuw);
     return nieuw;
   }
 
@@ -406,8 +408,8 @@ export function createSecurityFixtures() {
     verlopenBron,
     verlopenBrowser,
     bijwerkingen,
-    A: () => eerste('A'),
-    B: () => eerste('B'),
+    A: (rol: Role = 'user') => eerste('A', rol),
+    B: (rol: Role = 'user') => eerste('B', rol),
   };
 }
 
