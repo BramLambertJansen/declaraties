@@ -14,16 +14,21 @@ export function FormErrorSummary<Input extends FieldValues, Output>({
 }: FormErrorSummaryOptions<Input> & { readonly form: UseFormReturn<Input, unknown, Output> }) {
   const state = useFormState({ control: form.control });
   const errors = fields.flatMap((field) => {
-    const message = form.getFieldState(field.name, state).error?.message;
-    return message === undefined ? [] : [{ ...field, message }];
+    const error = form.getFieldState(field.name, state).error;
+    return error?.message === undefined ? [] : [{ ...field, message: error.message, type: error.type }];
   });
   const heading = useId();
   const summary = useRef<HTMLDivElement>(null);
-  const handledSubmit = useRef(0);
+  const handled = useRef({ submit: 0, serverErrors: '[]' });
+  const hasErrors = errors.length > 0;
+  const serverErrors = JSON.stringify(
+    errors.filter((error) => error.type === 'server').map(({ name, message }) => [name, message]),
+  );
   useEffect(() => {
-    if (handledSubmit.current === state.submitCount) return;
-    handledSubmit.current = state.submitCount;
-    if (errors.length === 0) return;
+    const newSubmit = handled.current.submit !== state.submitCount;
+    const newServerErrors = serverErrors !== '[]' && handled.current.serverErrors !== serverErrors;
+    handled.current = { submit: state.submitCount, serverErrors };
+    if (state.submitCount === 0 || !hasErrors || (!newSubmit && !newServerErrors)) return;
     // RHF plant zelf nog een veldfocus vóór submitCount wijzigt. Onze focus volgt die timer, ook als React
     // effects vóór de timers uitvoert. Unmount of nieuwe invoer annuleert de geplande focus.
     const timer = setTimeout(() => {
@@ -32,7 +37,7 @@ export function FormErrorSummary<Input extends FieldValues, Output>({
     return () => {
       clearTimeout(timer);
     };
-  }, [errors.length, state.submitCount]);
+  }, [hasErrors, state.submitCount, serverErrors]);
   if (state.submitCount === 0 || errors.length === 0) return null;
   return (
     <div

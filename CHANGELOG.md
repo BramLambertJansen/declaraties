@@ -165,6 +165,9 @@ Hier staan wijzigingen die van belang zijn bij het gebruiken of bijwerken van de
 
 ### Opgelost
 
+- Het foutenoverzicht focust ook bij later ontvangen serverveldfouten na clientvalidatie. Gewone veldcorrecties houden
+  hun focus; de bestaande uitgestelde focus na een mislukte verzendpoging blijft behouden.
+
 - Opnieuw uitnodigen verwijdert de oude reset-tokens en mailt pas na commit van de route-transactie (`reinviteUser(auth, userId, lifecycle?)`), en SMTP heeft time-outs (`SMTP_TIMEOUTS`), zodat een hangende mailserver geen transactie vasthoudt. Een app die `services.invitations.reinvite` aanroept: nieuwe signatuur `reinvite(userId, lifecycle?)`, geef `{ afterCommit }` uit de route-ctx mee.
 
 - Nieuwe-app-start: bootstrap controleert de machine met `doctor --machine`, zonder nog niet gestarte appdiensten als
