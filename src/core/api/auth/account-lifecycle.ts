@@ -47,6 +47,7 @@ interface LifecycleState {
   readonly database: Pool;
   readonly requiresMfa: RequiresMfa;
   readonly snapshots: WeakMap<object, LoginSnapshot>;
+  readonly settingsOnly: WeakSet<object>;
 }
 
 async function prepareSession(
@@ -84,8 +85,14 @@ async function bindChallenge(
   });
 }
 
-async function prepareChallenge({ snapshots }: LifecycleState, ctx: HookContext) {
-  if (ctx.path !== '/two-factor/verify-totp' || (await getSessionFromCtx(ctx)) !== null) return;
+async function prepareChallenge({ snapshots, settingsOnly, requiresMfa }: LifecycleState, ctx: HookContext) {
+  if (ctx.path !== '/two-factor/verify-totp') return;
+  const existing = await getSessionFromCtx(ctx);
+  if (existing !== null) {
+    const alreadyMfa = 'sessionStrength' in existing.session && existing.session.sessionStrength === 'mfa';
+    if (alreadyMfa || !(await requiresMfa(existing.user.id))) settingsOnly.add(ctx.context);
+    return;
+  }
   const name = ctx.context.createAuthCookie('two_factor').name;
   const identifier = await ctx.getSignedCookie(name, ctx.context.secret);
   if (!identifier) return;
@@ -95,10 +102,14 @@ async function prepareChallenge({ snapshots }: LifecycleState, ctx: HookContext)
   snapshots.set(ctx.context, snapshot);
 }
 
-async function completeLogin({ database, requiresMfa, snapshots }: LifecycleState, ctx: HookContext, now: number) {
+async function completeLogin(
+  { database, requiresMfa, snapshots, settingsOnly }: LifecycleState,
+  ctx: HookContext,
+  now: number,
+) {
   const login = ctx.path === '/sign-in/email' || ctx.path === '/two-factor/verify-totp';
   const created = ctx.context.newSession;
-  if (!login || created === null) return;
+  if (!login || created === null || settingsOnly.has(ctx.context)) return;
   try {
     const snapshot = snapshots.get(ctx.context);
     if (snapshot === undefined) unauthenticated();
@@ -118,7 +129,12 @@ async function completeLogin({ database, requiresMfa, snapshots }: LifecycleStat
 }
 
 export function createAccountLifecycle(database: Pool, requiresMfa: RequiresMfa = () => Promise.resolve(false)) {
-  const state = { database, requiresMfa, snapshots: new WeakMap<object, LoginSnapshot>() };
+  const state = {
+    database,
+    requiresMfa,
+    snapshots: new WeakMap<object, LoginSnapshot>(),
+    settingsOnly: new WeakSet<object>(),
+  };
   return {
     beforeSession: (session: { readonly userId: string }, ctx: SessionHookContext | null | undefined) =>
       prepareSession(state, session, ctx),

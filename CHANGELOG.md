@@ -55,6 +55,9 @@ Hier staan wijzigingen die van belang zijn bij het gebruiken of bijwerken van de
   worden niet meer uit het foutbericht overgenomen; SQLSTATE en de vaste waarschuwing blijven bruikbaar. Een logfout
   beëindigt het proces niet.
 
+- Optionele MFA-inschrijving binnen een bestaande sessie ververst de laatste-loginhistorie niet. De eerste verplichte
+  MFA-inschrijving van een beheerder blijft zijn login voltooien.
+
 - Het spec-skelet van `pnpm new:resource` volgt `docs/specs/_template.md`: sectie "Kopieer de vorm van" (verwijzing naar `src/api/routes/accounts.ts`) en een `OV-1 ⚠ open`-regel onder "Open vragen", zodat een gegenereerd voorstel niet ongemerkt als besluit kan doorgaan (`scripts/kit/templates/spec.md.tmpl`). De status blijft `voorstel`.
 
 - Het rolhek berekent het runnervertrouwen (`trustedRunner`, enkele git-aanroepen) alleen nog wanneer een Bash-opdracht een automatische runner is, en hoogstens eens per hookaanroep; de beslissing blijft fail-closed (`rails/hooks/rolhek.mjs`, `rails/hooks/lib/rolhek.mjs`).
