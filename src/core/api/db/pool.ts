@@ -1,4 +1,5 @@
 import pg from 'pg';
+import { logUnexpectedError } from '../http/safe-error-log.ts';
 
 // Kleine pool per proces (framework §2): API en database staan in dezelfde regio, een request houdt een verbinding
 // maar één transactie vast.
@@ -14,7 +15,7 @@ const KEEPALIVE_DELAY_MS = 10_000;
 // pool; zonder listener stopt dat het hele proces. De pool gooit de verbinding zelf weg; de volgende request verbindt opnieuw.
 function ignoreIdleErrors(pool: pg.Pool): pg.Pool {
   pool.on('error', (error) => {
-    console.warn(`database: idle verbinding verbroken (${error.message})`);
+    logUnexpectedError({ label: 'database: idle verbinding verbroken' }, error, console.warn);
   });
   return pool;
 }

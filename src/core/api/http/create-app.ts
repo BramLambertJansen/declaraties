@@ -99,7 +99,10 @@ function routeHandler<Services>(
     if (facts !== undefined) facts.userId = session.userId;
     const raw = await readRawInput(c, contract.method);
     const actor = { userId: session.userId, sessionStrength: session.sessionStrength };
-    const effects = createRouteEffects();
+    const effects = createRouteEffects({
+      requestId: c.get('requestId'),
+      route: `${contract.method} /api${contract.path}`,
+    });
     const output = await effects.run(() =>
       timeDatabase(facts, () =>
         withUser(
@@ -128,7 +131,12 @@ function routeHandler<Services>(
             // Een output die niet bij het contract past, is een bug: INTERNAL_ERROR, nooit de data.
             return contract.output.parse(result);
           },
-          { readOnly: contract.method === 'GET', rateLimit, requestId: c.get('requestId') },
+          {
+            readOnly: contract.method === 'GET',
+            rateLimit,
+            requestId: c.get('requestId'),
+            onTransactionOutcome: effects.onTransactionOutcome,
+          },
         ),
       ),
     );

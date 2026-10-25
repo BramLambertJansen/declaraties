@@ -23,24 +23,30 @@ function fixture() {
   return { auth, deleteUser, send };
 }
 
-test('na een commitfout wordt het auth-account opgeruimd zonder een mail te versturen', async () => {
-  const { auth, deleteUser, send } = fixture();
-  const effects = createRouteEffects();
-  await expect(
-    effects.run(async () => {
-      await inviteUser(
-        auth,
-        { name: 'New', email: 'new@example.test' },
-        { ...effects, beforeMail: () => Promise.resolve() },
-      );
-      expect(deleteUser).not.toHaveBeenCalled();
-      expect(send).not.toHaveBeenCalled();
-      throw new Error('commit failed');
-    }),
-  ).rejects.toThrow('commit failed');
-  expect(deleteUser).toHaveBeenCalledWith('new');
-  expect(send).not.toHaveBeenCalled();
-});
+// Gewijzigd door de opdracht: een commitfout bewijst geen rollback. Alleen expliciet bevestigde rollback compenseert.
+test.each(['rolledBack', 'unknown'] as const)(
+  'uitkomst %s bepaalt of het auth-account wordt opgeruimd',
+  async (outcome) => {
+    const { auth, deleteUser, send } = fixture();
+    const effects = createRouteEffects();
+    await expect(
+      effects.run(async () => {
+        await inviteUser(
+          auth,
+          { name: 'New', email: 'new@example.test' },
+          { ...effects, beforeMail: () => Promise.resolve() },
+        );
+        expect(deleteUser).not.toHaveBeenCalled();
+        expect(send).not.toHaveBeenCalled();
+        effects.onTransactionOutcome(outcome);
+        throw new Error('commit failed');
+      }),
+    ).rejects.toThrow('commit failed');
+    if (outcome === 'rolledBack') expect(deleteUser).toHaveBeenCalledWith('new');
+    else expect(deleteUser).not.toHaveBeenCalled();
+    expect(send).not.toHaveBeenCalled();
+  },
+);
 
 test('tokenopslag faalt na commit: het account blijft behouden voor opnieuw uitnodigen', async () => {
   const { auth, deleteUser, send } = fixture();

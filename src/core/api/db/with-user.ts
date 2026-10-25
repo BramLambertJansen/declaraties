@@ -2,8 +2,9 @@ import { drizzle } from 'drizzle-orm/node-postgres';
 import type { Pool, PoolClient } from 'pg';
 import { AppError, translateDatabaseError } from '../errors.ts';
 import { watchClient } from './client-lease.ts';
+import { reportTransactionOutcome } from './transaction-observer.ts';
 
-import type { Actor, ActorRole, RateLimit, WithUser } from './types.ts';
+import type { Actor, ActorRole, RateLimit, TransactionOutcome, WithUser } from './types.ts';
 
 export type { Actor, ActorRole, RateLimit, SessionStrength, Tx, WithUser, WithUserOptions } from './types.ts';
 
@@ -70,6 +71,21 @@ async function transaction<T>(client: PoolClient, begin: string, run: () => Prom
   return result;
 }
 
+async function rollback(client: PoolClient): Promise<boolean> {
+  try {
+    await client.query('rollback');
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+interface TransactionState {
+  started: boolean;
+  commitStarted: boolean;
+  outcome: TransactionOutcome;
+}
+
 // Eén transactie per request met rol app_authenticated, app.user_id en app.session_strength (framework §6); met
 // rateLimit eerst een eigen korte transactie voor de telling, op dezelfde verbinding (spec rate-limit, OV-2).
 // Databasefouten worden vertaald naar AppError (src/core/api/errors.ts); faalt de telling, dan faalt de request (fail closed).
@@ -81,6 +97,7 @@ export function createWithUser(pool: Pool): WithUser {
     const client = await pool.connect();
     const lease = watchClient(client);
     let destroy = false;
+    const state: TransactionState = { started: false, commitStarted: false, outcome: 'unknown' };
     try {
       return await lease.run(async () => {
         if (rateLimit !== undefined) {
@@ -90,21 +107,25 @@ export function createWithUser(pool: Pool): WithUser {
           });
           if (retryAfter > 0) throw rateLimited(retryAfter);
         }
-        return transaction(client, options.readOnly === true ? 'begin read only' : 'begin', async () => {
-          const role = await enterActor(client, actor, requestId);
-          return lease.run(() => work(drizzle({ client }), role));
-        });
+        await client.query(options.readOnly === true ? 'begin read only' : 'begin');
+        state.started = true;
+        const role = await enterActor(client, actor, requestId);
+        const result = await lease.run(() => work(drizzle({ client }), role));
+        state.commitStarted = true;
+        await client.query('commit');
+        state.outcome = 'committed';
+        return result;
       });
     } catch (error) {
-      destroy = lease.broken() || error instanceof LeakedConnectionError;
+      destroy = lease.broken() || error instanceof LeakedConnectionError || state.commitStarted;
       if (!destroy) {
-        await client.query('rollback').catch(() => {
-          destroy = true;
-        });
+        destroy = !(await rollback(client));
+        if (!destroy && state.started) state.outcome = 'rolledBack';
       }
       throw translateDatabaseError(error);
     } finally {
       lease.release(destroy);
+      reportTransactionOutcome(options, state.outcome);
     }
   };
 }

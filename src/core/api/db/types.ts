@@ -24,12 +24,16 @@ export interface RateLimit {
   readonly max: number;
 }
 
+export type TransactionOutcome = 'committed' | 'rolledBack' | 'unknown';
+
 export interface WithUserOptions {
   // De server-gegenereerde requestId (ADR 0051): komt als `app.request_id` in de transactie, voor de auditregels.
   readonly requestId: string;
   // GET-routes: de transactie is read only (framework §6).
   readonly readOnly?: boolean;
   readonly rateLimit?: RateLimit;
+  // Na vrijgeven van de verbinding; alleen een bevestigde rollback staat destructieve compensatie toe.
+  readonly onTransactionOutcome?: (outcome: TransactionOutcome) => void;
 }
 
 // Wat withUser binnen de transactie al weet: de rol uit user_roles (framework §6: per request uit de database), of null.

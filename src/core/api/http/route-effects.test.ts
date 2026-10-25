@@ -21,7 +21,7 @@ test('gevolgen lopen na commit en vrijgeven, cleanup alleen na rollback', async 
   expect(events).toEqual(['commit', 'release', 'mail']);
 });
 
-test('commitfout compenseert in omgekeerde volgorde en bewaart de oorspronkelijke fout', async () => {
+test('bevestigde rollback compenseert in omgekeerde volgorde en bewaart de oorspronkelijke fout', async () => {
   const log = vi.spyOn(console, 'error').mockImplementation(() => undefined);
   try {
     const effects = createRouteEffects();
@@ -39,6 +39,7 @@ test('commitfout compenseert in omgekeerde volgorde en bewaart de oorspronkelijk
       return Promise.reject(new Error('cleanup failed'));
     });
     const error = new Error('commit failed');
+    effects.onTransactionOutcome('rolledBack');
     await expect(effects.run(() => Promise.reject(error))).rejects.toBe(error);
     expect(events).toEqual(['second', 'first']);
   } finally {
@@ -58,8 +59,9 @@ test('een fout na commit draait geen compensatie maar voert de andere gevolgen w
   expect(other).toHaveBeenCalledOnce();
 });
 
-test('een externe stap die pas na een disconnect afrondt wordt alsnog gecompenseerd', async () => {
+test('een externe stap die pas na een bevestigde rollback afrondt wordt alsnog gecompenseerd', async () => {
   const effects = createRouteEffects();
+  effects.onTransactionOutcome('rolledBack');
   await expect(effects.run(() => Promise.reject(new Error('disconnect')))).rejects.toThrow('disconnect');
   const cleanup = Promise.withResolvers<undefined>();
   const mail = vi.fn();
@@ -85,6 +87,7 @@ test('een mislukte cleanup na rollback lekt geen persoonsgegevens naar de log', 
       ),
     );
     const error = new Error('commit failed');
+    effects.onTransactionOutcome('rolledBack');
     await expect(effects.run(() => Promise.reject(error))).rejects.toBe(error);
 
     expect(log).toHaveBeenCalledOnce();

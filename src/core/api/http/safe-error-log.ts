@@ -7,6 +7,7 @@ interface ErrorLogContext {
   readonly requestId?: string;
   readonly route?: string;
 }
+type LogWriter = (message: string, entry: Readonly<Record<string, string>>) => void;
 
 // SQLSTATE (5 tekens) of een registercode van AppError; vrije tekst of driver-codes (ECONNRESET) vallen af.
 const SQLSTATE = /^[0-9A-Z]{5}$/;
@@ -45,9 +46,9 @@ function buildEntry(context: ErrorLogContext, error: unknown): Record<string, st
   return entry;
 }
 
-export function logUnexpectedError(context: ErrorLogContext, error: unknown): void {
+export function logUnexpectedError(context: ErrorLogContext, error: unknown, write: LogWriter = console.error): void {
   try {
-    console.error('unexpected error', buildEntry(context, error));
+    write('unexpected error', buildEntry(context, error));
   } catch {
     // Logging mag nooit een nieuwe fout veroorzaken.
   }

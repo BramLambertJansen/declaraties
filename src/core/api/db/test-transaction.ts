@@ -3,7 +3,8 @@ import { drizzle } from 'drizzle-orm/node-postgres';
 import type { Pool, PoolClient } from 'pg';
 import type { AuthGateway, SessionInfo } from '../auth/auth.ts';
 import { translateDatabaseError } from '../errors.ts';
-import type { Actor, ActorRole, SessionStrength, Tx, WithUserOptions } from './types.ts';
+import type { Actor, ActorRole, SessionStrength, TransactionOutcome, Tx, WithUserOptions } from './types.ts';
+import { reportTransactionOutcome } from './transaction-observer.ts';
 import { checkActor, checkRequestId, consumeRateLimit, createWithUser, enterActor, rateLimited } from './with-user.ts';
 import { UserId } from '../../shared/ids.ts';
 
@@ -51,19 +52,26 @@ function testWithUser(client: PoolClient): TestWithUser {
   let savepoints = 0;
   // Zoals withUser: een savepoint per stap; de telling (rateLimit) in een eigen savepoint vóór die van het werk, zodat
   // een werk dat terugrolt toch meetelt (spec rate-limit).
-  const inSavepoint = async <T>(run: () => Promise<T>): Promise<T> => {
+  const inSavepoint = async <T>(run: () => Promise<T>, observe?: (outcome: TransactionOutcome) => void): Promise<T> => {
     savepoints += 1;
     const savepoint = `with_user_${String(savepoints)}`;
     await client.query(`savepoint ${savepoint}`);
+    let outcome: TransactionOutcome = 'unknown';
     try {
       const result = await run();
       await client.query(`release savepoint ${savepoint}`);
+      outcome = 'committed';
       return result;
     } catch (error) {
       await client.query(`rollback to savepoint ${savepoint}`);
+      outcome = 'rolledBack';
       throw translateDatabaseError(error);
     } finally {
-      await leaveActor(client);
+      try {
+        await leaveActor(client);
+      } finally {
+        observe?.(outcome);
+      }
     }
   };
   return async (actor, work, options = {}) => {
@@ -77,7 +85,13 @@ function testWithUser(client: PoolClient): TestWithUser {
       });
       if (retryAfter > 0) throw rateLimited(retryAfter);
     }
-    return inSavepoint(async () => work(drizzle({ client }), await enterActor(client, actor, requestId)));
+    // In deze terugdraaiende testkit is dit de logische savepointuitkomst, geen duurzame databasecommit.
+    return inSavepoint(
+      async () => work(drizzle({ client }), await enterActor(client, actor, requestId)),
+      (outcome) => {
+        reportTransactionOutcome({ ...options, requestId }, outcome);
+      },
+    );
   };
 }
 

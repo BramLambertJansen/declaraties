@@ -46,6 +46,15 @@ Hier staan wijzigingen die van belang zijn bij het gebruiken of bijwerken van de
 - De testrunner ziet een tijdelijke selectie van bronbestanden in plaats van de hele werkmap. Privébestanden en
   Git-metadata blijven erbuiten; symlinkomwegen worden geweigerd. Worktrees krijgen ieder een eigen testprojectnaam.
 
+- `withUser()` onderscheidt bevestigde commit, bevestigde rollback en onbekende uitkomst via de optionele
+  `onTransactionOutcome`. Bij een verloren COMMIT-bevestiging wordt de verbinding vernietigd en draait route-cleanup
+  geen gecommitteerde gegevens terug. Alleen bevestigde rollback staat compensatie toe, ook voor laat geregistreerde
+  acties. Herstel en de gevolgen voor eigen `WithUser`-implementaties staan in `docs/operations/transactie-uitkomsten.md`.
+
+- Ook idle database- en readiness-poolfouten gebruiken de veilige logmetadata. SQL, persoonsgegevens, detail en cause
+  worden niet meer uit het foutbericht overgenomen; SQLSTATE en de vaste waarschuwing blijven bruikbaar. Een logfout
+  beëindigt het proces niet.
+
 - Het spec-skelet van `pnpm new:resource` volgt `docs/specs/_template.md`: sectie "Kopieer de vorm van" (verwijzing naar `src/api/routes/accounts.ts`) en een `OV-1 ⚠ open`-regel onder "Open vragen", zodat een gegenereerd voorstel niet ongemerkt als besluit kan doorgaan (`scripts/kit/templates/spec.md.tmpl`). De status blijft `voorstel`.
 
 - Het rolhek berekent het runnervertrouwen (`trustedRunner`, enkele git-aanroepen) alleen nog wanneer een Bash-opdracht een automatische runner is, en hoogstens eens per hookaanroep; de beslissing blijft fail-closed (`rails/hooks/rolhek.mjs`, `rails/hooks/lib/rolhek.mjs`).
