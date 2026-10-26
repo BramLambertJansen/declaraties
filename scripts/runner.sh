@@ -5,10 +5,33 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
+# Zelfverdediging, vóór elke git-aanroep: de aanroeper bepaalt niet welke repository, config of objecten git gebruikt.
+# Weg met elke GIT_*-variabele (GIT_DIR, GIT_CONFIG_COUNT/KEY/VALUE, GIT_CONFIG_GLOBAL, ...); geen vervangende objecten
+# (git replace), geen systeemconfig en nooit een wachtwoordprompt.
+while IFS= read -r name; do unset "$name"; done < <(compgen -e | grep '^GIT_' || true)
+export GIT_NO_REPLACE_OBJECTS=1 GIT_TERMINAL_PROMPT=0 GIT_CONFIG_NOSYSTEM=1
+
+# De globale git-config (core.sshCommand, http.proxy, ...) komt alleen uit de echte home van de gebruiker, niet uit een
+# door de aanroeper gekozen HOME of XDG_CONFIG_HOME. De home komt uit de gebruikersdatabase (getent, op macOS dscl).
+unset XDG_CONFIG_HOME
+account_home=""
+if command -v getent >/dev/null 2>&1; then
+  account_home="$(getent passwd "$(id -u)" | cut -d: -f6 || true)"
+elif command -v dscl >/dev/null 2>&1; then
+  account_home="$(dscl . -read "/Users/$(id -un)" NFSHomeDirectory 2>/dev/null | sed -n 's/^NFSHomeDirectory: *//p' || true)"
+fi
+if [[ -z "$account_home" ]]; then
+  printf '✗ De home van gebruiker %s is niet uit de gebruikersdatabase te lezen (getent of dscl).\n' "$(id -u)" >&2
+  printf '  → de runner kan de globale git-config dan niet vertrouwen; gebruik de wegwerp-CI (ADR 0044 punt 6).\n' >&2
+  exit 1
+fi
+export HOME="$account_home"
+
 # Wat de host vóór de container uitvoert of leest, moet gelijk zijn aan wat al op main staat (ADR 0044 punt 3–4):
-# lokaal aan de merge-base met origin/main, zodat ook een gecommitte wijziging niet ongelezen op de host draait; in CI
-# (ondiepe checkout zonder origin/main, wegwerp-runner) aan HEAD. Alleen de eigenaar mag dat met --sta-wijzigingen-toe
-# overslaan, na het lezen van de wijziging.
+# lokaal aan de merge-base met de echte main bij de remote (git ls-remote, zoals .claude/hooks/laden.mjs), niet met de
+# lokale ref origin/main die een agent kan verleggen; zo draait ook een gecommitte wijziging niet ongelezen op de host. In
+# CI (ondiepe checkout, wegwerp-runner) aan HEAD. Alleen de eigenaar mag dat met --sta-wijzigingen-toe overslaan, na het
+# lezen van de wijziging.
 # 'compose.*.yaml' staat gequote: git leest het als pathspec, bash expandeert het niet naar de bestanden die nu bestaan
 # (een verwijderd compose.<x>.yaml viel dan uit de vergelijking). De hook (rails/hooks/lib/runner-authority.mjs)
 # heeft dezelfde lijst; test/scripts/runner-host-files.test.ts houdt ze gelijk.
@@ -58,6 +81,51 @@ check_host_paths() {
   done < <(git ls-files -z -- "${HOST_FILES[@]}")
 }
 
+origin_untrusted() {
+  printf '✗ De remote origin is niet vast te stellen: %s\n' "$1" >&2
+  printf '  → zet remote.origin.url alleen in .git/config en haal wat hem omlegt weg, of gebruik de wegwerp-CI (ADR 0044 punt 6).\n' >&2
+  exit 1
+}
+
+# Herkomst van origin: precies één remote.origin.url, uit de config van de repo zelf (niet uit ~/.gitconfig, XDG of een
+# include-bestand), en git gebruikt die url ongewijzigd (geen url.<x>.insteadOf die hem omlegt). Andere insteadOf- of
+# include-regels mogen blijven.
+check_origin_url() {
+  local origins count file url expected used
+  origins="$(git config --show-origin --get-all remote.origin.url || true)"
+  count="$(grep -c . <<<"$origins" || true)"
+  [[ "$count" == "0" ]] && origin_untrusted "geen remote origin; zet hem in .git/config en draai git fetch origin main"
+  [[ "$count" == "1" ]] || origin_untrusted "remote.origin.url heeft $count waarden in de git-config"
+  file="${origins%%$'\t'*}"
+  url="${origins#*$'\t'}"
+  expected="$(realpath -- "$(git rev-parse --git-common-dir)/config")"
+  [[ "$file" == file:* && "$(realpath -- "${file#file:}" 2>/dev/null || true)" == "$expected" ]] ||
+    origin_untrusted "remote.origin.url komt uit ${file:-onbekend}, niet uit de config van de repo"
+  used="$(git ls-remote --get-url origin)"
+  [[ "$used" == "$url" ]] || origin_untrusted "git gebruikt $used in plaats van $url (insteadOf legt origin om)"
+}
+
+# De merge-base van HEAD met main zoals de remote die nu meldt. Ontbreekt die commit lokaal, dan dicht falen: alleen een
+# fetch haalt hem op, en de lokale origin/main is geen vervanging.
+trusted_base() {
+  local remote sha base
+  local -a limit=()
+  check_origin_url
+  if command -v timeout >/dev/null 2>&1; then limit=(timeout --kill-after=5s 30); fi
+  if ! remote="$("${limit[@]}" git ls-remote origin refs/heads/main 2>/dev/null)"; then
+    printf '✗ main bij de remote is niet te lezen, dus de host-bestanden zijn niet te vergelijken: draai git fetch origin main.\n' >&2
+    exit 1
+  fi
+  # Exact refs/heads/main: ls-remote matcht op het staartstuk, dus ook bijvoorbeeld refs/heads/fix/refs/heads/main.
+  sha="$(awk -F'\t' '$2=="refs/heads/main"{print $1}' <<<"$remote")"
+  if [[ ! "$sha" =~ ^[0-9a-f]{40}([0-9a-f]{24})?$ ]] || ! git cat-file -e "$sha^{commit}" 2>/dev/null ||
+    ! base="$(git merge-base "$sha" HEAD 2>/dev/null)"; then
+    printf '✗ main bij de remote (%s) ontbreekt lokaal; draai git fetch origin main en probeer opnieuw.\n' "${sha:-onbekend}" >&2
+    exit 1
+  fi
+  printf '%s\n' "$base"
+}
+
 check_host_files() {
   local changed base
   check_host_paths
@@ -68,10 +136,7 @@ check_host_files() {
     exit 1
   fi
   [[ "${CI:-}" == "true" ]] && return 0
-  if ! base="$(git merge-base origin/main HEAD 2>/dev/null)"; then
-    printf '✗ origin/main is niet te lezen, dus de host-bestanden zijn niet te vergelijken: draai git fetch origin.\n' >&2
-    exit 1
-  fi
+  base="$(trusted_base)"
   changed="$(git diff --name-status "$base" -- "${HOST_FILES[@]}")"
   if [[ -n "$changed" ]]; then
     printf '✗ Bestanden die de host uitvoert, wijken af van origin/main (merge-base):\n%s\n' "$changed" >&2
@@ -102,12 +167,29 @@ check_input_path() {
 for input in "${RUNNER_INPUTS[@]}" node_modules .runner-output; do check_input_path "$input"; done
 
 export RUNNER_INPUT_DIR RUNNER_PRIVATE_CANARY RUNNER_PRIVATE_CANARY_NAME
-RUNNER_INPUT_DIR="$(mktemp -d /tmp/template-runner-inputs.XXXXXXXX)"
+RUNNER_INPUT_DIR="$(mktemp -d "${TMPDIR:-/tmp}/template-runner-inputs.XXXXXXXX")"
 RUNNER_PRIVATE_CANARY="$(mktemp "$PWD/.runner-canary.XXXXXXXX")"
 RUNNER_PRIVATE_CANARY_NAME="$(basename "$RUNNER_PRIVATE_CANARY")"
 cleanup_inputs() { rm -rf -- "$RUNNER_INPUT_DIR"; rm -f -- "$RUNNER_PRIVATE_CANARY"; }
 trap cleanup_inputs EXIT
 printf 'synthetische leesgrenscontrole\n' > "$RUNNER_PRIVATE_CANARY"
+
+# Een niet-getrackt bestand met meer dan één hardlink kan dezelfde inhoud hebben als een bestand buiten de repo (een
+# sleutel, een privébestand); git ziet dat niet en cp zou het meekopiëren. Getrackte bestanden blijven toegestaan.
+check_untracked_links() {
+  local input linked
+  while IFS= read -r -d '' input; do
+    [[ -f "$input" && ! -L "$input" ]] || continue
+    # find is draagbaar (geen GNU-stat nodig); faalt find, dan telt het bestand als hardlink.
+    linked="$(find "./$input" -maxdepth 0 -links +1 -print 2>/dev/null || echo fout)"
+    if [[ -n "$linked" ]]; then
+      printf '✗ Niet-getrackt invoerbestand is een hardlink (linkcount > 1): %s\n' "$input" >&2
+      printf '  → vervang het door een gewone kopie of leg het vast; geen agentoverride.\n' >&2
+      exit 1
+    fi
+  done < <(git ls-files --others --exclude-standard -z -- "${RUNNER_INPUTS[@]}")
+}
+check_untracked_links
 
 git ls-files --cached --others --exclude-standard -z -- "${RUNNER_INPUTS[@]}" > "$RUNNER_INPUT_DIR/files"
 while IFS= read -r -d '' input; do

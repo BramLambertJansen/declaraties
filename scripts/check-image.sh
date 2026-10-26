@@ -40,7 +40,7 @@ check_smoke_path() {
 prepare_smoke_input() {
   local input seen_smoke=""
   check_smoke_path node_modules
-  smoke_input="$(mktemp -d /tmp/template-image-smoke.XXXXXXXX)"
+  smoke_input="$(mktemp -d "${TMPDIR:-/tmp}/template-image-smoke.XXXXXXXX")"
   git -C "$repo" ls-files --cached --others --exclude-standard -z -- \
     package.json playwright.smoke.config.ts 'e2e/*.smoke.spec.ts' > "$smoke_input/files"
   while IFS= read -r -d '' input; do

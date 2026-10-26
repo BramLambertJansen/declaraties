@@ -15,7 +15,11 @@ x-runner: &runner
   working_dir: /repo
   networks: [test-net]
   volumes:
-    - ${RUNNER_INPUT_DIR:-./.runner-output/empty-input}:/repo:ro
+    - type: bind
+      source: ${RUNNER_INPUT_DIR:-./.runner-output/geen-invoer-start-via-runner}
+      target: /repo
+      read_only: true
+      bind: { create_host_path: false }
     - ./node_modules:/repo/node_modules:ro
     - ./.runner-output:/output
   tmpfs:
@@ -107,8 +111,16 @@ services:
       POSTGRES_DB: app
     command: ["postgres", "-c", "hba_file=/etc/postgresql/pg_hba.test.conf"]
     volumes:
-      - ${RUNNER_INPUT_DIR:-./.runner-output/empty-input}/db/init:/docker-entrypoint-initdb.d:ro
-      - ${RUNNER_INPUT_DIR:-./.runner-output/empty-input}/db/docker/pg_hba.test.conf:/etc/postgresql/pg_hba.test.conf:ro
+      - type: bind
+        source: ${RUNNER_INPUT_DIR:-./.runner-output/geen-invoer-start-via-runner}/db/init
+        target: /docker-entrypoint-initdb.d
+        read_only: true
+        bind: { create_host_path: false }
+      - type: bind
+        source: ${RUNNER_INPUT_DIR:-./.runner-output/geen-invoer-start-via-runner}/db/docker/pg_hba.test.conf
+        target: /etc/postgresql/pg_hba.test.conf
+        read_only: true
+        bind: { create_host_path: false }
     # Verse database bij elke run: geen volume, data in tmpfs; scripts/runner.sh ruimt op.
     tmpfs:
       - /var/lib/postgresql/data
@@ -150,7 +162,11 @@ services:
       DATABASE_URL: ${MIGRATOR_DATABASE_URL}
     command: ["--migrations-dir", "/db/migrations", "--no-dump-schema", "--wait", "up"]
     volumes:
-      - ${RUNNER_INPUT_DIR:-./.runner-output/empty-input}/db/migrations:/db/migrations:ro
+      - type: bind
+        source: ${RUNNER_INPUT_DIR:-./.runner-output/geen-invoer-start-via-runner}/db/migrations
+        target: /db/migrations
+        read_only: true
+        bind: { create_host_path: false }
     depends_on:
       test-db:
         condition: service_healthy
@@ -172,13 +188,17 @@ services:
     command:
       - >-
         set -- /db/tests/*.sql;
-        if [ ! -e "$$1" ]; then echo "geen pgTAP-tests in db/tests"; exit 0; fi;
+        if [ ! -e "$$1" ]; then echo "geen pgTAP-tests in db/tests" >&2; exit 1; fi;
         export PGPASSWORD="$$(printf '%s' "$$DATABASE_URL" | sed -E 's#^[^:]+://[^:]+:([^@]+)@.*#\1#')";
         who=$$(psql --no-psqlrc -Atc 'select current_user') || exit 1;
         echo "pgTAP verbindt als: $$who";
         exec pg_prove --failures --ext .sql --recurse /db/tests
     volumes:
-      - ${RUNNER_INPUT_DIR:-./.runner-output/empty-input}/db/tests:/db/tests:ro
+      - type: bind
+        source: ${RUNNER_INPUT_DIR:-./.runner-output/geen-invoer-start-via-runner}/db/tests
+        target: /db/tests
+        read_only: true
+        bind: { create_host_path: false }
     tmpfs:
       - /tmp
     depends_on:

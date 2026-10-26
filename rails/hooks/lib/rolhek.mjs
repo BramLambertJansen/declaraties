@@ -540,6 +540,10 @@ function forbidden({ assignments, argv }, { role, ctx }, decision) {
   if ([...assignments, ...(program === 'export' ? args : [])].some((word) => /^CI=/.test(word)))
     decision.deny.push('De agent zet CI niet lokaal; dit kan de hostcontrole van de runner omzeilen');
   if (program === 'git') decision.deny.push(...gitForbidden(args, { role, branch: ctx.branch }));
+  // Voor elk programma (ook pnpm test:db of bash scripts/runner.sh), en ook `export NAAM` of `declare -x NAAM=…`.
+  const gitEnv = [...assignments, ...(ENV_EXPORTERS.has(program) ? args : [])].find((word) => GIT_ENV.test(word));
+  if (gitEnv !== undefined)
+    decision.deny.push(`${gitEnv.split('=')[0] ?? ''}: git-configuratie of -map via de omgeving kan de vertrouwde basis verleggen (ADR 0046)`);
   if (program === 'gh') decision.deny.push(...ghForbidden(args));
   if (program === 'gh' && role !== 'hoofdsessie' &&
     (args.some((arg, index) => arg === 'pr' && args[index + 1] === 'create') ||
@@ -629,9 +633,12 @@ function clusterFlags(cluster) {
 
 // De hooks lezen besluiten, autoRunner en gateMarker uit de lokale ref origin/main (ADR 0046). Een eigen commit of een andere
 // remote onder die naam zou bevoegdheid geven die nooit is toegekend; de CI-guard leest main bij GitHub en blijft de grens.
-const TRUSTED_CONFIG = /^(?:remote\.origin\.|url\.)/i;
+const TRUSTED_CONFIG = /^(?:remote\.origin\.|url\.|include\.|includeif\.)/i;
 const TRUSTED_NAME = /^(?:refs\/(?:heads|tags)\/)?origin\/(?:main|HEAD)$/;
 const TRUSTED_DESTINATION = /:\+?(?:refs\/remotes\/)?origin\/(?:main|HEAD|\*)$/;
+// Omgevingsvariabelen die git een andere config, repository of werkmap geven (`GIT_CONFIG_COUNT`, `GIT_DIR`, ...).
+const GIT_ENV = /^GIT_(?:CONFIG\w*|DIR|WORK_TREE)(?:=|$)/;
+const ENV_EXPORTERS = new Set(['export', 'declare', 'typeset', 'readonly', 'local']);
 const READ_ONLY_CONFIG = ['--get', '--get-all', '--get-regexp', '--list', '-l', '--show-origin'];
 const BRANCH_READ_FLAGS = /^(?:--set-upstream-to|-u|--contains|--no-contains|--merged|--no-merged|--points-at|--list|-l)(?:=|$)/;
 
@@ -645,6 +652,9 @@ function movesTrustedBase(subcommand, rest) {
     case 'update-ref':
       if (rest.some((arg) => arg.length > 2 && '--stdin'.startsWith(arg))) return true;
       return rest.some((arg) => /^refs\/remotes\/origin\//.test(arg));
+    case 'replace':
+      // Een vervangend object laat main naar andere inhoud wijzen; alleen de lijst lezen mag.
+      return !(rest.length === 0 || rest.includes('--list') || rest.includes('-l'));
     case 'symbolic-ref':
       return rest.some((arg) => /^refs\/remotes\/origin\//.test(arg));
     case 'branch':
@@ -654,7 +664,8 @@ function movesTrustedBase(subcommand, rest) {
     case 'switch':
       return rest.some((arg, index) => ['-b', '-B', '-c', '-C'].includes(arg) && TRUSTED_NAME.test(rest[index + 1] ?? ''));
     case 'fetch':
-      return operands[0] !== 'origin' && operands.slice(1).some((spec) => TRUSTED_DESTINATION.test(spec));
+      // Ook vanaf origin: `origin feat/x:refs/remotes/origin/main` buigt de basis om. `git fetch origin main` mag.
+      return operands.slice(1).some((spec) => TRUSTED_DESTINATION.test(spec));
     case 'remote':
       return ['add', 'set-url', 'rename', 'remove', 'rm', 'set-head', 'set-branches'].includes(operands[0] ?? '');
     case 'config':
