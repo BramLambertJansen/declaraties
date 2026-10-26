@@ -30,6 +30,7 @@ en met werkende voorbeelden op `/design-system`. Geen nieuwe API-route, permissi
   focusverplaatsing naar een ander veld of control blijft behouden, ook vóór de uitgestelde focustimer afloopt.
   De ouder beheert data, annuleren en opslaan. Het
   catalogusrecept bewaart dezelfde route/searchparameters en demonstreert wissen, bevestigen en opslagsucces.
+  De bestaande teruglink gaat naar `/admin/accounts`; bij gewijzigde invoer blijft eerst de verlaatbevestiging gelden.
 - `BulkActions` bouwt voort op bestaande DataTable-selectie. De ouder levert aantal, samenvatting, acties en uitkomst.
   Bij nul selectie en bij busy zijn wissen en acties uitgeschakeld; de status blijft gemount. De voorbeeldflow verwerkt
   uitsluitend geselecteerde ids, behoudt mislukte ids voor opnieuw proberen en meldt succes/fouten apart. Select-all blijft
