@@ -3,7 +3,7 @@ import { chmodSync, copyFileSync, mkdtempSync, readFileSync, rmSync, writeFileSy
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, expect, test } from 'vitest';
-import { subagentStop } from '../../rails/hooks/lib/werkstraat.mjs';
+import { changedFiles, subagentStop } from '../../rails/hooks/lib/werkstraat.mjs';
 
 const dirs: string[] = [];
 afterEach(() => {
@@ -47,6 +47,45 @@ test.each([{ changed: [] }, { changed: ['docs/example.md'] }])(
     expect(developer(changed)).toStrictEqual({ calls: [], result: {} });
   },
 );
+
+// Git als nep: een schone werkmap (lege status), en de branch heeft sinds origin/main `committed` gecommit.
+function gitRun(committed: string, mergeBase = 0) {
+  return (command: string, args: readonly string[]) => {
+    const line = [command, ...args].join(' ');
+    if (line.startsWith('git status')) return { code: 0, output: '' };
+    if (line.startsWith('git merge-base')) return { code: mergeBase, output: 'abc123\n' };
+    if (line.startsWith('git diff')) return { code: 0, output: committed };
+    return { code: line.includes('tsc') ? 1 : 0, output: `${line}: error TS2322` };
+  };
+}
+
+test('gecommitte rode code met een schone werkmap: developer krijgt toch feedback', () => {
+  const run = gitRun('src/a.ts\ndocs/b.md\n');
+  const result = subagentStop(
+    { agent_type: 'developer' },
+    { run, read: () => null, changed: () => changedFiles(run, () => true) },
+  );
+
+  expect(result.stdout).toContain('"decision":"block"');
+  expect(result.stdout).toContain('TS2322');
+});
+
+test('changedFiles: werkmap en branchdiff ontdubbeld, verwijderde bestanden eruit, zonder origin/main alleen de werkmap', () => {
+  const both = (command: string, args: readonly string[]) =>
+    args[0] === 'status'
+      ? { code: 0, output: '?? src/a.ts\n' }
+      : gitRun('src/a.ts\nsrc/weg.ts\nsrc/b.ts\n')(command, args);
+
+  expect(changedFiles(both, (file) => file !== 'src/weg.ts')).toStrictEqual(['src/a.ts', 'src/b.ts']);
+  expect(changedFiles(gitRun('src/b.ts\n', 128), () => true)).toStrictEqual([]);
+});
+
+test('developer met stop_hook_active: geen tweede ronde (de payload telt)', () => {
+  const run = gitRun('src/a.ts\n');
+  const deps = { run, read: () => null, changed: () => changedFiles(run, () => true) };
+
+  expect(subagentStop({ agent_type: 'developer', stop_hook_active: true }, deps)).toStrictEqual({});
+});
 
 function prePush(status: number) {
   const dir = mkdtempSync(path.join(tmpdir(), 'lean-pre-push-'));

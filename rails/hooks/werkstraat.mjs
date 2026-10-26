@@ -4,11 +4,11 @@
 // Een fout in de hook: bij stop en subagent-stop blokkeert hij met de fout (Claude Code stopt zelf na 8 keer), bij de
 // andere meldt hij hem alleen; die blokkeren nooit iets.
 import { spawnSync } from 'node:child_process';
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { checkEnv } from './lib/check-env.mjs';
 import { payloadCwd, projectRoot } from './lib/root.mjs';
-import { changedFromStatus, postEdit, sessionStart, stop, subagentStop } from './lib/werkstraat.mjs';
+import { changedFiles, postEdit, sessionStart, stop, subagentStop } from './lib/werkstraat.mjs';
 
 const event = process.argv[2] ?? '';
 
@@ -31,7 +31,7 @@ function makeDeps(root) {
   };
   return {
     run,
-    changed: () => changedFromStatus(run('git', ['status', '--porcelain', '--untracked-files=all']).output),
+    changed: () => changedFiles(run, (rel) => existsSync(path.join(root, rel))),
     read: (/** @type {string} */ rel) => {
       try {
         return readFileSync(path.join(root, rel), 'utf8');
