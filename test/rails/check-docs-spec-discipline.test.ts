@@ -173,9 +173,12 @@ test('de kop "Open vragen voor de eigenaar" telt als sectie Open vragen', async 
   expect(await openVraag({ [SPEC]: tekst })).toStrictEqual([`docs:${SPEC}:open-vraag`]);
 });
 
-test('een uitlegregel die geen lijstitem is, telt niet als open vraag', async () => {
+// Gewijzigd (PR fix/werkstraat-review-klein): de hele sectie telt, ook een regel zonder opsommingsteken.
+test('een regel met ⚠ open zonder opsommingsteken telt ook als open vraag', async () => {
   const uitleg = 'Een vraag zonder aanbeveling krijgt ⚠ open en blokkeert goedgekeurd.';
-  expect(await openVraag({ [SPEC]: spec({ status: 'goedgekeurd', open: [uitleg, '', BESLOTEN] }) })).toStrictEqual([]);
+  expect(await openVraag({ [SPEC]: spec({ status: 'goedgekeurd', open: [uitleg, '', BESLOTEN] }) })).toStrictEqual([
+    `docs:${SPEC}:open-vraag`,
+  ]);
 });
 
 test('een lijstitem met ⚠ open naast een uitlegregel: overtreding', async () => {
@@ -192,4 +195,19 @@ test('een vorm-pad met regelnummer naar een ontbrekend bestand: overtreding', as
 test('een vorm-pad met regelbereik naar een bestaand bestand: geen overtreding', async () => {
   const tekst = spec({ status: 'voorstel', vorm: ['- `src/api/routes/users.ts:12-20` — gouden pad.'] });
   expect(await vorm({ [SPEC]: tekst })).toStrictEqual([]);
+});
+
+test.each([
+  ['met U+FE0F', '- **OV-1 ⚠️ open** — Welke limiet? A; B.'],
+  ['in hoofdletters', '- **OV-1 ⚠ Open** — Welke limiet? A; B.'],
+  ['zonder opsommingsteken', '**OV-1 ⚠ open** — Welke limiet? A; B.'],
+])('open vraag %s bij goedgekeurd: overtreding', async (_naam, regel) => {
+  expect(await openVraag({ [SPEC]: spec({ status: 'goedgekeurd', open: [regel] }) })).toStrictEqual([
+    `docs:${SPEC}:open-vraag`,
+  ]);
+});
+
+test('open vraag met U+FE0F bij voorstel: geen overtreding (zelfde scope)', async () => {
+  const open = ['- **OV-1 ⚠️ Open** — Welke limiet? A; B.'];
+  expect(await openVraag({ [SPEC]: spec({ status: 'voorstel', open }) })).toStrictEqual([]);
 });

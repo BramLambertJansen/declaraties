@@ -92,3 +92,25 @@ test('de twee historische 0039-bestanden blijven als bestaande ratchet-afwijking
   expect(violations.find(({ key }) => key === 'docs:adr:0039:dubbel')).toBeDefined();
   expect(readFileSync('.kit/baseline.json', 'utf8')).toContain('docs:adr:0039:dubbel');
 });
+
+test.each([
+  'docs/adr/0060_second.md',
+  'docs/adr/00600-second.md',
+  'docs/adr/archief/060-second.md',
+  'docs/adr/notes.md',
+])('check-docs weigert een ADR-bestand buiten het patroon NNNN-slug.md: %s', async (file) => {
+  const f = fixture();
+  write(f.root, file, adr('0060'));
+  git(f.root, ['add', '.']);
+  expect((await docsViolations(f.root)).map(({ key }) => key)).toContain(`docs:${file}:adr-naam`);
+});
+
+test.each(['docs/adr/README.md', 'docs/adr/_template.md', 'docs/adr/archief/README.md', 'docs/adr/0060-goed.md'])(
+  'README, sjablonen en goede namen zijn geen naamfout: %s',
+  async (file) => {
+    const f = fixture();
+    write(f.root, file, adr('0060'));
+    git(f.root, ['add', '.']);
+    expect((await docsViolations(f.root)).filter(({ key }) => key.endsWith(':adr-naam'))).toStrictEqual([]);
+  },
+);
