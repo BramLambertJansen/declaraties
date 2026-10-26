@@ -194,6 +194,9 @@ Hier staan wijzigingen die van belang zijn bij het gebruiken of bijwerken van de
 
 ### Opgelost
 
+- Een Combobox die bij het mounten focus krijgt, houdt zijn keuzelijst open. `autoFocus` wordt niet meer direct
+  ongedaan gemaakt door het synchroniseren van de beginwaarde; een latere waarde- of formulierreset sluit nog steeds.
+
 - Het foutenoverzicht focust ook bij later ontvangen serverveldfouten na clientvalidatie. Gewone veldcorrecties houden
   hun focus; de bestaande uitgestelde focus na een mislukte verzendpoging blijft behouden.
 
