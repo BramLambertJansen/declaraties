@@ -90,6 +90,7 @@ function useCountdowns(remove: (id: number) => void) {
 
   const start = useCallback(
     (id: number) => {
+      if (countdowns.current.has(id)) return;
       const countdown: Countdown = { handle: null, remaining: SUCCESS_MS, startedAt: 0 };
       countdowns.current.set(id, countdown);
       if (holds.current.size === 0) run(id, countdown);
@@ -154,16 +155,13 @@ export function ToastProvider({ children }: { readonly children: ReactNode }) {
 
   useEffect(() => {
     prune(new Set(toasts.map((toast) => toast.id)));
-  }, [toasts, prune]);
+    for (const toast of toasts) if (toast.tone === 'success') start(toast.id);
+  }, [toasts, prune, start]);
 
-  const add = useCallback(
-    (tone: ToastTone, message: string) => {
-      const id = nextId.current++;
-      setToasts((current) => [...current, { id, tone, message }].slice(-MAX_TOASTS));
-      if (tone === 'success') start(id);
-    },
-    [start],
-  );
+  const add = useCallback((tone: ToastTone, message: string) => {
+    const id = nextId.current++;
+    setToasts((current) => [...current, { id, tone, message }].slice(-MAX_TOASTS));
+  }, []);
 
   const api = useMemo<ToastApi>(
     () => ({

@@ -147,6 +147,10 @@ Hier staan wijzigingen die van belang zijn bij het gebruiken of bijwerken van de
 
 ### Gewijzigd
 
+- Succes-toasts uit een mount-effect krijgen ook tijdens de eerste render en in StrictMode een werkende afteller.
+  Bestaande aftellers blijven doorlopen wanneer er een melding bijkomt; hover-/focuspauze, blijvende fouten en de
+  bestaande termijn van vijf seconden veranderen niet.
+
 - Uitgeschakelde `Button asChild`-links blokkeren nu ook activering en geven `aria-disabled` door. De middelste
   muisknop kan niet meer langs de blokkering van een disabled of busy linkknop gaan. Link, label en normale bediening
   na herstel blijven behouden; de bestaande component-API verandert niet.
