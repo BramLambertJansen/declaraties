@@ -147,6 +147,10 @@ Hier staan wijzigingen die van belang zijn bij het gebruiken of bijwerken van de
 
 ### Gewijzigd
 
+- Uitgeschakelde `Button asChild`-links blokkeren nu ook activering en geven `aria-disabled` door. De middelste
+  muisknop kan niet meer langs de blokkering van een disabled of busy linkknop gaan. Link, label en normale bediening
+  na herstel blijven behouden; de bestaande component-API verandert niet.
+
 - De web-ingang zet zod vóór schema-initialisatie op `jitless` (`src/core/web/lib/zod-config.ts`, als eerste import in
   `src/web/main.tsx`). `package.json` bewaart die module als `sideEffects`, zodat de productiebuild de configuratie niet
   wegoptimaliseert. Een echte geminificeerde bundeltest controleert schema-validatie zonder poging tot codegeneratie;

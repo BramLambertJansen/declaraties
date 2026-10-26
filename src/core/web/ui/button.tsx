@@ -25,21 +25,25 @@ export function Button({
   children,
   onClickCapture,
   onKeyDownCapture,
+  onAuxClickCapture,
   ...props
 }: ButtonProps) {
   const Component = asChild ? Slot : 'button';
+  const blocked = busy || props.disabled === true;
   const content =
-    busy && asChild && isValidElement<DOMAttributes<HTMLElement> & AriaAttributes>(children)
+    blocked && asChild && isValidElement<DOMAttributes<HTMLElement> & AriaAttributes>(children)
       ? cloneElement(
           children,
           {
             onClickCapture: undefined,
             onKeyDownCapture: undefined,
+            onAuxClickCapture: undefined,
             'aria-disabled': true,
-            'aria-busy': true,
-            'aria-label': busyLabel ?? children.props['aria-label'],
+            'aria-busy': busy ? true : (children.props['aria-busy'] ?? props['aria-busy']),
+            'aria-label':
+              busy && busyLabel !== undefined ? busyLabel : (children.props['aria-label'] ?? props['aria-label']),
           },
-          busyLabel ?? children.props.children,
+          busy ? (busyLabel ?? children.props.children) : children.props.children,
         )
       : busy && busyLabel !== undefined
         ? busyLabel
@@ -50,10 +54,10 @@ export function Button({
       {...(asChild ? {} : { type })}
       {...props}
       aria-busy={busy ? true : props['aria-busy']}
-      aria-disabled={busy ? true : props['aria-disabled']}
+      aria-disabled={blocked ? true : props['aria-disabled']}
       aria-label={busy && busyLabel !== undefined ? busyLabel : props['aria-label']}
       onClickCapture={(event) => {
-        if (busy) {
+        if (blocked) {
           event.preventDefault();
           event.stopPropagation();
           return;
@@ -61,12 +65,20 @@ export function Button({
         onClickCapture?.(event);
       }}
       onKeyDownCapture={(event) => {
-        if (busy && (event.key === 'Enter' || event.key === ' ')) {
+        if (blocked && (event.key === 'Enter' || event.key === ' ')) {
           event.preventDefault();
           event.stopPropagation();
           return;
         }
         onKeyDownCapture?.(event);
+      }}
+      onAuxClickCapture={(event) => {
+        if (blocked) {
+          event.preventDefault();
+          event.stopPropagation();
+          return;
+        }
+        onAuxClickCapture?.(event);
       }}
     >
       {content}

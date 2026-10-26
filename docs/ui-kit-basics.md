@@ -35,6 +35,11 @@ capturehandlers weigeren click en Enter/Space voordat de actie of native submit/
 Ook `asChild` behoudt zijn element tijdens de labelwissel. Geef een geschikt aangeleverd busy-label door,
 ook wanneer de gewone knop uitsluitend een pictogram heeft. Native `disabled` blijft beschikbaar.
 
+Ook `Button asChild disabled` weigert activering en meldt `aria-disabled`, zonder het linkelement of label te vervangen.
+Click, Enter/Space en de middelste muisknop worden bij `disabled` en `busy` vóór parent- en kindhandlers geblokkeerd.
+Na herstel werken de gewone handlers weer; `disabled` alleen toont geen busy-label. Regressies:
+`src/core/web/ui/button-disabled-link.test.tsx`.
+
 Menu-items ondersteunen `busy`, `busyLabel` en `disabled`. Busy blijft focusbaar; disabled wordt door
 Radix overgeslagen. Beide weigeren selectie en sluiten het menu niet. De caller beëindigt busy,
 bijvoorbeeld bij succes of fout; de kit doet geen automatische retry, timer of toast.
