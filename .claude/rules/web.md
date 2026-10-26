@@ -45,9 +45,7 @@ stringvarianten; geen uitzonderingen. Dezelfde bronindex staat in `feiten.mjs co
 `src/web/copy/woordenlijst.test.ts`.
 `scanAxe` zonder uitzonderingen: twee lintregels (axe-import en axe-uitzondering in `eslint.config.js`) houden ze tegen.
 Toastgebruik en de plaatsing van `Toaster` staan in `docs/gouden-pad.md`; gebruik de bestaande `useToast`-API.
-Functionele UI-wijzigingen in deze template volgen ADR 0056/0058 en `docs/operations/agent-doorloop.md`: beperkte fixes
-zonder nieuwe mini-spec, overige functionele UI met mini-spec, code, tests en gebruiksdocs in één PR. Nieuwe features,
-pagina's en interacties krijgen de volledige straat; architectuur, auth, dependencies en bewaking hun bestaande besluitroute.
+Lichte fixes zonder mini-spec, overige functionele UI met mini-spec; route en rollen: framework §8 (ADR 0056/0058).
 Gebouwd (#145, #146, #150): Checkbox, RadioGroup, Textarea, StatusBadge, EmptyState, `busy` op Button en DropdownMenu, de
 bijbehorende Form-velden, Combobox, FormComboboxField, Accordion, List en DescriptionList; vindbare catalogusvoorbeelden. De
 actuele lijst staat in `pnpm check:catalogus` en `node scripts/kit/feiten.mjs componenten`.

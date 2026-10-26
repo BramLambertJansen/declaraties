@@ -318,8 +318,8 @@ testregels of controles. De rollen hieronder gelden waar de gekozen route ze ver
 
 1. **Spec** in `docs/specs/` volgens `_template.md` — bij nieuwe features, pagina's,
    interacties, migraties, routes of permissies; bij overig volledig werk het toepasselijke besluit/spec. Geen nieuw document
-   voor een lichte fix. In de volledige straat schrijft alleen de architect de spec (ADR 0058 punt 2); de hoofdsessie
-   coördineert. Spec of ADR krijgt direct de bedoelde status (`goedgekeurd`, `geaccepteerd`, `vervallen`, `vervangen door NNNN`); de merge door
+   voor een lichte fix. In de volledige straat schrijft alleen de architect de inhoud van de spec (ADR 0058 punt 2);
+   het skelet uit `pnpm new:resource` mag de hoofdsessie genereren, en zij coördineert. Spec of ADR krijgt direct de bedoelde status (`goedgekeurd`, `geaccepteerd`, `vervallen`, `vervangen door NNNN`); de merge door
    de eigenaar is het besluit, afwijzen is de PR sluiten (ADR 0046). `gebouwd` blijft bij `pnpm docs:status` met bouwbewijs. Een goedgekeurde spec heeft een ingevulde sectie "Hergebruik en UX" (`check-docs`, dat ook een lijstitem met `⚠ open` in "Open vragen" en een niet-bestaand pad in "Kopieer de vorm van" weigert).
    Bij een migratie, route of permissie krijgt de spec vóór de besluit-PR, of bij een mini-spec vóór het bouwen, eerst een spec-review van de reviewer (`.claude/agents/reviewer.md`).
 2. **Contract**: zod-schema's en routes die `501` teruggeven wanneer de wijziging een API-contract toevoegt.
@@ -337,7 +337,7 @@ testregels of controles. De rollen hieronder gelden waar de gekozen route ze ver
    afwijking van de spec of verwachte uitkomst uit de opdracht/PR en testinhoud per criterium,
    en of de doc-wijziging in de PR zit (raakt de diff gedrag, API of conventies; zo ja, ontbreekt de doc, dan is dat een bevinding),
    elke blokkerende bevinding met bestand:regel en een pad van invoer naar fout. Stijl is werk van de lint.
-   De review draait op de lokale branch (`git diff origin/main...HEAD`), direct nadat de gerichte controles van de developer groen zijn en vóór push en PR (de volledige gate volgt via pre-push);
+   De review draait op de lokale branch (`git diff origin/main...HEAD`), direct nadat de gerichte controles van de developer groen zijn en vóór push en PR;
    de bevindingen zijn verwerkt voordat er opgeleverd wordt (ADR 0046). Wijzigt de code daarna nog (CI-fixes, conflicten),
    dan reviewt de reviewer die wijziging opnieuw (`git diff <reviewer-sha>..HEAD`).
 6. **Opleveren** (alleen de hoofdsessie, pas na stap 5; skill `opleveren`, ADR 0046): featurebranch pushen, PR openen, CI-lus tot groen
@@ -387,7 +387,7 @@ ontbreekt; meld die beperking en claim geen afgedwongen onafhankelijkheid. Dat o
 of externe reviewer. Ontbreekt een aparte reviewagent geheel, dan reviewt de eigenaar. Bij volledig werk telt een rol
 alleen als onafhankelijk als de runtime testpaden/leesrechten afdwingt; anders benoem je de ontbrekende stap en laat je
 de eigenaar die vóór samenvoegen uitvoeren. De bouwer en hoofdsessie reviewen nooit hun eigen werk.
-Dat er een onafhankelijke review was, dekt nu alleen de merge door de eigenaar; GitHub dwingt het pas af als de ruleset uit
+Of er een onafhankelijke review was, borgt nu alleen de eigenaar bij de merge; GitHub dwingt dat pas af zodra de ruleset uit
 ADR 0057 punt 5 actief is.
 
 **Claude Code-implementatie** (ADR 0045): vijf subagents — architect, developer, tester (sonnet), reviewer (opus, `tools: Read, Grep, Glob, Bash`), docs (optioneel, geen vaste stap) —
@@ -472,7 +472,7 @@ Live feiten (gates, routes, componenten, nummers) komen uit `scripts/kit/feiten.
 - De GitHub App komt eerst op de huidige repo; een organisatiemigratie is geen voorwaarde (ADR 0057 punt 5). De agent pusht via
   die App zonder admin-, `workflows`- of instellingsschrijfrecht (ADR 0039 punt 8); de eigenaar installeert de App en merget.
 - Ruleset op `main` (per repo door de eigenaar, want "Use this template" kopieert geen rulesets of settings):
-  alleen via PR; geen force push of delete; verplichte checks `gate:fast`, `gate:slow`, osv-scanner; "Require code scanning results"
+  alleen via PR; geen force push of delete; als verplichte checks alle geregistreerde (`requiredChecks` in `.claude/decisions.json`), van de juiste herkomst; "Require code scanning results"
   (CodeQL); code-owner-review; goedkeuring vervalt bij nieuwe push; opgeloste gesprekken; geen bypass voor de bot; merge-methoden
   alleen merge en squash. Onleesbare instellingen gelden als rood (ADR 0057 punt 5).
   Tot de GitHub App bestaat, pusht de agent onder het account van de eigenaar en kan die zijn eigen PR niet goedkeuren: dan 0 goedkeuringen

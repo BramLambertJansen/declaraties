@@ -8,8 +8,8 @@ Wat een gate kan afdwingen, staat hier niet. Groeit dit bestand of `AGENTS.md` o
 
 Licht alleen voor beperkte fixes binnen bestaand gedrag; anders volledig, met eigenaarmerge (jij nooit) — framework §8.
 Docs gaan mee in dezelfde PR als de code
-(`check:docs-drift` waarschuwt); een aparte docs-stap na de merge bestaat niet. De volledige tekst, ook wanneer je een
-bestaande test mag wijzigen en het lichte pad, staat op één plek: `docs/framework.md` §8.
+(`check:docs-drift` waarschuwt); een aparte docs-stap na de merge bestaat niet.
+Ook wanneer je een bestaande test mag wijzigen: framework §8.
 
 ## Stoppen en vragen
 
