@@ -86,9 +86,7 @@ vangen het later toch, en dan is het werk verloren. Uitzonderingen staan limitat
 - Nieuwe feature/pagina/interactie, migratie, route of permissie: architect en spec (`docs/specs/_template.md`), bouwen pas bij `status: goedgekeurd`; passende spec hergebruiken.
 - UI-tekst Nederlands; code, commits en branchnamen Engels. Naamgeving: `docs/framework.md` §5.
 - Volg `docs/dod.md` fasebewust: voer bestaande, toepasselijke checks uit, lever alleen op met een geslaagde uitslag (of expliciet akkoord van de eigenaar) en vermeld exact wat nog niet beschikbaar is; verzin geen commando's of uitslagen.
-- Volg `docs/framework.md` §8: alleen beperkte fixes aan bestaande functionaliteit/interactie zijn licht, zonder nieuwe ADR/spec/mini-spec; bij gedragsverandering of -herstel eerst tester, dan bouwer en aparte reviewagent. Zonder gedrag geen vaste tester.
-  Nieuwe features/pagina's/interacties en risicowerk krijgen de volledige straat. Licht geeft geen extra rechten; technische reviewisolatie waar mogelijk.
-  Licht mag met aparte leesopdracht zonder isolatieclaim; zonder agent, of zonder afgedwongen onafhankelijkheid bij volledig werk, reviewt de eigenaar. Geen zelfreview.
+- Licht alleen voor beperkte fixes binnen bestaand gedrag; anders volledig, zonder zelfreview — `docs/framework.md` §8.
 - Voordat je een roadmap-item, rail of ADR toevoegt: toets aan framework §1; ontbreekt een aanleiding, vraag de eigenaar.
 - Begin met taakrelevante feiten uit `node scripts/kit/feiten.mjs`, bijvoorbeeld `gates specs fase`; `componenten` alleen bij UI. Zonder secties komt alles.
 - Runtime-specifieke instructies gelden alleen voor die runtime. De hooks in `.claude/` werken niet in andere runtimes (Codex, sommige

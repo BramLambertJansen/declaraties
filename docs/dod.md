@@ -11,7 +11,7 @@ De reviewer bepaalt eerst welke fase uit `docs/roadmap.md` bij het werk hoort: d
 - [ ] Elk acceptatiecriterium voor gewijzigd gedrag heeft een inhoudelijke test (geen lege of triviale assertie). Bij wijzigingen zonder gedragsverandering, zoals alleen documentatie, noteer je voor dit criterium “n.v.t.” met reden; toepasselijke documentatiechecks blijven verplicht.
 - [ ] Geen bestaande migratie gewijzigd. Een bestaande test is alleen gewijzigd als de spec of opdracht het geteste gedrag verandert, en staat met reden in de PR; geen test verwijderd of geskipt zonder akkoord van de eigenaar.
 - [ ] Runnerchecks volgen ADR 0044: vaste opdracht, geïsoleerde teststack, ongewijzigde hostcode. Bij gewijzigde hostcode gebruikt de agent de wegwerp-CI. De hoofdsessie verzamelt werkelijke uitslagen op de juiste SHA; geen routineverzoek aan de eigenaar om tests zelf te draaien.
-- [ ] De route past bij framework §8 (ADR 0058): alleen beperkte fixes binnen bestaande functionaliteit/interactie zijn licht. Verwachte uitkomst, scope en bewijs staan in de opdracht/PR, zonder nieuwe ADR/spec/mini-spec. Gedragsverandering of -herstel heeft eerst tests van een aparte tester; zuivere tekst/opmaak zonder gedrag vraagt geen vaste tester. Een aparte reviewagent controleert de wijziging. Technische isolatie waar beschikbaar, geen isolatieclaim als die ontbreekt; zonder aparte agent reviewt de eigenaar. Nieuwe features, pagina's, interacties en risicowerk volgen de volledige straat met architect, tester en afgedwongen onafhankelijke review of eigenaar-terugval. Kleine codeomvang verandert dat niet.
+- [ ] De gekozen route (licht alleen voor beperkte fixes binnen bestaand gedrag; anders volledig) en de rollen die ze vraagt kloppen met framework §8; kleine codeomvang verandert dat niet.
 - [ ] Bij nieuwe features, pagina's, interacties, migraties, routes of permissies bestaat een passende goedgekeurde spec in `docs/specs/`; hergebruik mag, een ADR alleen bij de bestaande drempels. Zonder die spec is de PR niet klaar. De status `goedgekeurd` staat in het voorstel en de merge door de eigenaar is het besluit (ADR 0046). Gebouwd via `pnpm docs:status` kan bij de geopende PR, na afgeronde implementatie en groene verplichte Actions-checks (ADR 0046 punt 10).
 
 ### Beveiliging en data (geldt in elke fase)
@@ -33,7 +33,7 @@ De reviewer bepaalt eerst welke fase uit `docs/roadmap.md` bij het werk hoort: d
 
 ## Features (fase 1 stuk 3 "gebruikersbeheer" en elke feature in fase 2)
 
-- [ ] Elk acceptatiecriterium uit de toepasselijke goedgekeurde spec, of bij een lichte fix de verwachte uitkomst uit opdracht/PR, is gedekt door een inhoudelijke test; meld ontbrekende criteria afzonderlijk. Een lichte fix krijgt hiervoor geen nieuwe spec.
+- [ ] Elk acceptatiecriterium uit de toepasselijke goedgekeurde spec, of bij een lichte fix de verwachte uitkomst uit opdracht/PR, is gedekt door een inhoudelijke test; meld ontbrekende criteria afzonderlijk.
 - [ ] Bij schermwerk: voer `pnpm ui:check` uit (375 en 1280 px + axe) en noteer de uitslag; claim geen UI-check als geslaagd die niet draaide.
 - [ ] De feature volgt het gouden pad (`docs/gouden-pad.md`); een resource met een eigenaar per rij begint met `pnpm new:resource <naam>` (eerst het spec-skelet, na `goedgekeurd` de code). Past de generator niet (bijv. een view of security definer-functies), meld dat in de PR.
 

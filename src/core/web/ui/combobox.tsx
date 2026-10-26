@@ -39,6 +39,7 @@ function useCombobox(props: ComboboxProps) {
   const input = useRef<HTMLInputElement>(null);
   const root = useRef<HTMLDivElement>(null);
   const composing = useRef(false);
+  const previous = useRef([value, props.disabled, props.readOnly, resetKey]);
   const close = () => {
     setOpen(false);
     setSearch(null);
@@ -48,7 +49,13 @@ function useCombobox(props: ComboboxProps) {
     assert(input.current !== null, 'Combobox input must be mounted');
     return input.current;
   });
-  useEffect(close, [value, props.disabled, props.readOnly, resetKey]);
+  useEffect(() => {
+    const next = [value, props.disabled, props.readOnly, resetKey];
+    // Alleen wijzigingen sluiten; mount mag de al ontvangen focus behouden.
+    if (next.every((item, index) => Object.is(item, previous.current[index]))) return;
+    previous.current = next;
+    close();
+  }, [value, props.disabled, props.readOnly, resetKey]);
   useEffect(() => {
     const outside = (event: PointerEvent) => {
       if (event.target instanceof Node && !root.current?.contains(event.target)) close();

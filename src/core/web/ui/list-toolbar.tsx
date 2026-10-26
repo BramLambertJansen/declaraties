@@ -1,4 +1,4 @@
-import { type ReactElement, useEffect, useId, useRef, useState } from 'react';
+import { type ReactElement, useEffect, useId, useLayoutEffect, useRef, useState } from 'react';
 import { MAX_SEARCH_LENGTH } from '#core/shared/limits.ts';
 import { Button } from './button.tsx';
 import { Field } from './field.tsx';
@@ -40,6 +40,10 @@ function useDebouncedQuery(query: string, onQueryChange: (q: string) => void) {
   const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const previous = useRef(query);
   const submitted = useRef<string | undefined>(undefined);
+  const notify = useRef(onQueryChange);
+  useLayoutEffect(() => {
+    notify.current = onQueryChange;
+  }, [onQueryChange]);
   useEffect(() => {
     if (previous.current === query) return;
     previous.current = query;
@@ -68,7 +72,7 @@ function useDebouncedQuery(query: string, onQueryChange: (q: string) => void) {
     timer.current = setTimeout(() => {
       timer.current = undefined;
       submitted.current = next.trim();
-      onQueryChange(next);
+      notify.current(next);
     }, DEBOUNCE_MS);
   };
   const reset = () => {

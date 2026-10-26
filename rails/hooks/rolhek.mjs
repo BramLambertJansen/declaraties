@@ -89,7 +89,7 @@ function context(root, cwd) {
     isDir: (/** @type {string} */ rel) => safe(() => statSync(path.join(root, rel)).isDirectory()),
     branch: gitBranch(root),
     authority,
-    runnerTrusted: () => (trusted ??= trustedRunner(root)),
+    runnerTrusted: () => (trusted ??= trustedRunner(root, basis)),
   };
 }
 

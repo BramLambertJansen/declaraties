@@ -103,7 +103,7 @@ export function EditableDetailsExample() {
           />
         </Form>
       </EditableSection>
-      <NavLink href="/accounts">Terug naar accounts</NavLink>
+      <NavLink href="/admin/accounts">Terug naar accounts</NavLink>
       <UnsavedChangesGuard
         when={editing && form.formState.isDirty}
         busy={form.formState.isSubmitting}

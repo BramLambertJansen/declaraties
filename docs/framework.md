@@ -113,7 +113,7 @@ dependency-cruiser); checks op de database lezen de catalogus van de lokale data
 |---|---|---|
 | Na elke bewerking (PostToolUse-hook) | ESLint + Prettier op dat bestand | ~1–2 s |
 | Pre-commit (lefthook) | format, ESLint op staged, Betterleaks | < 10 s |
-| Einde beurt (Stop-hook) | `tsc -b` (incrementeel: `incremental` in `tsconfig.base.json`), ESLint en `vitest related` (projecten unit en web) op de geraakte bestanden (`rails/hooks/lib/werkstraat.mjs:83`) | ~10–30 s |
+| Einde beurt (Stop-hook) | `tsc -b` (incrementeel: `incremental` in `tsconfig.base.json`), ESLint en `vitest related` (projecten unit en web) op de geraakte bestanden: werkmap plus wat de branch sinds `origin/main` heeft gecommit (`rails/hooks/lib/werkstraat.mjs:48`, `:98`) | ~10–30 s |
 | Database-tests | `pnpm test:db`: integratie + pgTAP tegen lokale Postgres | ~20–60 s |
 | Pre-push | `gate:fast` | < 60 s |
 | CI | `gate:fast` + build, daarna `gate:slow` | 3–5 / 8–15 min |
@@ -123,7 +123,7 @@ dependency-cruiser); checks op de database lezen de catalogus van de lokale data
 - Verplicht naast CI: CodeQL en osv-scanner.
 - **Gate-register**: `scripts/kit/gates.mjs` beschrijft per script wat het bewaakt en of het snel is (zonder database, dus in `gate:fast`);
   het is de enige gate-tabel. `gate:fast` draait de snelle gates uit het register via `scripts/kit/gate-fast.mjs`, in maximaal drie banen
-  (`test:unit`, `lint`, de rest na elkaar). Bij minder dan 6 GiB beschikbaar geheugen delen lint en tests een wachtrij;
+  (`test:unit`, `lint`, de rest na elkaar). Bij weinig geheugen (`scripts/kit/geheugen.mjs`) delen lint en tests een wachtrij;
   alle gates draaien met dezelfde argumenten en faalvoorwaarden. De rode uitvoer komt eerst en daarna de lijst in registervolgorde;
   `gate:slow` is de &&-keten van de trage. `test/rails/gates.test.ts`,
   `gate-fast.test.ts` en `gate-slow.test.ts` eisen dat beide precies het register volgen (ADR 0045).
@@ -316,11 +316,11 @@ geen bewijs. Geen extra label, register of triage-opdracht.
 Bij twijfel of scopegroei: volledig. De route geeft geen extra schrijfrechten of vrijstelling van beschermde paden,
 testregels of controles. De rollen hieronder gelden waar de gekozen route ze vereist.
 
-1. **Spec** (architect, hoofdsessie coördineert) in `docs/specs/` volgens `_template.md` — bij nieuwe features, pagina's,
+1. **Spec** in `docs/specs/` volgens `_template.md` — bij nieuwe features, pagina's,
    interacties, migraties, routes of permissies; bij overig volledig werk het toepasselijke besluit/spec. Geen nieuw document
-   voor een lichte fix. De architect of hoofdsessie schrijft
-   de spec of het ADR direct met de bedoelde status (`goedgekeurd`, `geaccepteerd`, `vervallen`, `vervangen door NNNN`); de merge door
-   de eigenaar is het besluit, afwijzen is de PR sluiten (ADR 0046). `gebouwd` blijft bij `pnpm docs:status` met bouwbewijs. Een goedgekeurde spec heeft een ingevulde sectie "Hergebruik en UX" (`check-docs`, dat ook een lijstitem met `⚠ open` in "Open vragen" en een niet-bestaand pad in "Kopieer de vorm van" weigert).
+   voor een lichte fix. In de volledige straat schrijft alleen de architect de inhoud van de spec (ADR 0058 punt 2);
+   het skelet uit `pnpm new:resource` mag de hoofdsessie genereren, en zij coördineert. Spec of ADR krijgt direct de bedoelde status (`goedgekeurd`, `geaccepteerd`, `vervallen`, `vervangen door NNNN`); de merge door
+   de eigenaar is het besluit, afwijzen is de PR sluiten (ADR 0046). `gebouwd` blijft bij `pnpm docs:status` met bouwbewijs. Een goedgekeurde spec heeft een ingevulde sectie "Hergebruik en UX" (`check-docs`, dat ook een regel met `⚠ open` in "Open vragen" en een niet-bestaand pad in "Kopieer de vorm van" weigert).
    Bij een migratie, route of permissie krijgt de spec vóór de besluit-PR, of bij een mini-spec vóór het bouwen, eerst een spec-review van de reviewer (`.claude/agents/reviewer.md`).
 2. **Contract**: zod-schema's en routes die `501` teruggeven wanneer de wijziging een API-contract toevoegt.
 3. **Tests** door een aparte tester vóór implementatie: altijd bij volledig werk, bij licht werk zodra gedrag verandert of herstelt.
@@ -328,7 +328,7 @@ testregels of controles. De rollen hieronder gelden waar de gekozen route ze ver
    Die tester schrijft alleen in testpaden; zijn tests compileren en falen op hun asserties.
    Per permissie en per policy ook de negatieve test. Bij een nieuwe resource neemt de tester de declaratie die `pnpm new:resource` afdrukt
    over in `test/security/resources.ts` en vult de samples in (`INVULLEN`); tot dan is de securitysuite rood.
-4. **Developer** (hoofdsessie of developer-agent) bouwt tot groen; gate-paden in `voorReview` alleen binnen een geldig exact
+4. **Developer** (hoofdsessie of developer-agent) bouwt tot de gerichte controles groen zijn; de volledige gate draait via pre-push (ADR 0057). Gate-paden in `voorReview` alleen binnen een geldig exact
    taakmandaat uit main (ADR 0046); een ander gate-pad mag, met de melding "noem het in de PR" (ADR 0046 punt 28). Mag tests toevoegen. Een bestaande test wijzigen mag alleen als de spec of opdracht het geteste
    gedrag verandert; elke gewijzigde test staat met reden in de PR. Verwijderen of skippen alleen met akkoord van de eigenaar.
    Lijkt een test van de tester fout zonder dat het gedrag verandert, dan stopt de hoofdsessie en legt het de eigenaar voor;
@@ -337,7 +337,7 @@ testregels of controles. De rollen hieronder gelden waar de gekozen route ze ver
    afwijking van de spec of verwachte uitkomst uit de opdracht/PR en testinhoud per criterium,
    en of de doc-wijziging in de PR zit (raakt de diff gedrag, API of conventies; zo ja, ontbreekt de doc, dan is dat een bevinding),
    elke blokkerende bevinding met bestand:regel en een pad van invoer naar fout. Stijl is werk van de lint.
-   De review draait op de lokale branch (`git diff origin/main...HEAD`), direct nadat de developer groen is en vóór push en PR;
+   De review draait op de lokale branch (`git diff origin/main...HEAD`), direct nadat de gerichte controles van de developer groen zijn en vóór push en PR;
    de bevindingen zijn verwerkt voordat er opgeleverd wordt (ADR 0046). Wijzigt de code daarna nog (CI-fixes, conflicten),
    dan reviewt de reviewer die wijziging opnieuw (`git diff <reviewer-sha>..HEAD`).
 6. **Opleveren** (alleen de hoofdsessie, pas na stap 5; skill `opleveren`, ADR 0046): featurebranch pushen, PR openen, CI-lus tot groen
@@ -387,6 +387,8 @@ ontbreekt; meld die beperking en claim geen afgedwongen onafhankelijkheid. Dat o
 of externe reviewer. Ontbreekt een aparte reviewagent geheel, dan reviewt de eigenaar. Bij volledig werk telt een rol
 alleen als onafhankelijk als de runtime testpaden/leesrechten afdwingt; anders benoem je de ontbrekende stap en laat je
 de eigenaar die vóór samenvoegen uitvoeren. De bouwer en hoofdsessie reviewen nooit hun eigen werk.
+Of er een onafhankelijke review was, borgt nu alleen de eigenaar bij de merge; GitHub dwingt dat pas af zodra de ruleset uit
+ADR 0057 punt 5 actief is.
 
 **Claude Code-implementatie** (ADR 0045): vijf subagents — architect, developer, tester (sonnet), reviewer (opus, `tools: Read, Grep, Glob, Bash`), docs (optioneel, geen vaste stap) —
 elk met `model` en `maxTurns`; schrijfrecht per rol bepaalt de rolhek-hook, niet de tools-lijst. Hooks, permissies, sandboxinstellingen en
@@ -417,9 +419,9 @@ SubagentStop staat in `.claude/settings.json` (matcher = agentnaam), niet in de 
 | Hook | Doet |
 |---|---|
 | PostToolUse (Edit/Write) | ESLint + Prettier op het bewerkte bestand |
-| Stop | typecheck/lint/unit op geraakte bestanden; `{"decision":"block","reason":…}` met ≤ 40 regels; stopt direct bij `stop_hook_active`; overslaan in plan mode of zonder wijzigingen; nooit netwerk of database |
-| SubagentStop (developer) | dezelfde gerichte type-, lint- en unitfeedback als Stop; rood blokkeert met `{"decision":"block"}` en de laatste 40 regels. Geen volledige gate bij elke overdracht; pre-push en CI blijven de eindcontroles |
-| SubagentStop (tester, reviewer) | tester → lint en typecheck groen, en de nieuwe tests falen alleen op asserties (de acceptatietests zijn rood tot de developer klaar is); reviewer → rapport geschreven |
+| Stop | typecheck/lint/unit op geraakte bestanden: werkmap plus wat de branch sinds `origin/main` heeft gecommit; `{"decision":"block","reason":…}` met ≤ 40 regels, verdeeld over de rode controles; stopt direct bij `stop_hook_active`; overslaan in plan mode of zonder wijzigingen; nooit netwerk of database |
+| SubagentStop (developer) | dezelfde gerichte type-, lint- en unitfeedback als Stop, ook op gecommitte code bij een schone werkmap; rood blokkeert met `{"decision":"block"}` en hooguit 40 regels, verdeeld over de rode controles. Geen volledige gate bij elke overdracht; pre-push en CI blijven de eindcontroles |
+| SubagentStop (tester, reviewer) | tester → lint en typecheck groen, en de nieuwe tests falen alleen op asserties, op de werkmap plus gecommitte branchbestanden (de acceptatietests zijn rood tot de developer klaar is); reviewer → rapport geschreven |
 | SessionStart | spec, branch, achterstand op `origin/main` (haalt die op met een harde timeout van 5 s en zonder ooit om credentials te vragen; een mislukte fetch blokkeert niets), laatste checkuitslag, status lokale stack (`doctor --quick`) als `additionalContext` |
 | PreToolUse rolhek (Edit/Write/Bash, alle rollen) | schrijfrecht per rol uit `.claude/gates.json` (ook voor Bash-schrijfdoelen: redirect, `sed -i`, `tee`, `cp`, `mv`, `rm`, `git checkout/restore`); simuleert Edit/Write op `jsonGates` en vergelijkt de sleutel; blokkeert gegenereerde bestanden, gecommitte migraties (= in de merge-base met `origin/main`, zoals `check:migrations`; onleesbaar → `HEAD` met de hint `git fetch origin`), verwijderen of skippen van bestaande tests en hulpbestanden, wijzigen van fixtures en setup; wijzigen van een bestaande test of hulpbestand meldt hij als `additionalContext` |
 | PreToolUse rolhek (Bash, alle rollen) | blokkeert push naar `main`, force-push (`--force` en elke afkorting vanaf `--forc`, `-f` ook in een cluster, `--force-with-lease`, `--force-if-includes`, refspec met `+`), mergen (`gh pr merge` ook `--auto`, `gh api` naar `…/merge`, `…/merges` of `…/auto-merge` met elke methode, ook GET: lees de status met `gh pr view --json state,mergedAt`; GraphQL `mergePullRequest`/`enablePullRequestAutoMerge`/`mergeBranch`; `ghForbidden` en `gitForbidden` in `rails/hooks/lib/rolhek.mjs`), `LEFTHOOK=0`, `--no-verify`/`-n`, `git branch -d`/`-D`/`--delete` (ook afgekort) van `main` (ADR 0046), `core.hooksPath` (leesvormen met `--get` mogen, per commandosegment), `gh pr review`, het label `gate-wijziging`, `gh api` naar labels, reviews, statuses of check-runs; voor subagents ook elke push, `git merge`, rebase en `reset --hard`; reviewer alleen `pnpm check:*`/`test*`/`gate:*`, `git diff/log/show/status`, `gh pr view/diff/checks`, `node scripts/kit/feiten.mjs` |
@@ -467,10 +469,12 @@ Live feiten (gates, routes, componenten, nummers) komen uit `scripts/kit/feiten.
 
 ## 10. Versiebeheer, CI en release
 
-- Repo in een organisatie; de agent pusht via een GitHub App zonder `workflows`-recht en zonder admin (ADR 0039 punt 8). De eigenaar merget.
-- Ruleset op `main` (op organisatieniveau via een custom property, want "Use this template" kopieert geen rulesets of settings):
-  alleen via PR; geen force push of delete; verplichte checks `gate:fast`, `gate:slow`, osv-scanner; "Require code scanning results"
-  (CodeQL); code-owner-review; goedkeuring vervalt bij nieuwe push; geen bypass voor de bot; merge-methoden alleen merge en squash.
+- De GitHub App komt eerst op de huidige repo; een organisatiemigratie is geen voorwaarde (ADR 0057 punt 5). De agent pusht via
+  die App zonder admin-, `workflows`- of instellingsschrijfrecht (ADR 0039 punt 8); de eigenaar installeert de App en merget.
+- Ruleset op `main` (per repo door de eigenaar, want "Use this template" kopieert geen rulesets of settings):
+  alleen via PR; geen force push of delete; als verplichte checks alle geregistreerde (`requiredChecks` in `.claude/decisions.json`), van de juiste herkomst; "Require code scanning results"
+  (CodeQL); code-owner-review; goedkeuring vervalt bij nieuwe push; opgeloste gesprekken; geen bypass voor de bot; merge-methoden
+  alleen merge en squash. Onleesbare instellingen gelden als rood (ADR 0057 punt 5).
   Tot de GitHub App bestaat, pusht de agent onder het account van de eigenaar en kan die zijn eigen PR niet goedkeuren: dan 0 goedkeuringen
   en geen code-owner-review, wel PR-plicht, geen force push en geen delete (ADR 0040 punt 5). Rulesets op private repo's vragen GitHub Pro of Team.
 - Actions-instellingen: "Allow GitHub Actions to create and approve pull requests" uit; "Require actions to be pinned to a full-length commit SHA" aan.
