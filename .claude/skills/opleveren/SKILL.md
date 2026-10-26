@@ -8,6 +8,11 @@ allowed-tools: Bash(node scripts/kit/feiten.mjs *), Bash(pnpm pr:verify *), Bash
 
 Pas na de reviewer (framework §8 stap 5). Zie ADR 0046 punt 25 en 26.
 
+Toets de route vóór push: alleen beperkte fixes zijn licht, zonder nieuwe ADR/spec/mini-spec. Bij gewijzigd of hersteld
+gedrag hoort een aparte tester. Nieuwe features, pagina's, interacties en risicowerk krijgen de volledige straat.
+Lichte review mag door een aparte agent met leesopdracht als technische isolatie ontbreekt; claim die isolatie dan niet.
+Volledig werk behoudt afgedwongen onafhankelijke review of eigenaarreview. Geen zelfreview; alle eindchecks blijven.
+
 Feiten nu:
 
 !`node scripts/kit/feiten.mjs gates`

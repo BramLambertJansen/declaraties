@@ -136,8 +136,10 @@ Hier staan wijzigingen die van belang zijn bij het gebruiken of bijwerken van de
 
 ### Gewijzigd
 
-- Gewoon werk door één bouwer met tests en onafhankelijke review; architect en aparte tester bij hoog risico.
-  De specplicht, broncodemandaten en eigenaarmerge blijven gelden.
+- De lichte werkstraat geldt alleen voor beperkte bugs en heel kleine aanpassingen binnen bestaande functionaliteit
+  en interactie, zonder nieuwe ADR/spec/mini-spec. Gedragsverandering of -herstel krijgt eerst een aparte tester en
+  daarna een aparte reviewagent; zuivere tekst/opmaak zonder gedrag geen vaste tester. Nieuwe features, pagina's,
+  interacties en risicowerk behouden de volledige straat. Volledige pre-push en CI blijven verplicht (ADR 0058).
 - Developer-stop geeft gerichte type-, lint- en testfeedback. De volledige lokale gate blijft in pre-push en
   volledige CI blijft op iedere PR; geen oude groene uitslagen of testcache als vervanging.
 - Taakgerichte feiten en compacte overdracht in agentprofielen en skills. Activering volgt na de afzonderlijke

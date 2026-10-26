@@ -42,8 +42,13 @@ De app-initialisatie heeft naast geïsoleerde fixtures ook een compatibiliteitsp
 Git-geschiedenis. CI haalt hiervoor de volledige geschiedenis op; er wordt niets teruggeschreven naar de eigen checkout.
 
 Begin met de taakrelevante secties van `node scripts/kit/feiten.mjs`, bijvoorbeeld `gates specs fase`.
-De hoofdsessie bepaalt het risicopad uit framework §8: gewoon werk door één bouwer met tests; bij hoog risico ook architect
-en aparte tester. Spec-review, negatieve securitytests en onafhankelijke review blijven. Een classificatie geeft geen extra rechten.
+De hoofdsessie bepaalt de route uit framework §8 (ADR 0058). Alleen een beperkte bugfix of heel kleine aanpassing binnen
+bestaande functionaliteit/interactie is licht: geen nieuwe ADR/spec/mini-spec of record; uitkomst, scope en bewijs staan
+kort in de opdracht/PR. Bij gedragsverandering of -herstel schrijft een aparte tester eerst de regressie; zonder gedrag
+geen vaste tester. Daarna bouwer en aparte reviewagent. Nieuwe features, pagina's, interacties en risicowerk krijgen altijd
+architect/spec, contract waar nodig, tester, bouwer en afgedwongen onafhankelijke review. Twijfel of scopegroei gaat
+volledig. Hergebruik passende feature-specs; een feature vraagt niet automatisch een ADR. Een classificatie geeft geen
+extra rechten. Bestaande besluiten, specs, spec-review en negatieve securitytests blijven gelden.
 Architect of hoofdsessie schrijft spec of ADR direct met de bedoelde status; de eigenaar merget
 (besluit) of sluit de PR (afwijzen). Alleen voor een broncodemandaat (`--path`) bereidt de hoofdsessie een besluitrecord voor:
 
@@ -78,10 +83,14 @@ Pre-push blijft ongewijzigd en start de volledige `pnpm gate:fast`. Alle CI-work
 ongewijzigd op iedere PR. Toepasselijke runnerchecks blijven verplicht. Een codewijziging of ongeldige controle-invoer
 vraagt nieuw bewijs; geen hergebruik van een oude groene uitslag of generieke cache.
 
-Overdracht bevat alleen doel, spec/contract, gewijzigde paden, open keuzes en echte checkuitslagen. Een ontbrekende
-onafhankelijke reviewer blijft een taak voor de eigenaar; de bouwer claimt geen onafhankelijke controle.
+Overdracht bevat alleen doel, toepasselijke spec/contract of verwachte uitkomst uit de opdracht/PR, gewijzigde paden,
+open keuzes en echte checkuitslagen. Reviewagent met schone context en leesopdracht bij licht werk; technische isolatie
+waar beschikbaar, zonder die isolatieclaim als ze ontbreekt. Dat ontbreken alleen verplicht geen externe of menselijke
+reviewer. Zonder aparte agent, of zonder afgedwongen rolscheiding bij volledig werk, voert de eigenaar de ontbrekende
+stap uit. De bouwer claimt geen eigen controle als aparte review.
 
-Deze implementatie volgt ADR 0057: eerst de afzonderlijke besluit-PR mergen, daarna de implementatie. De vertrouwde
+De gerichte feedback volgt ADR 0057; de routegrens en rolkeuze volgen ADR 0058. Eerst de afzonderlijke besluit-PR mergen,
+daarna de implementatie. De vertrouwde
 hooklader gebruikt main; een branch activeert geen nieuwe rechten. De App, live ruleset en strikte build-proof uit dat
 ADR zijn afzonderlijk vervolgwerk en worden door deze hookwijziging niet als gebouwd of actief verklaard.
 
@@ -96,7 +105,9 @@ Een besluit kost één PR: de merge is het besluit. Architect of hoofdsessie zet
 inhoud na de status en committer doen er niet toe (ADR 0046 punt 7). Zonder record herkent `check-document-status` twee gevallen
 (`scripts/kit/lane.mjs`); de samenvatting noemt elk document dat een eigenaarstatus krijgt. Een PR met een eigenaarstatus merget altijd de eigenaar.
 
-**Functionele UI in de template (ADR 0056):** gebruik de mini-spec met aanvullend `scope: functionele-ui` in de frontmatter.
+**Functionele UI in de template (ADR 0056/0058):** een beperkte fix binnen de lichte grens van framework §8 krijgt geen
+nieuwe mini-spec. Noteer de uitkomst, scope en testbewijs kort in de PR, inclusief gewijzigde bestaande UI-tests met reden.
+Voor overige functionele UI gebruik je de mini-spec met aanvullend `scope: functionele-ui` in de frontmatter.
 Beschrijf het gevraagde gedrag en de acceptatiecriteria en bouw in dezelfde PR; een vooraf gemergde spec en een record met
 bronpaden zijn hiervoor niet nodig. De scope omvat bestaande componenten in `src/core/web/ui`, vaste teksten in
 `src/core/web/copy`, aansluitende app-UI, UI-tests en gebruiksdocs. Gewijzigde bestaande UI-tests krijgen per bestand een
@@ -214,7 +225,8 @@ Een wijziging aan die guard zelf vraagt, zolang hij nog niet op main staat, eige
 
 Claude Code gebruikt de geteste hooks. Codex en andere runtimes draaien ze niet automatisch: volg dezelfde procedure
 en meld ontbrekende lokale rolgrenzen. Een subagent met dezelfde rechten als de hoofdsessie is geen afgedwongen
-onafhankelijke reviewer. De eigenaar verzorgt de ontbrekende review vóór samenvoegen. De agent merget nooit.
+onafhankelijke reviewer. Bij lichte fixes volstaat een aparte agent met leesopdracht zonder die isolatieclaim;
+bij volledig werk verzorgt de eigenaar de ontbrekende onafhankelijke stap vóór samenvoegen. De agent merget nooit.
 
 ## Bekende beperkingen
 

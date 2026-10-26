@@ -385,7 +385,7 @@ function decideByRole({ rel, change, role }, ctx, decision) {
   const voorReview = config.voorReview ?? config.gates;
   const melding = ctx.onbekendeRol !== true && (!voorReview.some((glob) => globMatch(glob, rel)) || inOnderhoud(rel, ctx));
   if (melding && isCoreUiSource(rel) && ctx.authority?.repository === TEMPLATE_REPOSITORY)
-    decision.context.push(`${rel}: functionele UI (ADR 0056): geen voorafgaand broncodemandaat; mini-spec en scope worden in CI en door de eigenaar beoordeeld`);
+    decision.context.push(`${rel}: functionele UI (ADR 0056): geen voorafgaand broncodemandaat; toepasselijke mini-spec en scope worden in CI en door de eigenaar beoordeeld; beperkte fixes vragen geen nieuwe mini-spec (ADR 0058)`);
   else if (melding && ctx.onderhoud === true && voorReview.some((glob) => globMatch(glob, rel)))
     decision.context.push(`${rel} is een beschermd pad (framework §10, onderhoudsmodus ADR 0045): noem het in de PR (eigenaarreview)`);
   else if (melding)

@@ -6,6 +6,10 @@ sjabloon: mini
 
 # <Feature>
 
+Alleen gebruiken voor werk met specplicht uit framework §8. Een beperkte fix binnen bestaande functionaliteit/interactie
+krijgt geen nieuwe spec of mini-spec: uitkomst, scope en bewijs staan in de opdracht/PR (ADR 0058). Nieuwe features,
+pagina's en interacties krijgen altijd de volledige straat; een mini-spec verkort het document, niet de vereiste rollen.
+
 Korte spec voor app-werk in de feature-lane (ADR 0046 punt 13–14), of een functionele UI-wijziging in de template
 (ADR 0056). Voor die UI-scope voeg je `scope: functionele-ui` toe aan de frontmatter. Bestaande componenten in
 `src/core/web/ui` en vaste teksten in `src/core/web/copy` mogen dan met hun UI-tests en gebruiksdocumentatie in dezelfde PR,

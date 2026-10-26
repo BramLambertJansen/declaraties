@@ -1,6 +1,11 @@
 # Gouden pad: een feature door alle lagen
 
-Voor functionele UI-wijzigingen aan bestaande componenten in de template volstaat de mini-spec met
+Beperkte fixes binnen bestaande functionaliteit/interactie volgen framework §8 zonder nieuwe ADR/spec/mini-spec:
+verwachte uitkomst, scope en bewijs staan in de opdracht/PR; bij gedragsverandering of -herstel schrijft een aparte
+tester eerst de regressie. Nieuwe features, pagina's en interacties krijgen altijd architect/spec, tester, bouwer en
+afgedwongen onafhankelijke review. Een feature vraagt niet automatisch een ADR (ADR 0058).
+
+Voor overige functionele UI-wijzigingen aan bestaande componenten in de template volstaat de mini-spec met
 `scope: functionele-ui`, samen met code, tests en gebruiksdocumentatie in één PR (ADR 0056). De
 [agentdoorloop](operations/agent-doorloop.md#feature-lane-en-mini-spec-adr-0046) beschrijft scope en bouwbewijs.
 De bestaande toast-API is `useToast().success/error`, met `ToastProvider` in `src/web/main.tsx` en `Toaster` in AppShell.
@@ -33,7 +38,7 @@ draait hem; `--dry-run` toont het plan zonder te schrijven, en bestaat een doel 
      verplicht voor de cursorproef: A en B krijgen ieder twee verschillende rijen. `rol` kiest een toegestane testrol
      (`user` indien toegestaan, anders de opgegeven rol); admin-acteurs krijgen echte MFA-sessies. De generator schrijft
      dit bestand niet (`scripts/kit/new-resource.mjs`, `declaratieInhoud`).
-3. Daarna het risicopad uit framework §8: de bouwer of, bij hoog risico, aparte tester schrijft de tests
+3. Een nieuwe resource volgt altijd de volledige straat uit framework §8: de aparte tester schrijft eerst de tests
    (pgTAP per policy, integratie, e2e), zet de declaratie in
    `test/security/resources.ts` en vult de samples in (tot dan is `pnpm test:db` rood), de developer voegt de velden toe in
    een nieuwe migratie met kolomgrants en bouwt de handlers. De stappen hieronder gelden dan per bestand.

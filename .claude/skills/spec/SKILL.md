@@ -1,15 +1,19 @@
 ---
 name: spec
-description: Een spec schrijven voor een migratie, nieuwe route of nieuwe permissie (status goedgekeurd in het voorstel; de merge is het besluit), volgens docs/specs/_template.md. Gebruik vóór je zulk werk bouwt.
+description: Een spec schrijven voor nieuwe features, pagina's, interacties, migraties, routes of permissies volgens docs/specs/_template.md. Hergebruik passende specs; beperkte fixes vragen geen nieuw document (framework §8).
 allowed-tools: Bash(node scripts/kit/feiten.mjs *)
 ---
 
 # Spec schrijven
 
-Wanneer: elke migratie, nieuwe route of nieuwe permissie (AGENTS.md). Bouwen pas als de spec met status `goedgekeurd` op main staat (een mini-spec mag met haar code in één feature-lane-PR): de merge door de eigenaar is het besluit (ADR 0046).
+Wanneer: nieuwe feature, pagina, interactie, migratie, route of permissie. Dat werk krijgt altijd de volledige straat met
+architect en tester (framework §8, ADR 0058). Hergebruik een passende bestaande feature-spec; een ADR is alleen nodig
+bij de bestaande beslisdrempels. Voor een beperkte fix binnen de lichte grens maak je geen spec of mini-spec: verwachte
+uitkomst, scope en bewijs staan kort in de opdracht/PR. Bestaande specs blijven bindend.
 
-De hoofdsessie kan een gewone spec zelf schrijven. Gebruik een aparte architect bij hoog risico volgens framework §8;
-de taakroute verandert niets aan spec-review, broncodemandaat of eigenaarbesluit (ADR 0057).
+Bouwen pas als de spec met status `goedgekeurd` op main staat (een mini-spec mag met haar code in één feature-lane-PR):
+de eigenaarmerge is het besluit (ADR 0046). De hoofdsessie coördineert de architect; de route verandert niets aan
+spec-review, broncodemandaat of eigenaarbesluit. Bindende specs inhoudelijk wijzigen volgt de bestaande besluitroute.
 
 Feiten nu:
 

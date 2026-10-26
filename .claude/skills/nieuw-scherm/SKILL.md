@@ -6,6 +6,10 @@ allowed-tools: Bash(node scripts/kit/feiten.mjs *)
 
 # Nieuw scherm
 
+Een nieuwe pagina of interactie krijgt altijd de volledige straat: architect/spec, contract waar nodig, aparte tester
+vóór implementatie, bouwer en afgedwongen onafhankelijke review (framework §8). Ook bij een kleine diff. Hergebruik een
+passende feature-spec; geen automatische ADR per scherm. De stappen hieronder zijn het bouwdeel van die straat.
+
 Componenten die er zijn (bouw niets ernaast; past er geen, stop en stel een variant voor):
 
 !`node scripts/kit/feiten.mjs componenten`
