@@ -56,7 +56,7 @@ Alleen bij een nieuwe tabel: naam, kolommen, RLS-regel en grants zoals `pnpm new
 
 ## Open vragen
 
-Een vraag zonder aanbeveling (de eigenaar kiest) blokkeert `goedgekeurd`; een vraag met aanbeveling mag blijven staan. `check-docs` telt alleen lijstitems.
+Een vraag zonder aanbeveling (de eigenaar kiest) blokkeert `goedgekeurd`; een vraag met aanbeveling mag blijven staan. `check-docs` telt elke regel in deze sectie met het waarschuwingsteken en "open" (ook met U+FE0F of hoofdletter, ook zonder opsommingsteken).
 
 - **OV-1 ⚠ open** — <vraag>; <opties> (geen aanbeveling: de eigenaar kiest)
 - **OV-2** — <vraag>; <opties>. Aanbeveling: <keuze en reden>

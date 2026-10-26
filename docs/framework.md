@@ -113,7 +113,7 @@ dependency-cruiser); checks op de database lezen de catalogus van de lokale data
 |---|---|---|
 | Na elke bewerking (PostToolUse-hook) | ESLint + Prettier op dat bestand | ~1–2 s |
 | Pre-commit (lefthook) | format, ESLint op staged, Betterleaks | < 10 s |
-| Einde beurt (Stop-hook) | `tsc -b` (incrementeel: `incremental` in `tsconfig.base.json`), ESLint en `vitest related` (projecten unit en web) op de geraakte bestanden (`rails/hooks/lib/werkstraat.mjs:83`) | ~10–30 s |
+| Einde beurt (Stop-hook) | `tsc -b` (incrementeel: `incremental` in `tsconfig.base.json`), ESLint en `vitest related` (projecten unit en web) op de geraakte bestanden: werkmap plus wat de branch sinds `origin/main` heeft gecommit (`rails/hooks/lib/werkstraat.mjs:48`, `:98`) | ~10–30 s |
 | Database-tests | `pnpm test:db`: integratie + pgTAP tegen lokale Postgres | ~20–60 s |
 | Pre-push | `gate:fast` | < 60 s |
 | CI | `gate:fast` + build, daarna `gate:slow` | 3–5 / 8–15 min |
@@ -123,7 +123,7 @@ dependency-cruiser); checks op de database lezen de catalogus van de lokale data
 - Verplicht naast CI: CodeQL en osv-scanner.
 - **Gate-register**: `scripts/kit/gates.mjs` beschrijft per script wat het bewaakt en of het snel is (zonder database, dus in `gate:fast`);
   het is de enige gate-tabel. `gate:fast` draait de snelle gates uit het register via `scripts/kit/gate-fast.mjs`, in maximaal drie banen
-  (`test:unit`, `lint`, de rest na elkaar). Bij minder dan 6 GiB beschikbaar geheugen delen lint en tests een wachtrij;
+  (`test:unit`, `lint`, de rest na elkaar). Bij weinig geheugen (`scripts/kit/geheugen.mjs`) delen lint en tests een wachtrij;
   alle gates draaien met dezelfde argumenten en faalvoorwaarden. De rode uitvoer komt eerst en daarna de lijst in registervolgorde;
   `gate:slow` is de &&-keten van de trage. `test/rails/gates.test.ts`,
   `gate-fast.test.ts` en `gate-slow.test.ts` eisen dat beide precies het register volgen (ADR 0045).
@@ -417,9 +417,9 @@ SubagentStop staat in `.claude/settings.json` (matcher = agentnaam), niet in de 
 | Hook | Doet |
 |---|---|
 | PostToolUse (Edit/Write) | ESLint + Prettier op het bewerkte bestand |
-| Stop | typecheck/lint/unit op geraakte bestanden; `{"decision":"block","reason":…}` met ≤ 40 regels; stopt direct bij `stop_hook_active`; overslaan in plan mode of zonder wijzigingen; nooit netwerk of database |
-| SubagentStop (developer) | dezelfde gerichte type-, lint- en unitfeedback als Stop; rood blokkeert met `{"decision":"block"}` en de laatste 40 regels. Geen volledige gate bij elke overdracht; pre-push en CI blijven de eindcontroles |
-| SubagentStop (tester, reviewer) | tester → lint en typecheck groen, en de nieuwe tests falen alleen op asserties (de acceptatietests zijn rood tot de developer klaar is); reviewer → rapport geschreven |
+| Stop | typecheck/lint/unit op geraakte bestanden: werkmap plus wat de branch sinds `origin/main` heeft gecommit; `{"decision":"block","reason":…}` met ≤ 40 regels, verdeeld over de rode controles; stopt direct bij `stop_hook_active`; overslaan in plan mode of zonder wijzigingen; nooit netwerk of database |
+| SubagentStop (developer) | dezelfde gerichte type-, lint- en unitfeedback als Stop, ook op gecommitte code bij een schone werkmap; rood blokkeert met `{"decision":"block"}` en hooguit 40 regels, verdeeld over de rode controles. Geen volledige gate bij elke overdracht; pre-push en CI blijven de eindcontroles |
+| SubagentStop (tester, reviewer) | tester → lint en typecheck groen, en de nieuwe tests falen alleen op asserties, op de werkmap plus gecommitte branchbestanden (de acceptatietests zijn rood tot de developer klaar is); reviewer → rapport geschreven |
 | SessionStart | spec, branch, achterstand op `origin/main` (haalt die op met een harde timeout van 5 s en zonder ooit om credentials te vragen; een mislukte fetch blokkeert niets), laatste checkuitslag, status lokale stack (`doctor --quick`) als `additionalContext` |
 | PreToolUse rolhek (Edit/Write/Bash, alle rollen) | schrijfrecht per rol uit `.claude/gates.json` (ook voor Bash-schrijfdoelen: redirect, `sed -i`, `tee`, `cp`, `mv`, `rm`, `git checkout/restore`); simuleert Edit/Write op `jsonGates` en vergelijkt de sleutel; blokkeert gegenereerde bestanden, gecommitte migraties (= in de merge-base met `origin/main`, zoals `check:migrations`; onleesbaar → `HEAD` met de hint `git fetch origin`), verwijderen of skippen van bestaande tests en hulpbestanden, wijzigen van fixtures en setup; wijzigen van een bestaande test of hulpbestand meldt hij als `additionalContext` |
 | PreToolUse rolhek (Bash, alle rollen) | blokkeert push naar `main`, force-push (`--force` en elke afkorting vanaf `--forc`, `-f` ook in een cluster, `--force-with-lease`, `--force-if-includes`, refspec met `+`), mergen (`gh pr merge` ook `--auto`, `gh api` naar `…/merge`, `…/merges` of `…/auto-merge` met elke methode, ook GET: lees de status met `gh pr view --json state,mergedAt`; GraphQL `mergePullRequest`/`enablePullRequestAutoMerge`/`mergeBranch`; `ghForbidden` en `gitForbidden` in `rails/hooks/lib/rolhek.mjs`), `LEFTHOOK=0`, `--no-verify`/`-n`, `git branch -d`/`-D`/`--delete` (ook afgekort) van `main` (ADR 0046), `core.hooksPath` (leesvormen met `--get` mogen, per commandosegment), `gh pr review`, het label `gate-wijziging`, `gh api` naar labels, reviews, statuses of check-runs; voor subagents ook elke push, `git merge`, rebase en `reset --hard`; reviewer alleen `pnpm check:*`/`test*`/`gate:*`, `git diff/log/show/status`, `gh pr view/diff/checks`, `node scripts/kit/feiten.mjs` |

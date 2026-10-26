@@ -5,6 +5,22 @@ export function adrNumber(file) {
   return /^docs\/adr\/(?:archief\/)?(\d{4})-[^/]+\.md$/.exec(file)?.[1];
 }
 
+/**
+ * Elk `.md`-bestand in docs/adr/ (en archief/) heet `NNNN-slug.md`, anders valt het buiten de nummering (`0040_x.md`,
+ * `00400-x.md`). Uitgezonderd: README.md en sjablonen (naam begint met `_`).
+ * @param {readonly string[]} files @returns {{ key: string, message: string }[]}
+ */
+export function invalidAdrNames(files) {
+  return files
+    .filter(
+      (file) => /^docs\/adr\/(?:archief\/)?(?!README\.md$|_)[^/]+\.md$/.test(file) && adrNumber(file) === undefined,
+    )
+    .map((file) => ({
+      key: `docs:${file}:adr-naam`,
+      message: `${file}: een ADR heet NNNN-slug.md (vier cijfers, een streepje, een slug); README.md en _sjablonen uitgezonderd`,
+    }));
+}
+
 /** @param {readonly string[]} files @returns {{ key: string, message: string }[]} */
 export function duplicateAdrNumbers(files) {
   /** @type {Map<string, string[]>} */

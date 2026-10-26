@@ -20,10 +20,19 @@ Hier staan wijzigingen die van belang zijn bij het gebruiken of bijwerken van de
 - DateInput behoudt de native kalender als `showPicker` ontbreekt of wordt geweigerd. De extra kalenderknop verschijnt
   bij een beschikbare showPicker-functie; een geweigerde aanroep herstelt de native indicator en behoudt waarde en focus.
 
-- De snelle gate laat lint en tests bij weinig beschikbaar geheugen na elkaar draaien. Alle bestaande controles en
+- De snelle gate laat lint en tests bij weinig geheugen na elkaar draaien. Alle bestaande controles en
   faalvoorwaarden blijven gelden; met voldoende geheugen blijven de drie parallelle banen beschikbaar.
-- Dezelfde geheugengrens begrenst browserworkers tot één bij weinig ruimte; anders hooguit vier, binnen de CPU-capaciteit.
+  Weinig is minder dan 6 GiB beschikbaar, op macOS een host met hooguit 8 GiB;
+  `GATE_WEINIG_GEHEUGEN=1|0` beslist voor de host (`scripts/kit/geheugen.mjs`).
+- Dezelfde geheugengrens begrenst browserworkers tot één bij weinig ruimte; anders de helft van de CPU's, hooguit vier.
+  Een runner met 4 vCPU draait daardoor twee in plaats van vier workers.
   De volledige e2e-suite, toegankelijkheidscontroles en time-outs blijven gelden.
+
+- De Stop-feedback van de developer controleert ook code die de branch al heeft gecommit (schone werkmap), respecteert
+  `stop_hook_active` en toont per rode controle een eigen deel van de uitvoer (`rails/hooks/lib/werkstraat.mjs`).
+- `check-docs` vangt een open vraag ook met `⚠️`, in hoofdletters en zonder opsommingsteken, en weigert een
+  `.md`-bestand in `docs/adr/` dat niet `NNNN-slug.md` heet (README.md en `_`-sjablonen uitgezonderd). Bij een update:
+  hernoem een afwijkend ADR-bestand.
 
 - De feitenopdracht laadt de UI-catalogus alleen wanneer componentinformatie wordt gevraagd. Gerichte vragen over
   gates, ADR's, specs, migraties, routes, permissies, foutcodes en fase starten zonder de TypeScript-compiler te laden.
@@ -53,6 +62,8 @@ Hier staan wijzigingen die van belang zijn bij het gebruiken of bijwerken van de
 
 - De resourcegenerator vraagt ook een tweede create-sample voor echte cursorpaginering. De securitysuite weigert een
   ontbrekend sample en gelijke create-ID's. Resourcemetadata kiest de toegestane rol voor A en B, inclusief admin met MFA.
+  Bij een update: geef elke regel in `test/security/resources.ts` een `sample.createTweede` (anders is `pnpm test:db`
+  rood) en een `rol` als de resource niet voor `user` is (standaard `user`).
 
 - De componentskill verwijst naar de verplichte catalogusdekking voor alle componenten en eindige varianten. De oude
   aanwijzing om een uitzondering in het controlescript te maken is verwijderd; die mogelijkheid bestaat niet.

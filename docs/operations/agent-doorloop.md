@@ -3,16 +3,18 @@
 De eigenaar beslist inhoudelijk met zijn merge ([ADR 0046](../adr/0046-werkstraat-en-beslisroute.md)). De agent schrijft de bedoelde status in
 het voorstel, bouwt, verzamelt bewijs en zet `gebouwd` zodra het bouwbewijs bestaat ([ADR 0046](../adr/0046-werkstraat-en-beslisroute.md) punt 10).
 
-## Besluit en taakscope voorbereiden
+## Lokale belasting
 
-`pnpm gate:fast` meldt het wanneer minder dan 6 GiB geheugen beschikbaar is: lint en tests wachten dan op elkaar,
+De geheugengrens staat in `scripts/kit/geheugen.mjs`: weinig geheugen is minder dan 6 GiB beschikbaar; op macOS, waar
+libuv alleen vrije pagina's telt, een host met hooguit 8 GiB RAM. `GATE_WEINIG_GEHEUGEN=1` of `0` beslist voor de host. `pnpm gate:fast` meldt het onder de grens: lint en tests wachten dan op elkaar,
 terwijl de overige snelle gates hun bestaande baan houden. Alle controles draaien precies eenmaal, ook na rood.
 Aanleiding: op de gedeelde 8-GiB-host liep een ESLint-proces van 1,8 GiB naast de tests; de swap was vol en de gate
 duurde 486 s met time-outs. Dit is een lokale waarneming, geen vaste looptijd. De CLI-regressies in
 `test/rails/gate-fast-memory.test.ts` bewaken beide planningen en het behoud van alle gates en exitcodes.
 
-Dezelfde geheugengrens begrenst Playwright: één worker onder de grens, anders hooguit vier en nooit meer dan beschikbare
-CPU's. Alle e2e-tests, CSP, axe en time-outs blijven behouden. Aanleiding: de lokale run met acht workers op de gedeelde
+Dezelfde geheugengrens begrenst Playwright: één worker onder de grens, anders de helft van de CPU's (minstens één,
+hooguit vier). Op CI stijgt het aantal workers daardoor nooit, maar het kan dalen: een runner met 4 vCPU gaat van vier
+naar twee workers. Dat is bedoeld (elke worker draait een eigen Chromium naast API en Vite). Alle e2e-tests, CSP, axe en time-outs blijven behouden. Aanleiding: de lokale run met acht workers op de gedeelde
 8-GiB-host eindigde na 10,3 minuten met 67 time-outs/fouten en zeven geslaagde tests; de gewone pre-commitcontrole duurde
 tegelijk 422 s. De nieuwe planning is op de echte configuratie getest; uitvoering in de runner vraagt CI-bewijs, omdat
 `playwright.config.ts` hostcode is (ADR 0044). Een nieuwe planning maakt de oude rode run niet groen.
@@ -23,6 +25,12 @@ worden pas geladen bij `componenten` of bij een aanroep zonder secties; tekst- e
 Lokale vergelijking op 25 oktober 2026 (Node 26.11.1, vijf losse processen per versie, `gates --json`): mediaan 426 ms
 vóór en 32 ms na uitgesteld laden. Dit is een momentopname. `test/scripts/feiten-lazy.test.ts` bewaakt de vermeden import;
 de bestaande feiten- en toolchaintests bewaken de uitvoer en foutafhandeling.
+
+De Stop-feedback (ook SubagentStop van de developer) kijkt naar de werkmap plus wat de branch sinds `origin/main` heeft
+gecommit (`rails/hooks/lib/werkstraat.mjs:48`); een schone werkmap met rode gecommitte code geeft dus nog feedback.
+Elke rode controle krijgt een eigen deel van de 40 regels (`rails/hooks/lib/werkstraat.mjs:109`).
+
+## Besluit en taakscope voorbereiden
 
 `docs/roadmap-archief.md` bevat historisch bouwbewijs en is net als de actieve roadmap een beschermd gate-pad.
 De diff-guard beoordeelt ook verwijderen en weg-hernoemen; CODEOWNERS volgt dezelfde lijst in `.claude/gates.json`.

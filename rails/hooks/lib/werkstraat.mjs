@@ -38,6 +38,25 @@ export function changedFromStatus(porcelain) {
 }
 
 /**
+ * De bestanden waar de Stop-feedback over gaat: de werkmap plus wat de branch sinds origin/main heeft gecommit, zodat
+ * gecommitte code met een schone werkmap toch gecontroleerd wordt. Zonder origin/main (merge-base faalt) alleen de werkmap.
+ * Verwijderde bestanden (`exists` onwaar) vallen weg.
+ * @param {Deps['run']} run
+ * @param {(rel: string) => boolean} exists
+ * @returns {string[]}
+ */
+export function changedFiles(run, exists) {
+  // Geen geciteerde paden: quotePath uit voor status (niet-ASCII letterlijk), -z voor diff (ook spaties en aanhalingstekens).
+  const status = run('git', ['-c', 'core.quotePath=false', 'status', '--porcelain', '--untracked-files=all']);
+  const local = changedFromStatus(status.output);
+  const base = run('git', ['merge-base', 'origin/main', 'HEAD']);
+  if (base.code !== 0) return local;
+  const diff = run('git', ['diff', '-z', '--name-only', '--diff-filter=d', `${base.output.trim()}...HEAD`]);
+  const committed = diff.code === 0 ? diff.output.split('\0').filter((line) => line !== '') : [];
+  return [...new Set([...local, ...committed])].filter((file) => exists(file));
+}
+
+/**
  * @param {unknown} payload
  * @param {string} key
  * @returns {unknown}
@@ -86,8 +105,10 @@ export function stop(payload, deps) {
     ['unit', deps.run('pnpm', ['exec', 'vitest', 'related', '--run', '--project', 'unit', '--project', 'web', ...code])],
   ].filter(([, result]) => typeof result === 'object' && result.code !== 0);
   if (failures.length === 0) return {};
-  const report = failures.map(([name, result]) => `✗ ${String(name)}\n${typeof result === 'object' ? result.output : ''}`);
-  return block(`Nog niet groen (framework §8, Stop-hook):\n${lastLines(report.join('\n'))}`);
+  // Elke rode controle krijgt een eigen deel van de 40 regels: een lange lint- of testuitvoer drukt de typefout er niet uit.
+  const budget = Math.max(1, Math.floor(MAX_LINES / failures.length) - 1);
+  const report = failures.map(([name, result]) => `✗ ${String(name)}\n${typeof result === 'object' ? lastLines(result.output, budget) : ''}`);
+  return block(`Nog niet groen (framework §8, Stop-hook):\n${report.join('\n')}`);
 }
 
 /**
@@ -99,7 +120,7 @@ export function stop(payload, deps) {
  */
 export function subagentStop(payload, deps) {
   const role = get(payload, 'agent_type');
-  if (role === 'developer') return stop({}, deps);
+  if (role === 'developer') return stop(payload, deps);
   if (role === 'tester') return testerStop(deps);
   if (role === 'reviewer') return reviewerStop(payload);
   return {};
