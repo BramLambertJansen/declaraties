@@ -21,6 +21,7 @@ tussenruimte. Het invoerveld vult de resterende breedte; de knop behoudt zijn aa
 - `Breadcrumbs` ontvangt voorouders als `items` met stabiele `id`, `label` en interne `href`, plus `currentPage`.
   NavLink verzorgt de routernavigatie en native modifierklikken. Alleen de huidige pagina heeft `aria-current="page"`
   en is tekst. Zonder voorouders blijft alleen die pagina over. `label` benoemt de navigatie (standaard “Kruimelpad”).
+  De accountlink in het catalogusvoorbeeld opent de bestaande accountpagina op `/admin/accounts`.
 - `CopyButton` schrijft uitsluitend na activering `value` via de Clipboard API. Tijdens het wachten weigert de knop
   dubbele acties en behoudt hij focus. “Gekopieerd.” verschijnt pas na succes, via een live status. Bij weigering of een
   ontbrekende API volgt een alert: “Kopiëren is niet gelukt. Selecteer en kopieer de tekst zelf.” De app houdt de brontekst
