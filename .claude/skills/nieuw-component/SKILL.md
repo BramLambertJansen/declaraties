@@ -6,9 +6,8 @@ allowed-tools: Bash(node scripts/kit/feiten.mjs *)
 
 # Nieuw component of variant
 
-Een nieuwe capability, interactie of component-API volgt de volledige straat met architect/spec en tester vóór bouw
-(framework §8). Een beperkte fix aan een bestaand component volgt de lichte grens, zonder nieuwe spec; bij gewijzigd
-of hersteld gedrag schrijft eerst een aparte tester de regressie. Een kleine variant is niet vanzelf een lichte fix.
+Een nieuwe capability, interactie of component-API is volledig werk; alleen een beperkte fix aan een bestaand component
+kan licht zijn (framework §8). Een kleine variant is niet vanzelf een lichte fix.
 
 Bestaande componenten:
 

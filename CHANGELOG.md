@@ -238,6 +238,7 @@ Hier staan wijzigingen die van belang zijn bij het gebruiken of bijwerken van de
 
 - De README beschrijft de huidige basis, lokale installatie en beschikbare controles.
 - Een leeswijzer maakt onderscheid tussen gebruiksdocumentatie, ontwikkelafspraken en agentinstructies.
+- De lichte en volledige route staan alleen nog in `docs/framework.md` §8; instructies, agents en skills verwijzen ernaar.
 
 ### Bij een update
 
