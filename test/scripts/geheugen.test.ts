@@ -2,7 +2,8 @@ import { expect, test } from 'vitest';
 import { weinigGeheugen } from '../../scripts/kit/geheugen.mjs';
 
 const GIB = 1024 ** 3;
-const ruim = { override: undefined, totaal: 32 * GIB, beschikbaar: 16 * GIB, platform: 'linux' };
+// Een lege override telt als geen override, los van GATE_WEINIG_GEHEUGEN in de omgeving van de testrun.
+const ruim = { override: '', totaal: 32 * GIB, beschikbaar: 16 * GIB, platform: 'linux' };
 
 test('ruime host: geen beperking', () => {
   expect(weinigGeheugen(ruim)).toBe(false);
