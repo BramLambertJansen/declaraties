@@ -5,13 +5,21 @@ import path from 'node:path';
 import { expect, test } from 'vitest';
 import { snelleGates } from '../../scripts/kit/gate-fast.mjs';
 
+/** Ruim venster: op een trage host meldt de tweede zware gate zich ruim binnen deze tijd; serieel komt hij nooit. */
+const WINDOW_MS = 3000;
+const env = Object.fromEntries(Object.entries(process.env).filter(([key]) => key !== 'GATE_WEINIG_GEHEUGEN'));
+
 function run(memoryGiB: number, red = '') {
   const dir = mkdtempSync(path.join(tmpdir(), 'gate-memory-'));
   try {
     const hook = path.join(dir, 'memory.mjs');
+    // Totaal én beschikbaar geheugen vast (scripts/kit/geheugen.mjs), zonder override uit de omgeving.
     writeFileSync(
       hook,
-      `Object.defineProperty(process, 'availableMemory', { value: () => ${String(memoryGiB)} * 1024 ** 3 });`,
+      `import os from 'node:os';
+const bytes = ${String(memoryGiB)} * 1024 ** 3;
+Object.defineProperty(process, 'availableMemory', { value: () => bytes });
+Object.defineProperty(os, 'totalmem', { value: () => bytes });`,
     );
     const stub = path.join(dir, 'pnpm');
     writeFileSync(
@@ -25,16 +33,20 @@ if (script !== 'lint' && script !== 'test:unit') process.exit(0);
 let owner = false;
 try { fs.mkdirSync(root + '/heavy'); owner = true; }
 catch (error) { if (error.code !== 'EEXIST') throw error; fs.writeFileSync(root + '/overlap', 'yes'); }
-setTimeout(() => {
+// De eerste zware gate wacht tot de tweede zich meldt (overlap) of tot het ruime venster om is; geen vaste 200 ms.
+const start = Date.now();
+const tick = () => {
+  if (owner && !fs.existsSync(root + '/overlap') && Date.now() - start < ${String(WINDOW_MS)}) return setTimeout(tick, 20);
   if (owner) fs.rmdirSync(root + '/heavy');
   process.exit(script === process.env.GATE_MEMORY_RED ? 2 : 0);
-}, 200);
+};
+tick();
 `,
     );
     chmodSync(stub, 0o755);
     const result = spawnSync(process.execPath, ['--import', hook, 'scripts/kit/gate-fast.mjs'], {
       encoding: 'utf8',
-      env: { ...process.env, PATH: `${dir}:${process.env.PATH ?? ''}`, GATE_MEMORY_FIXTURE: dir, GATE_MEMORY_RED: red },
+      env: { ...env, PATH: `${dir}:${process.env.PATH ?? ''}`, GATE_MEMORY_FIXTURE: dir, GATE_MEMORY_RED: red },
     });
     return {
       ...result,
@@ -51,13 +63,13 @@ test('weinig geheugen: lint en tests overlappen niet; alle snelle gates draaien 
   expect(result.status).toBe(0);
   expect(result.overlap).toBe(false);
   expect(result.calls.toSorted()).toStrictEqual(snelleGates().toSorted());
-});
+}, 30_000);
 
 test('voldoende geheugen: de bestaande parallelle zware banen blijven beschikbaar', () => {
   const result = run(64);
   expect(result.status).toBe(0);
   expect(result.overlap).toBe(true);
-});
+}, 30_000);
 
 test('ook met weinig geheugen blijft een mislukte test rood en draaien de overige controles', () => {
   const result = run(1, 'test:unit');
@@ -65,4 +77,4 @@ test('ook met weinig geheugen blijft een mislukte test rood en draaien de overig
   expect(result.overlap).toBe(false);
   expect(result.calls.toSorted()).toStrictEqual(snelleGates().toSorted());
   expect(result.stdout).toContain('gate:fast rood: test:unit');
-});
+}, 30_000);

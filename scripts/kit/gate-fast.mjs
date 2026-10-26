@@ -8,6 +8,7 @@ import { Buffer } from 'node:buffer';
 import { spawn } from 'node:child_process';
 import { performance } from 'node:perf_hooks';
 import { gates } from './gates.mjs';
+import { weinigGeheugen } from './geheugen.mjs';
 
 /** @typedef {{ script: string, code: number, output: string, seconds: number }} Uitslag */
 
@@ -100,15 +101,10 @@ function begrensZwareBanen(run) {
   };
 }
 
-/** Dezelfde geheugengrens voor lokale gates en browserworkers. @param {number} [beschikbaar] */
-export function weinigGeheugen(beschikbaar = process.availableMemory()) {
-  return beschikbaar < 6 * 1024 ** 3;
-}
-
 if (import.meta.main) {
   // Tijdens deze hardening: een ESLint-proces van 1,8 GiB naast de tests op een gedeelde 8-GiB-host vulde ook de swap.
-  // Laat ruimte voor de derde baan en andere processen. Deze grens verandert uitsluitend de planning.
+  // Laat ruimte voor de derde baan en andere processen. Deze grens (scripts/kit/geheugen.mjs) verandert uitsluitend de planning.
   const beperkt = weinigGeheugen();
-  if (beperkt) console.info('gate:fast: minder dan 6 GiB beschikbaar; lint en tests draaien na elkaar');
+  if (beperkt) console.info('gate:fast: weinig geheugen (scripts/kit/geheugen.mjs); lint en tests draaien na elkaar');
   process.exitCode = await gateFast(snelleGates(), beperkt ? begrensZwareBanen(draai) : draai);
 }
