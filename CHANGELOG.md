@@ -147,6 +147,9 @@ Hier staan wijzigingen die van belang zijn bij het gebruiken of bijwerken van de
 
 ### Gewijzigd
 
+- Een laat sluitende `EditableSection` trekt focus niet meer weg uit een ander veld of een andere knop. Het gewone
+  focusherstel naar Bewerken en het opruimen van de uitgestelde focustimer blijven behouden.
+
 - Succes-toasts uit een mount-effect krijgen ook tijdens de eerste render en in StrictMode een werkende afteller.
   Bestaande aftellers blijven doorlopen wanneer er een melding bijkomt; hover-/focuspauze, blijvende fouten en de
   bestaande termijn van vijf seconden veranderen niet.

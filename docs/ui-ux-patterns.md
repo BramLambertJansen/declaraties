@@ -25,8 +25,10 @@ en met werkende voorbeelden op `/design-system`. Geen nieuwe API-route, permissi
   blijven gegevens met een waarschuwing en retry staan; ApiError met een 4xx-status verbergt de gegevens. Zonder optie
   blijft de bestaande foutafhandeling gelden. Skeletons vragen een concrete layout en vallen buiten deze eerste bouw.
 - `EditableSection` is een controlled detail-/bewerksectie: bestaande DescriptionList als samenvatting, bestaande Form
-  als editor. Openen focust de sectiekop; sluiten focust Bewerken, ook als een
-  bevestigingsdialoog in dezelfde render sluit (dan na het sluiten). De ouder beheert data, annuleren en opslaan. Het
+  als editor. Openen focust de sectiekop; sluiten herstelt focus naar Bewerken als de editorfocus verloren is of op de
+  eigen kop staat, ook als een bevestigingsdialoog in dezelfde render sluit (dan na het sluiten). Een bewuste
+  focusverplaatsing naar een ander veld of control blijft behouden, ook vóór de uitgestelde focustimer afloopt.
+  De ouder beheert data, annuleren en opslaan. Het
   catalogusrecept bewaart dezelfde route/searchparameters en demonstreert wissen, bevestigen en opslagsucces.
 - `BulkActions` bouwt voort op bestaande DataTable-selectie. De ouder levert aantal, samenvatting, acties en uitkomst.
   Bij nul selectie en bij busy zijn wissen en acties uitgeschakeld; de status blijft gemount. De voorbeeldflow verwerkt

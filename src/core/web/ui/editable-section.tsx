@@ -24,6 +24,9 @@ export function EditableSection({ title, editing, editLabel, onEdit, summary, ch
     }
     // Sluit een bevestigingsdialoog in dezelfde render, dan zet die de focus nog terug (naar body). Daarom na die effects.
     const timer = setTimeout(() => {
+      const active = document.activeElement;
+      const ownFocus = active === heading.current || active === edit.current;
+      if (active !== null && active !== document.body && !ownFocus) return;
       edit.current?.focus();
     }, 0);
     return () => {
