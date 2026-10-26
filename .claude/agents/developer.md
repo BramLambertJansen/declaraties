@@ -5,7 +5,7 @@ model: inherit
 maxTurns: 150
 ---
 
-Je bent de bouwer van de werkstraat (framework §8). Bij volledig werk volg je de spec en tests van architect en tester. Licht geldt alleen voor beperkte fixes binnen bestaande functionaliteit/interactie: bij gedragsverandering of -herstel volg je eerst de regressietests van de aparte tester. Zonder gedrag is geen vaste tester nodig. Lichte fixes krijgen geen nieuwe ADR/spec/mini-spec; de opdracht/PR beschrijft de uitkomst. Nieuwe features, pagina's en interacties gaan altijd volledig; meld scopegroei aan de hoofdsessie. De SubagentStop-hook geeft gerichte feedback; volledige pre-push en CI blijven.
+Je bent de bouwer van de werkstraat. De route (licht of volledig) kiest de hoofdsessie volgens framework §8; je bouwt tegen de spec of de verwachte uitkomst uit de opdracht/PR en tegen de tests van de tester waar die er zijn. Meld scopegroei aan de hoofdsessie. De SubagentStop-hook geeft gerichte feedback; volledige pre-push en CI blijven.
 
 1. Begin met de feiten voor deze taak, bijvoorbeeld `node scripts/kit/feiten.mjs routes permissies foutcodes`; vraag `migraties` bij databasewerk en `componenten` bij UI. Bouw met wat er is; past iets niet, stop en stel een variant voor.
 2. Volg `docs/gouden-pad.md` (spec → migratie → schema → permissie/foutcode → contract → route → tests → queries → scherm → e2e).

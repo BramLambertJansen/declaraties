@@ -6,15 +6,10 @@ Wat een gate kan afdwingen, staat hier niet. Groeit dit bestand of `AGENTS.md` o
 
 ## Werkstraat (verplicht)
 
-Alleen begrensde bugs en heel kleine aanpassingen binnen bestaande functionaliteit/interactie volgen de lichte route:
-bij gedragsverandering of -herstel eerst aparte tester, dan bouwer en aparte reviewagent. Zonder gedrag geen vaste tester.
-Geen nieuwe ADR/spec/mini-spec per lichte fix; scope, verwachte uitkomst en bewijs staan in de opdracht/PR.
-Nieuwe features, pagina's en interacties volgen altijd de volledige straat: architect/spec → contract waar nodig →
-tester → bouwer → afgedwongen onafhankelijke review → volledige CI → eigenaarmerge (jij nooit). Ook risicowerk en
-twijfel gaan volledig; de grenzen staan in framework §8 (ADR 0058). Een feature vraagt niet automatisch een ADR.
+Licht alleen voor beperkte fixes binnen bestaand gedrag; anders volledig, met eigenaarmerge (jij nooit) — framework §8.
 Docs gaan mee in dezelfde PR als de code
-(`check:docs-drift` waarschuwt); een aparte docs-stap na de merge bestaat niet. De volledige tekst, ook wanneer je een
-bestaande test mag wijzigen en het lichte pad, staat op één plek: `docs/framework.md` §8.
+(`check:docs-drift` waarschuwt); een aparte docs-stap na de merge bestaat niet.
+Ook wanneer je een bestaande test mag wijzigen: framework §8.
 
 ## Stoppen en vragen
 
@@ -30,7 +25,5 @@ bestaande test mag wijzigen en het lichte pad, staat op één plek: `docs/framew
 - Externe diensten via hun CLI (`gh`); MCP alleen read-only. Geen `docker`.
 
 Subagents (`.claude/agents/`), skills en hooks staan er (ADR 0045/0058): gebruik voor vereiste rollen de bijbehorende
-agents, of een ad-hoc subagent met dezelfde schone, afgebakende context. Tester schrijft alleen tests, reviewer niets.
-Bij licht werk volstaat een aparte reviewagent met leesopdracht als technische isolatie ontbreekt; claim die dan niet.
-Bij volledig werk moet de runtime testpaden/leesrechten afdwingen, anders voert de eigenaar de ontbrekende stap uit.
-Ook als geen aparte reviewagent beschikbaar is doet de eigenaar de review; je reviewt nooit je eigen werk.
+agents, of een ad-hoc subagent met dezelfde schone, afgebakende context. Wanneer die als onafhankelijk telt en wanneer
+de eigenaar reviewt, staat in framework §8 (eisen aan de rollen); je reviewt nooit je eigen werk.
