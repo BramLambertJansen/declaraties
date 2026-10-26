@@ -11,6 +11,7 @@ wissen veranderen de waarde. Gebruik `value` en `onValueChange`; geef een naam m
 `placeholder` en `emptyText` kunnen door de app worden aangeleverd. Zonder emptyText wordt de bestaande lege melding gebruikt.
 `clearable` vereist een toegankelijke `clearLabel`. Labels en waarden blijven van de app; het component kent geen rollen.
 
+Focus opent de keuzelijst, ook bij `autoFocus` of focus tijdens het mounten. Dat kiest of wijzigt nog geen waarde.
 ArrowDown/ArrowUp navigeren langs enabled opties, Enter kiest, Escape annuleert en Tab kiest niets stilzwijgend.
 DOM-focus blijft op de tekstinput; de actieve optie wordt met aria-activedescendant aangekondigd en in beeld gescrold.
 Tekstbewerking en IME blijven native. De popup blijft in dezelfde DOM-compositie en werkt binnen Dialog.
