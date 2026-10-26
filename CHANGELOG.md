@@ -147,6 +147,9 @@ Hier staan wijzigingen die van belang zijn bij het gebruiken of bijwerken van de
 
 ### Gewijzigd
 
+- De vertraagde zoekactie van `ListToolbar` gebruikt de actuele callback. Een ouderwijziging tijdens de wachttijd
+  laat de zoekactie geen verouderde filter- of sorteertoestand meer terugschrijven; de bestaande 300 ms blijven gelijk.
+
 - Een laat sluitende `EditableSection` trekt focus niet meer weg uit een ander veld of een andere knop. Het gewone
   focusherstel naar Bewerken en het opruimen van de uitgestelde focustimer blijven behouden.
 

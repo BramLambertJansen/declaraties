@@ -63,6 +63,8 @@ alleen actief in searchable-modus; het Select-contract verandert niet.
 `showActiveFilters` toont verwijderbare chips voor committed zoekterm en filterwaarden. Filterchip wissen verandert één
 filter en focust dat veld; zoekchip/alles wissen annuleert de pending zoekdebounce. De ouder beheert URL/query/sortering.
 Filter-id's krijgen een eigen prefix, ook wanneer hun waarde zoeken of sorteren is. Geen chips voor sortering.
+Een lopende zoekdebounce gebruikt bij afloop de actuele `onQueryChange`, ook als de ouder intussen een filter of sortering
+wijzigt. Alleen een nieuwe callback herstart de wachttijd niet en verstuurt geen extra zoekopdracht.
 
 ## Carousel
 
