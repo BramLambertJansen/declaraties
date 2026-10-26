@@ -46,11 +46,13 @@ export function changedFromStatus(porcelain) {
  * @returns {string[]}
  */
 export function changedFiles(run, exists) {
-  const local = changedFromStatus(run('git', ['status', '--porcelain', '--untracked-files=all']).output);
+  // Geen geciteerde paden: quotePath uit voor status (niet-ASCII letterlijk), -z voor diff (ook spaties en aanhalingstekens).
+  const status = run('git', ['-c', 'core.quotePath=false', 'status', '--porcelain', '--untracked-files=all']);
+  const local = changedFromStatus(status.output);
   const base = run('git', ['merge-base', 'origin/main', 'HEAD']);
   if (base.code !== 0) return local;
-  const diff = run('git', ['diff', '--name-only', '--diff-filter=d', `${base.output.trim()}...HEAD`]);
-  const committed = diff.code === 0 ? diff.output.split('\n').filter((line) => line !== '') : [];
+  const diff = run('git', ['diff', '-z', '--name-only', '--diff-filter=d', `${base.output.trim()}...HEAD`]);
+  const committed = diff.code === 0 ? diff.output.split('\0').filter((line) => line !== '') : [];
   return [...new Set([...local, ...committed])].filter((file) => exists(file));
 }
 

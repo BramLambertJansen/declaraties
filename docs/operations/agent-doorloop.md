@@ -5,16 +5,16 @@ het voorstel, bouwt, verzamelt bewijs en zet `gebouwd` zodra het bouwbewijs best
 
 ## Lokale belasting
 
-De geheugengrens staat in `scripts/kit/geheugen.mjs`: weinig geheugen is een host met hooguit 8 GiB RAM, of minder dan
-6 GiB beschikbaar (niet op macOS, waar libuv alleen vrije pagina's telt). `GATE_WEINIG_GEHEUGEN=1` of `0` beslist voor
-de host. `pnpm gate:fast` meldt het onder de grens: lint en tests wachten dan op elkaar,
+De geheugengrens staat in `scripts/kit/geheugen.mjs`: weinig geheugen is minder dan 6 GiB beschikbaar; op macOS, waar
+libuv alleen vrije pagina's telt, een host met hooguit 8 GiB RAM. `GATE_WEINIG_GEHEUGEN=1` of `0` beslist voor de host. `pnpm gate:fast` meldt het onder de grens: lint en tests wachten dan op elkaar,
 terwijl de overige snelle gates hun bestaande baan houden. Alle controles draaien precies eenmaal, ook na rood.
 Aanleiding: op de gedeelde 8-GiB-host liep een ESLint-proces van 1,8 GiB naast de tests; de swap was vol en de gate
 duurde 486 s met time-outs. Dit is een lokale waarneming, geen vaste looptijd. De CLI-regressies in
 `test/rails/gate-fast-memory.test.ts` bewaken beide planningen en het behoud van alle gates en exitcodes.
 
 Dezelfde geheugengrens begrenst Playwright: één worker onder de grens, anders de helft van de CPU's (minstens één,
-hooguit vier); zo stijgt het aantal workers op CI niet. Alle e2e-tests, CSP, axe en time-outs blijven behouden. Aanleiding: de lokale run met acht workers op de gedeelde
+hooguit vier). Op CI stijgt het aantal workers daardoor nooit, maar het kan dalen: een runner met 4 vCPU gaat van vier
+naar twee workers. Dat is bedoeld (elke worker draait een eigen Chromium naast API en Vite). Alle e2e-tests, CSP, axe en time-outs blijven behouden. Aanleiding: de lokale run met acht workers op de gedeelde
 8-GiB-host eindigde na 10,3 minuten met 67 time-outs/fouten en zeven geslaagde tests; de gewone pre-commitcontrole duurde
 tegelijk 422 s. De nieuwe planning is op de echte configuratie getest; uitvoering in de runner vraagt CI-bewijs, omdat
 `playwright.config.ts` hostcode is (ADR 0044). Een nieuwe planning maakt de oude rode run niet groen.
@@ -28,7 +28,7 @@ de bestaande feiten- en toolchaintests bewaken de uitvoer en foutafhandeling.
 
 De Stop-feedback (ook SubagentStop van de developer) kijkt naar de werkmap plus wat de branch sinds `origin/main` heeft
 gecommit (`rails/hooks/lib/werkstraat.mjs:48`); een schone werkmap met rode gecommitte code geeft dus nog feedback.
-Elke rode controle krijgt een eigen deel van de 40 regels (`rails/hooks/lib/werkstraat.mjs:107`).
+Elke rode controle krijgt een eigen deel van de 40 regels (`rails/hooks/lib/werkstraat.mjs:109`).
 
 ## Besluit en taakscope voorbereiden
 

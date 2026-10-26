@@ -19,9 +19,16 @@ test.each([
 test.each([
   { totaal: 8 * GIB, verwacht: true },
   { totaal: 8 * GIB + 1, verwacht: false },
-])('totaal geheugen $totaal: tot en met 8 GiB is weinig', ({ totaal, verwacht }) => {
-  expect(weinigGeheugen({ ...ruim, totaal })).toBe(verwacht);
+])('macOS met totaal $totaal: tot en met 8 GiB is weinig', ({ totaal, verwacht }) => {
+  expect(weinigGeheugen({ ...ruim, totaal, platform: 'darwin' })).toBe(verwacht);
 });
+
+test.each(['linux', 'win32'])(
+  '%s met 8 GiB totaal en genoeg beschikbaar: geen beperking (CI-runner blijft parallel)',
+  (platform) => {
+    expect(weinigGeheugen({ ...ruim, totaal: 8 * GIB, beschikbaar: 6 * GIB, platform })).toBe(false);
+  },
+);
 
 test.each([
   { platform: 'linux', verwacht: true },

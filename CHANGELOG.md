@@ -22,9 +22,10 @@ Hier staan wijzigingen die van belang zijn bij het gebruiken of bijwerken van de
 
 - De snelle gate laat lint en tests bij weinig geheugen na elkaar draaien. Alle bestaande controles en
   faalvoorwaarden blijven gelden; met voldoende geheugen blijven de drie parallelle banen beschikbaar.
-  Weinig is een host met hooguit 8 GiB, of minder dan 6 GiB beschikbaar (niet op macOS);
+  Weinig is minder dan 6 GiB beschikbaar, op macOS een host met hooguit 8 GiB;
   `GATE_WEINIG_GEHEUGEN=1|0` beslist voor de host (`scripts/kit/geheugen.mjs`).
 - Dezelfde geheugengrens begrenst browserworkers tot één bij weinig ruimte; anders de helft van de CPU's, hooguit vier.
+  Een runner met 4 vCPU draait daardoor twee in plaats van vier workers.
   De volledige e2e-suite, toegankelijkheidscontroles en time-outs blijven gelden.
 
 - De Stop-feedback van de developer controleert ook code die de branch al heeft gecommit (schone werkmap), respecteert
