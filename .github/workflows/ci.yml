@@ -112,7 +112,10 @@ jobs:
         env:
           EVENT: ${{ github.event_name }}
 
-  # De productie-image (ADR 0049) bouwt en start: niet als root, liveness, readiness, SPA met CSP en netjes stoppen.
+  # De productie-image (ADR 0049) bouwt en start: niet als root, liveness, readiness, SPA met CSP en netjes stoppen; daarna
+  # de browser-smoke (SMOKE_BROWSER=1): / en /admin/accounts uit de image in Chromium (Playwright-image van ui:check),
+  # zonder database: bundel laadt, router en foutscherm renderen, zonder CSP-schending, ongevangen JS-fout, mislukte asset
+  # of onverwachte console.error. node_modules alleen voor @playwright/test, dat in dat image draait.
   image:
     name: image
     runs-on: ubuntu-24.04
@@ -121,8 +124,15 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+      - uses: jdx/mise-action@7a4e45a543138629540c9a1616d08632b893e492 # v5.0.1
+        with:
+          version: 2026.9.18
+          install_args: node pnpm
+      - run: pnpm install --frozen-lockfile
       - run: docker build -t app:ci .
       - run: scripts/check-image.sh app:ci
+        env:
+          SMOKE_BROWSER: "1"
 
   # Code uit pnpm new:resource haalt gate:fast (ADR 0047 punt 9). Duurt minuten, daarom niet in gate:fast zelf; wel altijd,
   # want de templates doen bijna alles in src/ na.

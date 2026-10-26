@@ -16,3 +16,9 @@ bewijst vanuit de container dat dit bestand onleesbaar is. Het bestand en de tij
 ook bij een mislukte test. De bestaande hostcodecontrole en netwerkisolatie blijven van toepassing.
 
 Wijzigingen aan deze hostcode worden na review in de wegwerp-CI getest (ADR 0044), zonder lokale agentoverride.
+
+De productie-smoke in `scripts/check-image.sh` volgt dezelfde leesgrens: alleen `package.json`,
+`playwright.smoke.config.ts` en getrackte of nieuwe, niet-genegeerde `e2e/*.smoke.spec.ts` gaan naar een tijdelijke,
+alleen-lezen projectie; `node_modules` krijgt een aparte alleen-lezen mount. Privébestanden, `.env*` en Git-metadata
+gaan niet mee. Symlinks in bronpaden, hun ouders of de dependency-mountbron worden geweigerd. De bestaande cleanup-trap
+ruimt de projectie ook bij fouten op. Deze smoke bewijst de productie-SPA zonder database; de echte-stack-e2e blijft apart.

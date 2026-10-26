@@ -2,19 +2,60 @@
 # Controleert de productie-image (ADR 0049) zonder database: start met APP_ENV=staging en geldige, niet-demo geheimen,
 # daarna: niet als root, liveness 200, readiness 503 (geen database), SPA met CSP, API-fout als { code, requestId },
 # en na SIGTERM netjes gestopt (exitcode 0). Voor CI en de eigenaar; de agent gebruikt geen docker.
-# Gebruik: scripts/check-image.sh <image>
+# Met SMOKE_BROWSER=1 daarna ook de browser-smoke (e2e/*.smoke.spec.ts, playwright.smoke.config.ts): de bundel laadt en
+# router en foutscherm renderen, zonder CSP-schending, ongevangen JS-fout, mislukte asset of onverwachte console.error.
+# Vraagt node_modules
+# (pnpm install) en draait in het Playwright-image van compose.yaml (ui-runner), zonder internet, met beperkte broninvoer.
+# Gebruik: [SMOKE_BROWSER=1] scripts/check-image.sh <image>
 set -euo pipefail
 
 image="${1:?Gebruik: scripts/check-image.sh <image>}"
 name="check-image-$$"
+net="${name}-net"
 port=18080
 secret="$(head -c 48 /dev/urandom | base64 | tr -d '\n/+=')"
 dbpass="$(head -c 24 /dev/urandom | base64 | tr -d '\n/+=')"
+repo="$(cd "$(dirname "$0")/.." && pwd)"
+smoke_input=""
 
-cleanup() { docker rm -f "$name" >/dev/null 2>&1 || true; }
+cleanup() {
+  docker rm -f "$name" >/dev/null 2>&1 || true
+  docker network rm "$net" >/dev/null 2>&1 || true
+  if [[ -n "$smoke_input" ]]; then rm -rf -- "$smoke_input"; fi
+}
 trap cleanup EXIT
 
 fail() { printf '✗ %s\n' "$1" >&2; docker logs "$name" >&2 || true; exit 1; }
+
+# Alleen zelfstandige smoke-tests en hun configuratie, nooit de hele werkmap (ADR 0044).
+check_smoke_path() {
+  local prefix="$repo/$1"
+  while [[ -n "$prefix" ]]; do
+    [[ ! -L "$prefix" ]] || fail "symlink in smoke-invoer: $1"
+    [[ "$prefix" == */* ]] || break
+    prefix="${prefix%/*}"
+  done
+}
+
+prepare_smoke_input() {
+  local input seen_smoke=""
+  check_smoke_path node_modules
+  smoke_input="$(mktemp -d /tmp/template-image-smoke.XXXXXXXX)"
+  git -C "$repo" ls-files --cached --others --exclude-standard -z -- \
+    package.json playwright.smoke.config.ts 'e2e/*.smoke.spec.ts' > "$smoke_input/files"
+  while IFS= read -r -d '' input; do
+    case "/$input/" in */.env*/*) continue ;; esac
+    check_smoke_path "$input"
+    [[ -e "$repo/$input" ]] || continue
+    [[ -f "$repo/$input" ]] || fail "geen regulier smoke-bestand: $input"
+    (cd "$repo" && cp --parents --no-dereference -- "$input" "$smoke_input/")
+    case "$input" in e2e/*.smoke.spec.ts) seen_smoke=1 ;; esac
+  done < "$smoke_input/files"
+  rm -- "$smoke_input/files"
+  [[ -f "$smoke_input/package.json" && -f "$smoke_input/playwright.smoke.config.ts" && -n "$seen_smoke" ]] \
+    || fail "onvolledige smoke-invoer"
+  mkdir -p "$smoke_input/node_modules"
+}
 
 uid="$(docker run --rm --entrypoint id "$image" -u)"
 [[ "$uid" != "0" ]] || fail "image draait als root"
@@ -58,6 +99,31 @@ body="$(curl -s "$base/api/bestaat-niet")" || fail "GET /api/bestaat-niet faalt"
 grep -q '"code":"NOT_FOUND"' <<<"$body" || fail "onbekende API-route geeft geen NOT_FOUND: $body"
 echo "✓ API-fout als { code, requestId }"
 [[ "$(docker inspect -f '{{.Config.Env}}' "$image")" != *AUTH_SECRET* ]] || fail "AUTH_SECRET in de image"
+
+# Browser-smoke: hetzelfde Playwright-image als ui:check (één bron in compose.yaml, Renovate houdt het gelijk met
+# @playwright/test). Een intern netwerk (geen internet) tussen smoke en app; de smoke bereikt de app via de containernaam.
+if [[ "${SMOKE_BROWSER:-}" == "1" ]]; then
+  prepare_smoke_input
+  [[ -d "$repo/node_modules/@playwright/test" ]] || fail "SMOKE_BROWSER=1 zonder node_modules: draai eerst pnpm install"
+  pw_image="$(sed -n 's/^ *image: \(mcr\.microsoft\.com\/playwright:[^ ]*\)$/\1/p' "$repo/compose.yaml")"
+  [[ -n "$pw_image" && "$pw_image" != *$'\n'* ]] || fail "geen eenduidig Playwright-image in compose.yaml"
+  # Elke pull begrensd (zoals scripts/runner.sh): een hangende registry at anders de time-out van de job op.
+  pulled=""
+  for attempt in 1 2 3; do
+    if timeout --kill-after=10s 300 docker pull --quiet "$pw_image" >/dev/null; then pulled=1 && break; fi
+    printf '✗ Playwright-image binnenhalen: poging %s van 3 faalde of hing langer dan 300 s.\n' "$attempt" >&2
+  done
+  [[ -n "$pulled" ]] || fail "Playwright-image binnenhalen faalde na 3 pogingen; draai de job later opnieuw"
+  docker network create --internal "$net" >/dev/null
+  docker network connect "$net" "$name"
+  docker run --rm --network "$net" --shm-size 1gb --read-only --tmpfs /tmp --cap-drop ALL \
+    --security-opt no-new-privileges:true --user "$(id -u):$(id -g)" \
+    -v "$smoke_input:/repo:ro" -v "$repo/node_modules:/repo/node_modules:ro" -w /repo \
+    -e HOME=/tmp -e CI=true -e SMOKE_BASE_URL="http://${name}:8080" -e SMOKE_OUTPUT_DIR=/tmp/smoke \
+    "$pw_image" node node_modules/@playwright/test/cli.js test --config playwright.smoke.config.ts \
+    || fail "browser-smoke van de productie-SPA faalt"
+  echo "✓ productie-SPA in de browser: / en /admin/accounts tonen het foutscherm, zonder CSP-schending, JS-fout, mislukte asset of onverwachte console.error"
+fi
 
 docker stop -t 15 "$name" >/dev/null
 code="$(docker inspect -f '{{.State.ExitCode}}' "$name")"
