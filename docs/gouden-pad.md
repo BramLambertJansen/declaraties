@@ -1,12 +1,10 @@
 # Gouden pad: een feature door alle lagen
 
-Beperkte fixes binnen bestaande functionaliteit/interactie volgen framework §8 zonder nieuwe ADR/spec/mini-spec:
-verwachte uitkomst, scope en bewijs staan in de opdracht/PR; bij gedragsverandering of -herstel schrijft een aparte
-tester eerst de regressie. Nieuwe features, pagina's en interacties krijgen altijd architect/spec, tester, bouwer en
-afgedwongen onafhankelijke review. Een feature vraagt niet automatisch een ADR (ADR 0058).
+Licht alleen voor beperkte fixes binnen bestaand gedrag; anders volledig — framework §8. Dit pad beschrijft het volledige werk.
 
-Voor overige functionele UI-wijzigingen aan bestaande componenten in de template volstaat de mini-spec met
-`scope: functionele-ui`, samen met code, tests en gebruiksdocumentatie in één PR (ADR 0056). De
+Voor overige functionele UI-wijzigingen aan bestaande componenten in de template mag de mini-spec met
+`scope: functionele-ui`, samen met code, tests en gebruiksdocumentatie in één PR (ADR 0056). De mini-spec verkort het
+document, niet de rollen: architect, tester en onafhankelijke review blijven zoals framework §8 ze vraagt. De
 [agentdoorloop](operations/agent-doorloop.md#feature-lane-en-mini-spec-adr-0046) beschrijft scope en bouwbewijs.
 De bestaande toast-API is `useToast().success/error`, met `ToastProvider` in `src/web/main.tsx` en `Toaster` in AppShell.
 Een succesmelding verdwijnt na vijf seconden actieve tijd, ook als een scherm haar vanuit een mount-effect aanmaakt.

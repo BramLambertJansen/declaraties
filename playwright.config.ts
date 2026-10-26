@@ -1,6 +1,6 @@
 import { defineConfig, devices } from '@playwright/test';
 import { availableParallelism } from 'node:os';
-import { weinigGeheugen } from './scripts/kit/gate-fast.mjs';
+import { weinigGeheugen } from './scripts/kit/geheugen.mjs';
 
 // E2E draait altijd tegen de echte lokale stack, nooit met een gemockte API. Lokaal start de eigenaar die met
 // `pnpm dev`; in de runner van `pnpm ui:check` (ADR 0044) start Playwright de API en Vite zelf.
@@ -15,7 +15,8 @@ export default defineConfig({
   // De prod-smoke draait alleen tegen de image (playwright.smoke.config.ts, scripts/check-image.sh).
   testIgnore: '**/*.smoke.spec.ts',
   forbidOnly: true,
-  workers: weinigGeheugen() ? 1 : Math.min(4, availableParallelism()),
+  // De helft van de cores, hooguit 4: elke worker draait een eigen Chromium naast de API en Vite.
+  workers: weinigGeheugen() ? 1 : Math.min(4, Math.max(1, Math.floor(availableParallelism() / 2))),
   // Overgangen ingekort (styles/index.css): axe meet anders kleuren halverwege transition-colors (flaky contrast).
   use: { baseURL, reducedMotion: 'reduce' },
   projects: [{ name: 'chromium', use: devices['Desktop Chrome'] }],

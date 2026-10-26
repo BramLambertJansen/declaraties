@@ -12,6 +12,7 @@ writeFileSync(
   `import { registerHooks } from 'node:module';
 registerHooks({ resolve(specifier, context, nextResolve) {
   if (specifier.endsWith('/catalogus.mjs')) throw new Error('CATALOGUE_IMPORT');
+  if (specifier === 'typescript' || specifier.startsWith('typescript/')) throw new Error('TYPESCRIPT_IMPORT');
   return nextResolve(specifier, context);
 } });
 `,
@@ -32,6 +33,7 @@ test.each(['gates', 'adr', 'specs', 'migraties', 'routes', 'permissies', 'foutco
   (section) => {
     const result = run(section);
     expect(result.stderr).not.toContain('CATALOGUE_IMPORT');
+    expect(result.stderr).not.toContain('TYPESCRIPT_IMPORT');
     expect(result.status).toBe(0);
     expect(JSON.parse(result.stdout)).toHaveProperty(section);
   },

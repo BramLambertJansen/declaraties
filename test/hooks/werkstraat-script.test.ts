@@ -1,5 +1,5 @@
 import { spawnSync } from 'node:child_process';
-import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, readFileSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { expect, test } from 'vitest';
@@ -67,14 +67,26 @@ function tempRepo(branch: string, gateFast: string): string {
 
 const PASSES = 'node -e "process.exit(0)"';
 
+// Een echte typecheck in de tijdelijke repo: tsconfig plus de node_modules van deze repo, zodat de blokkade op de
+// typefout zelf berust en niet op een ontbrekende tsc.
+function withTypecheck(dir: string): string {
+  writeFileSync(
+    path.join(dir, 'tsconfig.json'),
+    JSON.stringify({ compilerOptions: { strict: true, noEmit: true }, include: ['*.ts'] }),
+  );
+  symlinkSync(path.join(root, 'node_modules'), path.join(dir, 'node_modules'));
+  return dir;
+}
+
 test('subagent-stop developer: controleert gewijzigde code in payload.cwd, niet in CLAUDE_PROJECT_DIR', () => {
-  const worktree = tempRepo('worktree-branch', PASSES);
+  const worktree = withTypecheck(tempRepo('worktree-branch', PASSES));
   writeFileSync(path.join(worktree, 'nieuw.ts'), 'export const x: number = "geen getal";\n');
   const projectDir = tempRepo('project-branch', PASSES);
 
   const result = run('subagent-stop', JSON.stringify({ agent_type: 'developer', cwd: worktree }), projectDir);
 
   expect(result.stdout).toContain('"decision":"block"');
+  expect(result.stdout).toContain('TS2322');
 });
 
 test('stop: kijkt naar de gewijzigde bestanden van payload.cwd, niet van CLAUDE_PROJECT_DIR', () => {

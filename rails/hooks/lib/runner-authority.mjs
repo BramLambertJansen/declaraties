@@ -21,10 +21,13 @@ function enabled(text) {
   }
 }
 
-/** @param {string} root */
-export function trustedRunner(root) {
-  // Binnen een hook het anker (ADR 0045), gecontroleerd gelezen; anders origin/main.
-  const basis = trustedBase(root, undefined);
+/**
+ * Binnen een hook het anker (ADR 0045), gecontroleerd gelezen; anders origin/main. Het rolhek geeft de basis door die het
+ * al berekende; zonder basis (null) is het antwoord nee.
+ * @param {string} root
+ * @param {ReturnType<typeof trustedBase>} [basis]
+ */
+export function trustedRunner(root, basis = trustedBase(root, undefined)) {
   if (basis === null || !enabled(basis.read('.claude/gates.json') ?? '')) return false;
   const base = gitText(root, ['merge-base', basis.sha, 'HEAD'])?.trim();
   if (base === undefined || !/^[0-9a-f]{40}$/.test(base)) return false;

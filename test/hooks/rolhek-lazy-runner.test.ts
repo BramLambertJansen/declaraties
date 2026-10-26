@@ -1,4 +1,8 @@
-import { readFileSync } from 'node:fs';
+import { spawnSync } from 'node:child_process';
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import path from 'node:path';
+import { pathToFileURL } from 'node:url';
 import { expect, test, vi } from 'vitest';
 import { decide, loadConfig } from '../../rails/hooks/lib/rolhek.mjs';
 
@@ -79,6 +83,41 @@ test.each(['pnpm test:db', 'pnpm run gate:slow', 'pnpm ui:check', 'pnpm gate:fas
     }
   },
 );
+
+// Het echte entry-script, met een runner-authority waarvan trustedRunner gooit (via een resolve-hook): faalt dicht.
+test('CLI: gooit de runnerfunctie, dan weigert het rolhek met exit 2', () => {
+  const dir = mkdtempSync(path.join(tmpdir(), 'rolhek-runner-gooit-'));
+  try {
+    const real = pathToFileURL(path.resolve('rails/hooks/lib/runner-authority.mjs')).href;
+    const stub = path.join(dir, 'runner-stub.mjs');
+    writeFileSync(
+      stub,
+      `export * from ${JSON.stringify(real)};\nexport function trustedRunner() { throw new Error('runner kapot'); }\n`,
+    );
+    const hook = path.join(dir, 'hook.mjs');
+    writeFileSync(
+      hook,
+      `import { registerHooks } from 'node:module';
+registerHooks({
+  resolve(specifier, context, next) {
+    const result = next(specifier, context);
+    if (result.url !== ${JSON.stringify(real)} || context.parentURL === ${JSON.stringify(pathToFileURL(stub).href)}) return result;
+    return { ...result, url: ${JSON.stringify(pathToFileURL(stub).href)} };
+  },
+});`,
+    );
+    const root = process.cwd();
+    const result = spawnSync(process.execPath, ['--import', hook, 'rails/hooks/rolhek.mjs'], {
+      input: JSON.stringify({ tool_name: 'Bash', tool_input: { command: 'pnpm test:db' }, cwd: root }),
+      encoding: 'utf8',
+      env: { ...process.env, CLAUDE_PROJECT_DIR: root },
+    });
+    expect([result.status, result.stdout]).toStrictEqual([2, '']);
+    expect(result.stderr).toContain('rolhek: interne fout, daarom geweigerd: runner kapot');
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
 
 test('een onbekende subagent roept de functie niet aan voor een gewone Bash', () => {
   const trusted = vi.fn(() => true);
