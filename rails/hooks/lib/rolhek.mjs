@@ -754,7 +754,8 @@ function ghCommandWords(args) {
   for (let index = 0; index < args.length; index += 1) {
     const arg = args[index] ?? '';
     if (arg === '--') break;
-    if (!arg.startsWith('-') || arg === '-') words.push(arg);
+    if (arg === '' || arg === '-') continue; // cobra slaat lege woorden over; `-` is stdin, geen commando
+    if (!arg.startsWith('-')) words.push(arg);
     else if (!arg.includes('=') && !GH_BOOL_FLAGS.has(arg) && !/^-[^-]./.test(arg)) index += 1;
   }
   return words;
