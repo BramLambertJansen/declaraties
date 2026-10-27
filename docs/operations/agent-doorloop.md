@@ -231,7 +231,10 @@ onafhankelijke reviewer; wat dan per route volstaat, staat in framework §8. De 
   packagebestanden, compose en de configs van vite, vitest en playwright. De testbestanden zelf horen daar niet bij; die vraagt
   de agent juist te mogen toevoegen en draaien.
 - De hooks lezen de vertrouwde basis uit de lokale ref `origin/main` en doen geen netwerkwerk. Het rolhek weigert elke andere
-  manier om die ref of de remote `origin` te veranderen dan `git fetch origin` (`movesTrustedBase` in `rails/hooks/lib/rolhek.mjs`).
+  manier om die ref of de remote `origin` te veranderen dan `git fetch origin` (`movesTrustedBase` in `rails/hooks/lib/rolhek.mjs`),
+ook een fetch van `origin` met als bestemming `refs/remotes/origin/main`, `git replace` (behalve `--list`), config op
+`include.*`/`includeIf.*` en, voor elke rol en elk programma, `GIT_CONFIG_*`, `GIT_DIR` of `GIT_WORK_TREE` als
+toewijzing, `export` of `declare -x`. `scripts/runner.sh` vergelijkt niet met die lokale ref maar met `git ls-remote origin refs/heads/main`.
   Een commando buiten de hooks, of een andere runtime, valt daar niet onder; de CI-guard leest `main` bij GitHub en is de echte grens
   (`scripts/kit/check-document-status.mjs`).
 
