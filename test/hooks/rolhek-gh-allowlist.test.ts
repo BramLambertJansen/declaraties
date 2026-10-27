@@ -601,3 +601,47 @@ describe('ronde-8b', () => {
     },
   );
 });
+
+// Review-bevindingen B1 en I1: omzeilingen via env -S, git-aliassen en xargs.
+describe('omzeilingen B1/I1', () => {
+  const MERGE_ALL_ROLES = [
+    "env -S'gh pr merge 1'",
+    'env -Sgh pr merge 1',
+    "env --split-string='gh pr merge 1'",
+    "git -c 'alias.x=!gh pr merge 1' x",
+    "git config alias.x '!gh pr merge 1'",
+  ];
+
+  test.each(MERGE_ALL_ROLES)('geweigerd voor hoofdsessie en developer: %s', (command) => {
+    expect(run(command).deny.length).toBeGreaterThan(0);
+    expect(run(command, 'developer').deny.length).toBeGreaterThan(0);
+  });
+
+  test.each([
+    "env -S'gh pr create --title x --body y'",
+    "env -S'gh api -X POST repos/o/r/issues'",
+    "git -c 'alias.x=!gh pr create --title x' x",
+    "git -c 'alias.x=!gh api -X POST repos/o/r/issues' x",
+    "git config alias.x '!gh pr create --title x'",
+    "git config alias.x '!gh api -X POST repos/o/r/issues'",
+    'git --config-env=alias.x=FOO x',
+  ])('geweigerd voor subagent developer: %s', (command) => {
+    expect(run(command, 'developer').deny.length).toBeGreaterThan(0);
+  });
+
+  test.each(['xargs -a args.txt gh', 'cat f | xargs gh', 'xargs gh < f'])(
+    'xargs met gh geweigerd voor hoofdsessie en developer: %s',
+    (command) => {
+      expect(run(command).deny.length).toBeGreaterThan(0);
+      expect(run(command, 'developer').deny.length).toBeGreaterThan(0);
+    },
+  );
+
+  test.each(['git -c core.quotepath=false log', 'env FOO=1 pnpm lint'])('hoofdsessie kan nog: %s', (command) => {
+    expect(run(command).deny).toEqual([]);
+  });
+
+  test('reviewer kan nog: gh pr view 1 --json state', () => {
+    expect(run('gh pr view 1 --json state', 'reviewer').deny).toEqual([]);
+  });
+});
