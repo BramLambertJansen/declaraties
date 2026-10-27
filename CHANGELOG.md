@@ -50,11 +50,14 @@ Hier staan wijzigingen die van belang zijn bij het gebruiken of bijwerken van de
   expliciet eigenaarakkoord via de hoofdsessie; de automatische toestemming voor `pnpm format` is verwijderd.
   De Git-padcontrole herkent `--target-directory` en weigert ondoorzichtige refmutaties via `git update-ref --stdin`.
   Voor elke rol zijn ook `env -S`, git-aliassen met `!` of via `--config-env`, xargs/find `-exec` met `gh` en
-  `pr merge` zonder herkenbaar `gh` dicht (`rails/hooks/lib/rolhek.mjs:514`, `:585`, `:773`, `:971`). Gebruik
+  `pr merge` zonder herkenbaar `gh` dicht (`rails/hooks/lib/rolhek.mjs:514`, `:587`, `:777`, `:975`). Gebruik
   `git commit -F <bestand>` en `gh pr create --body-file <bestand>` in plaats van `$(…)`/heredoc in het bericht.
   Ook dicht: `env -S` na optiewaarden (`-u NAAM`, `-C MAP`) of in een cluster (`-vS`), `pr review … --approve` zonder
   herkenbaar `gh`, en xargs/find `-exec` met een omhulsel (`env`, `nice`, `timeout` …), een shell of `git`. Een argument
   met `pr merge` (ook `grep 'pr merge'`) weigert het rolhek nu ook voor de hoofdsessie; gebruik `-F`/`--body-file`.
+  Met een los `gh` in de tekst is `pr review` voor elke rol dicht, ook zonder `--approve` en achter een omhulsel
+  (`env -i gh pr review …`, `setsid`, `timeout`); `-a` telt ook vooraan een cluster (`-ab`, `-aF`). Nog open voor de
+  hoofdsessie: omhulsels met opties vóór gh (label, `@file`, `gh alias`) en xargs-optiewaarden (`docs/roadmap.md`).
 
 - Het roadmaparchief valt onder de beschermde gate-paden en CODEOWNERS, ook bij verwijderen of weg-hernoemen.
 

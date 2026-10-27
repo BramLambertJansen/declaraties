@@ -153,16 +153,21 @@ gebruiken geen xargs met een commando en geen find `-exec`. `gh` telt alleen als
 met `merge` naast `gh`, `graphql` of `/pulls/` (gebruik `git commit -F <bestand>`), en elk argument met `pr merge` of
 `pr review … --approve`, ook `grep 'pr merge'` (gebruik `-F <bestand>`/`--body-file`). Ook `git commit -m "$(cat <<EOF…)"`
 en `gh pr create --body "$(…)"` geven een ask of deny (substitutie en heredoc); schrijf het bericht naar een bestand en
-gebruik `git commit -F <bestand>` of `gh pr create --body-file <bestand>`. Voor elke rol zijn verder dicht: `pr merge`
-en `pr review … --approve` en een GraphQL-merge ook zonder herkenbaar `gh`, `env -S`/`--split-string` (ook als `-vS`, na
+gebruik `git commit -F <bestand>` of `gh pr create --body-file <bestand>`. Voor elke rol zijn verder dicht: `pr review`
+naast een los `gh`, ook zonder `--approve` en achter een omhulsel (`env -i gh pr review …`, `timeout 9 gh pr review …`;
+bewust vals positief: `grep 'pr review' gh`), `pr merge`
+en `pr review … --approve` (ook `-a` vooraan een cluster: `-ab`, `-aF`) en een GraphQL-merge ook zonder herkenbaar `gh`, `env -S`/`--split-string` (ook als `-vS`, na
 `-u NAAM`/`-C MAP`/`--unset`/`--chdir` en met escapes als `-S'\_gh'`; dicht falen, dus ook `-uS`), een git-alias met `!` (`-c alias.x=!…`,
 `git config alias.x '!…'`) of via `--config-env`, en xargs of find `-exec` met `gh`, `git`, een shell, `eval` of een omhulsel als `env`, `command`, `nice` of `timeout`
-als commandowoord (ook zonder zichtbare `gh` erna; bewust vals positief: `xargs nice prettier`).
+als commandowoord (ook zonder zichtbare `gh` erna; bewust vals positief: `xargs nice prettier` en
+`git ls-files -z | xargs -0 git add`). Label, `@file`/`--input` en `gh alias` weigert `ghForbidden` alleen waar
+`splitCommand` (`rails/hooks/lib/shell.mjs:198`) `gh` als commandowoord ziet; achter een omhulsel met opties
+(`env -i gh …`, `nice -n 1 gh …`, `timeout 9 gh …`, `stdbuf`, `setsid`) geldt dat voor de hoofdsessie niet.
 `pnpm format` en `pnpm run format`
 vragen de hoofdsessie expliciet akkoord omdat ze ook beschermde bestanden schrijven; subagents gebruiken gerichte
 formattering. De padcontrole volgt bij cp/mv/ln/install ook `-t` en `--target-directory`.
 `git update-ref --stdin` (ook afgekort) wordt geweigerd omdat de te wijzigen refs niet in de opdracht staan.
-Dit sluit bekende omwegen; scripts in de repo en interpreters (`node -e`) blijven open, voor de hoofdsessie ook `curl -K <bestand>`, net als een kopie of link van gh onder een andere naam, of een zelfgeschreven uitvoerbaar bestand (bijvoorbeeld `cp /usr/bin/gh ./x; ./x …`); deze klasse komt samen met `node_modules/.bin` in een aparte rail-PR. De harde grens is GitHub zelf
+Dit sluit bekende omwegen; scripts in de repo en interpreters (`node -e`) blijven open, voor de hoofdsessie ook `curl -K <bestand>`, net als een kopie of link van gh onder een andere naam, of een zelfgeschreven uitvoerbaar bestand (bijvoorbeeld `cp /usr/bin/gh ./x; ./x …`); deze klasse komt samen met `node_modules/.bin` in een aparte rail-PR. Ook open voor de hoofdsessie: (a) een omhulsel met opties vóór gh (label, `@file`/`--input`, `gh alias`), (b) xargs met een long option of een cluster met waarde (`--arg-file F`, `-0a F`, `-rn 1`), waarvan de optiewaarde als commandowoord wordt gelezen, en (c) `coreutils --coreutils-prog=env`; (a) en (b) staan in `docs/roadmap.md`. De harde grens is GitHub zelf
 (ruleset en eigenaarmerge); sandbox en CI blijven nodig voor niet-geclassificeerde programma's.
 
 Een geldig broncodemandaat geeft alleen de bekende developer toegang tot genoemde beschermde bronbestanden.
