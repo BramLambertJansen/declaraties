@@ -645,3 +645,48 @@ describe('omzeilingen B1/I1', () => {
     expect(run('gh pr view 1 --json state', 'reviewer').deny).toEqual([]);
   });
 });
+
+describe('omzeilingen ronde 2', () => {
+  test.each([
+    "env -u X -vS'gh pr create --title x --body y'",
+    "env -u X -S'gh api -X POST repos/o/r/issues'",
+    "env -C . -S'\\_gh pr create --title x'",
+    "env --unset=X -S'gh pr create --title x'",
+    "env --chdir . -S'gh pr create --title x'",
+  ])('env optie-met-waarde voor -S geweigerd voor developer: %s', (command) => {
+    expect(run(command, 'developer').deny.length).toBeGreaterThan(0);
+  });
+
+  test('env -u X -vS review --approve geweigerd voor hoofdsessie en developer', () => {
+    const command = "env -u X -vS'gh pr review 1 --approve'";
+    expect(run(command).deny.length).toBeGreaterThan(0);
+    expect(run(command, 'developer').deny.length).toBeGreaterThan(0);
+  });
+
+  test('env -u X -S gate-label geweigerd voor hoofdsessie', () => {
+    expect(run("env -u X -S'gh pr edit 1 --add-label gate-wijziging'").deny.length).toBeGreaterThan(0);
+  });
+
+  test.each([
+    'xargs -a args.txt env gh',
+    'xargs -a args.txt command gh',
+    'xargs -a args.txt nice gh',
+    'xargs -a args.txt timeout 9 gh',
+    'xargs -a args.txt /usr/bin/env gh',
+    'xargs -a args.txt git',
+    'cat f | xargs sh',
+    String.raw`find . -exec env gh pr view 1 \;`,
+  ])('xargs/find met omhulsel of git geweigerd voor hoofdsessie en developer: %s', (command) => {
+    expect(run(command).deny.length).toBeGreaterThan(0);
+    expect(run(command, 'developer').deny.length).toBeGreaterThan(0);
+  });
+
+  test.each([
+    'env -u X pnpm lint',
+    'xargs -a files.txt prettier --check',
+    "find . -name '*.ts' -exec grep -l foo {} +",
+    'git config --get alias.st',
+  ])('hoofdsessie kan nog: %s', (command) => {
+    expect(run(command).deny).toEqual([]);
+  });
+});
