@@ -697,11 +697,12 @@ describe('omzeilingen ronde 3', () => {
     'env -i gh pr review 1 -aR o/r',
     'setsid gh pr review 1 -ab ok',
     'timeout 9 gh pr review 1 -aF body.txt',
-  ])('--approve in optiecluster (-a…) geweigerd voor hoofdsessie: %s', (command) => {
+    'env -i gh pr review 1 --comment -b ok',
+  ])('gh pr review via omhulsel geweigerd voor hoofdsessie: %s', (command) => {
     expect(run(command).deny.length).toBeGreaterThan(0);
   });
 
-  test.each(['gh pr review 1 --comment -b ok', 'gh pr view 1 --json reviews'])('hoofdsessie kan nog: %s', (command) => {
-    expect(run(command).deny).toEqual([]);
+  test('hoofdsessie kan nog: gh pr view 1 --json reviews', () => {
+    expect(run('gh pr view 1 --json reviews').deny).toEqual([]);
   });
 });
