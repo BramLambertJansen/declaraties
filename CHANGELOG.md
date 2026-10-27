@@ -49,6 +49,9 @@ Hier staan wijzigingen die van belang zijn bij het gebruiken of bijwerken van de
 - Het rolhek weigert PR-creatie en schrijvende GitHub-API-opdrachten door subagents. Brede formattering vraagt
   expliciet eigenaarakkoord via de hoofdsessie; de automatische toestemming voor `pnpm format` is verwijderd.
   De Git-padcontrole herkent `--target-directory` en weigert ondoorzichtige refmutaties via `git update-ref --stdin`.
+  Voor elke rol zijn ook `env -S`, git-aliassen met `!` of via `--config-env`, xargs/find `-exec` met `gh` en
+  `pr merge` zonder herkenbaar `gh` dicht (`rails/hooks/lib/rolhek.mjs:508`, `:572`, `:757`, `:951`). Gebruik
+  `git commit -F <bestand>` en `gh pr create --body-file <bestand>` in plaats van `$(…)`/heredoc in het bericht.
 
 - Het roadmaparchief valt onder de beschermde gate-paden en CODEOWNERS, ook bij verwijderen of weg-hernoemen.
 
