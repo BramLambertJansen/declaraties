@@ -1260,7 +1260,9 @@ function optionValues(args, names) {
 const SELF_REVIEW_API = /\/(?:labels|reviews|statuses|check-runs|check-suites)\b|\/requested_reviewers\b/;
 
 /**
- * Zonder `-R x`, `--repo x` en `--repo=x`, die gh vóór of na groep en actie accepteert (`gh -R o/r pr merge`).
+ * Zonder `-R x`, `--repo x` en `--repo=x`, die gh vóór of na groep en actie accepteert (`gh -R o/r pr merge`), en zonder
+ * lege woorden, die cobra bij het zoeken van het commando overslaat (`gh "" api …`). Een leeg woord na een vlag zonder `=`
+ * blijft staan: dat kan de waarde van die vlag zijn (`gh api -f "" -X POST …`).
  * @param {readonly string[]} args
  */
 function withoutRepo(args) {
@@ -1268,7 +1270,9 @@ function withoutRepo(args) {
   const rest = [];
   for (let index = 0; index < args.length; index += 1) {
     const arg = args[index] ?? '';
+    const previous = rest.at(-1) ?? '';
     if (arg === '-R' || arg === '--repo') index += 1;
+    else if (arg === '' && !(previous.startsWith('-') && !previous.includes('='))) continue;
     else if (!/^(?:--repo=|-R.)/.test(arg)) rest.push(arg);
   }
   return rest;
