@@ -11,7 +11,8 @@ Hier staan wijzigingen die van belang zijn bij het gebruiken of bijwerken van de
   skill `opleveren` (Opruimen stap 8). De reviewer markeert per blokkerende bevinding `Leerpunt: ja (<soort>)` of `nee`.
   Het rolhek laat de hoofdsessie `gh issue create` zonder vraag alleen doen naar `onderhoud.repository` met precies één
   `--label leerpunt` (anders ask); subagents krijgen deny op schrijvende `gh issue`-opdrachten. De eigenaar maakt het
-  label aan en triageert.
+  label aan en triageert. Het rolhek leest het gh-subcommando zoals gh zelf (optiewaarden overgeslagen): `gh issue new`
+  telt als `create`, en leesopdrachten als `gh issue list --search create` krijgen geen deny meer.
 
 - Browser-smoke van de productie-SPA: de CI-job `image` opent `/` en `/admin/accounts` uit de gebouwde image in Chromium,
   zonder database. Dat bewijst dat de bundel laadt en dat router en foutscherm renderen; de smoke faalt op een
