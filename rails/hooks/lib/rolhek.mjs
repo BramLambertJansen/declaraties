@@ -719,7 +719,10 @@ function forcePushes(rest) {
   return false;
 }
 
-const GH_ISSUE_WRITES = new Set(['create', 'edit', 'close', 'reopen', 'delete', 'transfer', 'lock', 'unlock', 'pin', 'unpin', 'comment', 'develop']);
+const GH_ISSUE_WRITES = new Set(['create', 'new', 'edit', 'close', 'reopen', 'delete', 'transfer', 'lock', 'unlock', 'pin', 'unpin', 'comment', 'develop']);
+const GH_ISSUE_READS = new Set(['list', 'ls', 'view', 'status']);
+// gh-vlaggen zonder waarde; cobra neemt bij elke andere vlag zonder `=` het volgende woord als waarde.
+const GH_BOOL_FLAGS = new Set(['--help', '-h', '--version']);
 const SHELLS = new Set(['bash', 'sh', 'zsh', 'dash']);
 const LEERPUNT = 'leerpunt';
 const GH_ISSUE_WRITE_TEXT = new RegExp(`\\bgh\\b.*\\bissue\\b.*\\b(?:${[...GH_ISSUE_WRITES].join('|')})\\b`);
@@ -741,13 +744,32 @@ function zetGhOmgeving(commands) {
 }
 
 /**
- * Wat gh van `issue` maakt, zonder de stand van de vlaggen te raden: cobra slaat vlaggen en hun waarden over, ook vóór het
- * subcommando (`gh --add-label x issue edit 1`). Telt dus elk woord; liever een vraag te veel dan een omzeiling.
+ * De woorden die gh als commando leest, zoals cobra ze vindt: een vlag zonder `=` neemt het volgende woord als waarde
+ * (`gh --duplicate-of 3 issue close 1`), behalve `--help`/`-h`/`--version`. Waarden van opties zijn dus geen subcommando.
+ * @param {readonly string[]} args
+ */
+function ghCommandWords(args) {
+  /** @type {string[]} */
+  const words = [];
+  for (let index = 0; index < args.length; index += 1) {
+    const arg = args[index] ?? '';
+    if (arg === '--') break;
+    if (arg === '' || arg === '-') continue; // cobra slaat lege woorden over; `-` is stdin, geen commando
+    if (!arg.startsWith('-')) words.push(arg);
+    else if (!arg.includes('=') && !GH_BOOL_FLAGS.has(arg) && !/^-[^-]./.test(arg)) index += 1;
+  }
+  return words;
+}
+
+/**
+ * De schrijfactie van `gh issue <subcommando>` (`new` is de ingebouwde alias van `create`), of leeg. Een onbekend
+ * subcommando telt als schrijvend; liever een vraag te veel dan een omzeiling.
  * @param {readonly string[]} args
  */
 function ghIssueAction(args) {
-  if (!args.includes('issue')) return '';
-  return args.find((arg) => GH_ISSUE_WRITES.has(arg)) ?? '';
+  const [group, action = ''] = ghCommandWords(args);
+  if (group !== 'issue' || action === '' || GH_ISSUE_READS.has(action)) return '';
+  return action === 'new' ? 'create' : action;
 }
 
 /**
@@ -769,7 +791,7 @@ function verborgenGhIssue(program, args) {
  * @param {readonly string[]} args
  */
 function ghAliasReden(args) {
-  const first = args.find((arg, index) => !arg.startsWith('-') && !['-R', '--repo'].includes(args[index - 1] ?? '')) ?? '';
+  const [first = ''] = ghCommandWords(args);
   if (first === 'alias' && args.some((arg) => arg === 'set' || arg === 'import'))
     return 'subagent: gh alias set/import kan een schrijvende opdracht verbergen (ADR 0059)';
   if (first !== '' && !GH_GROUPS.has(first)) return `subagent: gh ${first} is geen ingebouwde gh-groep (alias of extensie; ADR 0059)`;

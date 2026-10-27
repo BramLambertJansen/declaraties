@@ -225,3 +225,56 @@ describe('leerpuntvorm: aliassen en losse backticks', () => {
     expect(decide(bash(command, 'developer'), ctx()).deny).toStrictEqual([]);
   });
 });
+
+// Herreview ronde 4: `gh issue new` is de ingebouwde alias van `gh issue create`; een onbekende vlag zonder `=` neemt het
+// volgende woord mee; een schrijfwoord als optiewaarde maakt een leesopdracht nog geen schrijfopdracht.
+describe('leerpuntvorm: gh issue new en schrijfwoorden als optiewaarde', () => {
+  test.each(SUBAGENTS)('leerlus/AC-6: %s → deny op gh issue new en verborgen issue create', (agent) => {
+    expect(
+      [
+        'gh issue new -R iemand/anders -t a -b b',
+        `gh issue -R ${REPO} new --label leerpunt -t a -b b`,
+        'sh -c "gh issue new -t a -b b"',
+        'gh --foo pr issue create -t a -b b',
+      ].map((command) => verdict(bash(command, agent))),
+    ).toStrictEqual(['deny', 'deny', 'deny', 'deny']);
+  });
+
+  test.each([
+    'gh issue list --search create',
+    'gh issue list --label comment',
+    'gh issue ls --search close',
+    'gh pr list --label issue --search create',
+    'gh issue view 5 --comments',
+    'gh issue status',
+  ])('leerlus/AC-7: developer → geen deny en geen ask op %s', (command) => {
+    expect(decide(bash(command, 'developer'), ctx())).toMatchObject({ deny: [], ask: [] });
+  });
+
+  test('leerlus/AC-5: hoofdsessie, gh issue new in de leerpuntvorm → geen deny en geen ask', () => {
+    expect(decide(bash(`gh issue new --repo ${REPO} --label leerpunt ${BODY}`), ctx())).toMatchObject({
+      deny: [],
+      ask: [],
+    });
+  });
+
+  test('leerlus/AC-5: hoofdsessie, gh issue new met een andere repo → ask', () => {
+    expect(verdict(bash(`gh issue new -R iemand/anders --label leerpunt ${BODY}`))).toBe('ask');
+  });
+
+  test('leerlus/AC-7: hoofdsessie, gh issue list --search create → geen deny en geen ask', () => {
+    expect(decide(bash('gh issue list --search create'), ctx())).toMatchObject({ deny: [], ask: [] });
+  });
+});
+
+// Herreview: gh (cobra) slaat lege woorden over bij het zoeken naar een subcommando; een leeg woord of een los `-` vóór de
+// alias mag de deny voor subagents niet ontlopen.
+describe('leerpuntvorm: lege woorden en een los - vóór het subcommando', () => {
+  test.each(SUBAGENTS)('leerlus/AC-6: %s → deny op gh met een leeg woord of los - vóór issue create', (agent) => {
+    expect(
+      ['gh "" ic -t a -b b', "gh '' issue new -t a -b b", 'gh - ic -t a -b b'].map((command) =>
+        verdict(bash(command, agent)),
+      ),
+    ).toStrictEqual(['deny', 'deny', 'deny']);
+  });
+});
