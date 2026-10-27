@@ -2,8 +2,9 @@
 
 Je bent een coding agent. Dit bestand is jouw instructie, geen documentatie voor de gebruiker. Volg het van boven naar beneden.
 
-De gebruiker is de eigenaar van de template (Bram): technisch, kent de stack, wil geen uitleg over wat een terminal is.
-Hij wil wél weten wát je doet en waarom, kort. Hij beslist; jij voert uit binnen dit bestand.
+De gebruiker is de eigenaar van de nieuwe app: soms technisch, soms zonder enige technische kennis. Hij beslist; jij voert
+uit binnen dit bestand. Begeleid volgens [Begeleiding](../START-NIEUWE-APP.md#begeleiding-ook-voor-wie-niet-technisch-is):
+kort en zonder jargon, uitleg alleen waar die de volgende stap begrijpelijk maakt; laat de uitleg weg bij een technische gebruiker.
 
 Dit bestand staat in de template als `docs/nieuwe-app.md` en volgt de afspraken in [ADR 0040](adr/0040-template-app-en-grens-core-app.md).
 Voor een korte start vóór de app-repo bestaat: [START-NIEUWE-APP.md](../START-NIEUWE-APP.md). Deze instructie hier blijft de enige gedetailleerde setup-procedure.
@@ -66,7 +67,7 @@ commando's, paden, productnamen (Use this template, Settings → Rules → Rules
 |---|---|
 | Template | `BramLambertJansen/template` (public), branch `main` |
 | Owner van de nieuwe repo | het account van `gh api user --jq .login` |
-| Zichtbaarheid | `private` |
+| Zichtbaarheid | `public` (voorlopig; private vraagt GitHub Pro of Team voor de ruleset en betaalde code scanning voor CodeQL, zie Fase 6) |
 | Map | `~/code/<slug>` |
 | Distro (WSL) | `Ubuntu-24.04`; bestaat alleen `Ubuntu` en is dat 24.04, gebruik die |
 | Poorten | `54322` (Postgres), `54324` (Mailpit UI), `54325` (SMTP), `8787` (API), `5173` (web); bezet → +10 bij alle vijf tot ze vrij zijn |
@@ -131,7 +132,7 @@ Lees eerst de opdracht en eventuele voortgang. Gebruik een al gegeven appnaam, b
 Vraag alleen wat ontbreekt, in één bericht, en wacht:
 
 > Hoe moet de app heten? Geef ook een korte beschrijving: wat doet de app en voor wie?
-> Ik leid de repo-naam af van de appnaam. Standaard wordt de repo privé; de overige instellingen volgen het setup-bestand.
+> Ik leid de repo-naam af van de appnaam. Standaard wordt de repo openbaar (public); de overige instellingen volgen het setup-bestand.
 > Wil je een andere repo-naam, eigenaar of zichtbaarheid, zeg het erbij.
 
 Toon appnaam → slug, beschrijving, eigenaar, zichtbaarheid en doelmap kort en schrijf die in het voortgangsbestand.
@@ -280,7 +281,7 @@ gh api repos/BramLambertJansen/template/commits/main --jq .sha
 
 ```bash
 cd ~/code
-gh repo create <owner>/<slug> --private --template BramLambertJansen/template --clone
+gh repo create <owner>/<slug> --<zichtbaarheid> --template BramLambertJansen/template --clone   # --public, tenzij de eigenaar anders koos
 cd <slug>
 ```
 
@@ -356,9 +357,9 @@ Controle: `git status` schoon; `git log --oneline -3` toont: hernoem, koppel (me
 ### 6.1 Push (overdracht)
 
 **Eerst CI-beschikbaarheid controleren.** Beide CodeQL-checks zijn verplicht in `.claude/decisions.json` en de workflow
-`.github/workflows/codeql.yml` draait ook voor private apps. Laat de eigenaar bevestigen dat CodeQL voor deze repo
-beschikbaar is. Bij onbekende of ontbrekende beschikbaarheid: stop vóór de eerste push en vraag om verificatie of een
-expliciete keuze. Maak de repo nooit zelf public en behandel ontbrekende checks niet als geslaagd.
+`.github/workflows/codeql.yml` draait ook voor private apps. Op een public repo is CodeQL beschikbaar. Koos de eigenaar
+private, laat hem dan bevestigen dat CodeQL voor deze repo beschikbaar is. Bij onbekende of ontbrekende beschikbaarheid: stop vóór de eerste push en vraag om verificatie of een
+expliciete keuze. Wijzig de gekozen zichtbaarheid nooit zelf en behandel ontbrekende checks niet als geslaagd.
 
 `--zonder-codeql` wijzigt alleen de ruleset, niet de workflow of de verplichte checks van `pnpm pr:verify`. Het is dus
 geen werkende afrondroute voor deze setup. Wil de eigenaar een profiel zonder CodeQL, dan vraagt dat eerst een
@@ -528,7 +529,7 @@ Overdracht:
 > 2. Open de terminal in VS Code (**Terminal → New Terminal**) en start `claude`.
 > 3. Start Claude Code niet, of zie je een sandbox-fout: plak de melding hier.
 > 4. Typ in die nieuwe sessie: *Voer `docker ps` uit en lees `.env.local`.* Beide moeten geweigerd worden.
-> 5. Kom terug en typ *klaar*.
+> 5. Laat VS Code met die sessie open, kom hier terug en typ *klaar*.
 
 Waarom: `.claude/settings.json` van de template zet de sandbox aan met `failIfUnavailable: true` en weigert `docker *` en het lezen van `.env.*`.
 Werkt de sandbox niet, dan start de agent in deze repo niet — liever nu dan bij de eerste taak.
@@ -583,9 +584,16 @@ Schrijf het voortgangsbestand af en stuur één bericht, ongeveer zo:
 >
 > **Bevindingen:** <notities uit het voortgangsbestand, of "geen">
 
-Sluit af met: "De setup is afgerond voor zover hierboven bewezen; dit staat nog open. Wil je nu de eerste gebruikersflow
-specificeren?" Stop en wacht. Een antwoord "klaar" op de vorige eigenaarstaak is geen opdracht om features te bouwen.
-Vraag pas bij een vervolgopdracht welke gebruikersflow als eerste moet werken en volg dan de bestaande specroute.
+Sluit af met: "De setup is afgerond voor zover hierboven bewezen; dit staat nog open." Geef daarna de openingsopdracht
+voor de Claude-sessie die de eigenaar in Fase 9 in de app-map startte, kopieerbaar en met de werkelijke paden:
+
+> Dit is mijn nieuwe app <App-naam>. Lees `~/setup/SETUP-PROGRESS.md` (de overdracht van de setup) en de
+> projectinstructies. Controleer dat je in `~/code/<slug>` werkt. Leg kort uit wat er al staat en help me de eerste
+> functionaliteit te bedenken. Begin nog niet met bouwen voordat we het doel hebben besproken.
+
+Zeg erbij dat Claude toestemming vraagt om dat bestand buiten de app-map te lezen, en dat de eigenaar die mag geven.
+Zet het voortgangsbestand niet in de app-repo. Stop daarna met de setup: featurewerk gebeurt in die nieuwe sessie, volgens
+de eigen regels van de app. Een antwoord "klaar" op de vorige eigenaarstaak is geen opdracht om features te bouwen.
 
 ---
 
@@ -630,4 +638,5 @@ App-eigen ADR's: begin bij `0100` (`docs/adr/0100-…`). `0001`–`0099` zijn va
 | `doctor.sh`: ✗ git-hooks ontbreken | `scripts/bootstrap.sh` niet (helemaal) gedraaid | Eigenaar draait `scripts/bootstrap.sh` opnieuw (Fase 7.2) |
 | `mise: command not found` in een script | Niet-interactieve shell zonder `mise activate` | Eigenaar draait het in een nieuwe terminal; jij gebruikt `~/.local/bin/mise exec --` |
 | Claude Code: sandbox niet beschikbaar / `bwrap: … Permission denied` | `bubblewrap`/`socat` ontbreekt, of AppArmor beperkt user namespaces (`sysctl kernel.apparmor_restrict_unprivileged_userns` = 1) | Pakketten installeren; AppArmor-instelling niet zelf wijzigen, melden |
+| `code: command not found` in Ubuntu | VS Code ontbreekt op Windows of staat niet op `PATH` | Eigenaar installeert VS Code op Windows, opent Ubuntu opnieuw en herhaalt Fase 9 stap 1 |
 | `gh: … missing required scope 'workflow'` | Ingelogd zonder scope | `gh auth refresh -s workflow` (overdracht) |
