@@ -266,3 +266,15 @@ describe('leerpuntvorm: gh issue new en schrijfwoorden als optiewaarde', () => {
     expect(decide(bash('gh issue list --search create'), ctx())).toMatchObject({ deny: [], ask: [] });
   });
 });
+
+// Herreview: gh (cobra) slaat lege woorden over bij het zoeken naar een subcommando; een leeg woord of een los `-` vóór de
+// alias mag de deny voor subagents niet ontlopen.
+describe('leerpuntvorm: lege woorden en een los - vóór het subcommando', () => {
+  test.each(SUBAGENTS)('leerlus/AC-6: %s → deny op gh met een leeg woord of los - vóór issue create', (agent) => {
+    expect(
+      ['gh "" ic -t a -b b', "gh '' issue new -t a -b b", 'gh - ic -t a -b b'].map((command) =>
+        verdict(bash(command, agent)),
+      ),
+    ).toStrictEqual(['deny', 'deny', 'deny']);
+  });
+});
