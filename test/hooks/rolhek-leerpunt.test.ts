@@ -157,10 +157,16 @@ describe('leerpuntvorm: vlaggen vóór het subcommando en substitutie', () => {
 
   test.each([
     { name: 'gh -R andere repo issue create', command: `gh -R iemand/anders issue create --label leerpunt ${BODY}` },
-    { name: '$( ) in de body', command: `${leerpunt()} --body "$(gh issue comment 42 -R iemand/anders -b x)"` },
-    { name: 'backticks in de body', command: `${leerpunt()} --body "\`gh issue close 1\`"` },
   ])('leerlus/AC-5: $name → ask met een reden', ({ command }) => {
     expect(verdict(bash(command))).toBe('ask');
+  });
+
+  // Strenger dan ask (eigenaarkeuze 2026-10-27): een variabel woord naast een gh-subcommando weigert het rolhek voor elke rol.
+  test.each([
+    { name: '$( ) in de body', command: `${leerpunt()} --body "$(gh issue comment 42 -R iemand/anders -b x)"` },
+    { name: 'backticks in de body', command: `${leerpunt()} --body "\`gh issue close 1\`"` },
+  ])('leerlus/AC-5: $name → deny', ({ command }) => {
+    expect(verdict(bash(command))).toBe('deny');
   });
 
   test.each([
@@ -195,8 +201,9 @@ describe('leerpuntvorm: onbekende vlaggen, omhulsels en substitutie', () => {
     expect(verdict(bash(command, 'developer'))).toBe('deny');
   });
 
-  test('leerlus/AC-5: hoofdsessie, onbekende vlag vóór issue met een andere repo → ask', () => {
-    expect(verdict(bash(`gh --recover '' issue create --label leerpunt -R iemand/anders ${BODY}`))).toBe('ask');
+  // Strenger dan ask (eigenaarkeuze 2026-10-27): een onbekende gh-groep of -vlag kan een alias zijn; deny voor elke rol.
+  test('leerlus/AC-5: hoofdsessie, onbekende vlag vóór issue met een andere repo → deny', () => {
+    expect(verdict(bash(`gh --recover '' issue create --label leerpunt -R iemand/anders ${BODY}`))).toBe('deny');
   });
 });
 

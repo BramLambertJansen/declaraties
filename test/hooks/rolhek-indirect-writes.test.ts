@@ -59,12 +59,16 @@ describe('indirecte schrijvers volgen de rolgrens', () => {
     expect(run(command, 'developer').deny.length).toBeGreaterThan(0);
   });
 
-  test.each([
-    'gh pr view 42',
-    'gh api repos/acme/example/pulls/42',
-    'gh api graphql -f "query=query { viewer { login } }"',
-  ])('read-only gh blijft beschikbaar: %s', (command) => {
-    expect(run(command, 'developer').deny).toEqual([]);
+  test.each(['gh pr view 42', 'gh api repos/acme/example/pulls/42'])(
+    'read-only gh blijft beschikbaar: %s',
+    (command) => {
+      expect(run(command, 'developer').deny).toEqual([]);
+    },
+  );
+
+  // Eigenaarkeuze (gh-allowlist): subagents alleen lezen via REST; GraphQL is voor hen dicht, ook een leesquery.
+  test('graphql is voor een subagent dicht, ook een leesquery', () => {
+    expect(run('gh api graphql -f "query=query { viewer { login } }"', 'developer').deny.length).toBeGreaterThan(0);
   });
 });
 

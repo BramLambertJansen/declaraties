@@ -469,10 +469,31 @@ function gitMapMelding(file) {
  * @param {Decision} decision
  */
 function decideBash({ command, role }, ctx, decision) {
+  decision.deny.push(...rawForbidden(command, role));
+  // De inhoud van `$(…)` en backticks is zelf een commando; zo vallen ook geneste substituties onder dezelfde regels.
+  for (const inner of substitutions(command)) decideBash({ command: inner, role }, ctx, decision);
   const setsGhEnv = zetGhOmgeving(parseCommands(command));
   for (const parsed of parseCommands(command)) {
     const { assignments, argv, pathWrappers } = splitCommand(parsed.words);
-    forbidden({ assignments, argv }, { role, ctx }, decision);
+    // `$G pr merge`, `${x}h …`, `$(echo gh) …`: welk programma draait, is pas bij het uitvoeren bekend.
+    const hidden = hiddenCommandWord(parsed.words);
+    const ghGlob = parsed.words.find((word) => globForGh(word) || SHELL_EXPANSION.test(word));
+    // `${G}h pr merge` achter een onbekend omhulsel: een variabel woord na het commandowoord bij een gh-subcommando.
+    const expandedArg = argv.slice(1).some((word) => (parsed.expanded ?? []).includes(word));
+    if (expandedArg && GH_SUBCOMMAND.test(command.replace(/[\\'"]/g, '')))
+      decision.deny.push('een variabel woord naast een gh-subcommando (pr, api, run …) is verboden, voor elke rol');
+    // Allowlist: met een geëxpandeerd argument mag alleen een programma dat zelf geen commando of netwerkopdracht start.
+    if (expandedArg && !EXPANSION_SAFE.has(programName(argv[0] ?? ''))) {
+      const melding = `\`${argv[0] ?? ''}\` met een geëxpandeerd argument ($, backtick): het rolhek ziet niet wat er draait`;
+      if (role === 'hoofdsessie') decision.ask.push(melding);
+      else decision.deny.push(`subagent: ${melding}`);
+    }
+    if (ghGlob !== undefined) decision.deny.push(`\`${ghGlob}\` kan naar gh wijzen (glob, brace-expansie of POSIX-klasse); verboden, voor elke rol`);
+    if (hidden !== null)
+      decision.deny.push(`een commandowoord dat niet letterlijk is (\`${hidden}\`) is verboden, voor elke rol`);
+    if (envSplitsString(parsed.words))
+      decision.deny.push('env -S/--split-string maakt van tekst een nieuw commando dat het rolhek niet ziet; verboden, voor elke rol');
+    forbidden({ assignments, argv, expanded: parsed.expanded ?? [] }, { role, ctx }, decision);
     ghIssue(argv, { role, ctx, setsGhEnv }, decision);
     if (role === 'reviewer' && (pathWrappers.length > 0 || !reviewerMay(argv, parsed.redirects)))
       decision.deny.push(`reviewer: alleen lezen (\`${argv.slice(0, 3).join(' ')}\` mag niet; framework §8)`);
@@ -480,6 +501,109 @@ function decideBash({ command, role }, ctx, decision) {
     for (const target of targets.writes) bashTarget({ file: target, kind: 'write', role }, ctx, decision);
     for (const target of targets.deletes) bashTarget({ file: target, kind: 'delete', role }, ctx, decision);
   }
+}
+
+// Opties van env die het volgende woord als waarde nemen (`-u NAAM`, `-C MAP`, `--unset NAAM`, `--chdir MAP`, `--argv0 X`).
+const ENV_VALUE_SHORT = /^-[a-zA-Z]*[uCa]$/;
+const ENV_VALUE_LONG = ['--unset', '--chdir', '--argv0'];
+
+/**
+ * `env -S …`, `env -vSgh …`, `env -u X -S…` of `env --split-string=…` (ook een unieke afkorting vanaf `--s`) vóór het
+ * commandowoord. Dicht falen: elk optiewoord dat op `-…S` of `--s` lijkt telt, ook `-uS` (unset S); waarden van
+ * `-u`/`-C`/`-a` en hun lange vormen worden overgeslagen, zodat ze de scan niet afbreken.
+ * @param {readonly string[]} words
+ */
+function envSplitsString(words) {
+  for (const [index, word] of words.entries()) {
+    if (programName(word) !== 'env') continue;
+    const rest = words.slice(index + 1);
+    for (let at = 0; at < rest.length; at += 1) {
+      const option = rest[at] ?? '';
+      if (!option.startsWith('-') || option === '--') break;
+      const name = option.split('=')[0] ?? '';
+      if (/^-[a-zA-Z]*S/.test(option) || /^--s/.test(option)) return true;
+      const longValue = !option.includes('=') && name.length >= 3 && ENV_VALUE_LONG.some((long) => long.startsWith(name));
+      if (ENV_VALUE_SHORT.test(option) || longValue) at += 1;
+    }
+  }
+  return false;
+}
+
+/**
+ * De inhoud van elke `$(…)` en elk backtick-paar op het buitenste niveau (geneste vangt de recursie in decideBash).
+ * @param {string} command
+ * @returns {string[]}
+ */
+function substitutions(command) {
+  /** @type {string[]} */
+  const found = [];
+  for (let index = 0; index < command.length; index += 1) {
+    const close = command.startsWith('$(', index) ? matchingParen(command, index + 2)
+      : command[index] === '`' ? command.indexOf('`', index + 1) : -1;
+    if (close === -1) continue;
+    found.push(command.slice(index + (command[index] === '`' ? 1 : 2), close));
+    index = close;
+  }
+  return found;
+}
+
+/**
+ * @param {string} text
+ * @param {number} from positie na de openende `(`
+ */
+function matchingParen(text, from) {
+  let depth = 1;
+  for (let index = from; index < text.length; index += 1) {
+    if (text[index] === '(') depth += 1;
+    if (text[index] === ')') depth -= 1;
+    if (depth === 0) return index;
+  }
+  return text.length;
+}
+
+// Grove, dichte regel op de ruwe commandotekst, heredocs inbegrepen (eigenaarsbesluit 2026-10-26): geen shell-parsing,
+// dus ook `{ …; }`, `if`, brace-expansie, `$(…)` en `eval` vallen eronder. Een vangnet bovenop de regels per segment.
+// `gh` als woord: niet in `rolhek-gh-allowlist`, `gh-notes` of `high-gh`, wel in `/usr/bin/gh`, `x;gh`, `(gh`, een git-alias
+// `!gh`, `env -Sgh`, `env -vSgh` en `env -S\_gh` (`-S`/`--split-string` splitst de rest tot een nieuw commando; `\_`, `\t` …
+// zijn daar witruimte en na het strippen van `\` een losse letter). Elk teken buiten `[\w.-]` is een grens.
+const GH_WORD = /(?:^|[^\w.-]|(?<=(?:^|\s)(?:-[a-zA-Z]*S|--s[a-z-]*=)[_fnrtv]*))gh(?=$|[^\w.-])/;
+const RAW_GITHUB = new RegExp(`${GH_WORD.source}|\\/pulls\\/|api\\.github\\.com|graphql`, 'm');
+const RAW_MERGE = /(?<![,a-zA-Z])merge(?=[\s/,}]|$)/m;
+// Los van gh-herkenning: `pr merge`, `pr review … --approve` en een GraphQL-merge zijn in elke vorm verboden. Met herkenbaar gh is
+// `pr review` als losse woorden voor elke rol verboden, ook zonder approve: zo valt `env -i gh pr review …` (omhulsel met opties,
+// dat `splitCommand` niet afpelt) net als directe `gh pr review` (`ghForbidden`). `-a` telt ook vooraan een cluster (`-ab`, `-aF`).
+const RAW_PR_MERGE = /(?:^|[^\w.-])pr\s+merge(?=$|[^\w.-])/m;
+const RAW_PR_REVIEW = /(?:^|[^\w.-])pr\s+review(?=$|[^\w.-])/m;
+const RAW_APPROVE = /--approve|(?:^|\s)-a/;
+const RAW_SUBAGENT = new RegExp(`${GH_WORD.source}|api\\.github\\.com|git\\s+credential`, 'm');
+const SHELL_TRICKS = /\$\(|`|\beval\b|\bsource\b|(?:^|[\s;&|(])\.\s|\{[^}]*(?:,|\.\.)[^}]*\}|\|\s*(?:ba|z|da|k)?sh\b|<</;
+
+/**
+ * Voor elke rol: mergen of goedkeuren in tekst die naar gh, …/pulls/, de GitHub-API of GraphQL wijst, en `pr review` naast gh.
+ * Voor een subagent: tekst die gh, de GitHub-API of git credential noemt mag alleen één direct gh-commando zonder shell-trucs zijn; vals positief
+ * (`grep gh x`) is bewust geaccepteerd.
+ * @param {string} command
+ * @param {string} role
+ * @returns {string[]}
+ */
+function rawForbidden(command, role) {
+  /** @type {string[]} */
+  const found = [];
+  // Zonder `\`, `'` en `"`: `g\h`, `g""h` en `mer''ge` zijn voor de shell gewoon gh en merge.
+  const text = command.replace(/[\\'"]/g, '');
+  if (RAW_GITHUB.test(text) &&
+    (RAW_MERGE.test(text) || MERGE_MUTATION.test(text) || (/\breview\b/.test(text) && RAW_APPROVE.test(text)) ||
+      (/\/reviews\b/.test(text) && /APPROVE/.test(text))))
+    found.push('mergen of goedkeuren via gh of …/pulls/ is voor elke rol verboden (vangnet op de ruwe tekst, WS-04)');
+  else if (GH_WORD.test(text) && RAW_PR_REVIEW.test(text))
+    found.push('gh pr review is voor elke rol verboden, ook achter een omhulsel en zonder --approve (vangnet op de ruwe tekst, AGENTS.md)');
+  else if (RAW_PR_MERGE.test(text) || MERGE_MUTATION.test(text) || (RAW_PR_REVIEW.test(text) && RAW_APPROVE.test(text)))
+    found.push('`pr merge`, `pr review --approve` of een GraphQL-merge is voor elke rol verboden, ook zonder herkenbaar gh (vangnet op de ruwe tekst, WS-04)');
+  if (role === 'hoofdsessie' || !RAW_SUBAGENT.test(text)) return found;
+  const segments = parseCommands(command);
+  if (segments.length !== 1 || segments[0]?.words[0] !== 'gh' || SHELL_TRICKS.test(command))
+    found.push('subagent: gh, de GitHub-API of git credential alleen als één direct gh-leescommando zonder shell-trucs');
+  return found;
 }
 
 /**
@@ -530,11 +654,11 @@ function isNewResource(program, args) {
 
 /**
  * Wat voor elke rol verboden is (zelfreview, hooks overslaan, push naar main), plus wat alleen een subagent niet mag.
- * @param {{ assignments: string[], argv: string[] }} command
+ * @param {{ assignments: string[], argv: string[], expanded: readonly string[] }} command
  * @param {{ role: string, ctx: Ctx }} who
  * @param {Decision} decision
  */
-function forbidden({ assignments, argv }, { role, ctx }, decision) {
+function forbidden({ assignments, argv, expanded }, { role, ctx }, decision) {
   const [word = '', ...args] = argv;
   const program = programName(word);
   const lefthook = [...assignments, ...(program === 'export' ? args : [])].find((word) => /^LEFTHOOK(?:_\w+)?=/.test(word));
@@ -546,15 +670,19 @@ function forbidden({ assignments, argv }, { role, ctx }, decision) {
   const gitEnv = [...assignments, ...(ENV_EXPORTERS.has(program) ? args : [])].find((word) => GIT_ENV.test(word));
   if (gitEnv !== undefined)
     decision.deny.push(`${gitEnv.split('=')[0] ?? ''}: git-configuratie of -map via de omgeving kan de vertrouwde basis verleggen (ADR 0046)`);
-  if (program === 'gh') decision.deny.push(...ghForbidden(args));
-  if (program === 'gh' && role !== 'hoofdsessie' &&
-    (args.some((arg, index) => arg === 'pr' && args[index + 1] === 'create') ||
-      (args[0] === 'api' && apiMutates(args.slice(1)))))
-    decision.deny.push('subagent: PR-creatie en schrijvende GitHub-API-opdrachten doet alleen de hoofdsessie');
-  if (program === 'pnpm' && (args[0] === 'format' || (args[0] === 'run' && args[1] === 'format'))) {
+  if (program === 'gh') decision.deny.push(...ghForbidden(args, expanded));
+  if (program === 'pnpm' && pnpmCommand(args)[0] === 'format') {
     const melding = 'pnpm format schrijft de hele repository, inclusief beschermde paden; gebruik gerichte formattering';
     if (role === 'hoofdsessie') decision.ask.push(melding);
     else decision.deny.push(melding);
+  }
+  decision.deny.push(...indirectForbidden(program, args, role));
+  if (role !== 'hoofdsessie' && (['eval', 'source', '.'].includes(program) ||
+    (SHELLS.has(program) && !args.some((arg) => !arg.startsWith('-')))))
+    decision.deny.push(`subagent: ${program} voert tekst uit die het rolhek niet ziet (eval, source, shell zonder scriptbestand)`);
+  if (role !== 'hoofdsessie') {
+    const command = { program, args, expanded };
+    decision.deny.push(...subagentGitHub(command), ...subagentTokens(command), ...subagentFormatting(command, ctx));
   }
   if (role !== 'hoofdsessie' && isNewResource(program, args))
     decision.deny.push('pnpm new:resource: alleen de hoofdsessie (ADR 0047 punt 6); wat hij schrijft, ziet het rolhek niet');
@@ -562,6 +690,262 @@ function forbidden({ assignments, argv }, { role, ctx }, decision) {
     ((program === 'pnpm' && args.includes('pr:label-gate')) ||
       (program === 'node' && args.some((arg) => /(?:^|\/)scripts\/kit\/pr-gate-label\.mjs$/.test(arg)))))
     decision.deny.push('Het administratieve gate-label zet alleen de hoofdsessie via pr:label-gate');
+}
+
+// Shell-sleutelwoorden die geen programma zijn; `{` en `[` staan daarom niet onder de glob-regel.
+const SHELL_WORDS = new Set(['{', '}', '[', '[[', ']]', '!']);
+
+/**
+ * Letterlijk: geen expansie (`$`, backtick), geen glob (`*`, `?`, `[`, `{`) en geen `~` vooraan; dan weet het rolhek
+ * vóór het uitvoeren welk programma draait.
+ * @param {string} word
+ */
+function literalWord(word) {
+  return SHELL_WORDS.has(word) || (!/[$`*?[{]/.test(word) && !word.startsWith('~'));
+}
+
+// Sleutelwoorden en omhulsels vóór het commandowoord. Hun opties zijn niet te overzien (`sudo --weird v`), dus na zo'n
+// begin moet elk woord van het segment letterlijk zijn: dicht falen, ook bij `time ls *.md`.
+const KEYWORDS = new Set(['{', '}', '!', 'if', 'then', 'elif', 'else', 'fi', 'do', 'done', 'while', 'until']);
+const COMMAND_WRAPPERS = new Set(['time', 'env', 'nice', 'command', 'nohup', 'exec', 'stdbuf', 'timeout', 'sudo', 'coproc',
+  'setsid', 'flock', 'watch', 'chroot', 'doas', 'unbuffer', 'parallel', 'script']);
+
+// Brace-expansie (`{` met verderop `,` of `..`: `g{h..h}`, `{g,x}h`) en POSIX-klassen (`[[:alpha:]]`, `[[=h=]]`, `[[.h.]]`, ook `[![:digit:]]`)
+// kunnen elke naam opleveren; een vangnet heeft geen expander nodig, dus dicht (ook `echo {a,b}`). `[[` als los woord mag.
+// Programma's die met een geëxpandeerd argument (`$X`, `$(…)`) geen ander commando of GitHub-aanroep kunnen starten.
+// `sed` (`e`) en `awk` (`system()`) kunnen dat wel en staan er daarom niet in.
+const EXPANSION_SAFE = new Set(['echo', 'printf', 'cat', 'ls', 'cp', 'mv', 'rm', 'mkdir', 'rmdir', 'touch', 'grep',
+  'head', 'tail', 'wc', 'sort', 'uniq', 'diff', 'cmp', 'test', '[', 'cd', 'basename', 'dirname', 'realpath', 'readlink', 'stat',
+  'file', 'du', 'df']);
+// Losse woorden die op een gh-opdracht wijzen; bewust vals positief: `echo $HOME run`.
+const GH_SUBCOMMAND = /(?:^|[\s;&|(){}<>])(?:pr|api|repo|release|workflow|run|issue|label|secret|merge|review|create)(?=$|[\s;&|(){}<>])/;
+const SHELL_EXPANSION = /\{.*(?:,|\.\.)|\[[^\]]*\[[:=.]/s;
+
+/**
+ * Een woord met een glob (`*`, `?`, `[…]`) waarvan de naam `gh` of `gh.exe` kan zijn, op elke positie: zo hangt de regel
+ * niet af van een lijst omhulsels (`setsid /usr/bin/g[h] …`). `cat g*.txt` en `ls src/*.ts` matchen niet.
+ * @param {string} word
+ */
+function globForGh(word) {
+  const name = word.slice(word.lastIndexOf('/') + 1);
+  if (!/[*?]|\[[!^]?\]?[^\]]*\]/.test(name)) return false;
+  // Een klasse mag direct na `[`, `[!` of `[^` een `]` bevatten (`g[]h]` matcht gh); een losse `[` is letterlijk.
+  const pattern = name.replace(/\[[!^]?\]?[^\]]*\]|./g, globPart);
+  const matcher = new RegExp(`^${pattern}$`, 'i');
+  return matcher.test('gh') || matcher.test('gh.exe');
+}
+
+/**
+ * Eén deel van een shell-glob als reguliere expressie: een klasse `[…]`/`[!…]`, `*`, `?` of een letterlijk teken.
+ * @param {string} part
+ */
+function globPart(part) {
+  const negated = /^\[[!^]/.test(part);
+  if (part.length > 1) return `[${negated ? '^' : ''}${part.slice(negated ? 2 : 1, -1).replace(/[\\\]^]/g, '\\$&')}]`;
+  if (part === '*') return '.*';
+  if (part === '?') return '.';
+  return part.replace(/[.+^${}()|[\]\\]/g, '\\$&');
+}
+
+/**
+ * Het eerste woord dat als commandowoord kan dienen en niet letterlijk is, of null. Na toewijzingen telt het eerste woord;
+ * begint het segment met een sleutelwoord of omhulsel, dan telt elk woord.
+ * @param {readonly string[]} words
+ * @returns {string | null}
+ */
+function hiddenCommandWord(words) {
+  const start = words.findIndex((word) => !/^[A-Za-z_][A-Za-z0-9_]*=/.test(word));
+  if (start === -1) return null;
+  const rest = words.slice(start);
+  const [first = ''] = rest;
+  const all = KEYWORDS.has(first) || COMMAND_WRAPPERS.has(programName(first));
+  return (all ? rest : [first]).find((word) => !literalWord(word)) ?? null;
+}
+
+const FIND_EXEC = new Set(['-exec', '-execdir', '-ok', '-okdir']);
+// Na xargs of find -exec: een omhulsel, shell of git kan met argumenten uit een bestand of stdin alsnog gh of een
+// git-alias (`!gh …`) starten. Dicht falen: zo'n commandowoord is altijd verboden, ook zonder zichtbare gh erna.
+const INDIRECT_LAUNCHERS = new Set([...COMMAND_WRAPPERS, 'git', 'eval', 'xargs', 'find', 'bash', 'sh', 'zsh', 'dash', 'ksh']);
+
+/**
+ * Programma's die een ander commando starten: xargs met vervangtekst of find -exec met een commandowoord dat niet
+ * letterlijk is, en eval of `bash -c` met expansie (voor elke rol); voor een subagent elke xargs of find -exec met een
+ * commandowoord.
+ * @param {string} program
+ * @param {readonly string[]} args
+ * @param {string} role
+ * @returns {string[]}
+ */
+function indirectForbidden(program, args, role) {
+  const xargs = program === 'xargs' ? xargsCall(args) : null;
+  const execs = program === 'find' ? args.flatMap((arg, index) => (FIND_EXEC.has(arg) ? [args[index + 1] ?? ''] : [])) : [];
+  /** @type {string[]} */
+  const found = [];
+  const replaced = xargs !== null && xargs.command !== null &&
+    (!literalWord(xargs.command) || (xargs.replace !== null && xargs.command.includes(xargs.replace)));
+  if (replaced || execs.some((word) => !literalWord(word)))
+    found.push(`${program}: een commandowoord dat niet letterlijk is, is verboden, voor elke rol`);
+  const launched = [xargs?.command ?? '', ...execs].map((word) => programName(word));
+  if (launched.includes('gh'))
+    found.push(`${program}: gh via xargs of find -exec ontloopt de gh-controles; verboden, voor elke rol (roep gh rechtstreeks aan)`);
+  const launcher = launched.find((name) => INDIRECT_LAUNCHERS.has(name));
+  if (launcher !== undefined)
+    found.push(`${program}: \`${launcher}\` via xargs of find -exec kan gh of een alias starten die het rolhek niet ziet; verboden, voor elke rol`);
+  if ((program === 'eval' || (SHELLS.has(program) && args.some((arg) => /^-[a-zA-Z]*c[a-zA-Z]*$/.test(arg)))) &&
+    args.some((arg) => /[$`]/.test(arg)))
+    found.push(`${program}: tekst met expansie uitvoeren is verboden, voor elke rol`);
+  if (role !== 'hoofdsessie' && ((xargs !== null && xargs.command !== null) || execs.length > 0))
+    found.push(`subagent: ${program} start een ander commando; roep het commando rechtstreeks aan`);
+  return found;
+}
+
+const XARGS_OPTIONS_WITH_VALUE = /^-[IJnLPsdEaRS]$/;
+
+/**
+ * Het commandowoord van xargs en de vervangtekst (`-I %`, `-I%`, `-J %`, `-i`, `--replace[=R]`), of null.
+ * @param {readonly string[]} args
+ * @returns {{ command: string | null, replace: string | null }}
+ */
+function xargsCall(args) {
+  /** @type {string | null} */
+  let replace = null;
+  for (let index = 0; index < args.length; index += 1) {
+    const arg = args[index] ?? '';
+    if (arg === '--') return { command: args[index + 1] ?? null, replace };
+    if (!arg.startsWith('-')) return { command: arg, replace };
+    if (/^-[IJ]./.test(arg)) replace = arg.slice(2);
+    if (/^-[IJ]$/.test(arg)) replace = args[index + 1] ?? '';
+    if (/^-i/.test(arg)) replace = arg.slice(2) || '{}';
+    if (arg.startsWith('--replace')) replace = arg.split('=')[1] ?? '{}';
+    if (XARGS_OPTIONS_WITH_VALUE.test(arg)) index += 1;
+  }
+  return { command: null, replace };
+}
+
+/** @typedef {{ program: string, args: readonly string[], expanded: readonly string[] }} Invocation */
+
+// Subagents lezen alleen bij GitHub (eigenaarkeuze): al het andere, ook aliassen (`gh pr new`), `gh auth` en
+// `gh extension`, weigert het rolhek. `gh api` loopt via apiReads. Issues en aliassen lezen mag (spec leerlus, AC-7).
+const SUBAGENT_GH = [
+  /^pr (?:view|diff|checks|list|status)$/,
+  /^run (?:view|list|watch)$/,
+  /^issue (?:view|list|ls|status)$/,
+  /^repo view$/,
+  /^alias list$/,
+  /^version$/,
+];
+const SHELLS = new Set(['bash', 'sh', 'zsh', 'dash', 'ksh']);
+
+/**
+ * `gh` buiten de allowlist. gh achter een omhulsel, xargs of `bash -c` vangt rawForbidden op de ruwe tekst.
+ * @param {Invocation} command
+ * @returns {string[]}
+ */
+function subagentGitHub({ program, args }) {
+  const gh = withoutRepo(args);
+  if (program === 'gh' && !(gh[0] === 'api' ? apiReads(apiCall(gh.slice(1))) : SUBAGENT_GH.some((p) => p.test(gh.slice(0, 2).join(' ')))))
+    return [`subagent: alleen lezende gh-opdrachten (\`gh ${gh.slice(0, 2).join(' ')}\` mag niet); de rest doet de hoofdsessie`];
+  return [];
+}
+
+const CURL_CONFIG = /^(?:-[a-zA-Z]*K|--config(?:=|$)|--netrc|-e$|--execute(?:=|$))/;
+
+/**
+ * curl/wget met een token naar GitHub, een config- of headerbestand (`-K`, een headerbestand via -H) of een niet-letterlijk argument
+ * (`"$U"`): wat er dan naar buiten gaat, ziet het rolhek niet.
+ * @param {Invocation} command
+ * @returns {string[]}
+ */
+function subagentTokens({ program, args, expanded }) {
+  if (program !== 'curl' && program !== 'wget') return [];
+  /** @type {string[]} */
+  const found = [];
+  const text = args.join(' ');
+  // Bewust overal in de tekst (deny-kant): een substring, geen hostcontrole.
+  if (text.toLowerCase().includes('github.com') && /authorization|bearer|token|--user\b|(?:^|\s)-u\b/i.test(text))
+    found.push('subagent: GitHub-API met een token via curl/wget omzeilt de gh-allowlist; gebruik een lezende gh-opdracht');
+  const headerFile = (/** @type {string} */ arg, /** @type {number} */ index) =>
+    /^(?:-[a-zA-Z]*H|--header=?)@/.test(arg) || (/^(?:-[a-zA-Z]*H|--header)$/.test(arg) && (args[index + 1] ?? '').startsWith('@'));
+  if (args.some((arg, index) => CURL_CONFIG.test(arg) || headerFile(arg, index)))
+    found.push('subagent: curl/wget met een config-, netrc- of headerbestand is verboden; zet opties letterlijk');
+  if (args.some((arg) => expanded.includes(arg) || arg.includes('$')))
+    found.push('subagent: curl/wget alleen met letterlijke argumenten, geen $-expansie');
+  return found;
+}
+
+/**
+ * Brede formattering: `pnpm lint --fix` (ook via `run`), xargs met prettier/eslint die schrijft, of prettier/eslint met
+ * `--write`/`-w`/`--fix` zonder expliciete bestanden.
+ * @param {Invocation} command
+ * @param {Ctx} ctx
+ * @returns {string[]}
+ */
+function subagentFormatting({ program, args }, ctx) {
+  const [script = '', ...scriptArgs] = program === 'pnpm' ? pnpmCommand(args) : [];
+  const writes = (/** @type {readonly string[]} */ words) => words.some((arg) => FORMATTER_WRITES.test(arg));
+  if ((/^(?:lint|format)(?::|$)/.test(script) && writes(scriptArgs)) ||
+    (program === 'xargs' && args.some((arg) => ['prettier', 'eslint'].includes(programName(arg))) && writes(args)) ||
+    broadFormat(formatterCall(program, args), ctx))
+    return ['subagent: prettier/eslint met --write/-w/--fix alleen met expliciete bestanden, geen map, glob, script of xargs'];
+  return [];
+}
+
+const PNPM_OPTIONS_WITH_VALUE = new Set(['-C', '--dir', '-F', '--filter', '--filter-prod', '--reporter', '--loglevel', '--workspace-concurrency', '--test-pattern', '--changed-files-ignore-pattern']);
+
+/**
+ * Het pnpm-commando met zijn argumenten, na de pnpm-opties en `run` (`pnpm -s --dir . run format` → `['format']`).
+ * @param {readonly string[]} args
+ * @returns {readonly string[]}
+ */
+function pnpmCommand(args) {
+  let index = 0;
+  while ((args[index] ?? '').startsWith('-')) index += PNPM_OPTIONS_WITH_VALUE.has(args[index] ?? '') ? 2 : 1;
+  const rest = args.slice(index);
+  return rest[0] === 'run' || rest[0] === 'run-script' ? pnpmCommand(rest.slice(1)) : rest;
+}
+
+/**
+ * Het aangeroepen programma achter een starter (`pnpm exec`, `pnpm dlx`, `pnpm <bin>`, `npx`).
+ * @param {string} program
+ * @param {readonly string[]} args
+ * @returns {{ tool: string, rest: readonly string[] }}
+ */
+function formatterCall(program, args) {
+  /** @param {readonly string[]} words */
+  const launched = (words) => {
+    const index = words.findIndex((word) => !word.startsWith('-'));
+    return index === -1 ? { tool: '', rest: [] } : { tool: programName(words[index] ?? ''), rest: words.slice(index + 1) };
+  };
+  if (program === 'pnpm') {
+    const [command = '', ...rest] = pnpmCommand(args);
+    return command === 'exec' || command === 'dlx' ? launched(rest) : { tool: programName(command), rest };
+  }
+  return ['npx', 'pnpx', 'bunx', 'yarn'].includes(program) ? launched(args) : { tool: program, rest: args };
+}
+
+const FORMATTER_WRITES = /^(?:--write|--fix|-[a-zA-Z]*w[a-zA-Z]*)(?:=|$)/;
+const FORMATTER_OPTIONS_WITH_VALUE = new Set(['-c', '--config', '--ignore-path', '--plugin', '--parser', '--log-level', '--cache-location', '--cache-strategy', '--stdin-filepath', '--stdin-filename', '--ext', '--rule', '-f', '--format', '-o', '--output-file', '--max-warnings', '--ignore-pattern', '--fix-type', '--env', '--global', '--parser-options', '--rulesdir', '--resolve-plugins-relative-to', '--suppressions-location', '--concurrency', '--flag']);
+
+/**
+ * prettier/eslint die schrijft zonder expliciete bestanden: geen operand, `.`, een map, een glob of iets buiten de repo.
+ * @param {{ tool: string, rest: readonly string[] }} call
+ * @param {Ctx} ctx
+ */
+function broadFormat({ tool, rest }, ctx) {
+  if ((tool !== 'prettier' && tool !== 'eslint') || !rest.some((arg) => FORMATTER_WRITES.test(arg))) return false;
+  /** @type {string[]} */
+  const operands = [];
+  for (let index = 0; index < rest.length; index += 1) {
+    const arg = rest[index] ?? '';
+    if (arg === '--') operands.push(...rest.slice(index + 1));
+    if (arg === '--') break;
+    if (FORMATTER_OPTIONS_WITH_VALUE.has(arg)) index += 1;
+    else if (!arg.startsWith('-')) operands.push(arg);
+  }
+  return operands.length === 0 || operands.some((operand) => {
+    const rel = relative(ctx, operand);
+    return rel === null || /[*?[{]/.test(operand) || ctx.isDir(rel);
+  });
 }
 
 /**
@@ -582,11 +966,27 @@ export function gitForbidden(args, { role, branch }) {
   if (subcommand === 'push' && pushesMain(rest, branch)) found.push('push naar main is verboden; open een PR');
   if (subcommand === 'push' && forcePushes(rest)) found.push('force-push is verboden, ook voor de hoofdsessie (WS-04)');
   if (subcommand === 'branch' && deletesMain(rest)) found.push('git branch -d/-D/--delete van main is verboden (ADR 0046 punt 26)');
+  if (shellAlias(args, { subcommand, rest, config }))
+    found.push('een git-alias met `!` (shellcommando) of via --config-env is verboden, voor elke rol: het rolhek ziet niet wat er draait');
   if (role === 'hoofdsessie') return found;
   if (subcommand === 'push' || subcommand === 'merge' || subcommand === 'rebase')
     found.push(`subagent: git ${subcommand} doet de hoofdsessie`);
   if (subcommand === 'reset' && rest.includes('--hard')) found.push('subagent: git reset --hard is verboden');
+  if (subcommand.startsWith('credential')) found.push('subagent: git credential geeft tokens vrij; verboden');
   return found;
+}
+
+/**
+ * Een git-alias die een shellcommando start (`-c alias.x=!…`, `git config alias.x '!…'`) of zijn waarde uit de omgeving haalt
+ * (`--config-env alias.x=VAR`); `git -c core.quotepath=false log` mag.
+ * @param {readonly string[]} args
+ * @param {{ subcommand: string, rest: readonly string[], config: readonly string[] }} git
+ */
+function shellAlias(args, { subcommand, rest, config }) {
+  const fromEnv = args.some((arg, index) =>
+    (/^--config-env=alias\./i.test(arg)) || (arg === '--config-env' && /^alias\./i.test(args[index + 1] ?? '')));
+  if (fromEnv || config.some((setting) => /^alias\.[^=]*=\s*!/i.test(setting))) return true;
+  return subcommand === 'config' && rest.some((arg) => /^alias\./i.test(arg)) && rest.some((arg) => /^\s*!/.test(arg));
 }
 
 // git accepteert elke unieke prefix van een long option: `--d` t/m `--delete`.
@@ -723,13 +1123,12 @@ const GH_ISSUE_WRITES = new Set(['create', 'new', 'edit', 'close', 'reopen', 'de
 const GH_ISSUE_READS = new Set(['list', 'ls', 'view', 'status']);
 // gh-vlaggen zonder waarde; cobra neemt bij elke andere vlag zonder `=` het volgende woord als waarde.
 const GH_BOOL_FLAGS = new Set(['--help', '-h', '--version']);
-const SHELLS = new Set(['bash', 'sh', 'zsh', 'dash']);
 const LEERPUNT = 'leerpunt';
 const GH_ISSUE_WRITE_TEXT = new RegExp(`\\bgh\\b.*\\bissue\\b.*\\b(?:${[...GH_ISSUE_WRITES].join('|')})\\b`);
 // Programma's die een ander commando uitvoeren; het rolhek ziet dat commando niet als eigen segment.
 const COMMAND_RUNNERS = new Set(['xargs', 'eval', 'exec', 'command', 'time', 'timeout', 'nohup', 'nice', 'parallel', 'watch', 'find']);
 // De ingebouwde gh-groepen; een ander eerste woord is een alias (`gh alias set ic 'issue create'`) of extensie.
-const GH_GROUPS = new Set(['agent-task', 'alias', 'api', 'attestation', 'auth', 'browse', 'cache', 'codespace', 'completion', 'config', 'copilot', 'extension', 'gist', 'gpg-key', 'help', 'issue', 'label', 'licenses', 'org', 'pr', 'preview', 'project', 'release', 'repo', 'ruleset', 'run', 'search', 'secret', 'ssh-key', 'status', 'variable', 'version', 'workflow']);
+const GH_GROUPS = new Set(['agent-task', 'alias', 'api', 'attestation', 'auth', 'browse', 'cache', 'codespace', 'completion', 'config', 'copilot', 'extension', 'gist', 'gpg-key', 'help', 'issue', 'label', 'licenses', 'org', 'pr', 'preview', 'project', 'release', 'repo', 'ruleset', 'run', 'search', 'secret', 'ssh-key', 'status', 'variable', 'version', 'workflow', '--help', '-h', '--version']);
 
 /**
  * Zet een segment van het commando `GH_REPO` of `GH_HOST` (`GH_REPO=… gh`, `env GH_HOST=…`, `export GH_REPO=… &&`)?
@@ -862,19 +1261,44 @@ function optionValues(args, names) {
 const SELF_REVIEW_API = /\/(?:labels|reviews|statuses|check-runs|check-suites)\b|\/requested_reviewers\b/;
 
 /**
- * Voor elke rol, ook de hoofdsessie: zelfreview, het gate-label en mergen (WS-04).
+ * Zonder `-R x`, `--repo x` en `--repo=x`, die gh vóór of na groep en actie accepteert (`gh -R o/r pr merge`), en zonder
+ * lege woorden, die cobra bij het zoeken van het commando overslaat (`gh "" api …`). Een leeg woord na een vlag zonder `=`
+ * blijft staan: dat kan de waarde van die vlag zijn (`gh api -f "" -X POST …`).
  * @param {readonly string[]} args
+ */
+function withoutRepo(args) {
+  /** @type {string[]} */
+  const rest = [];
+  for (let index = 0; index < args.length; index += 1) {
+    const arg = args[index] ?? '';
+    const previous = rest.at(-1) ?? '';
+    if (arg === '-R' || arg === '--repo') index += 1;
+    else if (arg === '' && !(previous.startsWith('-') && !previous.includes('='))) continue;
+    else if (!/^(?:--repo=|-R.)/.test(arg)) rest.push(arg);
+  }
+  return rest;
+}
+
+/**
+ * Voor elke rol, ook de hoofdsessie: zelfreview, het gate-label, mergen (WS-04), aliassen en onleesbare API-invoer.
+ * @param {readonly string[]} rawArgs
+ * @param {readonly string[]} [expanded] woorden met shell-expansie (`Command.expanded` uit shell.mjs)
  * @returns {string[]}
  */
-export function ghForbidden(args) {
+export function ghForbidden(rawArgs, expanded = []) {
+  const args = withoutRepo(rawArgs);
   const [group = '', action = ''] = args;
+  const api = group === 'api' ? apiCall(args.slice(1)) : null;
   /** @type {string[]} */
   const found = [];
+  if (group !== '' && !GH_GROUPS.has(group)) found.push(`gh ${group}: onbekende opdracht (mogelijk een alias), voor elke rol geweigerd`);
+  if (group === 'alias' && (action === 'set' || action === 'import')) found.push('gh alias set/import: een alias omzeilt het rolhek');
   if (group === 'pr' && action === 'review') found.push('gh pr review: de agent keurt nooit zelf goed (AGENTS.md)');
   if (args.some((arg, index) => arg.includes('gate-wijziging') && /label/.test(`${args[index - 1] ?? ''}${arg}`)))
     found.push('het label gate-wijziging zet alleen de eigenaar (AGENTS.md)');
-  if (group === 'api' && apiWritesSelfReview(args.slice(1))) found.push('gh api: labels, reviews en statussen zet alleen de eigenaar');
-  if ((group === 'pr' && action === 'merge') || (group === 'api' && apiMerges(args.slice(1))))
+  if (api !== null) found.push(...apiUnreadable(api, expanded));
+  if (api !== null && apiWritesSelfReview(api)) found.push('gh api: labels, reviews en statussen zet alleen de eigenaar');
+  if ((group === 'pr' && action === 'merge') || (api !== null && apiMerges(api)))
     found.push('mergen (ook auto-merge) doet alleen de eigenaar, voor elke rol (WS-04)');
   return found;
 }
@@ -884,44 +1308,126 @@ const MERGE_MUTATION = /\b(?:mergePullRequest|enablePullRequestAutoMerge|mergeBr
 
 /**
  * `gh api` naar …/merge of …/auto-merge (elke methode) of een GraphQL-mutatie die mergt.
- * @param {readonly string[]} args
+ * @param {ApiCall} api
  */
-function apiMerges(args) {
-  const endpoint = apiEndpoint(args);
-  if (endpoint === 'graphql') return args.some((arg) => MERGE_MUTATION.test(arg));
+function apiMerges({ endpoint, args }) {
+  if (isGraphql(endpoint)) return args.some((arg) => MERGE_MUTATION.test(arg));
   return MERGE_API.test(endpoint);
 }
 
-/** @param {readonly string[]} args */
-function apiWritesSelfReview(args) {
-  const endpoint = apiEndpoint(args);
-  if (endpoint === 'graphql') return args.some((arg) => /mutation[\s\S]*(?:Review|Label|Status|CheckRun)/i.test(arg));
-  return apiMutates(args) && SELF_REVIEW_API.test(endpoint);
+/** @param {ApiCall} api */
+function apiWritesSelfReview(api) {
+  if (isGraphql(api.endpoint)) return api.args.some((arg) => /mutation[\s\S]*(?:Review|Label|Status|CheckRun)/i.test(arg));
+  return apiMutates(api) && SELF_REVIEW_API.test(api.endpoint);
 }
 
-/** REST met schrijfargumenten, of GraphQL-mutatie/onleesbare invoer; inline queries blijven lezen. @param {readonly string[]} args */
-function apiMutates(args) {
-  if (apiEndpoint(args) === 'graphql')
-    return args.some((arg) => /\bmutation\b/i.test(arg) || /query=@/.test(arg) || arg === '--input' || arg.startsWith('--input='));
-  const method = args.findIndex((arg) => arg === '-X' || arg === '--method');
-  return (
-    (method !== -1 && (args[method + 1] ?? 'GET').toUpperCase() !== 'GET') ||
-    args.some((arg) => /^--method=(?!GET$)/i.test(arg) || /^-X(?!GET$).+/i.test(arg)) ||
-    args.some((arg) => arg.startsWith('-f') || arg.startsWith('-F') || ['--field', '--raw-field', '--input'].includes(arg) || /^--(?:field|raw-field|input)=/.test(arg))
-  );
-}
-
-const API_OPTIONS_WITH_VALUE = new Set(['-X', '--method', '-H', '--header', '-f', '-F', '--field', '--raw-field', '--input', '-q', '--jq', '-t', '--template', '--hostname', '--cache', '-p', '--preview']);
+// In een endpoint is elke `$`, `\` of backtick onleesbaar; in een GraphQL-query alleen expansie (`$(`, `${`, backtick, `\`,
+// of `$` buiten enkele aanhalingstekens): `query($n:Int!)` binnen enkele aanhalingstekens is een gewone variabele.
+const UNREADABLE = /[$\\`]/;
+const UNREADABLE_QUERY = /[`\\]|\$[({]/;
 
 /**
- * Het eerste argument dat geen optie of optiewaarde is (`gh api -X POST <endpoint>`).
- * @param {readonly string[]} args
+ * Voor elke rol dicht falen: een GraphQL-query die niet letterlijk is (expansie, een bestand via -F, `--input`) kan elke mutatie zijn,
+ * en een onleesbaar endpoint met een schrijvende aanroep kan …/merge, …/reviews of …/labels zijn.
+ * @param {ApiCall} api
+ * @param {readonly string[]} expanded
+ * @returns {string[]}
  */
-function apiEndpoint(args) {
+function apiUnreadable({ endpoint, options }, expanded) {
+  // Het veld `query`, of een veld waarvan de naam zelf niet letterlijk is (`-f "$K=…"`).
+  const query = options.filter(({ name, value }) => FIELDS.has(name) && !/^(?!query=)[\w[\]]+=/.test(value));
+  const hidden = (/** @type {ApiOption} */ { value, word }) =>
+    expanded.includes(word) || UNREADABLE_QUERY.test(value) || /^[^=]*=@/.test(value);
+  if (isGraphql(endpoint) && (options.some(({ name }) => name === 'input') || query.some(hidden)))
+    return ['gh api graphql met een niet-letterlijke query ($(…), shell-variabele, \\, @file of --input) is verboden, voor elke rol'];
+  if (UNREADABLE.test(endpoint) && apiMutates({ endpoint, options, args: [] }))
+    return ['gh api: een schrijvende aanroep naar een onleesbaar endpoint is verboden, voor elke rol'];
+  return [];
+}
+
+// Wat een subagent bij `gh api` mag: alleen opties die niets schrijven of meesturen (`-H` alleen als Accept-header).
+const API_READ_OPTIONS = new Set(['jq', 'paginate', 'include', 'silent']);
+
+/**
+ * Lezen via `gh api` voor een subagent: leesbaar REST-endpoint, geen GraphQL en alleen bekende lezende opties.
+ * @param {ApiCall} api
+ */
+function apiReads({ endpoint, options }) {
+  return endpoint !== '' && !UNREADABLE.test(endpoint) && !isGraphql(endpoint) &&
+    options.every(({ name, value }) => API_READ_OPTIONS.has(name) || (name === 'header' && /^accept:/i.test(value)));
+}
+
+/** @param {string} endpoint */
+function isGraphql(endpoint) {
+  return /^graphql\/?(?:[?#]|$)/i.test(endpoint);
+}
+
+const FIELDS = new Set(['field', 'raw-field', 'input']);
+
+/** REST met een andere methode dan GET of met velden/invoer (gh stuurt dan POST). @param {ApiCall} api */
+function apiMutates({ options }) {
+  const method = options.filter(({ name }) => name === 'method').at(-1)?.value ?? 'GET';
+  return method.toUpperCase() !== 'GET' || options.some(({ name }) => FIELDS.has(name));
+}
+
+/**
+ * @typedef {{ name: string, value: string, word: string }} ApiOption `word`: het argument waar de waarde in stond.
+ * @typedef {{ endpoint: string, options: ApiOption[], args: readonly string[] }} ApiCall
+ */
+
+// Korte opties van gh api met hun lange naam; de lange namen in API_VALUES nemen een waarde.
+const API_SHORT = new Map([['X', 'method'], ['H', 'header'], ['f', 'raw-field'], ['F', 'field'], ['q', 'jq'], ['t', 'template'], ['p', 'preview'], ['i', 'include']]);
+const API_VALUES = new Set(['method', 'header', 'raw-field', 'field', 'input', 'jq', 'template', 'preview', 'hostname', 'cache']);
+
+/**
+ * Leest `gh api`-argumenten: opties (ook clusters als `-iX PUT`, `-XPUT`, `-ftitle=x`, `--method=PUT`) en het endpoint,
+ * genormaliseerd zonder host (`https://api.github.com`, GHES `…/api/v3`) en voorloop-`/`.
+ * @param {readonly string[]} args
+ * @returns {ApiCall}
+ */
+function apiCall(args) {
+  /** @type {ApiOption[]} */
+  const options = [];
+  let endpoint = null;
   for (let index = 0; index < args.length; index += 1) {
     const arg = args[index] ?? '';
-    if (API_OPTIONS_WITH_VALUE.has(arg)) index += 1;
-    else if (!arg.startsWith('-')) return arg;
+    const next = args[index + 1] ?? '';
+    const [long = '', ...inline] = arg.slice(2).split('=');
+    const taken = arg.startsWith('--')
+      ? pushOption(options, { name: long, value: inline.join('='), word: arg }, inline.length === 0 ? next : null)
+      : arg.startsWith('-') && arg.length > 1 ? shortCluster(options, arg, next) : null;
+    if (taken === true) index += 1;
+    else if (taken === null && endpoint === null) endpoint = arg;
   }
-  return '';
+  const normalized = (endpoint ?? '').replace(/^https?:\/\/[^/]*/i, '').replace(/^\/+/, '').replace(/^api\/(?:v3\/)?/i, '');
+  return { endpoint: normalized, options, args };
+}
+
+/**
+ * Voegt een optie toe; neemt `next` als waarde als de optie er een vraagt en er nog geen heeft. Geeft terug of `next` op is.
+ * @param {ApiOption[]} options
+ * @param {ApiOption} option
+ * @param {string | null} next
+ */
+function pushOption(options, option, next) {
+  const takes = next !== null && API_VALUES.has(option.name);
+  options.push(takes ? { name: option.name, value: next, word: next } : option);
+  return takes;
+}
+
+/**
+ * Een cluster korte opties; een optie met waarde neemt de rest van het cluster of anders het volgende argument.
+ * @param {ApiOption[]} options
+ * @param {string} arg
+ * @param {string} next
+ */
+function shortCluster(options, arg, next) {
+  for (let index = 1; index < arg.length; index += 1) {
+    const flag = arg[index] ?? '';
+    const name = API_SHORT.get(flag) ?? flag;
+    const rest = arg.slice(index + 1);
+    if (API_VALUES.has(name)) return pushOption(options, { name, value: rest, word: arg }, rest === '' ? next : null);
+    options.push({ name, value: '', word: arg });
+  }
+  return false;
 }

@@ -190,6 +190,12 @@ Open werk dat niet geparkeerd is, grofweg in volgorde. Wat nog een spec of eigen
   beslissing (ask, deny of melding) die een Edit op hetzelfde pad krijgt; een redirect (`cat > f <<EOF`) ziet het rolhek wel. Eerst kiezen
   tussen weigeren en melden; de diff-guard in CI blijft de grens.
   aanleiding: #260 (eigenaarbesluit: als item opnemen; de developer schreef `.claude/**`, `.github/**`, `scripts/**` en `rails/**` via een Python-script, de reviewer zag alleen ADR-nummerwijzigingen)
+- [ ] **Omhulsels met opties en xargs-optiewaarden in het rolhek.** `splitCommand` (`rails/hooks/lib/shell.mjs`) stopt bij de eerste optie van een
+  omhulsel en kent `setsid`, `timeout` en `stdbuf` niet, zodat `env -i gh …`, `nice -n 1 gh …` en `timeout 9 gh …` voor de hoofdsessie de regels voor
+  het label, `@file`/`--input` en `gh alias` ontlopen; `xargsCall` (`rails/hooks/lib/rolhek.mjs`) leest bij een long option of een cluster met waarde
+  (`--arg-file F`, `-0a F`, `-rn 1`) de optiewaarde als commandowoord. Opties van omhulsels overslaan en die xargs-vormen lezen, met tests per vorm;
+  `coreutils --coreutils-prog=env` hoort bij dezelfde klasse, net als een gh-vlag tussen `pr` en `review` (`gh pr -b x review 1 --comment`): `ghForbidden` leest groep en actie positioneel in plaats van via `ghCommandWords`.
+  aanleiding: `rails/hooks/lib/rolhek.mjs` (delta-review ronde 2 van fix/rolhek-gh-allowlist)
 
 ## Geparkeerd
 

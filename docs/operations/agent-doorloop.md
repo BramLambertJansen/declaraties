@@ -138,12 +138,39 @@ de gedeelde Git-geschiedenis van beide ouders en `template/main`, zonder extra v
 zonder core-wijziging en een nieuwere core met behoud van app-code blijven mogelijk; ontbrekende geschiedenis vraagt
 een volledige fetch. Dit bewaakt core; het vervangt de inhoudelijke review van app-code niet.
 
-Het rolhek reserveert PR-creatie en schrijvende `gh api`-opdrachten voor de hoofdsessie; inline GraphQL-queries
-blijven voor subagents leesbaar, oncontroleerbare GraphQL-invoerbestanden niet. `pnpm format` en `pnpm run format`
+Het rolhek reserveert PR-creatie en elke schrijvende gh-opdracht voor de hoofdsessie; subagents krijgen alleen een
+leeslijst (`gh pr view/diff/checks`, `gh run view`, REST-GET via `gh api`) en geen GraphQL, ook geen leesquery
+(`docs/framework.md`, rij "PreToolUse rolhek (Bash)"). Een grove regel op de ruwe tekst, zonder `\`, `'` en `"`,
+weigert voor elke rol mergen en goedkeuren in tekst die gh, `/pulls/`, `api.github.com` of GraphQL noemt, ook verhuld
+(`g\h`, `mer""ge`), ook binnen `$(…)` en backticks; een commandowoord dat niet letterlijk is (`$CMD …`, `$(…)`, een glob of
+`~` vooraan, na `!`, `if`, `while` of een omhulsel als `env`/`nice`/`sudo` moet elk woord van het segment
+letterlijk zijn; en achter xargs of find
+`-exec`). Een glob op welke positie ook die naar `gh` kan wijzen (`/usr/bin/g[h]`, `g?`), brace-expansie (`g{h..h}`, `{g,x}h`) en POSIX-klassen (`[[:alpha:]]`) zijn los daarvan dicht (bewust vals positief: `echo {a,b}`, `echo {1..3}`, een `--jq`-object met een komma), een variabel woord (`${G}h`, `$G`) naast een gh-subcommandowoord als `pr`, `api` of `run`
+(bewust vals positief: `echo $HOME run`); met een geëxpandeerd argument mag alleen een programma uit een vaste lijst
+(`echo`, `cat`, `ls`, `cp`, `rm`, `grep`, …; niet `sed`/`awk`, die zelf een commando kunnen uitvoeren), anders deny voor subagents en ask voor de hoofdsessie; en `eval`/`bash -c` met expansie zijn voor elke rol dicht; subagents
+gebruiken geen xargs met een commando en geen find `-exec`. `gh` telt alleen als los woord (niet in `gh-notes` of een testpad). Bewuste valse meldingen: een PR-titel of
+-body met het woord `merge ` als argument (gebruik `--body-file` en een titel zonder dat woord), en een commitbericht
+met `merge` naast `gh`, `graphql` of `/pulls/` (gebruik `git commit -F <bestand>`), en elk argument met `pr merge` of
+`pr review … --approve`, ook `grep 'pr merge'` (gebruik `-F <bestand>`/`--body-file`). Ook `git commit -m "$(cat <<EOF…)"`
+en `gh pr create --body "$(…)"` geven een ask of deny (substitutie en heredoc); schrijf het bericht naar een bestand en
+gebruik `git commit -F <bestand>` of `gh pr create --body-file <bestand>`. Voor elke rol zijn verder dicht: `pr review`
+naast een los `gh`, ook zonder `--approve` en achter een omhulsel (`env -i gh pr review …`, `timeout 9 gh pr review …`;
+bewust vals positief: `grep 'pr review' gh`), `pr merge`
+en `pr review … --approve` (ook `-a` vooraan een cluster: `-ab`, `-aF`) en een GraphQL-merge ook zonder herkenbaar `gh`, `env -S`/`--split-string` (ook als `-vS`, na
+`-u NAAM`/`-C MAP`/`--unset`/`--chdir` en met escapes als `-S'\_gh'`; dicht falen, dus ook `-uS`), een git-alias met `!` (`-c alias.x=!…`,
+`git config alias.x '!…'`) of via `--config-env`, en xargs of find `-exec` met `gh`, `git`, een shell, `eval` of een omhulsel als `env`, `command`, `nice` of `timeout`
+als commandowoord (ook zonder zichtbare `gh` erna; bewust vals positief: `xargs nice prettier` en
+`git ls-files -z | xargs -0 git add`). Label, `@file`/`--input` en `gh alias` weigert `ghForbidden` alleen waar
+`splitCommand` (`rails/hooks/lib/shell.mjs:198`) `gh` als commandowoord ziet; achter een omhulsel met opties
+(`env -i gh …`, `nice -n 1 gh …`, `timeout 9 gh …`, `stdbuf`, `setsid`) geldt dat voor de hoofdsessie niet.
+Lege woorden vóór of tussen groep en actie (`gh "" api …`, `gh '' pr review 1`) slaat het rolhek over zoals gh/cobra
+doet, dus gelden dezelfde regels (`withoutRepo` in `rails/hooks/lib/rolhek.mjs`).
+`pnpm format` en `pnpm run format`
 vragen de hoofdsessie expliciet akkoord omdat ze ook beschermde bestanden schrijven; subagents gebruiken gerichte
 formattering. De padcontrole volgt bij cp/mv/ln/install ook `-t` en `--target-directory`.
 `git update-ref --stdin` (ook afgekort) wordt geweigerd omdat de te wijzigen refs niet in de opdracht staan.
-Dit sluit bekende omwegen; de bestaande sandbox en CI blijven nodig voor niet-geclassificeerde programma's.
+Dit sluit bekende omwegen; scripts in de repo en interpreters (`node -e`) blijven open, voor de hoofdsessie ook `curl -K <bestand>`, net als een kopie of link van gh onder een andere naam, of een zelfgeschreven uitvoerbaar bestand (bijvoorbeeld `cp /usr/bin/gh ./x; ./x …`); deze klasse komt samen met `node_modules/.bin` in een aparte rail-PR. Ook open voor de hoofdsessie: (a) een omhulsel met opties vóór gh (label, `@file`/`--input`, `gh alias`), (b) xargs met een long option of een cluster met waarde (`--arg-file F`, `-0a F`, `-rn 1`), waarvan de optiewaarde als commandowoord wordt gelezen, en (c) `coreutils --coreutils-prog=env`; (a) en (b) staan in `docs/roadmap.md`. De harde grens is GitHub zelf
+(ruleset en eigenaarmerge); sandbox en CI blijven nodig voor niet-geclassificeerde programma's.
 
 Een geldig broncodemandaat geeft alleen de bekende developer toegang tot genoemde beschermde bronbestanden.
 Core kan uitsluitend in de template zelf worden ontwikkeld. App-uitbreidingen blijven via registratie en app-code
