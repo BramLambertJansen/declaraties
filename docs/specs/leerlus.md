@@ -95,7 +95,9 @@ n.v.t. voor `docs/gouden-pad.md` (geen resource); railwerk volgt de bestaande vo
 - **leerlus/AC-5** — Rolhek, hoofdsessie: `gh issue create` met `--repo`/`-R` exact gelijk aan `onderhoud.repository`
   (hoofdletterongevoelig, vorm `<owner>/<repo>`) en precies één label `leerpunt` geeft geen deny en geen ask. Ontbreekt
   `--repo`, wijst het naar een andere repo of andere vorm (URL, host), ontbreekt het label, staat er een ander label naast,
-  of zet het commando `GH_REPO`/`GH_HOST`, dan is de uitslag ask met een reden.
+  of zet het commando `GH_REPO`/`GH_HOST`, dan is de uitslag ask met een reden. Notitie: `$(…)`/backticks naast een
+  gh-subcommando en een onbekende gh-vlag of -groep vóór `issue create` geven ook voor de hoofdsessie deny, strenger dan
+  ask (eigenaarbesluit 2026-10-27: de rolhek-regels voor elke rol gaan voor).
 - **leerlus/AC-6** — Rolhek, elke subagent (ook een onbekende): `gh issue create` geeft deny, ook met de juiste repo en het
   juiste label.
 - **leerlus/AC-7** — Rolhek, elke subagent: `gh issue edit|close|reopen|delete|transfer|lock|unlock|pin|unpin|comment|develop`

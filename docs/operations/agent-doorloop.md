@@ -163,6 +163,8 @@ als commandowoord (ook zonder zichtbare `gh` erna; bewust vals positief: `xargs 
 `git ls-files -z | xargs -0 git add`). Label, `@file`/`--input` en `gh alias` weigert `ghForbidden` alleen waar
 `splitCommand` (`rails/hooks/lib/shell.mjs:198`) `gh` als commandowoord ziet; achter een omhulsel met opties
 (`env -i gh …`, `nice -n 1 gh …`, `timeout 9 gh …`, `stdbuf`, `setsid`) geldt dat voor de hoofdsessie niet.
+Lege woorden vóór of tussen groep en actie (`gh "" api …`, `gh '' pr review 1`) slaat het rolhek over zoals gh/cobra
+doet, dus gelden dezelfde regels (`withoutRepo` in `rails/hooks/lib/rolhek.mjs`).
 `pnpm format` en `pnpm run format`
 vragen de hoofdsessie expliciet akkoord omdat ze ook beschermde bestanden schrijven; subagents gebruiken gerichte
 formattering. De padcontrole volgt bij cp/mv/ln/install ook `-t` en `--target-directory`.

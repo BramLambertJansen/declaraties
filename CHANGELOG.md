@@ -66,6 +66,7 @@ Hier staan wijzigingen die van belang zijn bij het gebruiken of bijwerken van de
   Met een los `gh` in de tekst is `pr review` voor elke rol dicht, ook zonder `--approve` en achter een omhulsel
   (`env -i gh pr review …`, `setsid`, `timeout`); `-a` telt ook vooraan een cluster (`-ab`, `-aF`). Nog open voor de
   hoofdsessie: omhulsels met opties vóór gh (label, `@file`, `gh alias`) en xargs-optiewaarden (`docs/roadmap.md`).
+  Een leeg woord vóór de gh-groep (`gh "" api …`) verbergt het subcommando niet meer (`rails/hooks/lib/rolhek.mjs:1268`).
 
 - Het roadmaparchief valt onder de beschermde gate-paden en CODEOWNERS, ook bij verwijderen of weg-hernoemen.
 
