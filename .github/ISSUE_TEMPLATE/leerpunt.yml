@@ -1,0 +1,68 @@
+# Leerpunt (ADR 0059)
+name: Leerpunt
+description: Een les uit het bouwen van een app die de template kan verbeteren. Alleen in de template-repo; geen appcode, appdata of geheimen.
+title: "Leerpunt: "
+labels: [leerpunt]
+body:
+  - type: dropdown
+    id: soort
+    attributes:
+      label: Soort
+      options:
+        - Doorgeglipte fout
+        - Herhaald handwerk
+        - Onduidelijke instructie
+        - Ontbrekend component
+        - Wrijving in de werkstraat
+        - Valkuil zonder check
+        - Efficiëntie van de code
+        - Kracht van de coding agent
+        - Tokenefficiëntie
+    validations:
+      required: true
+  - type: textarea
+    id: bron
+    attributes:
+      label: Bron
+      description: App-PR-nummer, checknaam of signaalmoment (slotvraag, derde CI-ronde, eigenaarcorrectie, reviewbevinding, tweede correctiepoging). Geen appdata, logs of schermafbeeldingen.
+    validations:
+      required: true
+  - type: textarea
+    id: kosten
+    attributes:
+      label: Kosten
+      description: "Alleen tellingen uit pnpm meting of de PR: CI-rondes, beurten, prompts, minuten. Onbekend is onbekend."
+    validations:
+      required: true
+  - type: textarea
+    id: reproductie
+    attributes:
+      label: Generieke reproductie
+      description: Stappen op een verse kopie van de template, zonder appcode of appdata. Zonder reproductie geen leerpunt.
+    validations:
+      required: true
+  - type: dropdown
+    id: ladder
+    attributes:
+      label: Voorstel voor de plek
+      options:
+        - Type
+        - Check
+        - Gouden pad of generator
+        - Skill
+        - Padregel
+        - AGENTS.md
+    validations:
+      required: true
+  - type: input
+    id: template_sha
+    attributes:
+      label: Template-SHA van de app
+      description: "Uitvoer van git merge-base HEAD template/main (40 tekens); in de template zelf: HEAD."
+    validations:
+      required: true
+  - type: input
+    id: eerder
+    attributes:
+      label: Eerder
+      description: "Bij een terugkerende fout: eerder: #nnn. Anders leeg."

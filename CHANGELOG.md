@@ -6,6 +6,13 @@ Hier staan wijzigingen die van belang zijn bij het gebruiken of bijwerken van de
 
 ### Toegevoegd
 
+- Leerlus van app naar template (ADR 0059, spec `docs/specs/leerlus.md`): een generieke les uit een app gaat als issue met
+  label `leerpunt` naar de template-repo, via het formulier `.github/ISSUE_TEMPLATE/leerpunt.yml` en de leerpuntstap in de
+  skill `opleveren` (Opruimen stap 8). De reviewer markeert per blokkerende bevinding `Leerpunt: ja (<soort>)` of `nee`.
+  Het rolhek laat de hoofdsessie `gh issue create` zonder vraag alleen doen naar `onderhoud.repository` met precies één
+  `--label leerpunt` (anders ask); subagents krijgen deny op schrijvende `gh issue`-opdrachten. De eigenaar maakt het
+  label aan en triageert.
+
 - Browser-smoke van de productie-SPA: de CI-job `image` opent `/` en `/admin/accounts` uit de gebouwde image in Chromium,
   zonder database. Dat bewijst dat de bundel laadt en dat router en foutscherm renderen; de smoke faalt op een
   CSP-schending, een ongevangen JS-fout, een mislukte asset of een `console.error` buiten mislukte `/api/`-requests en

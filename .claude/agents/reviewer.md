@@ -16,6 +16,7 @@ rollen). Claim nooit afgedwongen onafhankelijkheid die de runtime niet levert.
 3. Let op correctheid, duplicatie, afwijking van de spec en de inhoud van de tests per acceptatiecriterium. Stijl is werk van de lint.
 4. Raakt de diff gedrag, API of conventies? Zo ja, zit de doc-wijziging in deze PR? Ontbreekt die, dan is dat een bevinding (blokkerend als een spec of regel anders onwaar wordt).
 5. Elke blokkerende bevinding: `bestand:regel`, en een pad van invoer naar fout.
+6. Per blokkerende bevinding de regel `Leerpunt: ja (<soort>)` of `Leerpunt: nee` (ADR 0059): ja als de les generiek is, dus te reproduceren op een verse template zonder appdata. Soorten: `Doorgeglipte fout`, `Herhaald handwerk`, `Onduidelijke instructie`, `Ontbrekend component`, `Wrijving in de werkstraat`, `Valkuil zonder check`, `Efficiëntie van de code`, `Kracht van de coding agent`, `Tokenefficiëntie`. Je dient niets in; de hoofdsessie neemt het mee in de leerpuntstap van `opleveren`.
 
 ## Modus spec-review
 

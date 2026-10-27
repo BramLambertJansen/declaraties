@@ -93,6 +93,7 @@
     "allow": [
       "Bash(git push origin chore/mandate-adr-statusregel)",
       "Bash(gh pr create:*)",
+      "Bash(gh issue create --repo BramLambertJansen/template --label leerpunt *)",
       "Bash(node scripts/kit/feiten.mjs)",
       "Bash(node scripts/kit/feiten.mjs *)",
       "Bash(pnpm gate:fast)",
