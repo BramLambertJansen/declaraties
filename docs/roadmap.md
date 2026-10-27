@@ -194,7 +194,7 @@ Open werk dat niet geparkeerd is, grofweg in volgorde. Wat nog een spec of eigen
   omhulsel en kent `setsid`, `timeout` en `stdbuf` niet, zodat `env -i gh …`, `nice -n 1 gh …` en `timeout 9 gh …` voor de hoofdsessie de regels voor
   het label, `@file`/`--input` en `gh alias` ontlopen; `xargsCall` (`rails/hooks/lib/rolhek.mjs`) leest bij een long option of een cluster met waarde
   (`--arg-file F`, `-0a F`, `-rn 1`) de optiewaarde als commandowoord. Opties van omhulsels overslaan en die xargs-vormen lezen, met tests per vorm;
-  `coreutils --coreutils-prog=env` hoort bij dezelfde klasse.
+  `coreutils --coreutils-prog=env` hoort bij dezelfde klasse, net als een gh-vlag tussen `pr` en `review` (`gh pr -b x review 1 --comment`): `ghForbidden` leest groep en actie positioneel in plaats van via `ghCommandWords`.
   aanleiding: `rails/hooks/lib/rolhek.mjs` (delta-review ronde 2 van fix/rolhek-gh-allowlist)
 
 ## Geparkeerd
