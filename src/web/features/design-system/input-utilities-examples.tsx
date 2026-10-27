@@ -79,7 +79,7 @@ export function InputUtilitiesExamples() {
           label="Voorbeeldkruimelpad"
           items={[
             { id: 'home', label: 'Start', href: '/' },
-            { id: 'accounts', label: 'Accounts', href: '/accounts' },
+            { id: 'accounts', label: 'Accounts', href: '/admin/accounts' },
           ]}
           currentPage="Accountgegevens met een lange beschrijving"
         />

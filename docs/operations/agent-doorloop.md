@@ -3,16 +3,18 @@
 De eigenaar beslist inhoudelijk met zijn merge ([ADR 0046](../adr/0046-werkstraat-en-beslisroute.md)). De agent schrijft de bedoelde status in
 het voorstel, bouwt, verzamelt bewijs en zet `gebouwd` zodra het bouwbewijs bestaat ([ADR 0046](../adr/0046-werkstraat-en-beslisroute.md) punt 10).
 
-## Besluit en taakscope voorbereiden
+## Lokale belasting
 
-`pnpm gate:fast` meldt het wanneer minder dan 6 GiB geheugen beschikbaar is: lint en tests wachten dan op elkaar,
+De geheugengrens staat in `scripts/kit/geheugen.mjs`: weinig geheugen is minder dan 6 GiB beschikbaar; op macOS, waar
+libuv alleen vrije pagina's telt, een host met hooguit 8 GiB RAM. `GATE_WEINIG_GEHEUGEN=1` of `0` beslist voor de host. `pnpm gate:fast` meldt het onder de grens: lint en tests wachten dan op elkaar,
 terwijl de overige snelle gates hun bestaande baan houden. Alle controles draaien precies eenmaal, ook na rood.
 Aanleiding: op de gedeelde 8-GiB-host liep een ESLint-proces van 1,8 GiB naast de tests; de swap was vol en de gate
 duurde 486 s met time-outs. Dit is een lokale waarneming, geen vaste looptijd. De CLI-regressies in
 `test/rails/gate-fast-memory.test.ts` bewaken beide planningen en het behoud van alle gates en exitcodes.
 
-Dezelfde geheugengrens begrenst Playwright: één worker onder de grens, anders hooguit vier en nooit meer dan beschikbare
-CPU's. Alle e2e-tests, CSP, axe en time-outs blijven behouden. Aanleiding: de lokale run met acht workers op de gedeelde
+Dezelfde geheugengrens begrenst Playwright: één worker onder de grens, anders de helft van de CPU's (minstens één,
+hooguit vier). Op CI stijgt het aantal workers daardoor nooit, maar het kan dalen: een runner met 4 vCPU gaat van vier
+naar twee workers. Dat is bedoeld (elke worker draait een eigen Chromium naast API en Vite). Alle e2e-tests, CSP, axe en time-outs blijven behouden. Aanleiding: de lokale run met acht workers op de gedeelde
 8-GiB-host eindigde na 10,3 minuten met 67 time-outs/fouten en zeven geslaagde tests; de gewone pre-commitcontrole duurde
 tegelijk 422 s. De nieuwe planning is op de echte configuratie getest; uitvoering in de runner vraagt CI-bewijs, omdat
 `playwright.config.ts` hostcode is (ADR 0044). Een nieuwe planning maakt de oude rode run niet groen.
@@ -23,6 +25,12 @@ worden pas geladen bij `componenten` of bij een aanroep zonder secties; tekst- e
 Lokale vergelijking op 25 oktober 2026 (Node 26.11.1, vijf losse processen per versie, `gates --json`): mediaan 426 ms
 vóór en 32 ms na uitgesteld laden. Dit is een momentopname. `test/scripts/feiten-lazy.test.ts` bewaakt de vermeden import;
 de bestaande feiten- en toolchaintests bewaken de uitvoer en foutafhandeling.
+
+De Stop-feedback (ook SubagentStop van de developer) kijkt naar de werkmap plus wat de branch sinds `origin/main` heeft
+gecommit (`rails/hooks/lib/werkstraat.mjs:48`); een schone werkmap met rode gecommitte code geeft dus nog feedback.
+Elke rode controle krijgt een eigen deel van de 40 regels (`rails/hooks/lib/werkstraat.mjs:109`).
+
+## Besluit en taakscope voorbereiden
 
 `docs/roadmap-archief.md` bevat historisch bouwbewijs en is net als de actieve roadmap een beschermd gate-pad.
 De diff-guard beoordeelt ook verwijderen en weg-hernoemen; CODEOWNERS volgt dezelfde lijst in `.claude/gates.json`.
@@ -42,14 +50,8 @@ De app-initialisatie heeft naast geïsoleerde fixtures ook een compatibiliteitsp
 Git-geschiedenis. CI haalt hiervoor de volledige geschiedenis op; er wordt niets teruggeschreven naar de eigen checkout.
 
 Begin met de taakrelevante secties van `node scripts/kit/feiten.mjs`, bijvoorbeeld `gates specs fase`.
-De hoofdsessie bepaalt de route uit framework §8 (ADR 0058). Alleen een beperkte bugfix of heel kleine aanpassing binnen
-bestaande functionaliteit/interactie is licht: geen nieuwe ADR/spec/mini-spec of record; uitkomst, scope en bewijs staan
-kort in de opdracht/PR. Bij gedragsverandering of -herstel schrijft een aparte tester eerst de regressie; zonder gedrag
-geen vaste tester. Daarna bouwer en aparte reviewagent. Nieuwe features, pagina's, interacties en risicowerk krijgen altijd
-architect/spec, contract waar nodig, tester, bouwer en afgedwongen onafhankelijke review. Twijfel of scopegroei gaat
-volledig. Hergebruik passende feature-specs; een feature vraagt niet automatisch een ADR. Een classificatie geeft geen
-extra rechten. Bestaande besluiten, specs, spec-review en negatieve securitytests blijven gelden.
-Architect of hoofdsessie schrijft spec of ADR direct met de bedoelde status; de eigenaar merget
+De hoofdsessie kiest de route: licht alleen voor beperkte fixes binnen bestaand gedrag; anders volledig — framework §8.
+Spec (in de volledige straat door de architect) of ADR krijgt direct de bedoelde status; de eigenaar merget
 (besluit) of sluit de PR (afwijzen). Alleen voor een broncodemandaat (`--path`) bereidt de hoofdsessie een besluitrecord voor:
 
 ```sh
@@ -84,13 +86,9 @@ ongewijzigd op iedere PR. Toepasselijke runnerchecks blijven verplicht. Een code
 vraagt nieuw bewijs; geen hergebruik van een oude groene uitslag of generieke cache.
 
 Overdracht bevat alleen doel, toepasselijke spec/contract of verwachte uitkomst uit de opdracht/PR, gewijzigde paden,
-open keuzes en echte checkuitslagen. Reviewagent met schone context en leesopdracht bij licht werk; technische isolatie
-waar beschikbaar, zonder die isolatieclaim als ze ontbreekt. Dat ontbreken alleen verplicht geen externe of menselijke
-reviewer. Zonder aparte agent, of zonder afgedwongen rolscheiding bij volledig werk, voert de eigenaar de ontbrekende
-stap uit. De bouwer claimt geen eigen controle als aparte review.
+open keuzes en echte checkuitslagen. Wie reviewt en wanneer de eigenaar dat overneemt: framework §8 (eisen aan de rollen).
 
-De gerichte feedback volgt ADR 0057; de routegrens en rolkeuze volgen ADR 0058. Eerst de afzonderlijke besluit-PR mergen,
-daarna de implementatie. De vertrouwde
+De gerichte feedback volgt ADR 0057. De vertrouwde
 hooklader gebruikt main; een branch activeert geen nieuwe rechten. De App, live ruleset en strikte build-proof uit dat
 ADR zijn afzonderlijk vervolgwerk en worden door deze hookwijziging niet als gebouwd of actief verklaard.
 
@@ -105,8 +103,7 @@ Een besluit kost één PR: de merge is het besluit. Architect of hoofdsessie zet
 inhoud na de status en committer doen er niet toe (ADR 0046 punt 7). Zonder record herkent `check-document-status` twee gevallen
 (`scripts/kit/lane.mjs`); de samenvatting noemt elk document dat een eigenaarstatus krijgt. Een PR met een eigenaarstatus merget altijd de eigenaar.
 
-**Functionele UI in de template (ADR 0056/0058):** een beperkte fix binnen de lichte grens van framework §8 krijgt geen
-nieuwe mini-spec. Noteer de uitkomst, scope en testbewijs kort in de PR, inclusief gewijzigde bestaande UI-tests met reden.
+**Functionele UI in de template (ADR 0056/0058):** een lichte fix volgt framework §8, zonder mini-spec.
 Voor overige functionele UI gebruik je de mini-spec met aanvullend `scope: functionele-ui` in de frontmatter.
 Beschrijf het gevraagde gedrag en de acceptatiecriteria en bouw in dezelfde PR; een vooraf gemergde spec en een record met
 bronpaden zijn hiervoor niet nodig. De scope omvat bestaande componenten in `src/core/web/ui`, vaste teksten in
@@ -238,8 +235,7 @@ Een wijziging aan die guard zelf vraagt, zolang hij nog niet op main staat, eige
 
 Claude Code gebruikt de geteste hooks. Codex en andere runtimes draaien ze niet automatisch: volg dezelfde procedure
 en meld ontbrekende lokale rolgrenzen. Een subagent met dezelfde rechten als de hoofdsessie is geen afgedwongen
-onafhankelijke reviewer. Bij lichte fixes volstaat een aparte agent met leesopdracht zonder die isolatieclaim;
-bij volledig werk verzorgt de eigenaar de ontbrekende onafhankelijke stap vóór samenvoegen. De agent merget nooit.
+onafhankelijke reviewer; wat dan per route volstaat, staat in framework §8. De agent merget nooit.
 
 ## Bekende beperkingen
 
@@ -248,7 +244,10 @@ bij volledig werk verzorgt de eigenaar de ontbrekende onafhankelijke stap vóór
   packagebestanden, compose en de configs van vite, vitest en playwright. De testbestanden zelf horen daar niet bij; die vraagt
   de agent juist te mogen toevoegen en draaien.
 - De hooks lezen de vertrouwde basis uit de lokale ref `origin/main` en doen geen netwerkwerk. Het rolhek weigert elke andere
-  manier om die ref of de remote `origin` te veranderen dan `git fetch origin` (`movesTrustedBase` in `rails/hooks/lib/rolhek.mjs`).
+  manier om die ref of de remote `origin` te veranderen dan `git fetch origin` (`movesTrustedBase` in `rails/hooks/lib/rolhek.mjs`),
+ook een fetch van `origin` met als bestemming `refs/remotes/origin/main`, `git replace` (behalve `--list`), config op
+`include.*`/`includeIf.*` en, voor elke rol en elk programma, `GIT_CONFIG_*`, `GIT_DIR` of `GIT_WORK_TREE` als
+toewijzing, `export` of `declare -x`. `scripts/runner.sh` vergelijkt niet met die lokale ref maar met `git ls-remote origin refs/heads/main`.
   Een commando buiten de hooks, of een andere runtime, valt daar niet onder; de CI-guard leest `main` bij GitHub en is de echte grens
   (`scripts/kit/check-document-status.mjs`).
 

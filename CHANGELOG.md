@@ -20,10 +20,19 @@ Hier staan wijzigingen die van belang zijn bij het gebruiken of bijwerken van de
 - DateInput behoudt de native kalender als `showPicker` ontbreekt of wordt geweigerd. De extra kalenderknop verschijnt
   bij een beschikbare showPicker-functie; een geweigerde aanroep herstelt de native indicator en behoudt waarde en focus.
 
-- De snelle gate laat lint en tests bij weinig beschikbaar geheugen na elkaar draaien. Alle bestaande controles en
+- De snelle gate laat lint en tests bij weinig geheugen na elkaar draaien. Alle bestaande controles en
   faalvoorwaarden blijven gelden; met voldoende geheugen blijven de drie parallelle banen beschikbaar.
-- Dezelfde geheugengrens begrenst browserworkers tot één bij weinig ruimte; anders hooguit vier, binnen de CPU-capaciteit.
+  Weinig is minder dan 6 GiB beschikbaar, op macOS een host met hooguit 8 GiB;
+  `GATE_WEINIG_GEHEUGEN=1|0` beslist voor de host (`scripts/kit/geheugen.mjs`).
+- Dezelfde geheugengrens begrenst browserworkers tot één bij weinig ruimte; anders de helft van de CPU's, hooguit vier.
+  Een runner met 4 vCPU draait daardoor twee in plaats van vier workers.
   De volledige e2e-suite, toegankelijkheidscontroles en time-outs blijven gelden.
+
+- De Stop-feedback van de developer controleert ook code die de branch al heeft gecommit (schone werkmap), respecteert
+  `stop_hook_active` en toont per rode controle een eigen deel van de uitvoer (`rails/hooks/lib/werkstraat.mjs`).
+- `check-docs` vangt een open vraag ook met `⚠️`, in hoofdletters en zonder opsommingsteken, en weigert een
+  `.md`-bestand in `docs/adr/` dat niet `NNNN-slug.md` heet (README.md en `_`-sjablonen uitgezonderd). Bij een update:
+  hernoem een afwijkend ADR-bestand.
 
 - De feitenopdracht laadt de UI-catalogus alleen wanneer componentinformatie wordt gevraagd. Gerichte vragen over
   gates, ADR's, specs, migraties, routes, permissies, foutcodes en fase starten zonder de TypeScript-compiler te laden.
@@ -53,6 +62,8 @@ Hier staan wijzigingen die van belang zijn bij het gebruiken of bijwerken van de
 
 - De resourcegenerator vraagt ook een tweede create-sample voor echte cursorpaginering. De securitysuite weigert een
   ontbrekend sample en gelijke create-ID's. Resourcemetadata kiest de toegestane rol voor A en B, inclusief admin met MFA.
+  Bij een update: geef elke regel in `test/security/resources.ts` een `sample.createTweede` (anders is `pnpm test:db`
+  rood) en een `rol` als de resource niet voor `user` is (standaard `user`).
 
 - De componentskill verwijst naar de verplichte catalogusdekking voor alle componenten en eindige varianten. De oude
   aanwijzing om een uitzondering in het controlescript te maken is verwijderd; die mogelijkheid bestaat niet.
@@ -182,6 +193,8 @@ Hier staan wijzigingen die van belang zijn bij het gebruiken of bijwerken van de
   pnpm-opties akkoord. Het rolhek is een vangnet: `node -e` en andere interpreters blijven open; de harde grens blijven
   CI, de diff-guard en de GitHub-ruleset (`rails/hooks/lib/rolhek.mjs`, `rails/hooks/lib/shell.mjs`,
   `test/hooks/rolhek-gh-allowlist.test.ts`).
+- De vertraagde zoekactie van `ListToolbar` gebruikt de actuele callback. Een ouderwijziging tijdens de wachttijd
+  laat de zoekactie geen verouderde filter- of sorteertoestand meer terugschrijven; de bestaande 300 ms blijven gelijk.
 
 - Een laat sluitende `EditableSection` trekt focus niet meer weg uit een ander veld of een andere knop. Het gewone
   focusherstel naar Bewerken en het opruimen van de uitgestelde focustimer blijven behouden.
@@ -230,8 +243,25 @@ Hier staan wijzigingen die van belang zijn bij het gebruiken of bijwerken van de
 
 ### Opgelost
 
+- `scripts/runner.sh` vergelijkt de host-bestanden met de merge-base van `main` zoals de remote die meldt
+  (`git ls-remote origin refs/heads/main`), niet met de lokale ref `origin/main`; een omgebogen lokale ref opent de runner
+  niet meer. Ontbreekt die commit lokaal, dan weigert het script met `git fetch origin main`. In CI blijft de controle
+  tegen `HEAD`. Het rolhek weigert daarnaast `GIT_CONFIG_*`, `GIT_DIR` en `GIT_WORK_TREE` vóór git en een fetch van
+  `origin` naar `refs/remotes/origin/main` (`rails/hooks/lib/rolhek.mjs`). Een niet-getrackt invoerbestand met meer dan
+  één hardlink gaat niet meer mee naar de runner. De runner verdedigt zich ook zelf: hij wist elke `GIT_*`-variabele en `XDG_CONFIG_HOME`,
+  zet `HOME` op de home uit de gebruikersdatabase (`getent`/`dscl`; onleesbaar → stoppen),
+  negeert replace-objecten, leest de sha bij exact `refs/heads/main` en stopt als `remote.origin.url` niet precies één
+  keer uit de repo-config komt of als `git ls-remote --get-url origin` ervan afwijkt (een `insteadOf` die origin omlegt). Het rolhek weigert die `GIT_*`-variabelen nu voor elk programma
+  (ook `export`/`declare -x`), `git replace` behalve `--list`, en config op `include.*`/`includeIf.*`. Tijdelijke mappen van runner en browser-smoke volgen `TMPDIR`.
+- `test-pgtap` faalt als `db/tests` geen tests bevat, in plaats van groen te melden.
+- Een Combobox die bij het mounten focus krijgt, houdt zijn keuzelijst open. `autoFocus` wordt niet meer direct
+  ongedaan gemaakt door het synchroniseren van de beginwaarde; een latere waarde- of formulierreset sluit nog steeds.
+
 - Het foutenoverzicht focust ook bij later ontvangen serverveldfouten na clientvalidatie. Gewone veldcorrecties houden
   hun focus; de bestaande uitgestelde focus na een mislukte verzendpoging blijft behouden.
+
+- De teruglink en het kruimelpad in de componentencatalogus openen nu `/admin/accounts`. Hun eerdere doel `/accounts`
+  bestond niet en toonde de foutpagina; de bestaande bevestiging bij onopgeslagen wijzigingen blijft gelden.
 
 - Opnieuw uitnodigen verwijdert de oude reset-tokens en mailt pas na commit van de route-transactie (`reinviteUser(auth, userId, lifecycle?)`), en SMTP heeft time-outs (`SMTP_TIMEOUTS`), zodat een hangende mailserver geen transactie vasthoudt. Een app die `services.invitations.reinvite` aanroept: nieuwe signatuur `reinvite(userId, lifecycle?)`, geef `{ afterCommit }` uit de route-ctx mee.
 
@@ -274,6 +304,7 @@ Hier staan wijzigingen die van belang zijn bij het gebruiken of bijwerken van de
 
 - De README beschrijft de huidige basis, lokale installatie en beschikbare controles.
 - Een leeswijzer maakt onderscheid tussen gebruiksdocumentatie, ontwikkelafspraken en agentinstructies.
+- De lichte en volledige route staan alleen nog in `docs/framework.md` §8; instructies, agents en skills verwijzen ernaar.
 
 ### Bij een update
 
@@ -283,6 +314,7 @@ loginhistorie: de lijst toont "Onbekend" tot de volgende volledig geslaagde logi
 
 De template heeft nog geen releaseversies. Controleer bij een update de gewijzigde migraties, architectuurbesluiten en instellingen. Een volledige upgradecontrole staat op de roadmap.
 
+- **Compose-testservices zonder runner falen dicht.** De invoermounts in `compose.yaml` zijn lange bind-mounts met `create_host_path: false`; zonder `scripts/runner.sh` wijst de bron naar het niet-bestaande `./.runner-output/geen-invoer-start-via-runner` in plaats van de oude `./.runner-output/empty-input`. Wat verandert voor een app: een testservice (bv. `test-pgtap`) direct starten faalt op de ontbrekende invoermap; gebruik `pnpm test:db`, `pnpm ui:check` of `pnpm db:generate`. De dev-stack (`pnpm dev`, postgres en mailpit) werkt ongewijzigd. `test-pgtap` faalt nu bij een lege `db/tests`. De runner vergelijkt met `main` bij de remote: draai vóór een lokale run `git fetch origin main` als de remote verder is. Alleen een `insteadOf` of extra `remote.origin.url` die de origin-url zelf omlegt, laat de runner lokaal stoppen. Wat de eigenaar moet doen: niets. Conflicten: alleen als de app `compose.yaml` of `scripts/runner.sh` zelf aanpaste.
 - **Sandbox: `*secret*`-weigering per map, `.env.example` leesbaar.** `.claude/settings.json`: `Read(./**/*secret*)` wordt `Read(./*secret*)` plus één regel per getrackte map (`Read(./src/**/*secret*)` enz.), zodat de sandbox bestanden in `node_modules` (better-auth `secret-utils.mjs`, jose `generate_secret.js`) niet meer maskeert; daardoor faalden typed lint, één unit-test en de pre-push-hook alleen in de sandbox. `sandbox.filesystem.allowRead` heropent alleen `./.env.example` (git faalde erop). `test/rails/sandbox-settings.test.ts` faalt als een getrackte map niet gedekt is. Wat verandert voor een app: niets aan de bescherming van getrackte bestanden; een nieuwe map in de repo vraagt een eigen regel (de test meldt het). Wat de eigenaar moet doen: na de merge een nieuwe sessie starten. Conflicten: alleen als de app `permissions.deny` of `sandbox` in `.claude/settings.json` zelf aanpaste.
 - **SessionStart haalt `origin/main` op en meldt een achterstand.** `.claude/hooks/lib/werkstraat.mjs` (`mainLag`): `git fetch origin +refs/heads/main:refs/remotes/origin/main` met een harde timeout van 5 s en `GIT_TERMINAL_PROMPT=0` (het SSH-commando van de gebruiker blijft ongemoeid); daarna meldt de hook hoeveel commits de branch achterloopt. Een mislukte fetch wordt gemeld en blokkeert niets; zonder bekende `origin/main` blijft de melding weg. Wat verandert voor een app: elke sessiestart doet één korte netwerkaanroep naar `origin`. Wat de eigenaar moet doen: niets. Conflicten: alleen als de app `.claude/hooks/` zelf aanpaste.
 - **CI-job `secrets` scant op een PR alleen de eigen commits.** `.github/workflows/ci.yml`: op een `pull_request` `betterleaks git --log-opts origin/main..HEAD`, bij `push` naar `main` (en elk ander event) alle gefetchte refs, in beide gevallen met `scripts/kit/betterleaks.toml` en zonder inline allows; de check heet nog `secrets`. Eén valse melding op een andere branch maakte eerder elke open PR rood, en force-push is verboden (#97, #99). Wat verandert voor een app: een geheim op een branch zonder PR blokkeert andere PR's niet meer, maar komt pas aan het licht bij de scan op `main`; een geheim in een PR-commit blijft ook na een herstelcommit zichtbaar. Wat de eigenaar moet doen: niets. Conflicten: alleen als de app de job `secrets` in `.github/workflows/ci.yml` zelf aanpaste.

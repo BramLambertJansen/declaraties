@@ -1,9 +1,9 @@
 import { spawnSync } from 'node:child_process';
-import { chmodSync, copyFileSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { chmodSync, copyFileSync, existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, expect, test } from 'vitest';
-import { subagentStop } from '../../rails/hooks/lib/werkstraat.mjs';
+import { changedFiles, subagentStop } from '../../rails/hooks/lib/werkstraat.mjs';
 
 const dirs: string[] = [];
 afterEach(() => {
@@ -47,6 +47,79 @@ test.each([{ changed: [] }, { changed: ['docs/example.md'] }])(
     expect(developer(changed)).toStrictEqual({ calls: [], result: {} });
   },
 );
+
+// Git als nep: de werkmap (`status`, porcelain) en wat de branch sinds origin/main heeft gecommit (`diff -z`).
+function gitRun(committed: string[], opties: { mergeBase?: number; diff?: number; status?: string } = {}) {
+  return (command: string, args: readonly string[]) => {
+    const line = [command, ...args].join(' ');
+    if (command === 'git' && args.includes('status')) return { code: 0, output: opties.status ?? '' };
+    if (line.startsWith('git merge-base')) return { code: opties.mergeBase ?? 0, output: 'abc123\n' };
+    if (line.startsWith('git diff'))
+      return { code: opties.diff ?? 0, output: committed.map((file) => `${file}\0`).join('') };
+    return { code: line.includes('tsc') ? 1 : 0, output: `${line}: error TS2322` };
+  };
+}
+
+test('gecommitte rode code met een schone werkmap: developer krijgt toch feedback', () => {
+  const run = gitRun(['src/a.ts', 'docs/b.md']);
+  const result = subagentStop(
+    { agent_type: 'developer' },
+    { run, read: () => null, changed: () => changedFiles(run, () => true) },
+  );
+
+  expect(result.stdout).toContain('"decision":"block"');
+  expect(result.stdout).toContain('TS2322');
+});
+
+test('changedFiles: werkmap en branchdiff ontdubbeld, verwijderde bestanden eruit, zonder origin/main alleen de werkmap', () => {
+  const both = gitRun(['src/a.ts', 'src/weg.ts', 'src/b.ts'], { status: '?? src/a.ts\n' });
+
+  expect(changedFiles(both, (file) => file !== 'src/weg.ts')).toStrictEqual(['src/a.ts', 'src/b.ts']);
+  expect(changedFiles(gitRun(['src/b.ts'], { mergeBase: 128 }), () => true)).toStrictEqual([]);
+});
+
+test('changedFiles: faalt git diff, dan blijft de werkmap staan', () => {
+  const run = gitRun(['src/b.ts'], { diff: 128, status: ' M src/a.ts\n' });
+
+  expect(changedFiles(run, () => true)).toStrictEqual(['src/a.ts']);
+});
+
+// Echte git: paden met een spatie en niet-ASCII komen ongeciteerd terug, uit de werkmap én uit de branchdiff.
+function realRun(dir: string) {
+  return (command: string, args: readonly string[]) => {
+    const result = spawnSync(command, [...args], { cwd: dir, encoding: 'utf8' });
+    return { code: result.status ?? 1, output: `${result.stdout}${result.stderr}` };
+  };
+}
+
+test('changedFiles: paden met spatie en niet-ASCII-tekens uit echte git', () => {
+  const dir = mkdtempSync(path.join(tmpdir(), 'lean-paden-'));
+  dirs.push(dir);
+  const git = (...args: string[]) => {
+    const result = spawnSync('git', ['-c', 'user.name=t', '-c', 'user.email=t@example.test', ...args], { cwd: dir });
+    if (result.status !== 0) throw new Error(String(result.stderr));
+  };
+  git('init', '-q', '-b', 'main');
+  writeFileSync(path.join(dir, 'basis.md'), 'x\n');
+  git('add', '.');
+  git('commit', '-qm', 'basis');
+  git('update-ref', 'refs/remotes/origin/main', 'HEAD');
+  writeFileSync(path.join(dir, 'gecommit met spatie é.ts'), 'export {};\n');
+  git('add', '.');
+  git('commit', '-qm', 'branch');
+  writeFileSync(path.join(dir, 'nieuw ü.ts'), 'export {};\n');
+
+  const files = changedFiles(realRun(dir), (file) => existsSync(path.join(dir, file)));
+
+  expect(files.toSorted()).toStrictEqual(['gecommit met spatie é.ts', 'nieuw ü.ts']);
+});
+
+test('developer met stop_hook_active: geen tweede ronde (de payload telt)', () => {
+  const run = gitRun(['src/a.ts']);
+  const deps = { run, read: () => null, changed: () => changedFiles(run, () => true) };
+
+  expect(subagentStop({ agent_type: 'developer', stop_hook_active: true }, deps)).toStrictEqual({});
+});
 
 function prePush(status: number) {
   const dir = mkdtempSync(path.join(tmpdir(), 'lean-pre-push-'));

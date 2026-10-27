@@ -16,7 +16,7 @@ import { execFileSync } from 'node:child_process';
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { onderhoudVan } from '../../rails/hooks/lib/rolhek.mjs';
-import { adrNumber, duplicateAdrNumbers } from './adr-numbers.mjs';
+import { adrNumber, duplicateAdrNumbers, invalidAdrNames } from './adr-numbers.mjs';
 
 /** @typedef {{ key: string, message: string }} Violation */
 
@@ -152,6 +152,7 @@ function statusViolations(files, read) {
   const specs = files.filter((file) => /^docs\/specs\/[^_/][^/]*\.md$/.test(file));
   return [
     ...duplicateAdrNumbers(adrs),
+    ...invalidAdrNames(files),
     ...adrs
       .filter((file) => !ADR_STATUS.test(read(file)))
       .map((file) => ({
@@ -215,7 +216,8 @@ function disciplineViolations({ file, text, status }, files) {
       (id) => looksLikePath(id) && !files.some((file) => file === doelPad(id) || file.startsWith(`${doelPad(id)}/`)),
     );
   return [
-    ...((status === 'goedgekeurd' || status === 'gebouwd') && /^\s*(?:[-*+]|\d+[.)])\s+.*⚠\s*open\b/m.test(open)
+    // Ook `⚠️` (met U+FE0F), hoofdletters en een regel zonder opsommingsteken tellen als open vraag.
+    ...((status === 'goedgekeurd' || status === 'gebouwd') && /⚠️?\s*open\b/i.test(open)
       ? [{ key: `docs:${file}:open-vraag`, message: `${file}: ${status}, maar "Open vragen" bevat nog "⚠ open"` }]
       : []),
     ...((status === 'voorstel' || status === 'goedgekeurd') && ontbrekend.length > 0

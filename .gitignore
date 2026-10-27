@@ -17,6 +17,7 @@ test-results/
 mise.local.toml
 blob-report/
 .runner-output/
+.runner-canary.*
 *.log
 # Fixture-pakketten voor dependency-cruiser (test/rails/depcruise.test.ts).
 !test/rails/fixtures/depcruise/node_modules/
