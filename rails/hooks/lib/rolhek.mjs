@@ -472,6 +472,7 @@ function decideBash({ command, role }, ctx, decision) {
   decision.deny.push(...rawForbidden(command, role));
   // De inhoud van `$(…)` en backticks is zelf een commando; zo vallen ook geneste substituties onder dezelfde regels.
   for (const inner of substitutions(command)) decideBash({ command: inner, role }, ctx, decision);
+  const setsGhEnv = zetGhOmgeving(parseCommands(command));
   for (const parsed of parseCommands(command)) {
     const { assignments, argv, pathWrappers } = splitCommand(parsed.words);
     // `$G pr merge`, `${x}h …`, `$(echo gh) …`: welk programma draait, is pas bij het uitvoeren bekend.
@@ -493,6 +494,7 @@ function decideBash({ command, role }, ctx, decision) {
     if (envSplitsString(parsed.words))
       decision.deny.push('env -S/--split-string maakt van tekst een nieuw commando dat het rolhek niet ziet; verboden, voor elke rol');
     forbidden({ assignments, argv, expanded: parsed.expanded ?? [] }, { role, ctx }, decision);
+    ghIssue(argv, { role, ctx, setsGhEnv }, decision);
     if (role === 'reviewer' && (pathWrappers.length > 0 || !reviewerMay(argv, parsed.redirects)))
       decision.deny.push(`reviewer: alleen lezen (\`${argv.slice(0, 3).join(' ')}\` mag niet; framework §8)`);
     const targets = writeTargets(parsed);
@@ -823,8 +825,15 @@ function xargsCall(args) {
 /** @typedef {{ program: string, args: readonly string[], expanded: readonly string[] }} Invocation */
 
 // Subagents lezen alleen bij GitHub (eigenaarkeuze): al het andere, ook aliassen (`gh pr new`), `gh auth` en
-// `gh extension`, weigert het rolhek. `gh api` loopt via apiReads.
-const SUBAGENT_GH = [/^pr (?:view|diff|checks|list|status)$/, /^run (?:view|list|watch)$/, /^issue (?:view|list)$/, /^repo view$/];
+// `gh extension`, weigert het rolhek. `gh api` loopt via apiReads. Issues en aliassen lezen mag (spec leerlus, AC-7).
+const SUBAGENT_GH = [
+  /^pr (?:view|diff|checks|list|status)$/,
+  /^run (?:view|list|watch)$/,
+  /^issue (?:view|list|ls|status)$/,
+  /^repo view$/,
+  /^alias list$/,
+  /^version$/,
+];
 const SHELLS = new Set(['bash', 'sh', 'zsh', 'dash', 'ksh']);
 
 /**
@@ -1109,10 +1118,146 @@ function forcePushes(rest) {
   return false;
 }
 
-const SELF_REVIEW_API = /\/(?:labels|reviews|statuses|check-runs|check-suites)\b|\/requested_reviewers\b/;
+const GH_ISSUE_WRITES = new Set(['create', 'new', 'edit', 'close', 'reopen', 'delete', 'transfer', 'lock', 'unlock', 'pin', 'unpin', 'comment', 'develop']);
+const GH_ISSUE_READS = new Set(['list', 'ls', 'view', 'status']);
+// gh-vlaggen zonder waarde; cobra neemt bij elke andere vlag zonder `=` het volgende woord als waarde.
+const GH_BOOL_FLAGS = new Set(['--help', '-h', '--version']);
+const LEERPUNT = 'leerpunt';
+const GH_ISSUE_WRITE_TEXT = new RegExp(`\\bgh\\b.*\\bissue\\b.*\\b(?:${[...GH_ISSUE_WRITES].join('|')})\\b`);
+// Programma's die een ander commando uitvoeren; het rolhek ziet dat commando niet als eigen segment.
+const COMMAND_RUNNERS = new Set(['xargs', 'eval', 'exec', 'command', 'time', 'timeout', 'nohup', 'nice', 'parallel', 'watch', 'find']);
+// De ingebouwde gh-groepen; een ander eerste woord is een alias (`gh alias set ic 'issue create'`) of extensie.
+const GH_GROUPS = new Set(['agent-task', 'alias', 'api', 'attestation', 'auth', 'browse', 'cache', 'codespace', 'completion', 'config', 'copilot', 'extension', 'gist', 'gpg-key', 'help', 'issue', 'label', 'licenses', 'org', 'pr', 'preview', 'project', 'release', 'repo', 'ruleset', 'run', 'search', 'secret', 'ssh-key', 'status', 'variable', 'version', 'workflow', '--help', '-h', '--version']);
 
-// gh-groepen; een onbekende groep kan een alias of extensie zijn (`gh m 1` na `gh alias set m 'pr merge'`).
-const GH_GROUPS = new Set(['agent-task', 'alias', 'api', 'attestation', 'auth', 'browse', 'cache', 'codespace', 'completion', 'config', 'copilot', 'extension', 'gist', 'gpg-key', 'help', 'issue', 'label', 'org', 'pr', 'preview', 'project', 'release', 'repo', 'ruleset', 'run', 'search', 'secret', 'ssh-key', 'status', 'variable', 'version', 'workflow', '--help', '-h', '--version']);
+/**
+ * Zet een segment van het commando `GH_REPO` of `GH_HOST` (`GH_REPO=… gh`, `env GH_HOST=…`, `export GH_REPO=… &&`)?
+ * @param {Iterable<{ words: string[] }>} commands
+ */
+function zetGhOmgeving(commands) {
+  return [...commands].some(({ words }) => {
+    const { assignments, argv } = splitCommand(words);
+    const exported = ENV_EXPORTERS.has(programName(argv[0] ?? '')) ? argv.slice(1) : [];
+    return [...assignments, ...exported].some((word) => /^GH_(?:REPO|HOST)=/.test(word));
+  });
+}
+
+/**
+ * De woorden die gh als commando leest, zoals cobra ze vindt: een vlag zonder `=` neemt het volgende woord als waarde
+ * (`gh --duplicate-of 3 issue close 1`), behalve `--help`/`-h`/`--version`. Waarden van opties zijn dus geen subcommando.
+ * @param {readonly string[]} args
+ */
+function ghCommandWords(args) {
+  /** @type {string[]} */
+  const words = [];
+  for (let index = 0; index < args.length; index += 1) {
+    const arg = args[index] ?? '';
+    if (arg === '--') break;
+    if (arg === '' || arg === '-') continue; // cobra slaat lege woorden over; `-` is stdin, geen commando
+    if (!arg.startsWith('-')) words.push(arg);
+    else if (!arg.includes('=') && !GH_BOOL_FLAGS.has(arg) && !/^-[^-]./.test(arg)) index += 1;
+  }
+  return words;
+}
+
+/**
+ * De schrijfactie van `gh issue <subcommando>` (`new` is de ingebouwde alias van `create`), of leeg. Een onbekend
+ * subcommando telt als schrijvend; liever een vraag te veel dan een omzeiling.
+ * @param {readonly string[]} args
+ */
+function ghIssueAction(args) {
+  const [group, action = ''] = ghCommandWords(args);
+  if (group !== 'issue' || action === '' || GH_ISSUE_READS.has(action)) return '';
+  return action === 'new' ? 'create' : action;
+}
+
+/**
+ * Een gh-issue-schrijfactie die het rolhek niet als eigen commando ziet: in `$( )` of backticks, in `sh -c`/`-lc`, of
+ * achter een programma dat een commando uitvoert (`xargs`, `eval`).
+ * @param {string} program
+ * @param {readonly string[]} args
+ */
+function verborgenGhIssue(program, args) {
+  const shell = SHELLS.has(program) && args.some((arg) => /^-[a-z]*c[a-z]*$/.test(arg));
+  if (shell || COMMAND_RUNNERS.has(program)) return GH_ISSUE_WRITE_TEXT.test(args.join(' '));
+  // Backticks zonder aanhalingstekens splitst de parser over meerdere woorden; toets dan het hele commando.
+  if (args.some((arg) => arg.includes('`'))) return GH_ISSUE_WRITE_TEXT.test(args.join(' '));
+  return args.some((arg) => /\$\(/.test(arg) && GH_ISSUE_WRITE_TEXT.test(arg));
+}
+
+/**
+ * Subagent: een gh-alias kan elke opdracht verbergen, dus geen `gh alias set|import` en geen onbekend eerste woord.
+ * @param {readonly string[]} args
+ */
+function ghAliasReden(args) {
+  const [first = ''] = ghCommandWords(args);
+  if (first === 'alias' && args.some((arg) => arg === 'set' || arg === 'import'))
+    return 'subagent: gh alias set/import kan een schrijvende opdracht verbergen (ADR 0059)';
+  if (first !== '' && !GH_GROUPS.has(first)) return `subagent: gh ${first} is geen ingebouwde gh-groep (alias of extensie; ADR 0059)`;
+  return '';
+}
+
+/**
+ * Leerlus (ADR 0059, spec leerlus): een subagent schrijft geen issues; de hoofdsessie dient zonder vraag alleen een leerpunt
+ * in, met `--repo`/`-R` gelijk aan `onderhoud.repository` en precies één `--label leerpunt`. Elke andere vorm is ask.
+ * @param {readonly string[]} argv
+ * @param {{ role: string, ctx: Ctx, setsGhEnv: boolean }} who
+ * @param {Decision} decision
+ */
+function ghIssue(argv, { role, ctx, setsGhEnv }, decision) {
+  const [word = '', ...args] = argv;
+  const program = programName(word);
+  if (verborgenGhIssue(program, args)) {
+    gate(decision, role, `gh issue binnen ${program} (string, substitutie of omhulsel): het rolhek kijkt daar niet in; gebruik een los gh-commando (ADR 0059)`);
+    return;
+  }
+  const alias = program === 'gh' && role !== 'hoofdsessie' ? ghAliasReden(args) : '';
+  if (alias !== '') decision.deny.push(alias);
+  const action = program === 'gh' ? ghIssueAction(args) : '';
+  if (action === '') return;
+  if (role !== 'hoofdsessie') decision.deny.push(`subagent: gh issue ${action} doet alleen de hoofdsessie (ADR 0059)`);
+  else if (action === 'create') {
+    const reden = leerpuntAfwijking(args, ctx.config.onderhoud?.repository ?? '', setsGhEnv);
+    if (reden !== '') decision.ask.push(`gh issue create buiten de leerpuntvorm: ${reden} (ADR 0059)`);
+  }
+}
+
+/**
+ * Lege string als het commando precies de leerpuntvorm heeft, anders de reden.
+ * @param {readonly string[]} args
+ * @param {string} repository
+ * @param {boolean} setsGhEnv
+ */
+function leerpuntAfwijking(args, repository, setsGhEnv) {
+  if (setsGhEnv) return 'GH_REPO of GH_HOST verlegt het doel';
+  if (args.some((arg) => /\$\(|`/.test(arg))) return 'commandosubstitutie in het commando; zet de tekst in --body-file';
+  const repos = optionValues(args, ['--repo', '-R']);
+  const labels = optionValues(args, ['--label', '-l']);
+  if (repository === '') return 'onderhoud.repository ontbreekt in .claude/gates.json';
+  if (repos.length !== 1 || (repos[0] ?? '').toLowerCase() !== repository.toLowerCase())
+    return `--repo moet precies één keer ${repository} zijn`;
+  if (labels.length !== 1 || (labels[0] ?? '').toLowerCase() !== LEERPUNT) return `precies één --label ${LEERPUNT}, geen ander label`;
+  return '';
+}
+
+/**
+ * Waarden van een optie in de vormen `--naam waarde`, `--naam=waarde`, `-X waarde` en `-Xwaarde`.
+ * @param {readonly string[]} args
+ * @param {readonly string[]} names
+ */
+function optionValues(args, names) {
+  /** @type {string[]} */
+  const values = [];
+  args.forEach((arg, index) => {
+    if (names.includes(arg)) values.push(args[index + 1] ?? '');
+    const long = names.find((name) => name.startsWith('--') && arg.startsWith(`${name}=`));
+    const short = names.find((name) => /^-\w$/.test(name) && arg.length > 2 && arg.startsWith(name));
+    if (long !== undefined) values.push(arg.slice(long.length + 1));
+    else if (short !== undefined) values.push(arg.slice(2).replace(/^=/, ''));
+  });
+  return values;
+}
+
+const SELF_REVIEW_API = /\/(?:labels|reviews|statuses|check-runs|check-suites)\b|\/requested_reviewers\b/;
 
 /**
  * Zonder `-R x`, `--repo x` en `--repo=x`, die gh vóór of na groep en actie accepteert (`gh -R o/r pr merge`).

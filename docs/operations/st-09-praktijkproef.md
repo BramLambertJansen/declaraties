@@ -32,10 +32,10 @@ de app-repo, niet met voorbeeldgegevens in de template. De bestaande eisen aan t
 | ST09-05 | Ongeldige invoer en ontbrekende/verlopen authenticatie veranderen geen data | Negatieve integratietests met relevante foutcodes |
 | ST09-06 | App en templatechecks blijven groen | Exacte SHA, vereiste gates, build en werkelijke CI-uitvoer |
 | ST09-07 | Mobiel, desktop, toetsenbord en toegankelijkheid | Playwright/axe op 375 en 1280 px, handmatige focus-/toetsenbordcontrole en beperkingen |
-| ST09-08 | Frictie is vanaf setup zichtbaar | Doorlopend log van eigenaarstaken, fouten, herstel en gemeten tijd |
-| ST09-09 | Een echte templateverbetering is teruggebracht en overgenomen | Template-PR, merge-commit, vooraf verwachte en feitelijke conflicten |
+| ST09-08 | Frictie is vanaf setup zichtbaar | Doorlopend log van eigenaarstaken, fouten, herstel en gemeten tijd; generieke frictie als issue met label `leerpunt` |
+| ST09-09 | Een echte templateverbetering is teruggebracht en overgenomen | De keten leerpunt-issue → roadmap-item met dat issue als aanleiding → template-PR met merge-commit; vooraf verwachte en feitelijke conflicten |
 | ST09-10 | De update behoudt appfunctionaliteit, gegevensafspraken en instellingen | Dezelfde regressiematrix vóór en na de update op twee exacte SHA's |
-| ST09-11 | Bewijs en opvolging blijven terugvindbaar | Checkpointverslagen in de app-repo, CI-links en templatebevindingen |
+| ST09-11 | Bewijs en opvolging blijven terugvindbaar | Checkpointverslagen in de app-repo, CI-links en templatebevindingen als issues met label `leerpunt` |
 
 Test minimaal twee onafhankelijke gebruikers en een beheerder, inclusief ontbrekende vereiste MFA. Test horizontale én
 verticale autorisatie via de directe API en RLS, niet alleen verborgen knoppen. Gebruik geïsoleerde fixtures in de app,
@@ -107,3 +107,8 @@ In de template komt hoogstens een beknopte, niet-appspecifieke bewijsverwijzing 
 verbeter-PR, zonder appdata of een tweede resultatenregister. Vink ST-09 alleen af met het vereiste bewijs en eigenaarakkoord.
 Alleen een werkende demo, setup of mocktest is onvoldoende. Ontbreekt een voorwaarde, noteer geblokkeerd met reden;
 verlaag geen gate en claim geen groen voor controles die niet draaiden.
+
+Templatebevindingen gaan alleen als issue met label `leerpunt` naar de template-repo ([ADR 0059](../adr/0059-leerlus-van-app-naar-template.md),
+skill `opleveren`, Opruimen stap 8); geen tweede register in de app. Het eindrapport telt met
+`gh issue list --label leerpunt --state all` op de template-repo het totaal, het aantal opgepakte leerpunten (met een
+roadmap-item dat het issue als aanleiding heeft) en het aantal herhalingen (met `eerder:`), tegen de nulmeting 0.
