@@ -490,6 +490,8 @@ function decideBash({ command, role }, ctx, decision) {
     if (ghGlob !== undefined) decision.deny.push(`\`${ghGlob}\` kan naar gh wijzen (glob, brace-expansie of POSIX-klasse); verboden, voor elke rol`);
     if (hidden !== null)
       decision.deny.push(`een commandowoord dat niet letterlijk is (\`${hidden}\`) is verboden, voor elke rol`);
+    if (envSplitsString(parsed.words))
+      decision.deny.push('env -S/--split-string maakt van tekst een nieuw commando dat het rolhek niet ziet; verboden, voor elke rol');
     forbidden({ assignments, argv, expanded: parsed.expanded ?? [] }, { role, ctx }, decision);
     if (role === 'reviewer' && (pathWrappers.length > 0 || !reviewerMay(argv, parsed.redirects)))
       decision.deny.push(`reviewer: alleen lezen (\`${argv.slice(0, 3).join(' ')}\` mag niet; framework §8)`);
@@ -497,6 +499,22 @@ function decideBash({ command, role }, ctx, decision) {
     for (const target of targets.writes) bashTarget({ file: target, kind: 'write', role }, ctx, decision);
     for (const target of targets.deletes) bashTarget({ file: target, kind: 'delete', role }, ctx, decision);
   }
+}
+
+/**
+ * `env -S …`, `env -Sgh …` of `env --split-string=…` (ook een unieke afkorting vanaf `--s`) vóór het commandowoord.
+ * @param {readonly string[]} words
+ */
+function envSplitsString(words) {
+  for (const [index, word] of words.entries()) {
+    if (programName(word) !== 'env') continue;
+    for (const option of words.slice(index + 1)) {
+      if (!option.startsWith('-') || option === '--') break;
+      const name = option.split('=')[0] ?? '';
+      if (/^-[a-zA-Z]*S/.test(option) || (name.length >= 3 && '--split-string'.startsWith(name))) return true;
+    }
+  }
+  return false;
 }
 
 /**
@@ -533,10 +551,13 @@ function matchingParen(text, from) {
 
 // Grove, dichte regel op de ruwe commandotekst, heredocs inbegrepen (eigenaarsbesluit 2026-10-26): geen shell-parsing,
 // dus ook `{ …; }`, `if`, brace-expansie, `$(…)` en `eval` vallen eronder. Een vangnet bovenop de regels per segment.
-// `gh` als woord: niet in `rolhek-gh-allowlist`, `gh-notes` of `high-gh`, wel in `/usr/bin/gh`, `x;gh` en `(gh`.
-const GH_WORD = /(?:^|[\s;&|(){}`=/<>])gh(?=$|[\s;&|(){}`<>])/;
+// `gh` als woord: niet in `rolhek-gh-allowlist`, `gh-notes` of `high-gh`, wel in `/usr/bin/gh`, `x;gh`, `(gh`, een git-alias
+// `!gh` en `env -Sgh` (`-S`/`--split-string` splitst de rest tot een nieuw commando). Elk teken buiten `[\w.-]` is een grens.
+const GH_WORD = /(?:^|[^\w.-]|(?<=(?:^|\s)-S))gh(?=$|[^\w.-])/;
 const RAW_GITHUB = new RegExp(`${GH_WORD.source}|\\/pulls\\/|api\\.github\\.com|graphql`, 'm');
 const RAW_MERGE = /(?<![,a-zA-Z])merge(?=[\s/,}]|$)/m;
+// Los van gh-herkenning: `pr merge`, `pr review … --approve` en een GraphQL-merge zijn in elke vorm verboden.
+const RAW_PR_MERGE = /(?:^|[^\w.-])pr\s+merge(?=$|[^\w.-])/m;
 const RAW_SUBAGENT = new RegExp(`${GH_WORD.source}|api\\.github\\.com|git\\s+credential`, 'm');
 const SHELL_TRICKS = /\$\(|`|\beval\b|\bsource\b|(?:^|[\s;&|(])\.\s|\{[^}]*(?:,|\.\.)[^}]*\}|\|\s*(?:ba|z|da|k)?sh\b|<</;
 
@@ -557,6 +578,8 @@ function rawForbidden(command, role) {
     (RAW_MERGE.test(text) || MERGE_MUTATION.test(text) || (/\breview\b/.test(text) && /--approve|(?:^|\s)-a\b/.test(text)) ||
       (/\/reviews\b/.test(text) && /APPROVE/.test(text))))
     found.push('mergen of goedkeuren via gh of …/pulls/ is voor elke rol verboden (vangnet op de ruwe tekst, WS-04)');
+  else if (RAW_PR_MERGE.test(text) || MERGE_MUTATION.test(text))
+    found.push('`pr merge` of een GraphQL-merge is voor elke rol verboden, ook zonder herkenbaar gh (vangnet op de ruwe tekst, WS-04)');
   if (role === 'hoofdsessie' || !RAW_SUBAGENT.test(text)) return found;
   const segments = parseCommands(command);
   if (segments.length !== 1 || segments[0]?.words[0] !== 'gh' || SHELL_TRICKS.test(command))
@@ -740,6 +763,8 @@ function indirectForbidden(program, args, role) {
     (!literalWord(xargs.command) || (xargs.replace !== null && xargs.command.includes(xargs.replace)));
   if (replaced || execs.some((word) => !literalWord(word)))
     found.push(`${program}: een commandowoord dat niet letterlijk is, is verboden, voor elke rol`);
+  if ([xargs?.command ?? '', ...execs].some((word) => programName(word) === 'gh'))
+    found.push(`${program}: gh via xargs of find -exec ontloopt de gh-controles; verboden, voor elke rol (roep gh rechtstreeks aan)`);
   if ((program === 'eval' || (SHELLS.has(program) && args.some((arg) => /^-[a-zA-Z]*c[a-zA-Z]*$/.test(arg)))) &&
     args.some((arg) => /[$`]/.test(arg)))
     found.push(`${program}: tekst met expansie uitvoeren is verboden, voor elke rol`);
@@ -907,12 +932,27 @@ export function gitForbidden(args, { role, branch }) {
   if (subcommand === 'push' && pushesMain(rest, branch)) found.push('push naar main is verboden; open een PR');
   if (subcommand === 'push' && forcePushes(rest)) found.push('force-push is verboden, ook voor de hoofdsessie (WS-04)');
   if (subcommand === 'branch' && deletesMain(rest)) found.push('git branch -d/-D/--delete van main is verboden (ADR 0046 punt 26)');
+  if (shellAlias(args, { subcommand, rest, config }))
+    found.push('een git-alias met `!` (shellcommando) of via --config-env is verboden, voor elke rol: het rolhek ziet niet wat er draait');
   if (role === 'hoofdsessie') return found;
   if (subcommand === 'push' || subcommand === 'merge' || subcommand === 'rebase')
     found.push(`subagent: git ${subcommand} doet de hoofdsessie`);
   if (subcommand === 'reset' && rest.includes('--hard')) found.push('subagent: git reset --hard is verboden');
   if (subcommand.startsWith('credential')) found.push('subagent: git credential geeft tokens vrij; verboden');
   return found;
+}
+
+/**
+ * Een git-alias die een shellcommando start (`-c alias.x=!…`, `git config alias.x '!…'`) of zijn waarde uit de omgeving haalt
+ * (`--config-env alias.x=VAR`); `git -c core.quotepath=false log` mag.
+ * @param {readonly string[]} args
+ * @param {{ subcommand: string, rest: readonly string[], config: readonly string[] }} git
+ */
+function shellAlias(args, { subcommand, rest, config }) {
+  const fromEnv = args.some((arg, index) =>
+    (/^--config-env=alias\./i.test(arg)) || (arg === '--config-env' && /^alias\./i.test(args[index + 1] ?? '')));
+  if (fromEnv || config.some((setting) => /^alias\.[^=]*=\s*!/i.test(setting))) return true;
+  return subcommand === 'config' && rest.some((arg) => /^alias\./i.test(arg)) && rest.some((arg) => /^\s*!/.test(arg));
 }
 
 // git accepteert elke unieke prefix van een long option: `--d` t/m `--delete`.
