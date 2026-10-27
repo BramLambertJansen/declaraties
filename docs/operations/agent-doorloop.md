@@ -150,11 +150,14 @@ letterlijk zijn; en achter xargs of find
 (`echo`, `cat`, `ls`, `cp`, `rm`, `grep`, …; niet `sed`/`awk`, die zelf een commando kunnen uitvoeren), anders deny voor subagents en ask voor de hoofdsessie; en `eval`/`bash -c` met expansie zijn voor elke rol dicht; subagents
 gebruiken geen xargs met een commando en geen find `-exec`. `gh` telt alleen als los woord (niet in `gh-notes` of een testpad). Bewuste valse meldingen: een PR-titel of
 -body met het woord `merge ` als argument (gebruik `--body-file` en een titel zonder dat woord), en een commitbericht
-met `merge` naast `gh`, `graphql` of `/pulls/` (gebruik `git commit -F <bestand>`). Ook `git commit -m "$(cat <<EOF…)"`
+met `merge` naast `gh`, `graphql` of `/pulls/` (gebruik `git commit -F <bestand>`), en elk argument met `pr merge` of
+`pr review … --approve`, ook `grep 'pr merge'` (gebruik `-F <bestand>`/`--body-file`). Ook `git commit -m "$(cat <<EOF…)"`
 en `gh pr create --body "$(…)"` geven een ask of deny (substitutie en heredoc); schrijf het bericht naar een bestand en
 gebruik `git commit -F <bestand>` of `gh pr create --body-file <bestand>`. Voor elke rol zijn verder dicht: `pr merge`
-en een GraphQL-merge ook zonder herkenbaar `gh`, `env -S`/`--split-string`, een git-alias met `!` (`-c alias.x=!…`,
-`git config alias.x '!…'`) of via `--config-env`, en xargs of find `-exec` met `gh` als commandowoord.
+en `pr review … --approve` en een GraphQL-merge ook zonder herkenbaar `gh`, `env -S`/`--split-string` (ook als `-vS`, na
+`-u NAAM`/`-C MAP`/`--unset`/`--chdir` en met escapes als `-S'\_gh'`; dicht falen, dus ook `-uS`), een git-alias met `!` (`-c alias.x=!…`,
+`git config alias.x '!…'`) of via `--config-env`, en xargs of find `-exec` met `gh`, `git`, een shell, `eval` of een omhulsel als `env`, `command`, `nice` of `timeout`
+als commandowoord (ook zonder zichtbare `gh` erna; bewust vals positief: `xargs nice prettier`).
 `pnpm format` en `pnpm run format`
 vragen de hoofdsessie expliciet akkoord omdat ze ook beschermde bestanden schrijven; subagents gebruiken gerichte
 formattering. De padcontrole volgt bij cp/mv/ln/install ook `-t` en `--target-directory`.
