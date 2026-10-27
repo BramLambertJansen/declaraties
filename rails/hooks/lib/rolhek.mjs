@@ -501,17 +501,27 @@ function decideBash({ command, role }, ctx, decision) {
   }
 }
 
+// Opties van env die het volgende woord als waarde nemen (`-u NAAM`, `-C MAP`, `--unset NAAM`, `--chdir MAP`, `--argv0 X`).
+const ENV_VALUE_SHORT = /^-[a-zA-Z]*[uCa]$/;
+const ENV_VALUE_LONG = ['--unset', '--chdir', '--argv0'];
+
 /**
- * `env -S …`, `env -Sgh …` of `env --split-string=…` (ook een unieke afkorting vanaf `--s`) vóór het commandowoord.
+ * `env -S …`, `env -vSgh …`, `env -u X -S…` of `env --split-string=…` (ook een unieke afkorting vanaf `--s`) vóór het
+ * commandowoord. Dicht falen: elk optiewoord dat op `-…S` of `--s` lijkt telt, ook `-uS` (unset S); waarden van
+ * `-u`/`-C`/`-a` en hun lange vormen worden overgeslagen, zodat ze de scan niet afbreken.
  * @param {readonly string[]} words
  */
 function envSplitsString(words) {
   for (const [index, word] of words.entries()) {
     if (programName(word) !== 'env') continue;
-    for (const option of words.slice(index + 1)) {
+    const rest = words.slice(index + 1);
+    for (let at = 0; at < rest.length; at += 1) {
+      const option = rest[at] ?? '';
       if (!option.startsWith('-') || option === '--') break;
       const name = option.split('=')[0] ?? '';
-      if (/^-[a-zA-Z]*S/.test(option) || (name.length >= 3 && '--split-string'.startsWith(name))) return true;
+      if (/^-[a-zA-Z]*S/.test(option) || /^--s/.test(option)) return true;
+      const longValue = !option.includes('=') && name.length >= 3 && ENV_VALUE_LONG.some((long) => long.startsWith(name));
+      if (ENV_VALUE_SHORT.test(option) || longValue) at += 1;
     }
   }
   return false;
@@ -552,12 +562,15 @@ function matchingParen(text, from) {
 // Grove, dichte regel op de ruwe commandotekst, heredocs inbegrepen (eigenaarsbesluit 2026-10-26): geen shell-parsing,
 // dus ook `{ …; }`, `if`, brace-expansie, `$(…)` en `eval` vallen eronder. Een vangnet bovenop de regels per segment.
 // `gh` als woord: niet in `rolhek-gh-allowlist`, `gh-notes` of `high-gh`, wel in `/usr/bin/gh`, `x;gh`, `(gh`, een git-alias
-// `!gh` en `env -Sgh` (`-S`/`--split-string` splitst de rest tot een nieuw commando). Elk teken buiten `[\w.-]` is een grens.
-const GH_WORD = /(?:^|[^\w.-]|(?<=(?:^|\s)-S))gh(?=$|[^\w.-])/;
+// `!gh`, `env -Sgh`, `env -vSgh` en `env -S\_gh` (`-S`/`--split-string` splitst de rest tot een nieuw commando; `\_`, `\t` …
+// zijn daar witruimte en na het strippen van `\` een losse letter). Elk teken buiten `[\w.-]` is een grens.
+const GH_WORD = /(?:^|[^\w.-]|(?<=(?:^|\s)(?:-[a-zA-Z]*S|--s[a-z-]*=)[_fnrtv]*))gh(?=$|[^\w.-])/;
 const RAW_GITHUB = new RegExp(`${GH_WORD.source}|\\/pulls\\/|api\\.github\\.com|graphql`, 'm');
 const RAW_MERGE = /(?<![,a-zA-Z])merge(?=[\s/,}]|$)/m;
 // Los van gh-herkenning: `pr merge`, `pr review … --approve` en een GraphQL-merge zijn in elke vorm verboden.
 const RAW_PR_MERGE = /(?:^|[^\w.-])pr\s+merge(?=$|[^\w.-])/m;
+const RAW_PR_REVIEW = /(?:^|[^\w.-])pr\s+review(?=$|[^\w.-])/m;
+const RAW_APPROVE = /--approve|(?:^|\s)-a\b/;
 const RAW_SUBAGENT = new RegExp(`${GH_WORD.source}|api\\.github\\.com|git\\s+credential`, 'm');
 const SHELL_TRICKS = /\$\(|`|\beval\b|\bsource\b|(?:^|[\s;&|(])\.\s|\{[^}]*(?:,|\.\.)[^}]*\}|\|\s*(?:ba|z|da|k)?sh\b|<</;
 
@@ -575,11 +588,11 @@ function rawForbidden(command, role) {
   // Zonder `\`, `'` en `"`: `g\h`, `g""h` en `mer''ge` zijn voor de shell gewoon gh en merge.
   const text = command.replace(/[\\'"]/g, '');
   if (RAW_GITHUB.test(text) &&
-    (RAW_MERGE.test(text) || MERGE_MUTATION.test(text) || (/\breview\b/.test(text) && /--approve|(?:^|\s)-a\b/.test(text)) ||
+    (RAW_MERGE.test(text) || MERGE_MUTATION.test(text) || (/\breview\b/.test(text) && RAW_APPROVE.test(text)) ||
       (/\/reviews\b/.test(text) && /APPROVE/.test(text))))
     found.push('mergen of goedkeuren via gh of …/pulls/ is voor elke rol verboden (vangnet op de ruwe tekst, WS-04)');
-  else if (RAW_PR_MERGE.test(text) || MERGE_MUTATION.test(text))
-    found.push('`pr merge` of een GraphQL-merge is voor elke rol verboden, ook zonder herkenbaar gh (vangnet op de ruwe tekst, WS-04)');
+  else if (RAW_PR_MERGE.test(text) || MERGE_MUTATION.test(text) || (RAW_PR_REVIEW.test(text) && RAW_APPROVE.test(text)))
+    found.push('`pr merge`, `pr review --approve` of een GraphQL-merge is voor elke rol verboden, ook zonder herkenbaar gh (vangnet op de ruwe tekst, WS-04)');
   if (role === 'hoofdsessie' || !RAW_SUBAGENT.test(text)) return found;
   const segments = parseCommands(command);
   if (segments.length !== 1 || segments[0]?.words[0] !== 'gh' || SHELL_TRICKS.test(command))
@@ -744,6 +757,9 @@ function hiddenCommandWord(words) {
 }
 
 const FIND_EXEC = new Set(['-exec', '-execdir', '-ok', '-okdir']);
+// Na xargs of find -exec: een omhulsel, shell of git kan met argumenten uit een bestand of stdin alsnog gh of een
+// git-alias (`!gh …`) starten. Dicht falen: zo'n commandowoord is altijd verboden, ook zonder zichtbare gh erna.
+const INDIRECT_LAUNCHERS = new Set([...COMMAND_WRAPPERS, 'git', 'eval', 'xargs', 'find', 'bash', 'sh', 'zsh', 'dash', 'ksh']);
 
 /**
  * Programma's die een ander commando starten: xargs met vervangtekst of find -exec met een commandowoord dat niet
@@ -763,8 +779,12 @@ function indirectForbidden(program, args, role) {
     (!literalWord(xargs.command) || (xargs.replace !== null && xargs.command.includes(xargs.replace)));
   if (replaced || execs.some((word) => !literalWord(word)))
     found.push(`${program}: een commandowoord dat niet letterlijk is, is verboden, voor elke rol`);
-  if ([xargs?.command ?? '', ...execs].some((word) => programName(word) === 'gh'))
+  const launched = [xargs?.command ?? '', ...execs].map((word) => programName(word));
+  if (launched.includes('gh'))
     found.push(`${program}: gh via xargs of find -exec ontloopt de gh-controles; verboden, voor elke rol (roep gh rechtstreeks aan)`);
+  const launcher = launched.find((name) => INDIRECT_LAUNCHERS.has(name));
+  if (launcher !== undefined)
+    found.push(`${program}: \`${launcher}\` via xargs of find -exec kan gh of een alias starten die het rolhek niet ziet; verboden, voor elke rol`);
   if ((program === 'eval' || (SHELLS.has(program) && args.some((arg) => /^-[a-zA-Z]*c[a-zA-Z]*$/.test(arg)))) &&
     args.some((arg) => /[$`]/.test(arg)))
     found.push(`${program}: tekst met expansie uitvoeren is verboden, voor elke rol`);
