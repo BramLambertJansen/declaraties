@@ -567,16 +567,18 @@ function matchingParen(text, from) {
 const GH_WORD = /(?:^|[^\w.-]|(?<=(?:^|\s)(?:-[a-zA-Z]*S|--s[a-z-]*=)[_fnrtv]*))gh(?=$|[^\w.-])/;
 const RAW_GITHUB = new RegExp(`${GH_WORD.source}|\\/pulls\\/|api\\.github\\.com|graphql`, 'm');
 const RAW_MERGE = /(?<![,a-zA-Z])merge(?=[\s/,}]|$)/m;
-// Los van gh-herkenning: `pr merge`, `pr review … --approve` en een GraphQL-merge zijn in elke vorm verboden.
+// Los van gh-herkenning: `pr merge`, `pr review … --approve` en een GraphQL-merge zijn in elke vorm verboden. Met herkenbaar gh is
+// `pr review` als losse woorden voor elke rol verboden, ook zonder approve: zo valt `env -i gh pr review …` (omhulsel met opties,
+// dat `splitCommand` niet afpelt) net als directe `gh pr review` (`ghForbidden`). `-a` telt ook vooraan een cluster (`-ab`, `-aF`).
 const RAW_PR_MERGE = /(?:^|[^\w.-])pr\s+merge(?=$|[^\w.-])/m;
 const RAW_PR_REVIEW = /(?:^|[^\w.-])pr\s+review(?=$|[^\w.-])/m;
-const RAW_APPROVE = /--approve|(?:^|\s)-a\b/;
+const RAW_APPROVE = /--approve|(?:^|\s)-a/;
 const RAW_SUBAGENT = new RegExp(`${GH_WORD.source}|api\\.github\\.com|git\\s+credential`, 'm');
 const SHELL_TRICKS = /\$\(|`|\beval\b|\bsource\b|(?:^|[\s;&|(])\.\s|\{[^}]*(?:,|\.\.)[^}]*\}|\|\s*(?:ba|z|da|k)?sh\b|<</;
 
 /**
- * Voor elke rol: mergen of goedkeuren in tekst die naar gh, …/pulls/, de GitHub-API of GraphQL wijst. Voor een subagent: tekst die gh, de
- * GitHub-API of git credential noemt mag alleen één direct gh-commando zonder shell-trucs zijn; vals positief
+ * Voor elke rol: mergen of goedkeuren in tekst die naar gh, …/pulls/, de GitHub-API of GraphQL wijst, en `pr review` naast gh.
+ * Voor een subagent: tekst die gh, de GitHub-API of git credential noemt mag alleen één direct gh-commando zonder shell-trucs zijn; vals positief
  * (`grep gh x`) is bewust geaccepteerd.
  * @param {string} command
  * @param {string} role
@@ -591,6 +593,8 @@ function rawForbidden(command, role) {
     (RAW_MERGE.test(text) || MERGE_MUTATION.test(text) || (/\breview\b/.test(text) && RAW_APPROVE.test(text)) ||
       (/\/reviews\b/.test(text) && /APPROVE/.test(text))))
     found.push('mergen of goedkeuren via gh of …/pulls/ is voor elke rol verboden (vangnet op de ruwe tekst, WS-04)');
+  else if (GH_WORD.test(text) && RAW_PR_REVIEW.test(text))
+    found.push('gh pr review is voor elke rol verboden, ook achter een omhulsel en zonder --approve (vangnet op de ruwe tekst, AGENTS.md)');
   else if (RAW_PR_MERGE.test(text) || MERGE_MUTATION.test(text) || (RAW_PR_REVIEW.test(text) && RAW_APPROVE.test(text)))
     found.push('`pr merge`, `pr review --approve` of een GraphQL-merge is voor elke rol verboden, ook zonder herkenbaar gh (vangnet op de ruwe tekst, WS-04)');
   if (role === 'hoofdsessie' || !RAW_SUBAGENT.test(text)) return found;
