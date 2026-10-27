@@ -147,6 +147,42 @@ Hier staan wijzigingen die van belang zijn bij het gebruiken of bijwerken van de
 
 ### Gewijzigd
 
+- Subagents verliezen GraphQL en elke schrijvende gh-aanroep. Het rolhek laat hen bij GitHub alleen lezen:
+  `gh pr view/diff/checks/list/status`, `gh run view/list/watch`, `gh issue view/list`, `gh repo view` en `gh api`
+  REST-GET met alleen `--jq`, `--paginate`, `--include`, `--silent` of een Accept-header. Ook `git credential`,
+  curl/wget met een token, configbestand, headerbestand of `$`-argument, `pnpm lint --fix`, brede
+  prettier/eslint-schrijfacties, `eval`, `source`/`.` en een shell zonder scriptbestand weigert het hun. Een grove regel
+  op de ruwe commandotekst (heredocs inbegrepen) laat bij tekst met `gh`, `api.github.com` of `git credential` alleen
+  één direct gh-leescommando zonder shell-trucs toe (`$(`, backtick, `eval`, `source`, brace-expansie, pipe naar een
+  shell, heredoc). Bewust vals positief: `grep gh x`.
+- De regel op de ruwe tekst werkt op een genormaliseerde tekst zonder `\`, `'` en `"`, zodat `g\h`, `g""h` en `mer''ge`
+  meetellen, en kijkt nu ook naar `api.github.com` en `graphql` (ook `mergePullRequest`, `enablePullRequestAutoMerge`
+  en `mergeBranch` via curl). Een commandowoord dat niet letterlijk is (`$CMD …`, `${x}h …`, `$(echo ls)`, een glob als
+  `g[h]`, `{…}` of een `~` vooraan, na een sleutelwoord als `!`/`if`/`while` of een omhulsel als `env`/`nice`/`time`/`sudo`
+  moet elk woord van het segment letterlijk zijn (bewust vals positief: `time ls *.md`), en achter xargs of find `-exec`). Een glob op welke
+  positie ook die naar `gh` of `gh.exe` kan wijzen (`/usr/bin/g[h]`, `g?`), brace-expansie (`g{h..h}`, `{g,x}h`) en POSIX-klassen
+  (`[[:alpha:]]`, `[[=h=]]`) zijn los van elke lijst omhulsels dicht (bewust vals positief: `echo {a,b}`, `echo {1..3}`,
+  een `--jq`- of JS-object met een komma), een variabel woord na het commandowoord (`${G}h`, `$G`) in een opdracht met
+  een gh-subcommandowoord als `pr`, `api`, `run` of `merge` (bewust vals positief: `echo $HOME run`); met een geëxpandeerd argument (`$X`, `$(…)`) mag alleen een programma uit een
+  vaste lijst (`echo`, `cat`, `ls`, `cp`, `rm`, `grep`, …; niet `sed`/`awk`, die zelf een commando kunnen uitvoeren), anders deny voor subagents en ask voor de hoofdsessie (`git diff
+  $BASE`); en `eval`/`bash -c`
+  met expansie zijn voor elke
+  rol dicht; subagents gebruiken geen xargs met een commando en geen find `-exec`. Bewuste valse melding: een PR-titel of -body met het woord `merge ` als argument; gebruik `--body-file` en
+  een titel zonder dat woord. De inhoud van `$(…)` en backticks wordt recursief gecontroleerd; `gh` telt alleen als los
+  woord (niet in `gh-notes` of een testpad). Bewuste valse melding: een commitbericht met `merge` naast `gh`, `graphql`
+  of `/pulls/`; gebruik `git commit -F <bestand>`. Scripts in de repo en interpreters blijven open; de harde grens is GitHub zelf (ruleset en
+  eigenaarmerge).
+- De hoofdsessie mag nog: PR's maken, lezende GraphQL-queries (ook met variabelen als `query($n:Int!)` binnen enkele
+  aanhalingstekens), REST-aanroepen, `gh pr view --json state,mergedAt,mergeCommit` en `git merge` zonder gh. Ze mag
+  niet meer: `gh -R/--repo` gebruiken om de merge- en reviewregels te omzeilen, `gh alias set/import` of een onbekende
+  gh-groep (mogelijk een alias) gebruiken, `gh api` aanroepen met een niet-letterlijke GraphQL-query (`$(`,
+  shell-variabele, `@file`, `--input`) of met een schrijvende methode naar een onleesbaar endpoint (ook via `-iX PUT`,
+  `/graphql` of een volledige URL), en in tekst met `gh` of `/pulls/` `merge` als commando- of endpointwoord,
+  `review --approve` of `/reviews` met `APPROVE` gebruiken, ook in `{ …; }`, `if` of `$(…)`. `pnpm format` vraagt ook na
+  pnpm-opties akkoord. Het rolhek is een vangnet: `node -e` en andere interpreters blijven open; de harde grens blijven
+  CI, de diff-guard en de GitHub-ruleset (`rails/hooks/lib/rolhek.mjs`, `rails/hooks/lib/shell.mjs`,
+  `test/hooks/rolhek-gh-allowlist.test.ts`).
+
 - Een laat sluitende `EditableSection` trekt focus niet meer weg uit een ander veld of een andere knop. Het gewone
   focusherstel naar Bewerken en het opruimen van de uitgestelde focustimer blijven behouden.
 

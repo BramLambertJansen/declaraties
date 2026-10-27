@@ -2,8 +2,12 @@
 // `|`, `&`, regeleinde), haalt aanhalingstekens weg, slaat heredoc-teksten over en verzamelt redirect-doelen. Bewust geen
 // volledige shell: wat tekstheuristiek niet vangt (`bash -c`, `node -e`, `$(…)`), vangt de diff-guard in CI.
 
-/** @typedef {{ words: string[], redirects: string[] }} Command */
-/** @typedef {{ kind: 'word' | 'op', value: string }} Token */
+/**
+ * @typedef {{ words: string[], redirects: string[], expanded?: string[] }} Command
+ * `expanded`: woorden waarin de shell nog uitbreidt (`$` of een backtick buiten enkele aanhalingstekens, ook `$'…'`); hun
+ * waarde hier is dus niet wat het programma krijgt.
+ */
+/** @typedef {{ kind: 'word' | 'op', value: string, expands?: boolean }} Token */
 
 const SEPARATORS = new Set([';', '&&', '||', '|', '&', '|&', '\n', '(', ')']);
 const OPERATORS = ['&>>', '>>', '>|', '&>', '>&', '<<-', '<<<', '<<', '<&', '&&', '||', '|&', '<', '>', ';', '|', '&', '(', ')', '\n'];
@@ -16,13 +20,13 @@ export function parseCommands(script) {
   /** @type {Command[]} */
   const commands = [];
   /** @type {Command} */
-  let current = { words: [], redirects: [] };
+  let current = { words: [], redirects: [], expanded: [] };
   /** @type {'redirect' | 'skip' | null} */
   let expect = null;
   for (const token of tokenize(script)) {
     if (token.kind === 'op' && SEPARATORS.has(token.value)) {
       if (current.words.length > 0 || current.redirects.length > 0) commands.push(current);
-      current = { words: [], redirects: [] };
+      current = { words: [], redirects: [], expanded: [] };
       expect = null;
     } else if (token.kind === 'op') {
       // `<`, `<<<`, `<<` en kopieën van een descriptor (`>&2`, `2>&1`) schrijven geen bestand.
@@ -30,6 +34,7 @@ export function parseCommands(script) {
     } else {
       if (expect === 'redirect') current.redirects.push(token.value);
       else if (expect === null) current.words.push(token.value);
+      if (token.expands === true) current.expanded?.push(token.value);
       expect = null;
     }
   }
@@ -74,7 +79,7 @@ function nextToken(script, index, { tokens, heredocs }) {
     const previous = tokens.at(-1);
     if (previous?.kind === 'op' && (previous.value === '<<' || previous.value === '<<-'))
       heredocs.push({ delimiter: word.value, strip: previous.value === '<<-' });
-    tokens.push({ kind: 'word', value: word.value });
+    tokens.push({ kind: 'word', value: word.value, expands: word.expands });
     return word.end;
   }
   tokens.push({ kind: 'op', value: op });
@@ -108,15 +113,19 @@ function skipHeredocBodies(script, from, heredocs) {
  */
 function readWord(script, start) {
   let value = '';
+  let expands = false;
   let index = start;
   while (index < script.length) {
     const char = script[index] ?? '';
     if (/[\s;&|<>()]/.test(char)) break;
     const part = wordPart(script, index, char);
+    // Buiten enkele aanhalingstekens breidt de shell `$` en backticks uit; binnen dubbele ook, tenzij geëscaped.
+    if (char === '$' || char === '`' || (char === '"' && /[$`]/.test(script.slice(index + 1, part.end - 1).replace(/\\./g, ''))))
+      expands = true;
     value += part.text;
     index = part.end;
   }
-  return { value, end: index };
+  return { value, end: index, expands };
 }
 
 /**
