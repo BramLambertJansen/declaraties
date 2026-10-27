@@ -242,6 +242,11 @@ describe('runner.sh: transportcommando uit de globale config verlegt de origin n
     const ssh = path.join(omgeving.stubs, 'nep-ssh');
     writeFileSync(ssh, `#!/bin/sh\nexec git upload-pack '${nep}'\n`);
     chmodSync(ssh, 0o755);
+    // Geen netwerk in de test: negeert de runner de nep-sshCommand terecht, dan mag git nooit een echte ssh
+    // bereiken (hangt op hosts met ssh-config tot de runner-timeout). Deze stub faalt direct.
+    const echteSsh = path.join(omgeving.stubs, 'ssh');
+    writeFileSync(echteSsh, '#!/bin/sh\necho "ssh: geblokkeerd in test (geen netwerk)" >&2\nexit 255\n');
+    chmodSync(echteSsh, 0o755);
     git(omgeving.repo, 'remote', 'set-url', 'origin', 'git@example.invalid:o/r.git');
     return ssh;
   }
