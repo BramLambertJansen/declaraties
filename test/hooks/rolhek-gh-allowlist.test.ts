@@ -706,3 +706,21 @@ describe('omzeilingen ronde 3', () => {
     expect(run('gh pr view 1 --json reviews').deny).toEqual([]);
   });
 });
+
+describe('omzeilingen ronde 4: leeg woord vóór de gh-groep', () => {
+  test.each([
+    'gh "" api -X POST repos/o/r/statuses/abc -f state=success -f context=ci',
+    'gh "" alias import a.yml',
+    'gh "" m 1',
+    'gh "" api graphql -F query=@q.graphql',
+    "gh '' '' pr review 1 --comment -b x",
+    'gh "" pr edit 1 --add-label gate-wijziging',
+  ])('gh met leeg woord geweigerd voor hoofdsessie en developer: %s', (command) => {
+    expect(run(command).deny.length).toBeGreaterThan(0);
+    expect(run(command, 'developer').deny.length).toBeGreaterThan(0);
+  });
+
+  test.each(['gh pr view 1 --json state', 'gh "" pr view 1'])('hoofdsessie kan nog: %s', (command) => {
+    expect(run(command).deny).toEqual([]);
+  });
+});
