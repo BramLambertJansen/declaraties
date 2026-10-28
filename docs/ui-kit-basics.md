@@ -76,3 +76,24 @@ van `Stack as="ul"`/`"ol"` weg; Safari/VoiceOver kan dan de lijstsemantiek laten
 
 Voorbeelden: `src/web/features/design-system/typography-examples.tsx`. Bewijs per criterium: de tests met
 `typografie-en-layout/AC-*` in de naam.
+
+## Thema en tokens
+
+Spec: [semantische-tokens](specs/semantische-tokens.md). Een app overschrijft alleen semantische tokens, in
+`src/web/styles/theme.css` (geïmporteerd ná de core-index, `src/web/styles/app.css:2-3`); de standaard staat in
+`src/core/web/styles/semantic.css`.
+
+- Lettertype: `--font-family-sans` en `--font-family-mono` (standaard de systeemstack). Tekstschaal: `--type-{sm,base,lg,xl,2xl}`
+  met `--type-*-leading`. Gewicht: `--weight-{normal,medium,semibold}`. Andere maten en gewichten (`text-xs`, `text-3xl`,
+  `font-bold`, `font-serif`) bestaan niet: `src/core/web/styles/index.css` reset ze in `@theme`. Meer nodig? Stel een
+  variant voor.
+- Dichtheid: `--density-space` is de basis van alle afstanden en maten (`p-4`, `gap-2`, `w-*`, `size-*`: 4 × de basis bij
+  `p-4`); `--density-control` is de hoogte van bediening en moet een lengte zijn (`rem` of `px`), anders vervalt de
+  ondergrens. `--control-h` (`src/core/web/styles/components.css:4`) houdt die op minstens 44 px.
+- Eigen lettertype: zet het woff2-bestand met zijn licentiebestand (`LICENSE*` of `OFL*`) in `src/web/styles/fonts/`,
+  declareer `@font-face` in `theme.css` met een relatieve `url()` en `font-display: swap`, en zet de familie vóór de
+  systeemstack in `--font-family-sans`. Alleen lettertypen waarvan de licentie zelf hosten toestaat (bijvoorbeeld OFL 1.1
+  of Apache 2.0); de PR noemt lettertype, versie en licentie. Geen externe URL of CDN-`@import` (de CSP staat dat niet toe).
+  Een woff2 onder 4 KB zou Vite als `data:` inlinen, wat de CSP blokkeert.
+
+Bewijs: `test/ui/semantische-tokens.test.ts` en `e2e/semantische-tokens.spec.ts` (`semantische-tokens/AC-*`).
