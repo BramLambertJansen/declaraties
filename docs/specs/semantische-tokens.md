@@ -1,5 +1,5 @@
 ---
-status: gebouwd # #353; gevalideerd: aa816f2fb91b7fdbe322dda7143f2723288db97e
+status: goedgekeurd # voorstel | goedgekeurd | gebouwd | vervallen — de architect zet de status in het voorstel, de merge door de eigenaar is het besluit (ADR 0046); gebouwd: # #<PR>; gevalideerd: <sha> (pnpm docs:status)
 namespace: semantische-tokens
 ---
 
