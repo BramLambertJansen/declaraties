@@ -48,6 +48,21 @@ draait hem; `--dry-run` toont het plan zonder te schrijven, en bestaat een doel 
 `gate:fast`). De generator voegt geen dependency toe: de route-tree komt van de al geïnstalleerde `@tanstack/router-plugin`
 (ADR 0047 punt 8–9).
 
+## Transactiegrens in de spec
+
+Toets het transactieplan aan `routeHandler` in `src/core/api/http/create-app.ts` en de context in
+`src/core/api/route/kit.ts`: de handler en outputvalidatie draaien binnen één `withUser`-transactie. De handler krijgt
+`ctx.tx`, geen `withUser` om zelf een tweede transactie te openen. Een fout uit de handler of outputvalidatie breekt de
+transactie af; wijzigingen en audit worden teruggedraaid. Een wijziging bewaren en daarna een `AppError` gooien werkt dus niet.
+
+Een aanroep via `ctx.services` vanuit de handler gebeurt ook binnen die transactie. Vereist de flow een externe
+netwerkaanroep tussen twee databasestappen zonder een open transactie of vastgehouden verbinding, leg dan eerst een
+expliciet kitmechanisme vast in de spec en controleer of de kit het al ondersteunt. Het `prepare`-ontwerp uit
+[ADR 0060](adr/0060-bestandsopslag-als-poort.md) is geen beschikbare handler-API zolang de route kit het niet implementeert.
+
+`ctx.afterCommit` en `ctx.afterRollback` plannen externe gevolgen of compensatie na de transactie; ze splitsen de handler
+niet in twee transacties (`src/core/api/http/route-effects.ts`). Een fout na commit draait gecommitteerde data niet terug.
+
 ## Stappen
 
 1. **Spec** met status `goedgekeurd`: `docs/specs/accountbeheer.md` (routes, foutcodes, teksten, ACs, testplan).
