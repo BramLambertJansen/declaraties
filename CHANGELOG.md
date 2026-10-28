@@ -11,6 +11,11 @@ Hier staan wijzigingen die van belang zijn bij het gebruiken of bijwerken van de
   (`docs/ui-kit-basics.md`, "Thema en tokens"). `--control-h` blijft minstens 44 px. Bij een update: `text-xs`,
   `text-3xl` en groter, `font-bold`, `font-light`, `font-thin` en `font-serif` bestaan niet meer; vervang eigen gebruik.
 
+- Semantische tokens voor status, lagen en beweging (deel 3b): `--success`/`--warning` met voorgrond, `--layer-*`
+  (`z-sticky` … `z-toast`) en `--motion-*` (`duration-fast`/`-normal`, `ease-standard`/`-out`); `StatusBadge` en
+  `Notice` krijgen de tonen `success` en `warning` (`docs/ui-kit-basics.md`, "Thema en tokens"). Bij een update:
+  `ease-in` en `ease-in-out` bestaan niet meer; vervang kale `z-<getal>`/`duration-<getal>` door de tokens.
+
 - Rail `rails/klassen` (spec `docs/specs/klassenrail.md`): in `src/web/features` en `src/web/routes` is `className` een
   gewone string met alleen layout-utilities; kleur, typografie, arbitrary values, `!`, `dark:` en `style` geven een
   lintfout die naar `Text`/`Heading`/`Stack`/`Inline` verwijst. Bij een update: verplaats eigen stijlklassen uit

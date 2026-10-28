@@ -95,5 +95,17 @@ Spec: [semantische-tokens](specs/semantische-tokens.md). Een app overschrijft al
   systeemstack in `--font-family-sans`. Alleen lettertypen waarvan de licentie zelf hosten toestaat (bijvoorbeeld OFL 1.1
   of Apache 2.0); de PR noemt lettertype, versie en licentie. Geen externe URL of CDN-`@import` (de CSP staat dat niet toe).
   Een woff2 onder 4 KB zou Vite als `data:` inlinen, wat de CSP blokkeert.
+- Status: `--success`, `--warning` en hun `-foreground` (`src/core/web/styles/semantic.css:20-23`, donker `:81-84`), als
+  `bg-*`, `text-*` en `border-*`. Ze werken als tekst op `--background`/`--card` én als vlak met de voorgrond; een eigen
+  waarde moet in licht en donker 4,5:1 halen (`test/ui/contrast-status.test.ts`). `StatusBadge` en `Notice` hebben de
+  tonen `success` en `warning`; `Notice` geeft daarbij `role="status"`, alleen `error` is `role="alert"`.
+- Lagen: `z-sticky` < `z-dropdown` < `z-overlay` < `z-modal` < `z-toast` (`--layer-*`, `src/core/web/styles/components.css:8-12`).
+  Een `<dialog>` staat in de top layer en heeft geen z-index nodig; de skiplink gebruikt `focus:z-toast`.
+- Beweging: `duration-fast` (150 ms, ook de standaard van `transition-*`), `duration-normal` (200 ms), `ease-standard` en
+  `ease-out` (`--motion-*`, `src/core/web/styles/semantic.css:58-61`); `ease-in` en `ease-in-out` bestaan niet. Bij
+  `prefers-reduced-motion` kort de globale regel in `src/core/web/styles/index.css` elke overgang in tot 0,01 ms, ook
+  als een app langere duren zet. Kale getallen (`z-50`, `duration-200`) horen niet in de kit
+  (`test/ui/semantische-tokens-3b.test.ts`, AC-15).
 
-Bewijs: `test/ui/semantische-tokens.test.ts` en `e2e/semantische-tokens.spec.ts` (`semantische-tokens/AC-*`).
+Bewijs: `test/ui/semantische-tokens.test.ts`, `test/ui/semantische-tokens-3b.test.ts`, `test/ui/contrast-status.test.ts`,
+`e2e/semantische-tokens.spec.ts` en `e2e/semantische-tokens-beweging.spec.ts` (`semantische-tokens/AC-*`).

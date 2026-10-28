@@ -8,6 +8,8 @@ const badgeVariants = cva('inline-flex items-center rounded-md px-2 py-1 text-sm
       neutral: 'bg-muted text-muted-foreground',
       accent: 'bg-accent text-accent-foreground',
       destructive: 'bg-destructive text-destructive-foreground',
+      success: 'bg-success text-success-foreground',
+      warning: 'bg-warning text-warning-foreground',
     },
   },
   defaultVariants: { tone: 'neutral' },
