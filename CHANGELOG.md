@@ -6,6 +6,11 @@ Hier staan wijzigingen die van belang zijn bij het gebruiken of bijwerken van de
 
 ### Toegevoegd
 
+- Semantische tokens voor typografie en dichtheid (spec `docs/specs/semantische-tokens.md`, deel 3a): lettertype,
+  tekstschaal, gewicht, `--density-space` en `--density-control` in `semantic.css`, te overschrijven in `theme.css`
+  (`docs/ui-kit-basics.md`, "Thema en tokens"). `--control-h` blijft minstens 44 px. Bij een update: `text-xs`,
+  `text-3xl` en groter, `font-bold`, `font-light`, `font-thin` en `font-serif` bestaan niet meer; vervang eigen gebruik.
+
 - Rail `rails/klassen` (spec `docs/specs/klassenrail.md`): in `src/web/features` en `src/web/routes` is `className` een
   gewone string met alleen layout-utilities; kleur, typografie, arbitrary values, `!`, `dark:` en `style` geven een
   lintfout die naar `Text`/`Heading`/`Stack`/`Inline` verwijst. Bij een update: verplaats eigen stijlklassen uit

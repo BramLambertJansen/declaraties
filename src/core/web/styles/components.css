@@ -1,6 +1,7 @@
 /* Laag 3: component (framework §7). Maten die elk recept deelt: 44 px aanraakdoel en één focusring. */
 :root {
-  --control-h: 2.75rem;
+  /* Een app kan --density-control groter zetten, nooit kleiner dan het aanraakdoel van 44 px (framework §7). */
+  --control-h: max(var(--density-control), 2.75rem);
   --focus-ring-width: 2px;
   --focus-ring-offset: 2px;
   /* QR-code: altijd donker op licht, ook in het donkere thema (scanners lezen omgekeerd slecht). */

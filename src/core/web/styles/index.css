@@ -1,5 +1,5 @@
-/* Tokens en Tailwind (framework §7). In @theme gaan kleur, radius en schaduw van Tailwind eruit: alleen de tokens
-   hieronder bestaan (bg-red-500 bestaat niet). Dark mode via [data-theme=dark]. */
+/* Tokens en Tailwind (framework §7). In @theme gaan kleur, radius, schaduw, lettertype, tekstmaat en gewicht van
+   Tailwind eruit: alleen de tokens hieronder bestaan (bg-red-500, text-xs en font-bold bestaan niet). Dark mode via [data-theme=dark]. */
 @import 'tailwindcss';
 @import './primitives.css';
 @import './components.css';
@@ -13,6 +13,9 @@
   --shadow-*: initial;
   --inset-shadow-*: initial;
   --drop-shadow-*: initial;
+  --font-*: initial;
+  --font-weight-*: initial;
+  --text-*: initial;
 
   --color-transparent: transparent;
   --color-current: currentColor;
@@ -49,6 +52,27 @@
   --shadow-md: 0 4px 6px -1px oklch(0 0 0 / 0.1), 0 2px 4px -2px oklch(0 0 0 / 0.1);
   --shadow-lg: 0 10px 15px -3px oklch(0 0 0 / 0.1), 0 4px 6px -4px oklch(0 0 0 / 0.1);
 
+  --font-sans: var(--font-family-sans);
+  --font-mono: var(--font-family-mono);
+  --default-font-family: var(--font-family-sans);
+  --default-mono-font-family: var(--font-family-mono);
+
+  --text-sm: var(--type-sm);
+  --text-sm--line-height: var(--type-sm-leading);
+  --text-base: var(--type-base);
+  --text-base--line-height: var(--type-base-leading);
+  --text-lg: var(--type-lg);
+  --text-lg--line-height: var(--type-lg-leading);
+  --text-xl: var(--type-xl);
+  --text-xl--line-height: var(--type-xl-leading);
+  --text-2xl: var(--type-2xl);
+  --text-2xl--line-height: var(--type-2xl-leading);
+
+  --font-weight-normal: var(--weight-normal);
+  --font-weight-medium: var(--weight-medium);
+  --font-weight-semibold: var(--weight-semibold);
+
+  --spacing: var(--density-space);
   --spacing-control: var(--control-h);
 }
 
