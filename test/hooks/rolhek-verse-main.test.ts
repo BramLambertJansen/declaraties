@@ -195,3 +195,13 @@ describe('verse main: vormen uit de Codex-review', () => {
     expect(ROLLEN.map((role) => verdict(command, role))).toStrictEqual(['allow', 'allow']);
   });
 });
+
+describe('verse main: sleutelwoorden vóór het commando', () => {
+  test.each([
+    '{ git switch -c feat/x feat/y; }',
+    '! git switch -c feat/x feat/y',
+    'if git switch -c feat/x feat/y; then :; fi',
+  ])('geweigerd: %s', (command) => {
+    expect(ROLLEN.map((role) => verdict(command, role))).toStrictEqual(['deny', 'deny']);
+  });
+});

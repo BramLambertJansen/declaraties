@@ -7,6 +7,8 @@ export const VERSE_MAIN_MELDING =
   'nieuw werk begint vanaf een verse main: `git fetch origin main && git switch -c <naam> origin/main` in één commando ' +
   '(ook `checkout -b`, `git branch`, `worktree add -b`; framework §8). Een branch op een andere basis maakt de eigenaar zelf.';
 
+// Sleutelwoorden vóór een commando (`{ git …; }`, `! git …`, `if git …`); het commando erna telt gewoon.
+const SHELL_KEYWORDS = new Set(['{', '!', 'if', 'then', 'elif', 'else', 'do', 'while', 'until', 'time']);
 const SEPARATORS = new Set([';', '&&', '||', '|', '&', '|&', '\n', '(', ')']);
 const ORIGIN_MAIN = new Set(['origin/main', 'refs/remotes/origin/main']);
 const MAIN_REFSPECS = new Set(['main', 'refs/heads/main']);
@@ -123,7 +125,8 @@ function fetchesMain(subcommand, rest) {
  * @returns {{ subcommand: string, rest: string[] } | null}
  */
 function gitCall(segment) {
-  const { argv } = splitCommand(withoutTimeout(splitCommand(segment.words).argv));
+  const words = segment.words.slice(segment.words.findIndex((word) => !SHELL_KEYWORDS.has(word)));
+  const { argv } = splitCommand(withoutTimeout(splitCommand(words).argv));
   if (programName(argv[0] ?? '') !== 'git') return null;
   const { subcommand, rest } = gitSubcommand(argv.slice(1));
   return { subcommand, rest };
