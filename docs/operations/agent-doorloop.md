@@ -239,6 +239,15 @@ De guard mag de groene broncommit gebruiken als de latere diff uitsluitend statu
 of configuratie wijzigen vraagt nieuw bouwbewijs. Gebouwd vereist geen merge. ADR's hebben geen gebouwd-status:
 implementatiebewijs hoort bij hun gekoppelde spec.
 
+Volgorde (leerpunt #314, anders kost het extra CI-rondes of merget de PR zonder `gebouwd`):
+
+1. `check:roadmap` eist een roadmapwijziging in dezelfde PR zodra de spectekst `ST-<n>` of "roadmap stuk <n>" noemt (bijvoorbeeld ST-09). Gebruik daarvoor `--roadmap`: het vinkje landt dan in de statuscommit. Zet het niet in de implementatie: onder een taakmandaat keurt `document-status` een vinkje vóór de statuscommit af (`BUITEN`), en `--roadmap` faalt als het item al is afgevinkt. Noemt het item het specpad niet tussen backticks, dan kan `--roadmap` het niet afvinken: stop en vraag de eigenaar (met mandaat); zonder mandaat komt de roadmapwijziging in de implementatie.
+2. Wacht op groen op HEAD (`pnpm pr:verify <n> --watch`).
+3. Draai `pnpm docs:status … gebouwd --pr <n> --roadmap`, commit en push dat als laatste commit. Daarna mag alleen nog de statusregel (en het vinkje) wijzigen; elke andere commit erna maakt `document-status` rood, ook `git merge origin/main`.
+4. Pas na groen op die statuscommit mag de eigenaar de PR mergen of auto-merge aanzetten. Staat auto-merge al aan, vraag de eigenaar hem uit te zetten tot stap 3 klaar is: na de merge ligt de PR-head vast en eist `canRecordBuilt` dat die gelijk is aan de gecontroleerde HEAD op dezelfde branch, dus een latere statuscommit herstelt het niet.
+
+Zonder `gh`-authenticatie kan `docs:status … --pr` het bouwbewijs niet ophalen. De statusregel met de hand zetten is geen alternatief: de volgorde hierboven blijft gelden en `document-status` valideert hem tegen de PR. Meld het en laat de eigenaar of een sessie met `gh`-auth stap 3 draaien.
+
 `vervallen` of `vervangen door NNNN` schrijft de architect of hoofdsessie in een besluit-PR; de merge door de eigenaar beslist.
 
 ## Invoering en runtime
