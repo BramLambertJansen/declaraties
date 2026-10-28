@@ -11,13 +11,13 @@ const SEPARATORS = new Set([';', '&&', '||', '|', '&', '|&', '\n', '(', ')']);
 const ORIGIN_MAIN = new Set(['origin/main', 'refs/remotes/origin/main']);
 const MAIN_REFSPECS = new Set(['main', 'refs/heads/main']);
 // Opties waarmee `git branch` iets anders doet dan een branch maken (lezen, verwijderen, hernoemen, kopiëren, upstream);
-// elke andere optie laat het een create blijven (dicht falen).
-const BRANCH_OTHER_LONG = /^--(?:d|mo|cop|l|a|rem|v|con|no-con|me|no-me|po|so|form|sh|se|u|e|colu|no-colu|ig|om)/;
-const BRANCH_OTHER_SHORT = /^-[a-zA-Z]*[dDmMcClarvui]/;
+// elke andere optie, ook opmaak als `--abbrev`, `--sort` of `--column`, laat het een create blijven (dicht falen).
+const BRANCH_OTHER_LONG = /^--(?:d|mo|cop|l|al|rem|v|con|no-con|me|no-me|po|sh|se|u|e)/;
+const BRANCH_OTHER_SHORT = /^-[a-zA-Z]*[dDmMcClarvu]/;
 // Opties van `git fetch` met een losse waarde, en opties waarna origin/main niet echt is bijgewerkt.
 const FETCH_VALUE_OPTIONS = new Set(['--depth', '--deepen', '--shallow-since', '--shallow-exclude', '-j', '--jobs',
   '--upload-pack', '--negotiation-tip', '-o', '--server-option', '--filter']);
-const FETCH_NO_UPDATE = /^--(?:dry-run|refmap)/;
+const FETCH_NO_UPDATE = /^--(?:dr|refm|pref|negotiate-o)/;
 
 /** @typedef {{ words: string[], before: string | null }} Segment */
 
@@ -34,8 +34,10 @@ function segments(command) {
   let skipNext = false;
   for (const token of tokenize(command)) {
     if (token.kind === 'op' && SEPARATORS.has(token.value)) {
+      // `&&` gevolgd door een regeleinde of `(` blijft `&&`: er staat nog geen commando tussen.
+      const continues = current.words.length === 0 && current.before !== null && ['\n', '('].includes(token.value);
       if (current.words.length > 0) found.push(current);
-      current = { words: [], before: token.value };
+      if (!continues) current = { words: [], before: token.value };
     } else if (token.kind === 'op') skipNext = true;
     else if (skipNext) skipNext = false;
     else current.words.push(token.value);
@@ -155,7 +157,8 @@ export function staleBranchStart(command) {
     if (git === null) continue;
     const start = newBranchStart(git.subcommand, git.rest);
     if (start !== null && !(fetched && ORIGIN_MAIN.has(start))) found.push(VERSE_MAIN_MELDING);
-    if (fetchesMain(git.subcommand, git.rest)) fetched = true;
+    // Na `||` slaat bash de fetch over als het vorige commando slaagde; die telt dus niet.
+    if (fetchesMain(git.subcommand, git.rest)) fetched = segment.before !== '||';
   }
   return found;
 }

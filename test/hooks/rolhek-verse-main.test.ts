@@ -168,3 +168,30 @@ describe('verse main: timeout achter een toewijzing', () => {
     ]);
   });
 });
+
+describe('verse main: vormen uit de Codex-review', () => {
+  test.each([
+    {
+      name: 'fetch die na || overgeslagen kan worden',
+      command: 'true || git fetch origin main && git switch -c feat/x origin/main',
+    },
+    {
+      name: 'fetch --prefetch werkt origin/main niet bij',
+      command: 'git fetch --prefetch origin main && git switch -c feat/x origin/main',
+    },
+    { name: 'fetch --dry (afkorting)', command: 'git fetch --dry origin main && git switch -c feat/x origin/main' },
+    { name: 'branch --abbrev=8 maakt een branch', command: 'git branch --abbrev=8 feat/x' },
+    { name: 'branch --sort=refname maakt een branch', command: 'git branch --sort=refname feat/x' },
+    { name: 'branch --column maakt een branch', command: 'git branch --column feat/x' },
+    { name: 'branch -i maakt een branch', command: 'git branch -i feat/x' },
+  ])('geweigerd: $name', ({ command }) => {
+    expect(ROLLEN.map((role) => verdict(command, role))).toStrictEqual(['deny', 'deny']);
+  });
+
+  test.each([
+    { name: '&& gevolgd door een regeleinde', command: 'git fetch origin main &&\n  git switch -c feat/x origin/main' },
+    { name: '&& gevolgd door een subshell', command: 'git fetch origin main && (git switch -c feat/x origin/main)' },
+  ])('mag: $name', ({ command }) => {
+    expect(ROLLEN.map((role) => verdict(command, role))).toStrictEqual(['allow', 'allow']);
+  });
+});
