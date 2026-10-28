@@ -1217,7 +1217,8 @@ function ghIssue(argv, { role, ctx, setsGhEnv }, decision) {
   if (action === '') return;
   if (role !== 'hoofdsessie') decision.deny.push(`subagent: gh issue ${action} doet alleen de hoofdsessie (ADR 0059)`);
   else if (action === 'create') {
-    const reden = leerpuntAfwijking(args, ctx.config.onderhoud?.repository ?? '', setsGhEnv);
+    // In een app heeft `pnpm app:init` de onderhoud-regel verwijderd; leerpunten gaan dan naar de template (ADR 0059).
+    const reden = leerpuntAfwijking(args, ctx.config.onderhoud?.repository ?? TEMPLATE_REPOSITORY, setsGhEnv);
     if (reden !== '') decision.ask.push(`gh issue create buiten de leerpuntvorm: ${reden} (ADR 0059)`);
   }
 }
@@ -1233,7 +1234,6 @@ function leerpuntAfwijking(args, repository, setsGhEnv) {
   if (args.some((arg) => /\$\(|`/.test(arg))) return 'commandosubstitutie in het commando; zet de tekst in --body-file';
   const repos = optionValues(args, ['--repo', '-R']);
   const labels = optionValues(args, ['--label', '-l']);
-  if (repository === '') return 'onderhoud.repository ontbreekt in .claude/gates.json';
   if (repos.length !== 1 || (repos[0] ?? '').toLowerCase() !== repository.toLowerCase())
     return `--repo moet precies één keer ${repository} zijn`;
   if (labels.length !== 1 || (labels[0] ?? '').toLowerCase() !== LEERPUNT) return `precies één --label ${LEERPUNT}, geen ander label`;
