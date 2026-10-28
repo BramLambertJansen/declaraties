@@ -1,11 +1,12 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, test } from 'vitest';
+import { TEMPLATE_REPOSITORY } from '../../rails/hooks/lib/task-authority.mjs';
 
 // Spec leerlus (docs/specs/leerlus.md) AC-8, ADR 0059 punt 3. Exacte vorm van de allow-regel in .claude/settings.json:
 //
 //   "Bash(gh issue create --repo <onderhoud.repository> --label leerpunt *)"
 //
-// met <onderhoud.repository> letterlijk de waarde uit .claude/gates.json. Geen andere allow-regel mag een
+// met <onderhoud.repository> letterlijk de waarde uit .claude/gates.json (in een app zonder die regel: TEMPLATE_REPOSITORY). Geen andere allow-regel mag een
 // `gh issue create` dekken (ook geen `Bash(gh *)`, `Bash(gh issue *)` of de oude vorm `Bash(gh issue create:*)`).
 
 function strings(value: unknown): string[] {
@@ -21,7 +22,8 @@ const settings: unknown = JSON.parse(readFileSync('.claude/settings.json', 'utf8
 const gates: unknown = JSON.parse(readFileSync('.claude/gates.json', 'utf8'));
 const allow = strings(child(child(settings, 'permissions'), 'allow'));
 const repoValue = child(child(gates, 'onderhoud'), 'repository');
-const REPO = typeof repoValue === 'string' ? repoValue : '';
+// In een app verwijdert `pnpm app:init` de onderhoud-regel (ADR 0045 punt 8); de allow-regel moet dan naar de template wijzen.
+const REPO = typeof repoValue === 'string' ? repoValue : TEMPLATE_REPOSITORY;
 const RULE = `Bash(gh issue create --repo ${REPO} --label leerpunt *)`;
 
 /** Bash-permissieregel als regex: `*` is willekeurige tekst, een afsluitende `:*` is een prefix (oude vorm). */
