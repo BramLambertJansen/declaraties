@@ -47,6 +47,20 @@ bijvoorbeeld bij succes of fout; de kit doet geen automatische retry, timer of t
 Voorbeelden: `src/web/features/design-system/ui-basics-examples.tsx`. De voorbeeldquery in `queries.ts`
 levert uitsluitend lokale fictieve data; er zijn geen nieuwe API-aanroepen of rechten.
 
+## Typografie en layout
+
+Spec: [typografie-en-layout](specs/typografie-en-layout.md). In `features/` komen typografie en kleur uit deze
+componenten, niet uit utility-klassen; layout-klassen mogen blijven.
+
+- `Text` voor lopende tekst: `as` (`p`, `span`, `div`), `size` (`sm`, `base`), `tone` (`default`, `muted`) en `weight`
+  (`normal`, `medium`). Native props zoals `aria-live` gaan door (`src/core/web/ui/text.tsx`).
+- `Heading` voor koppen binnen een scherm, `level` 2 t/m 4. De enige `h1` blijft `PageTitle`/`PageHeader`;
+  `Section` gebruikt `Heading level={2}` (`src/core/web/ui/heading.tsx`, `src/web/ui/section.tsx`).
+- `Stack` (verticaal) en `Inline` (horizontaal, loopt door op smalle schermen) delen één afstandsschaal `xs`–`xl`
+  (`src/core/web/ui/stack.tsx`, `src/core/web/ui/inline.tsx`). `Container` bestaat nog niet.
+
+Voorbeelden: `src/web/features/design-system/typography-examples.tsx`.
+
 ## Acceptatiebewijs
 
 | Criteria | Testpad |

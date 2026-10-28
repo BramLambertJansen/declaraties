@@ -6,6 +6,10 @@ Hier staan wijzigingen die van belang zijn bij het gebruiken of bijwerken van de
 
 ### Toegevoegd
 
+- Typografie- en layoutcomponenten `Text`, `Heading`, `Stack` en `Inline` in de kit (spec
+  `docs/specs/typografie-en-layout.md`, gebruik in `docs/ui-kit-basics.md`). `Section` gebruikt `Heading`; de sessietabel
+  en de accountlijst halen hun typografie nu uit `Text` in plaats van utility-klassen.
+
 - Ontwikkelgemakken in de werkstraat: SessionStart toont op een featurebranch de open PR met checks en reviewstatus;
   de Stop-hook herinnert één keer aan docs-drift; na een bewerkte migratie volgt de hint `pnpm db:generate`; pre-push
   waarschuwt bij een achterstand op `origin/main`; een commit-msg-hook dwingt conventional commits af; Claude Code geeft een

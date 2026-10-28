@@ -16,6 +16,7 @@ import {
   TableHeader,
   TableRow,
   type SelectOption,
+  Text,
 } from '#web/ui/index.ts';
 import { InviteDialog } from './invite-dialog.tsx';
 import { useMe } from '#web/features/session/queries.ts';
@@ -141,11 +142,11 @@ export function AccountsPage() {
           const rows = uniqueById(data.pages.flatMap((page) => page.items));
           return (
             <div className="flex min-w-0 flex-col gap-4">
-              <p aria-live="polite" className="text-sm text-muted-foreground">
+              <Text size="sm" tone="muted" aria-live="polite">
                 {accounts.isPlaceholderData
                   ? copy.accounts.loading
                   : copy.accounts.shown(rows.length, accounts.hasNextPage)}
-              </p>
+              </Text>
               <AccountsTable items={rows} busy={accounts.isPlaceholderData} onMessage={setMessage} />
               {accounts.hasNextPage ? (
                 <div>

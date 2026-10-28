@@ -1,4 +1,5 @@
 import { useId, type ReactNode } from 'react';
+import { Heading } from '#core/web/ui/heading.tsx';
 
 interface SectionProps {
   readonly title: string;
@@ -20,9 +21,9 @@ export function Section({ title, children, landmark = true, id: targetId }: Sect
       {...(landmark ? { 'aria-labelledby': id } : {})}
       className="flex flex-col gap-4"
     >
-      <h2 id={id} className="text-xl font-semibold">
+      <Heading level={2} id={id}>
         {title}
-      </h2>
+      </Heading>
       {children}
     </section>
   );
