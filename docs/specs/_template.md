@@ -20,6 +20,10 @@ Geen kop weglaten; "n.v.t. — reden" mag. Ontbreekt een antwoord, dan vraagt de
 | Methode | Pad | Permissie | Foutcodes |
 |---|---|---|---|
 
+Bij routes: beschrijf per padparameter de vorm, het contractschema, de foutcode en validatie vóór een externe aanroep.
+Leg de foutvolgorde en eventuele voor-stappen vast, met gecombineerde foutgevallen als acceptatiecriteria;
+zie "Padparameters en foutvolgorde" in `docs/gouden-pad.md`. Zonder routes: "n.v.t. — reden".
+
 ## Kopieer de vorm van
 
 Per regel een bestaand pad uit `docs/gouden-pad.md` (accountbeheer) en wat je overneemt; `check-docs` controleert het pad.

@@ -2,6 +2,9 @@
 packages:
   - "."
 
+# Weiger een afwijkende installatie vóór run/exec; herstel alleen via een expliciete install.
+verifyDepsBeforeRun: error
+
 # Nieuwe versies pas na 7 dagen (in minuten).
 minimumReleaseAge: 10080
 # Weiger een versie die met minder vertrouwen gepubliceerd is dan de vorige.
