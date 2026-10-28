@@ -259,14 +259,7 @@ const fixtures: Fixture[] = [
 
   // klassen (framework §7, docs/specs/klassenrail.md): alleen layout-klassen als gewone string in features/ en routes/.
   // klassenrail/AC-1: typografie- of kleurtoken
-  ...[
-    'text-sm',
-    'text-muted-foreground',
-    'bg-primary',
-    'font-medium',
-    'rounded-md',
-    'flex text-sm',
-  ].map((cls) => ({
+  ...['text-sm', 'text-muted-foreground', 'bg-primary', 'font-medium', 'rounded-md', 'flex text-sm'].map((cls) => ({
     name: `klassenrail/AC-1: className="${cls}"`,
     file: 'src/web/features/x.tsx',
     code: `export const x = <div className="${cls}" />;`,
