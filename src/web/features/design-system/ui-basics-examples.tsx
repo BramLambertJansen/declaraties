@@ -101,6 +101,8 @@ export function UiBasicsExamples() {
           <StatusBadge tone="neutral">Uitgenodigd</StatusBadge>
           <StatusBadge tone="accent">Actief</StatusBadge>
           <StatusBadge tone="destructive">Geblokkeerd</StatusBadge>
+          <StatusBadge tone="success">Voltooid</StatusBadge>
+          <StatusBadge tone="warning">Verloopt binnenkort</StatusBadge>
         </div>
       </Section>
       <Section id="example-empty" title="EmptyState en AsyncView">

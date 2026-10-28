@@ -130,7 +130,7 @@ function ComboboxPopup({
 }) {
   const label = props['aria-label'] ?? state.input.current?.labels?.[0]?.textContent ?? undefined;
   return (
-    <div className="absolute start-0 top-full z-50 mt-2 max-h-64 w-full overflow-y-auto rounded-md border bg-background p-1 text-foreground shadow-md">
+    <div className="absolute start-0 top-full z-dropdown mt-2 max-h-64 w-full overflow-y-auto rounded-md border bg-background p-1 text-foreground shadow-md">
       <ul id={`${base}-options`} role="listbox" aria-label={label} aria-labelledby={props['aria-labelledby']}>
         {state.filtered.map((option) => (
           <li

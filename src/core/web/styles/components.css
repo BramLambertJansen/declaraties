@@ -4,6 +4,12 @@
   --control-h: max(var(--density-control), 2.75rem);
   --focus-ring-width: 2px;
   --focus-ring-offset: 2px;
+  /* Lagen (z-sticky … z-toast), strikt oplopend; <dialog> staat in de top layer en heeft geen z-index nodig. */
+  --layer-sticky: 10;
+  --layer-dropdown: 20;
+  --layer-overlay: 30;
+  --layer-modal: 40;
+  --layer-toast: 50;
   /* QR-code: altijd donker op licht, ook in het donkere thema (scanners lezen omgekeerd slecht). */
   --qr-dark: var(--p-black);
   --qr-light: var(--p-white);
