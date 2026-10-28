@@ -242,6 +242,14 @@ test('session-start: branch, wijzigingen, specs, laatste uitslag en de stack als
   expect(text).toContain('node scripts/kit/feiten.mjs');
 });
 
+test('session-start op main: noemt de startvorm voor een nieuwe branch vanaf een verse origin/main', () => {
+  const { deps } = fakeDeps({ output: 'main' });
+  const text = sessionStart(deps).stdout ?? '';
+
+  expect(text).toContain('Branch: main');
+  expect(text).toContain('git fetch origin main && git switch -c <naam> origin/main');
+});
+
 test('hulpjes: git status en de laatste regels', () => {
   expect(changedFromStatus(' M src/a.ts\n?? b.ts\n D weg.ts\nR  oud.ts -> nieuw.ts\n')).toStrictEqual([
     'src/a.ts',

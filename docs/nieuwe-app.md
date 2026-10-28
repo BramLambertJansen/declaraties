@@ -606,7 +606,7 @@ Door de eigenaar, of door de agent tot en met de PR:
 ```bash
 cd ~/code/<slug>
 git fetch template
-git switch -c chore/template-$(git rev-parse --short template/main) origin/main
+git fetch origin main && git switch -c chore/template-$(git rev-parse --short template/main) origin/main
 git merge template/main                # conflicten: app-specifiek behouden, regels uit de template overnemen
 git push -u origin HEAD
 gh pr create --fill --title "chore: template-update $(git rev-parse --short template/main)"

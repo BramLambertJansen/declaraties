@@ -176,6 +176,12 @@ Hier staan wijzigingen die van belang zijn bij het gebruiken of bijwerken van de
 
 ### Gewijzigd
 
+- Nieuw werk begint vanaf een verse main: het rolhek weigert voor elke rol een nieuwe branch (`git switch -c`,
+  `checkout -b`, `git branch <naam>`, `worktree add -b`) tenzij het commando de vorm
+  `git fetch origin main && git switch -c <naam> origin/main` heeft (`rails/hooks/lib/verse-main.mjs`,
+  `docs/operations/agent-doorloop.md`). Geldt ook in elke app; een bestaande app krijgt het bij de volgende template-update.
+  De SessionStart-melding op `main` noemt die startvorm, en de template-update-instructie in `docs/nieuwe-app.md` volgt hem.
+
 - Nieuwe app starten is ook te volgen zonder technische kennis: `START-NIEUWE-APP.md` heeft een sectie Begeleiding
   (één eigenaarstaak tegelijk, met wat je ziet en hoe je meldt dat het gelukt is) en eenmalige Windows-stappen om
   Ubuntu en Claude Code te installeren. Het playbook (`docs/nieuwe-app.md`) maakt nieuwe app-repo's standaard public
