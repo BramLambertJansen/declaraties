@@ -20,6 +20,8 @@ Feiten nu:
    De bestaande pre-push-hook draait de volledige `pnpm gate:fast`; start die niet nogmaals alleen voor de overdracht.
    Gerichte feedback is geen volledige groene gate. Iedere PR behoudt alle CI-checks; geen oude uitslag hergebruiken.
 2. Wacht met `pnpm pr:verify <nr> --watch` (geen kale `gh pr checks --watch`: die toetst SHA, branch en herkomst van de check niet).
+   Start pnpm niet of weigert de werkmap ondanks gelijke head-SHA's, volg dan `docs/operations/agent-doorloop.md`,
+   "Als pr:verify niet start of de werkmap weigert" (leerpunt #329); dezelfde verificatie blijft vereist.
 3. Bij rood: `gh run view <run-id> --log-failed`, de oorzaak fixen, committen, pushen en opnieuw wachten. Geen vast aantal rondes.
 4. Na fixes bekijkt de reviewer alleen het verschil: `git diff <reviewer-sha>..HEAD`.
 5. Stop en vraag de eigenaar bij: (a) een fix die een regel, check, hook of test zou afzwakken; (b) dezelfde fout drie keer achter elkaar (voer dan eerst de leerpuntstap uit Opruimen stap 8 uit);

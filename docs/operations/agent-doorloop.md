@@ -268,6 +268,33 @@ bevindingen hebben. Een rode, lopende of nog ontbrekende resultaatcheck geeft ge
 Met `--watch` maximaal 30 minuten wachten; een deadline is onvoltooid, daarna controleert de agent opnieuw.
 Een veranderende PR of werkmap vraagt nieuwe verificatie.
 
+### Als pr:verify niet start of de werkmap weigert
+
+`ERR_PNPM_ABORTED_REMOVE_MODULES_DIR_NO_TTY` komt van pnpm vóór de verificatie: pnpm wil `node_modules` installeren
+of opnieuw inrichten, maar kan de bevestiging niet interactief vragen. Alleen het bestaan van die map bewijst geen
+passende installatie, bijvoorbeeld na kopiëren uit een andere werkmap. Controleer de toolchain met
+`node scripts/kit/feiten.mjs gates` en herstel zo nodig de installatie met `pnpm install --frozen-lockfile` in een
+daarvoor toegestane interactieve omgeving volgens [de setup](../ENVIRONMENT.md). Onderdruk de vraag niet met lokaal
+`CI=true` en wijzig geen installatieregel om alleen de verificatie te laten starten.
+
+Werken de vereiste Node-versie en dependencies al aantoonbaar en blokkeert alleen pnpm het starten, dan kan dezelfde
+verificatie rechtstreeks vanuit de repositoryroot:
+
+```sh
+node scripts/kit/pr-verify.mjs <nr> --watch
+```
+
+Dit voert dezelfde SHA-, branch-, repository-, werkmap- en checkherkomstcontroles uit. Een kale
+`gh pr checks --watch` vervangt dat bewijs niet. Ontbreken Node, dependencies, Git- of GitHub-toegang, herstel dan eerst
+de omgeving; een andere aanroep maakt ontbrekend bewijs niet groen.
+
+Bij een vuile werkmap noemt `pr:verify` de blokkerende paden, zonder bestandsinhoud. Een onleesbare Git-status krijgt
+een aparte fout en telt nooit als schoon. Gelijke lokale en PR-head-SHA's sluiten wijzigingen in werkmap of index
+niet uit. Lees `git status --porcelain`, `git diff --name-status` en `git diff --cached --name-status`; bepaal de
+herkomst vóór committen of herstellen. Alleen de bestaande uitzonderingen uit `werkmapNegeer` op de vertrouwde basis
+gelden. Na een afgebroken branchwissel volg je "Branchwissels in een sandbox" hierboven (leerpunt #338); voeg geen
+onbekende paden aan de uitzonderingen toe om de weigering op te heffen (leerpunt #329).
+
 De hoofdsessie kan een documentatie-PR markeren:
 
 ```sh
