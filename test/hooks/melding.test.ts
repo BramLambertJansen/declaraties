@@ -35,7 +35,7 @@ describe('meldingOpdracht', () => {
     expect(opdracht?.env).toStrictEqual({
       KIT_MELDING_TITEL: 'Toestemming',
       KIT_MELDING_TEKST: 'Mag ik pnpm draaien?',
-      WSLENV: 'KIT_MELDING_TITEL/u:KIT_MELDING_TEKST/u',
+      WSLENV: 'KIT_MELDING_TITEL/w:KIT_MELDING_TEKST/w',
     });
   });
 
@@ -56,7 +56,7 @@ describe('meldingOpdracht', () => {
     const opdracht = meldingOpdracht({}, omgeving({ WSL_INTEROP: '/run/WSL/1_interop', WSLENV: 'FOO/p' }));
 
     expect(opdracht?.command).toBe('powershell.exe');
-    expect(opdracht?.env['WSLENV']).toBe('FOO/p:KIT_MELDING_TITEL/u:KIT_MELDING_TEKST/u');
+    expect(opdracht?.env['WSLENV']).toBe('FOO/p:KIT_MELDING_TITEL/w:KIT_MELDING_TEKST/w');
   });
 
   test('WSL gaat vóór notify-send', () => {

@@ -1,11 +1,11 @@
 // Meldhook "melding" (framework §8): een bureaubladmelding als Claude Code op de eigenaar wacht (Notification-event).
 // Puur: welke opdracht er draait, beslist deze module; rails/hooks/melding.mjs start hem. Titel en tekst komen uit de payload
-// en gaan nooit in de argumenten van een shell (onder WSL via de omgeving en WSLENV), zodat een bericht niets kan uitvoeren.
+// en gaan nooit in de argumenten van een shell (onder WSL via de omgeving en WSLENV met `/w`: van WSL naar Win32), zodat een bericht niets kan uitvoeren.
 
 const MAX = 200;
 const STANDAARD_TITEL = 'Claude Code';
 const STANDAARD_TEKST = 'Claude wacht op je';
-const DOORGEVEN = 'KIT_MELDING_TITEL/u:KIT_MELDING_TEKST/u';
+const DOORGEVEN = 'KIT_MELDING_TITEL/w:KIT_MELDING_TEKST/w';
 
 // Windows-toast zonder module; de AppUserModelID van PowerShell, omdat Windows een toast van een onbekende app niet toont.
 const TOAST = [
