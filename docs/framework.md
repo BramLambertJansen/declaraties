@@ -267,8 +267,12 @@ Ankers: OWASP Top 10:2025, OWASP API Security Top 10, ASVS 5.0 niveau 1 (checkli
 ## 7. Design system
 
 - **Tokens in drie lagen** in CSS (enige bron): primitief (OKLCH-palet, nooit direct gebruikt) → semantisch (shadcn-namen:
-  `--background`, `--foreground`, `--primary`, … `--radius`; de enige laag die een app aanpast) → component (`--control-h-*`, `--focus-ring-*`).
-- In `@theme` worden kleur, radius en schaduw van Tailwind gereset; `bg-red-500` bestaat niet. Dark mode via `[data-theme=dark]` met `@custom-variant dark (&:where([data-theme=dark], [data-theme=dark] *));`.
+  `--background`, `--foreground`, `--primary`, … `--radius`, plus `--success`/`--warning`, `--font-family-*`, `--type-*`,
+  `--weight-*`, `--density-*` en `--motion-*`; de enige laag die een app aanpast) → component (`--control-h`, `--focus-ring-*`, `--layer-*`).
+  Per token klasse, standaard, app-waarde en `bestand:regel`: `node scripts/kit/feiten.mjs tokens` (namen in `theme.css`
+  die niet in `semantic.css` staan: `onbekend`); zichtbaar in de sectie "Tokens" op `/design-system`.
+- In `@theme` worden kleur, radius, schaduw, lettertype, tekstmaat, gewicht en easing van Tailwind gereset (ook
+  `--font-*`, `--font-weight-*`, `--text-*` en `--ease-*`: `initial`); `bg-red-500`, `text-xs` en `font-bold` bestaan niet. Dark mode via `[data-theme=dark]` met `@custom-variant dark (&:where([data-theme=dark], [data-theme=dark] *));`.
   De reset sloopt klassen die shadcn gebruikt (`bg-black/50`, `shadow-xs`): de codemod vangt die op. Vite `build.target` gelijk aan browserslist.
 - **Tokens per zone** (ADR 0040): primitief, component en standaard-semantisch in `src/core/web/styles/`; een app past alleen de
   semantische laag aan in `src/web/styles/theme.css`.

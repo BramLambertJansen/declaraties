@@ -33,6 +33,8 @@ export { PageTitle } from '#core/web/ui/page-title.tsx';
 export { NotFound, RouteError } from '#core/web/ui/route-error.tsx';
 export { QrCode } from '#core/web/ui/qr-code.tsx';
 export { Section } from './section.tsx';
+export { TokenSwatch, type TokenColor, type TokenSwatchProps } from './token-swatch.tsx';
+export { TypeSample, type TypeSampleProps } from './type-sample.tsx';
 export { Text, type TextProps } from '#core/web/ui/text.tsx';
 export { Heading, type HeadingProps } from '#core/web/ui/heading.tsx';
 export { Stack, type StackProps } from '#core/web/ui/stack.tsx';

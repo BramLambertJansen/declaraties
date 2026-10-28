@@ -6,6 +6,11 @@ Hier staan wijzigingen die van belang zijn bij het gebruiken of bijwerken van de
 
 ### Toegevoegd
 
+- Tokens vindbaar (deel 3c): `node scripts/kit/feiten.mjs tokens` (ook `--json`) toont per groep (kleur, typografie,
+  dichtheid, lagen, beweging) klasse, standaard, app-waarde uit `theme.css` en `bestand:regel`; onbekende namen in
+  `theme.css` staan onder `onbekend`. Op `/design-system` staat de sectie "Tokens" met de nieuwe catalogus-componenten
+  `TokenSwatch` en `TypeSample` (`src/web/ui`, alleen voor de catalogus).
+
 - Semantische tokens voor typografie en dichtheid (spec `docs/specs/semantische-tokens.md`, deel 3a): lettertype,
   tekstschaal, gewicht, `--density-space` en `--density-control` in `semantic.css`, te overschrijven in `theme.css`
   (`docs/ui-kit-basics.md`, "Thema en tokens"). `--control-h` blijft minstens 44 px. Bij een update: `text-xs`,

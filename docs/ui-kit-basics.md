@@ -81,7 +81,10 @@ Voorbeelden: `src/web/features/design-system/typography-examples.tsx`. Bewijs pe
 
 Spec: [semantische-tokens](specs/semantische-tokens.md). Een app overschrijft alleen semantische tokens, in
 `src/web/styles/theme.css` (geïmporteerd ná de core-index, `src/web/styles/app.css:2-3`); de standaard staat in
-`src/core/web/styles/semantic.css`.
+`src/core/web/styles/semantic.css`. Elk token met klasse, standaard, app-waarde en `bestand:regel`:
+`node scripts/kit/feiten.mjs tokens` (een naam in `theme.css` die niet in `semantic.css` staat: `onbekend`, vaak een
+tikfout; een override van een token zonder groep, zoals `--radius`: `overig`). Zichtbaar in de sectie "Tokens" op `/design-system` (`src/web/features/design-system/tokens-examples.tsx`), met
+`TokenSwatch` en `TypeSample` uit `src/web/ui`; die zijn alleen voor de catalogus.
 
 - Lettertype: `--font-family-sans` en `--font-family-mono` (standaard de systeemstack). Tekstschaal: `--type-{sm,base,lg,xl,2xl}`
   met `--type-*-leading`. Gewicht: `--weight-{normal,medium,semibold}`. Andere maten en gewichten (`text-xs`, `text-3xl`,
