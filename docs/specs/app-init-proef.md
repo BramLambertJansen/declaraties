@@ -42,7 +42,7 @@ n.v.t. — geen API-route, permissie of foutcode.
 Geen accountbeheerpad uit `docs/gouden-pad.md` past (dit is een check, geen feature). De vorm komt van de bestaande
 kopie-check die `docs/gouden-pad.md` al noemt (`pnpm check:new-resource`):
 
-- `scripts/kit/check-new-resource.mjs` — `kopie()` (git ls-files met nieuwe bestanden, link naar `node_modules`, `git init` met een basiscommit en `refs/remotes/origin/main`), `script()` (een `package.json`-script uitvoeren zonder pnpm), `try/finally` met `rmSync` en de vlag `--bewaar`
+- `scripts/kit/check-new-resource.mjs` — `kopie()` (git ls-files met nieuwe bestanden, link naar `node_modules`, `git init` met een basiscommit en de ref refs/remotes/origin/main), `script()` (een `package.json`-script uitvoeren zonder pnpm), try/finally met `rmSync` en de vlag `--bewaar`
 - `scripts/kit/gate-fast.mjs` — `snelleGates()` als enige bron van de snelle suite
 - `.github/workflows/ci.yml` — de job `new-resource` (checkout, mise, `pnpm install --frozen-lockfile`, één `pnpm`-stap)
 - `test/scripts/app-init.test.ts` — fixtures voor de bestanden die `app:init` leest, in een `mkdtempSync`-map met opruimen in `afterEach`
