@@ -56,12 +56,12 @@ function onthoud(run, root, sleutel) {
     if (common.code !== 0) return true;
     const map = path.resolve(root, common.output.trim(), 'werkstraat');
     const bestand = path.join(map, sleutel.replace(/[^\w-]/g, '_'));
-    if (existsSync(bestand)) return false;
     mkdirSync(map, { recursive: true });
-    writeFileSync(bestand, '');
+    // 'wx': aanmaken en controleren in één stap (geen race tussen bestaan en schrijven).
+    writeFileSync(bestand, '', { flag: 'wx' });
     return true;
-  } catch {
-    return true;
+  } catch (error) {
+    return !(error instanceof Error && 'code' in error && error.code === 'EEXIST');
   }
 }
 
