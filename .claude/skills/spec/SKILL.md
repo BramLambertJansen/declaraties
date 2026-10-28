@@ -24,11 +24,15 @@ Stappen:
 2. Vul elke kop in; "n.v.t. — reden" mag. Teksten letterlijk; acceptatiecriteria toetsbaar (een test per criterium).
 3. "Kopieer de vorm van": per regel een bestaand pad uit `docs/gouden-pad.md` (accountbeheer) en wat je overneemt.
    "Hergebruik en UX": noem de bestaande componenten (`node scripts/kit/feiten.mjs componenten`); een nieuw component alleen met reden.
-4. Routes en foutcodes: hergebruik bestaande codes uit de feiten; een nieuwe code krijgt een tekst.
+4. Routes en foutcodes: hergebruik bestaande codes uit de feiten; een nieuwe code krijgt een tekst. Leg voor iedere
+   padparameter vorm, contractschema en validatie vóór een externe aanroep vast. Toets foutvolgorde en voor-stappen
+   volgens "Padparameters en foutvolgorde" in `docs/gouden-pad.md`, inclusief gecombineerde foutgevallen.
 5. Open beslissingen staan in "Open vragen": `⚠ open` zonder aanbeveling (blokkeert `goedgekeurd`), anders met `Aanbeveling:`. Vul geen aanname in; vraag de eigenaar.
 6. Afsluitcheck:
    - de paden in "Kopieer de vorm van" bestaan (`pnpm ratchet`);
    - route-, permissie-, tabel- en foutcodenamen zijn gelijk over de hele spec;
+   - elke padparameter heeft een vorm en contractschema; ongeldige invoer bereikt geen externe aanroep;
+   - een voor-stap verbergt geen rol- of MFA-fout; gecombineerde fouten hebben een verwachte foutcode en test;
    - elk acceptatiecriterium kan falen;
    - "Raakt ook" noemt de checks die de spec raakt: `check:migrations`, `check:secdef`, `test:db`/policies, `test/security/resources.ts`, permissietest per verboden rol;
    - geen `⚠ open` bij `goedgekeurd`: los de vraag eerst op met de eigenaar, of geef haar een `Aanbeveling:`.

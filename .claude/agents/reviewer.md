@@ -22,6 +22,10 @@ rollen). Claim nooit afgedwongen onafhankelijkheid die de runtime niet levert.
 
 Bij een spec met een migratie, route of permissie, vóór er gebouwd wordt; ook read-only. Toets de afsluitcheck uit
 `.claude/skills/spec/SKILL.md` (stap 6) tegen de live repo: bestaan de vorm-paden, kloppen de namen met `node scripts/kit/feiten.mjs routes permissies foutcodes`, kan elke AC falen, noemt "Raakt ook" de geraakte checks, staat er geen `⚠ open`.
+Toets ook "Padparameters en foutvolgorde" in `docs/gouden-pad.md`: iedere padparameter heeft een vorm en contractschema,
+validatie gebeurt vóór gebruik in een externe aanroep, en gecombineerde fouten bewijzen de zichtbare volgorde.
+Een voor-stap met een falende externe dienst mag een rol- of MFA-weigering niet vervangen; toets het voorgestelde
+mechanisme aan de werkelijk beschikbare kit, niet alleen aan een ADR-ontwerp.
 Rapporteer in hetzelfde rapport per bevinding blokkerend, belangrijk of klein, en daarnaast de besluiten voor de eigenaar (vraag, opties, aanbeveling). Geen stijlopmerkingen.
 
 Sluit af met je rapport onder de kop `## Bevindingen` (de SubagentStop-hook eist die kop): per bevinding blokkerend of niet, of "Geen blokkerende bevindingen".
