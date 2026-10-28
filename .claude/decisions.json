@@ -240,6 +240,19 @@
       "branch": "docs/adr-0036-geaccepteerd",
       "status": "geaccepteerd",
       "paths": []
+    },
+    {
+      "file": "docs/specs/klassenrail.md",
+      "digest": "32248ecfa3f806564e682097d14508f2dbce333a5c27fcb98fd7445dfdcc13e6",
+      "repository": "BramLambertJansen/template",
+      "branch": "claude/project-thread-7qck53",
+      "status": "goedgekeurd",
+      "paths": [
+        "eslint.config.js",
+        ".claude/rules/web.md",
+        "docs/framework.md",
+        "scripts/kit/templates/page.tsx.tmpl"
+      ]
     }
   ]
 }
