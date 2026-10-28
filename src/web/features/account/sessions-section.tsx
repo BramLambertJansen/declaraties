@@ -19,6 +19,8 @@ import {
   TableHeader,
   TableRow,
   useErrorText,
+  Inline,
+  Text,
 } from '#web/ui/index.ts';
 import { useRevokeOtherSessions, useRevokeSession } from './queries.ts';
 
@@ -30,8 +32,16 @@ function SessionRow({ session, onRevoke }: { session: Session; onRevoke: (sessio
   return (
     <TableRow>
       <TableCell>
-        <span className="font-medium">{session.apparaat}</span>
-        {session.huidig ? <span className="ml-2 text-muted-foreground">{texts.current}</span> : null}
+        <Inline gap="sm">
+          <Text as="span" weight="medium">
+            {session.apparaat}
+          </Text>
+          {session.huidig ? (
+            <Text as="span" tone="muted">
+              {texts.current}
+            </Text>
+          ) : null}
+        </Inline>
       </TableCell>
       <TableCell>{format.dateTime(session.aangemaakt)}</TableCell>
       <TableCell>{format.dateTime(session.laatstActief)}</TableCell>

@@ -57,3 +57,22 @@ levert uitsluitend lokale fictieve data; er zijn geen nieuwe API-aanroepen of re
 | AC-6/9/10: alle tonen en voorbeelden, native Space/pijltjestoetsen, mobiel/desktop, licht/donker, CSP en axe | `e2e/ui-kit-basics.spec.ts`, `check:catalogus`, bestaande `test/ui/contrast.test.ts` |
 
 De tabel beschrijft de testdekking; de werkelijke uitslagen en gevalideerde commit staan in de bouw-PR.
+
+## Typografie en layout
+
+Spec: [typografie-en-layout](specs/typografie-en-layout.md). In `features/` komen typografie en kleur uit deze
+componenten, niet uit utility-klassen; layout-klassen mogen blijven.
+
+- `Text` voor lopende tekst: `as` (`p`, `span`, `div`), `size` (`sm`, `base`), `tone` (`default`, `muted`) en `weight`
+  (`normal`, `medium`). Native props zoals `aria-live` gaan door (`src/core/web/ui/text.tsx`).
+- `Heading` voor koppen binnen een scherm, `level` 2 t/m 4. De enige `h1` blijft `PageTitle`/`PageHeader`;
+  `Section` gebruikt `Heading level={2}` (`src/core/web/ui/heading.tsx`, `src/web/ui/section.tsx`).
+- `Stack` (verticaal) en `Inline` (horizontaal, loopt door op smalle schermen) delen één afstandsschaal `xs`–`xl`
+  (`src/core/web/ui/stack.tsx`, `src/core/web/ui/inline.tsx`). `Container` bestaat nog niet.
+
+Let op: `Text` zet standaard `text-base` en `text-foreground`. Binnen een gekleurde container (zoals een `Notice` met
+`tone="error"`) kies je dus een expliciete `tone`, of laat je `Text` weg. Tailwind preflight haalt de opsommingstekens
+van `Stack as="ul"`/`"ol"` weg; Safari/VoiceOver kan dan de lijstsemantiek laten vallen.
+
+Voorbeelden: `src/web/features/design-system/typography-examples.tsx`. Bewijs per criterium: de tests met
+`typografie-en-layout/AC-*` in de naam.

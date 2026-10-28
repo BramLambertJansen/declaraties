@@ -40,6 +40,7 @@ import { ComponentIndex } from './component-index.tsx';
 import { AdditionalExamples } from './additional-examples.tsx';
 import { FormStateExamples } from './form-state-examples.tsx';
 import { UiBasicsExamples } from './ui-basics-examples.tsx';
+import { TypographyExamples } from './typography-examples.tsx';
 
 function RoutedComponentIndex() {
   const { search, setQuery } = useListSearch();
@@ -343,6 +344,7 @@ export function DesignSystemPage() {
       </Section>
       <AdditionalExamples />
       <UiBasicsExamples />
+      <TypographyExamples />
       <FormStateExamples />
       <ComboboxExamples />
       <CollectionExamples />

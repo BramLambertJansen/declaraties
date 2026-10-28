@@ -115,6 +115,11 @@ const groups = [
     text: 'Alle tabelonderdelen in één voorbeeld.',
   },
   { names: ['StatusBadge'], id: 'example-badges', text: 'Alle drie toonvarianten naast elkaar.' },
+  {
+    names: ['Text', 'Heading', 'Stack', 'Inline'],
+    id: 'example-typografie',
+    text: 'Typografie en afstand uit componenten: tekstgrootte, toon en gewicht, koppen per niveau en verticale of horizontale stapels.',
+  },
   { names: ['Section'], id: 'example-layout', text: 'De benoemde voorbeeldblokken gebruiken Section.' },
 ];
 
