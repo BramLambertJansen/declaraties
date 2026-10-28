@@ -32,7 +32,7 @@ async function compileApp(candidates: string[], theme?: string): Promise<string>
 
 // De declaratieblok(ken) van één klasse in de uitvoer, bijvoorbeeld `.text-sm { … }`.
 function rule(output: string, className: string): string | undefined {
-  const pattern = new RegExp(`(?:^|\\s)\\.${className.replace(/[-]/g, '\\$&')}\\s*\\{([^}]*)\\}`, 'm');
+  const pattern = new RegExp(`(?:^|\\s)\\.${className.replace(/[\\^$.*+?()[\]{}|/-]/g, '\\$&')}\\s*\\{([^}]*)\\}`, 'm');
   return pattern.exec(output)?.[1];
 }
 
