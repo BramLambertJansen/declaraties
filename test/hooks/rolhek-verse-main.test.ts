@@ -107,3 +107,50 @@ describe('verse main: een nieuwe branch start van een zojuist opgehaalde origin/
     expect(ROLLEN.map((role) => verdict(command, role))).toStrictEqual(['allow', 'allow']);
   });
 });
+
+describe('verse main: vormen uit de review', () => {
+  test.each([
+    {
+      name: 'worktree add met alleen een pad (git maakt zelf een branch vanaf HEAD)',
+      command: 'git worktree add ../feat-x',
+    },
+    { name: 'worktree add --orphan', command: 'git worktree add --orphan ../feat-x' },
+    {
+      name: 'worktree add met cluster -qb',
+      command: 'git fetch origin main && git worktree add -qb feat/x ../x feat/y',
+    },
+    {
+      name: 'fetch --dry-run werkt origin/main niet bij',
+      command: 'git fetch --dry-run origin main && git switch -c feat/x origin/main',
+    },
+    { name: 'fetch met lege refmap', command: 'git fetch --refmap= origin main && git switch -c feat/x origin/main' },
+    { name: 'branch achter timeout', command: 'timeout 9 git switch -c feat/x feat/y' },
+    { name: 'branch --create-reflog zonder fetch', command: 'git branch --create-reflog feat/x' },
+    { name: 'branch --no-color zonder fetch', command: 'git branch --no-color feat/x' },
+    { name: 'switch --force- (afkorting van --force-create)', command: 'git switch --force- feat/x' },
+    { name: 'checkout --orp (afkorting van --orphan)', command: 'git checkout --orp feat/x' },
+  ])('geweigerd: $name', ({ command }) => {
+    expect(ROLLEN.map((role) => verdict(command, role))).toStrictEqual(['deny', 'deny']);
+  });
+
+  test.each([
+    {
+      name: 'fetch achter timeout (gangbaar onder WSL)',
+      command: 'timeout 60 git fetch origin main && git switch -c feat/x origin/main',
+    },
+    {
+      name: 'fetch met --depth en een losse waarde',
+      command: 'git fetch --depth 1 origin main && git switch -c feat/x origin/main',
+    },
+    { name: 'worktree add --detach', command: 'git worktree add --detach ../x origin/main' },
+    { name: 'worktree add van een bestaande branch', command: 'git worktree add ../x feat/y' },
+    { name: 'branch --format lezen', command: "git branch --format='%(refname)' --list" },
+    { name: 'branch -vv', command: 'git branch -vv' },
+    {
+      name: 'branch --force na fetch vanaf origin/main',
+      command: 'git fetch origin main && git branch --force feat/x origin/main',
+    },
+  ])('mag: $name', ({ command }) => {
+    expect(ROLLEN.map((role) => verdict(command, role))).toStrictEqual(['allow', 'allow']);
+  });
+});

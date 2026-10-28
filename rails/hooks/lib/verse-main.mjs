@@ -10,9 +10,14 @@ export const VERSE_MAIN_MELDING =
 const SEPARATORS = new Set([';', '&&', '||', '|', '&', '|&', '\n', '(', ')']);
 const ORIGIN_MAIN = new Set(['origin/main', 'refs/remotes/origin/main']);
 const MAIN_REFSPECS = new Set(['main', 'refs/heads/main']);
-// Opties van `git branch` die samen met het maken van een branch mogen; elke andere maakt er een lees-, verwijder-,
-// hernoem- of kopieeropdracht van.
-const BRANCH_CREATE_OPTIONS = /^(?:-f|--force|-t|--track(?:=.*)?|--no-track|-q|--quiet|--recurse-submodules)$/;
+// Opties waarmee `git branch` iets anders doet dan een branch maken (lezen, verwijderen, hernoemen, kopiëren, upstream);
+// elke andere optie laat het een create blijven (dicht falen).
+const BRANCH_OTHER_LONG = /^--(?:d|mo|cop|l|a|rem|v|con|no-con|me|no-me|po|so|form|sh|se|u|e|colu|no-colu|ig|om)/;
+const BRANCH_OTHER_SHORT = /^-[a-zA-Z]*[dDmMcClarvui]/;
+// Opties van `git fetch` met een losse waarde, en opties waarna origin/main niet echt is bijgewerkt.
+const FETCH_VALUE_OPTIONS = new Set(['--depth', '--deepen', '--shallow-since', '--shallow-exclude', '-j', '--jobs',
+  '--upload-pack', '--negotiation-tip', '-o', '--server-option', '--filter']);
+const FETCH_NO_UPDATE = /^--(?:dry-run|refmap)/;
 
 /** @typedef {{ words: string[], before: string | null }} Segment */
 
@@ -64,6 +69,20 @@ function createOperands(rest, { short, long }) {
 }
 
 /**
+ * `git worktree add [-b|-B <naam>] <pad> [start]`. Zonder `-b`/`-B`/`--detach` en zonder start maakt git zelf een branch
+ * naar het pad, vanaf HEAD; `--orphan` maakt er een zonder geschiedenis.
+ * @param {readonly string[]} args de woorden na `add`
+ * @returns {string | null}
+ */
+function worktreeStart(args) {
+  const words = args.filter((arg, index) => arg !== '--reason' && args[index - 1] !== '--reason');
+  const { creates, operands } = createOperands(words, { short: /[bB]/, long: /^--orp/ });
+  if (creates) return operands[1] ?? 'HEAD';
+  if (words.some((arg) => /^--det/.test(arg) || /^-[a-zA-Z]*d/.test(arg))) return null;
+  return operands.length === 1 ? 'HEAD' : null;
+}
+
+/**
  * Het startpunt van een nieuwe branch (HEAD als het ontbreekt), of null als het commando geen branch maakt.
  * @param {string} subcommand
  * @param {readonly string[]} rest
@@ -71,22 +90,18 @@ function createOperands(rest, { short, long }) {
  */
 export function newBranchStart(subcommand, rest) {
   if (subcommand === 'switch') {
-    const { creates, operands } = createOperands(rest, { short: /[cC]/, long: /^--(?:cr|force-c|orphan)/ });
+    const { creates, operands } = createOperands(rest, { short: /[cC]/, long: /^--(?:cr|force-|orp)/ });
     return creates ? (operands[0] ?? 'HEAD') : null;
   }
   if (subcommand === 'checkout') {
-    const { creates, operands } = createOperands(rest, { short: /[bB]/, long: /^--orphan/ });
+    const { creates, operands } = createOperands(rest, { short: /[bB]/, long: /^--orp/ });
     return creates ? (operands[0] ?? 'HEAD') : null;
   }
-  if (subcommand === 'worktree' && rest[0] === 'add') {
-    const args = rest.slice(1).flatMap((arg, index, all) => (all[index - 1] === '--reason' || arg === '--reason' ? [] : [arg]));
-    const { creates, operands } = createOperands(args, { short: /^[bB]/, long: /^$/ });
-    return creates ? (operands[1] ?? 'HEAD') : null;
-  }
+  if (subcommand === 'worktree' && rest[0] === 'add') return worktreeStart(rest.slice(1));
   if (subcommand !== 'branch') return null;
-  const options = rest.filter((arg) => arg.startsWith('-'));
   const operands = rest.filter((arg) => !arg.startsWith('-'));
-  if (operands.length === 0 || !options.every((arg) => BRANCH_CREATE_OPTIONS.test(arg))) return null;
+  const other = rest.some((arg) => BRANCH_OTHER_SHORT.test(arg) || BRANCH_OTHER_LONG.test(arg));
+  if (operands.length === 0 || other) return null;
   return operands[1] ?? 'HEAD';
 }
 
@@ -96,8 +111,8 @@ export function newBranchStart(subcommand, rest) {
  * @param {readonly string[]} rest
  */
 function fetchesMain(subcommand, rest) {
-  if (subcommand !== 'fetch') return false;
-  const operands = rest.filter((arg) => !arg.startsWith('-'));
+  if (subcommand !== 'fetch' || rest.some((arg) => FETCH_NO_UPDATE.test(arg))) return false;
+  const operands = rest.filter((arg, index) => !arg.startsWith('-') && !FETCH_VALUE_OPTIONS.has(rest[index - 1] ?? ''));
   return operands[0] === 'origin' && operands.slice(1).every((spec) => MAIN_REFSPECS.has(spec));
 }
 
@@ -106,10 +121,22 @@ function fetchesMain(subcommand, rest) {
  * @returns {{ subcommand: string, rest: string[] } | null}
  */
 function gitCall(segment) {
-  const { argv } = splitCommand(segment.words);
+  const { argv } = splitCommand(withoutTimeout(segment.words));
   if (programName(argv[0] ?? '') !== 'git') return null;
   const { subcommand, rest } = gitSubcommand(argv.slice(1));
   return { subcommand, rest };
+}
+
+/**
+ * `timeout [opties] <duur> cmd …` → `cmd …`: onder WSL is een fetch met timeout gangbaar, en zo ontloopt ook een
+ * branchopdracht achter timeout de regel niet.
+ * @param {readonly string[]} words
+ */
+function withoutTimeout(words) {
+  if (programName(words[0] ?? '') !== 'timeout') return words;
+  let index = 1;
+  while ((words[index] ?? '').startsWith('-')) index += ['-s', '-k', '--signal', '--kill-after'].includes(words[index] ?? '') ? 2 : 1;
+  return words.slice(index + 1);
 }
 
 /**
