@@ -8,7 +8,8 @@
  * @typedef {{ code: number, output: string }} RunResult
  * @typedef {{ timeout?: number, env?: Record<string, string> }} RunOptions
  * @typedef {{ run: (command: string, args: readonly string[], options?: RunOptions) => RunResult, changed: () => string[],
- *   read: (rel: string) => string | null }} Deps
+ *   read: (rel: string) => string | null, onthoud?: (sleutel: string) => boolean }} Deps
+ * `onthoud`: true als de sleutel nieuw is (en legt hem vast), false als hij er al was; zonder `onthoud` telt alles als nieuw.
  * @typedef {{ exit?: number, stdout?: string, stderr?: string }} HookResult
  */
 
@@ -131,13 +132,24 @@ function feedback(payload, deps, herinneren) {
     ['lint', deps.run('pnpm', ['exec', 'eslint', '--max-warnings', '0', '--no-warn-ignored', ...code])],
     ['unit', deps.run('pnpm', ['exec', 'vitest', 'related', '--run', '--project', 'unit', '--project', 'web', ...code])],
   ].filter(([, result]) => typeof result === 'object' && result.code !== 0);
-  const drift = herinneren ? docsDrift(changed) : null;
+  const drift = herinneren && eersteKeer(payload, deps, 'docs-drift') ? docsDrift(changed) : null;
   const herinnering = drift === null ? [] : [`${drift}. Raakt de wijziging geen gedrag, API of conventies, dan mag je opnieuw stoppen.`];
   if (failures.length === 0) return herinnering.length === 0 ? {} : block(`Herinnering (framework §8): ${herinnering.join('')}`);
   // Elke rode controle krijgt een eigen deel van de 40 regels: een lange lint- of testuitvoer drukt de typefout er niet uit.
   const budget = Math.max(1, Math.floor(MAX_LINES / failures.length) - 1);
   const report = failures.map(([name, result]) => `✗ ${String(name)}\n${typeof result === 'object' ? lastLines(result.output, budget) : ''}`);
   return block(`Nog niet groen (framework §8, Stop-hook):\n${[...report, ...herinnering].join('\n')}`);
+}
+
+/**
+ * Een herinnering één keer per sessie: zonder sessie-id of `onthoud` altijd. Wordt alleen gevraagd als er gewijzigde code is.
+ * @param {unknown} payload
+ * @param {Deps} deps
+ * @param {string} soort
+ */
+function eersteKeer(payload, deps, soort) {
+  const sessie = get(payload, 'session_id');
+  return typeof sessie !== 'string' || deps.onthoud === undefined || deps.onthoud(`${soort}-${sessie}`);
 }
 
 /**

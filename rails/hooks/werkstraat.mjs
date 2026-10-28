@@ -4,7 +4,7 @@
 // Een fout in de hook: bij stop en subagent-stop blokkeert hij met de fout (Claude Code stopt zelf na 8 keer), bij de
 // andere meldt hij hem alleen; die blokkeren nooit iets.
 import { spawnSync } from 'node:child_process';
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { checkEnv } from './lib/check-env.mjs';
 import { payloadCwd, projectRoot } from './lib/root.mjs';
@@ -39,7 +39,30 @@ function makeDeps(root) {
         return null;
       }
     },
+    onthoud: (/** @type {string} */ sleutel) => onthoud(run, root, sleutel),
   };
+}
+
+/**
+ * Legt een sleutel vast onder `<git common dir>/werkstraat/` (buiten git-tracking, zoals de meethook); true als hij nieuw
+ * was. Fail-open: lukt het niet, dan telt de sleutel als nieuw.
+ * @param {(command: string, args: readonly string[]) => { code: number, output: string }} run
+ * @param {string} root
+ * @param {string} sleutel
+ */
+function onthoud(run, root, sleutel) {
+  try {
+    const common = run('git', ['rev-parse', '--git-common-dir']);
+    if (common.code !== 0) return true;
+    const map = path.resolve(root, common.output.trim(), 'werkstraat');
+    const bestand = path.join(map, sleutel.replace(/[^\w-]/g, '_'));
+    if (existsSync(bestand)) return false;
+    mkdirSync(map, { recursive: true });
+    writeFileSync(bestand, '');
+    return true;
+  } catch {
+    return true;
+  }
 }
 
 /** Lege stdin (session-start kan zonder payload komen) telt als `{}`; kapotte JSON is een fout. */

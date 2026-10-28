@@ -610,3 +610,22 @@ describe('punt G: vervalst object onder het anker', () => {
     });
   }
 });
+
+describe('statusregel: nooit netwerk, ook niet in de lader', () => {
+  test('staat de statusregel niet in het anker, dan ververst de stub het anker niet: lege regel en exit 0', () => {
+    const repo = makeAnchored(hookFiles('main-versie', ['werkstraat']));
+    advanceRemote(repo, { 'rails/hooks/statusregel.mjs': scriptSource('main-versie-2') });
+    copyFileSync(path.join(STUB_SOURCE, 'statusregel.mjs'), path.join(repo.dir, '.claude/hooks/statusregel.mjs'));
+    const oud = readAnchor(repo);
+
+    const result = spawnSync(process.execPath, [path.join(repo.dir, '.claude/hooks/statusregel.mjs')], {
+      input: '{}',
+      cwd: repo.dir,
+      encoding: 'utf8',
+      env: { ...process.env, ...GIT_ENV },
+    });
+
+    expect([result.status, result.stdout]).toStrictEqual([0, '']);
+    expect(readAnchor(repo)).toBe(oud);
+  });
+});

@@ -5,7 +5,6 @@ import { execFileSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import net from 'node:net';
 import path from 'node:path';
-import { poorten, statusregel } from './lib/statusregel.mjs';
 
 const TIMEOUT_MS = 300;
 
@@ -57,6 +56,8 @@ function leesEnvLocal(root) {
 }
 
 async function main() {
+  // Dynamisch, binnen de try van de aanroeper: een lib die niet laadt, geeft een lege regel en exit 0.
+  const { poorten, statusregel } = await import('./lib/statusregel.mjs');
   const payload = leesPayload();
   const cwdVeld = veld(payload, 'cwd');
   const cwd = typeof cwdVeld === 'string' ? cwdVeld : process.cwd();
