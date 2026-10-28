@@ -3,10 +3,10 @@ import { stop } from '../../rails/hooks/lib/werkstraat.mjs';
 
 // De docs-drift-herinnering komt één keer per sessie: `deps.changed()` bevat ook gecommitte branchbestanden, dus zonder
 // geheugen zou elke volgende beurt van de hoofdsessie opnieuw blokkeren.
-function deps(onthouden: Set<string>) {
+function deps(onthouden: Set<string>, changed: readonly string[] = ['src/a.ts']) {
   return {
     run: () => ({ code: 0, output: '' }),
-    changed: () => ['src/a.ts'],
+    changed: () => [...changed],
     read: () => null,
     onthoud: (sleutel: string) => {
       if (onthouden.has(sleutel)) return false;
@@ -41,5 +41,12 @@ describe('stop: docs-drift één keer per sessie', () => {
     stop({}, deps(geheugen));
 
     expect(reden(stop({}, deps(geheugen)))).toContain('docs-drift');
+  });
+
+  test('een stop zonder drift verbruikt de herinnering niet', () => {
+    const geheugen = new Set<string>();
+
+    expect(stop({ session_id: 's1' }, deps(geheugen, ['scripts/x.mjs']))).toStrictEqual({});
+    expect(reden(stop({ session_id: 's1' }, deps(geheugen)))).toContain('docs-drift');
   });
 });

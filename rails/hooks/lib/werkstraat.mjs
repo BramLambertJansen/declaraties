@@ -132,8 +132,8 @@ function feedback(payload, deps, herinneren) {
     ['lint', deps.run('pnpm', ['exec', 'eslint', '--max-warnings', '0', '--no-warn-ignored', ...code])],
     ['unit', deps.run('pnpm', ['exec', 'vitest', 'related', '--run', '--project', 'unit', '--project', 'web', ...code])],
   ].filter(([, result]) => typeof result === 'object' && result.code !== 0);
-  const drift = herinneren && eersteKeer(payload, deps, 'docs-drift') ? docsDrift(changed) : null;
-  const herinnering = drift === null ? [] : [`${drift}. Raakt de wijziging geen gedrag, API of conventies, dan mag je opnieuw stoppen.`];
+  const drift = herinneren ? docsDrift(changed) : null;
+  const herinnering = drift === null || !eersteKeer(payload, deps, 'docs-drift') ? [] : [`${drift}. Raakt de wijziging geen gedrag, API of conventies, dan mag je opnieuw stoppen.`];
   if (failures.length === 0) return herinnering.length === 0 ? {} : block(`Herinnering (framework §8): ${herinnering.join('')}`);
   // Elke rode controle krijgt een eigen deel van de 40 regels: een lange lint- of testuitvoer drukt de typefout er niet uit.
   const budget = Math.max(1, Math.floor(MAX_LINES / failures.length) - 1);
@@ -142,7 +142,7 @@ function feedback(payload, deps, herinneren) {
 }
 
 /**
- * Een herinnering één keer per sessie: zonder sessie-id of `onthoud` altijd. Wordt alleen gevraagd als er gewijzigde code is.
+ * Een herinnering één keer per sessie: zonder sessie-id of `onthoud` altijd. Pas gevraagd als er iets te herinneren is.
  * @param {unknown} payload
  * @param {Deps} deps
  * @param {string} soort
