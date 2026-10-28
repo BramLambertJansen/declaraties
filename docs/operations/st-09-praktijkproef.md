@@ -15,8 +15,29 @@ alleen in de aparte app-repo. Een werkende setup is het eerste checkpoint, niet 
    featurespec in de app-repo; dit protocol is geen goedgekeurde app-featurespec of providerbesluit.
 3. Begin vóór de eerste setupstap een voortgangs- en interventielog in de setupmap. Leg bron-SHA, omgeving, starttijd,
    meetdefinities en ontbrekende voorwaarden vast, zonder geheimen. Zet de blijvende rapportage na repo-creatie in de app.
+   Leg daarbij de nulmeting van leerpunten vast volgens de volgende sectie; wacht daarmee niet tot de template-update.
 4. Controleer template-instelling, GitHub-rechten, private branchbescherming en de beschikbaarheid van de lokale stack.
    Een onhaalbare bescherming is een expliciete beperking waarover de eigenaar beslist, geen werkende garantie.
+
+## Nulmeting van leerpunten
+
+Bevries vóór de setup in het interventielog de template-repository, het peilmoment (ISO-tijdstip met tijdzone),
+de bestaande leerpunt-issues en hun hoogste issuenummer N (0 als er geen zijn). Haal daarvoor alle pagina's op,
+inclusief gesloten issues. Vervang `<template-repo>` door de repository uit de setup, in de vorm `owner/repo`:
+
+```sh
+gh api --paginate 'repos/<template-repo>/issues?state=all&labels=leerpunt&per_page=100' \
+  --jq '.[] | select(.pull_request == null) | {number, created_at, html_url, body}'
+```
+
+Bewaar de uitvoer met het peilmoment als meetbewijs bij het log. Dat is een bevroren momentopname, geen tweede
+register voor issueafhandeling. Een mislukte of onvolledige opvraag bewijst geen nul. Bestaande leerpunten kunnen
+uit de bouw van de leerlus of een andere app komen; het totale aantal hoeft bij proefstart dus niet nul te zijn.
+De nulmeting 0 geldt voor **nieuwe proefbevindingen** na deze grens, niet voor alle ooit ingediende leerpunten.
+
+Gebruik in alle checkpoints dezelfde N en hetzelfde peilmoment. Ontbreekt bij een al gestarte proef de momentopname,
+reconstrueer de grens alleen met gedateerd setup- en issuebewijs en vermeld die reconstructie. Lukt dat niet, noteer
+de nulmeting als onbekend; een latere telling wordt niet stilzwijgend de beginsituatie.
 
 ## Bewijsmatrix
 
@@ -110,5 +131,14 @@ verlaag geen gate en claim geen groen voor controles die niet draaiden.
 
 Templatebevindingen gaan alleen als issue met label `leerpunt` naar de template-repo ([ADR 0059](../adr/0059-leerlus-van-app-naar-template.md),
 skill `opleveren`, Opruimen stap 8); geen tweede register in de app. Het eindrapport telt met
-`gh issue list --label leerpunt --state all` op de template-repo het totaal, het aantal opgepakte leerpunten (met een
-roadmap-item dat het issue als aanleiding heeft) en het aantal herhalingen (met `eerder:`), tegen de nulmeting 0.
+`gh issue list --label leerpunt --state all` op de template-repo als overzicht; voor de telling haal je alle pagina's op
+met het commando uit "Nulmeting van leerpunten". De standaardlimiet van `gh issue list` bewijst geen volledig totaal.
+Bewaar ook het eindpeilmoment en de uitvoer. Selecteer issues met nummer groter dan N, aangemaakt na het startpeilmoment
+en met bronbewijs uit deze proef; bevindingen uit gelijktijdige andere apps tellen niet mee.
+
+Rapporteer binnen die selectie het totaal, het aantal opgepakte leerpunten (met een roadmap-item dat het issue als
+aanleiding heeft) en het aantal herhalingen (met `eerder:`). Vergelijk deze drie tellingen met de nulmeting 0 nieuwe
+proefbevindingen. Een gesloten issue blijft meetellen; een herhaling mag naar een issue van vóór de grens verwijzen,
+maar alleen het nieuwe issue telt als herhaling. Vermeld N, start- en eindpeilmoment en de geselecteerde issuenummers,
+zodat de selectie controleerbaar is. Het totale aantal leerpunten in de repository mag apart als context staan en is
+geen uitkomst van deze proef.
