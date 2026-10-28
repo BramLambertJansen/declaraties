@@ -6,6 +6,13 @@ Hier staan wijzigingen die van belang zijn bij het gebruiken of bijwerken van de
 
 ### Toegevoegd
 
+- Ontwikkelgemakken in de werkstraat: SessionStart toont op een featurebranch de open PR met checks en reviewstatus;
+  de Stop-hook herinnert één keer aan docs-drift; na een bewerkte migratie volgt de hint `pnpm db:generate`; pre-push
+  waarschuwt bij een achterstand op `origin/main`; een commit-msg-hook dwingt conventional commits af; Claude Code geeft een
+  melding als het wacht (Notification-hook; WSL2 via `powershell.exe`, anders `notify-send`; uit met `KIT_MELDING=uit`) en
+  krijgt een statusregel (framework §8, `rails/hooks/lib/{werkstraat,melding,statusregel}.mjs`). Bij een update: draai
+  `pnpm exec lefthook install` voor de commit-msg-hook.
+
 - Leerlus van app naar template (ADR 0059, spec `docs/specs/leerlus.md`): een generieke les uit een app gaat als issue met
   label `leerpunt` naar de template-repo, via het formulier `.github/ISSUE_TEMPLATE/leerpunt.yml` en de leerpuntstap in de
   skill `opleveren` (Opruimen stap 8). De reviewer markeert per blokkerende bevinding `Leerpunt: ja (<soort>)` of `nee`.
