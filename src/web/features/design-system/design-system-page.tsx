@@ -268,6 +268,8 @@ export function DesignSystemPage() {
         <PageHeader title="Accounts" preview actions={<Button>Account uitnodigen</Button>} />
         <Notice>Uitnodiging verstuurd naar anna@example.test.</Notice>
         <Notice tone="error">Er ging iets mis. Probeer het later opnieuw.</Notice>
+        <Notice tone="success">Wijzigingen opgeslagen.</Notice>
+        <Notice tone="warning">Je sessie verloopt over 5 minuten.</Notice>
       </Section>
 
       <Section id="example-toast" title="Toast">

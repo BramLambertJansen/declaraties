@@ -61,7 +61,7 @@ export function DevRoleSwitcher() {
         aria-label="Rol wisselen (alleen lokaal)"
         aria-expanded={open}
         aria-controls={PANEL_ID}
-        className="fixed top-1/2 right-0 z-40 -translate-y-1/2 rounded-e-none border-e-0 shadow-md"
+        className="fixed top-1/2 right-0 z-overlay -translate-y-1/2 rounded-e-none border-e-0 shadow-md"
         onClick={() => {
           setOpen(!open);
         }}
@@ -74,8 +74,8 @@ export function DevRoleSwitcher() {
         aria-label="Rol wisselen"
         inert={!open}
         className={cn(
-          'fixed top-1/2 right-0 z-50 flex w-64 max-w-[calc(100vw-1rem)] -translate-y-1/2 flex-col gap-3 rounded-s-lg',
-          'border border-e-0 bg-popover p-4 text-popover-foreground shadow-lg transition-transform duration-200',
+          'fixed top-1/2 right-0 z-modal flex w-64 max-w-[calc(100vw-1rem)] -translate-y-1/2 flex-col gap-3 rounded-s-lg',
+          'border border-e-0 bg-popover p-4 text-popover-foreground shadow-lg transition-transform duration-normal',
           open ? 'translate-x-0' : 'invisible translate-x-full',
         )}
       >

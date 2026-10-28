@@ -92,7 +92,7 @@ const groups = [
   {
     names: ['PageTitle', 'PageHeader', 'Notice'],
     id: 'example-header',
-    text: 'Paginakop met titel en actie, gevolgd door beide meldingen.',
+    text: 'Paginakop met titel en actie, gevolgd door elke meldingstoon.',
   },
   { names: ['CenteredCard'], id: 'example-centered', text: 'Preview zonder extra main of paginatitel.' },
   {
@@ -114,7 +114,7 @@ const groups = [
     id: 'example-table',
     text: 'Alle tabelonderdelen in één voorbeeld.',
   },
-  { names: ['StatusBadge'], id: 'example-badges', text: 'Alle drie toonvarianten naast elkaar.' },
+  { names: ['StatusBadge'], id: 'example-badges', text: 'Alle vijf toonvarianten naast elkaar.' },
   {
     names: ['Text', 'Heading', 'Stack', 'Inline'],
     id: 'example-typografie',
