@@ -28,6 +28,8 @@ test.describe('semantische tokens: beweging op 375 px', () => {
   test.use({ viewport: { width: 375, height: 900 } });
 
   test('semantische-tokens/AC-16: de open sheet-dialoog duurt 0,2 s', async ({ page }) => {
+    // playwright.config.ts zet reducedMotion standaard op reduce; deze test meet de duur zonder die voorkeur.
+    await page.emulateMedia({ reducedMotion: 'no-preference' });
     const sheet = await openSheet(page);
     await expect(sheet).toHaveCSS('transition-duration', '0.2s');
     await scanAxe(page);
