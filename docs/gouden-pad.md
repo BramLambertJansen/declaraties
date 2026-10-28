@@ -48,6 +48,36 @@ draait hem; `--dry-run` toont het plan zonder te schrijven, en bestaat een doel 
 `gate:fast`). De generator voegt geen dependency toe: de route-tree komt van de al geïnstalleerde `@tanstack/router-plugin`
 (ADR 0047 punt 8–9).
 
+## Padparameters en foutvolgorde
+
+Leg bij "Routes en foutcodes" voor iedere padparameter (zoals `:id`) de toegestane vorm, het gedeelde zod-schema
+in het contract, de foutcode en het validatiemoment vast. Een body-schema alleen dekt een padparameter niet.
+De vorm volgt het domein: een UUID voor een UUID-resource, geen UUID-aanname voor bijvoorbeeld een Better Auth-ID.
+Beschrijf vóór een externe aanroep hoe de gebruikte padparameters worden gevalideerd; ongeldige invoer mag die
+aanroep niet bereiken. Toets ook scheidingstekens en gecodeerde invoer, zoals `..%2F..%2Fx`, tegen de gekozen vorm;
+een UUID-parameter hoort zulke waarden af te wijzen.
+
+Toets de foutvolgorde aan de bestaande kit, na de algemene HTTP-middleware: sessie, rate limit, contractvalidatie,
+ontbrekende rol, permissie, MFA, handler en outputvalidatie. Bronnen: `routeHandler` in
+`src/core/api/http/create-app.ts`, `createWithUser` in `src/core/api/db/with-user.ts` en `check` in
+`src/core/shared/can.ts`. Een nieuwe voor-stap mag die zichtbare foutvolgorde niet stilzwijgend veranderen.
+
+Specificeer bij een voor-stap welke validatie eraan voorafgaat, welke externe aanroep zij doet en wanneer haar fout
+zichtbaar wordt. Een fout van de externe dienst mag `FORBIDDEN` of `MFA_REQUIRED` niet vervangen. Beschrijf zo nodig
+hoe de fout wordt bewaard tot na de rechtencontrole en de route-specifieke beschikbaarheids- en eigenaarcontrole.
+Controleer of de kit dat mechanisme al biedt; een ontwerp in een ADR is nog geen beschikbare API.
+
+Neem gecombineerde fouten als acceptatiecriteria op; een losse test per fout bewijst de volgorde niet:
+
+| Samen optredende situaties | Verwachte uitkomst |
+|---|---|
+| Geen geldige sessie, ongeldige padparameter en externe dienst onbereikbaar | `UNAUTHENTICATED` |
+| Geldige sessie, rate limit overschreden en ongeldige padparameter | `RATE_LIMITED` |
+| Geldige sessie, binnen rate limit, ongeldige padparameter en externe dienst onbereikbaar | `VALIDATION`; externe aanroep niet uitgevoerd |
+| Geldige invoer, ontbrekende of verboden rol en externe dienst onbereikbaar | `FORBIDDEN` |
+| Geldige invoer, toegestane adminrol zonder vereiste MFA en externe dienst onbereikbaar | `MFA_REQUIRED` |
+| Geldige invoer en vereiste rechten/MFA, externe dienst onbereikbaar | Route-specifieke foutcode en volgorde van beschikbaarheids- en eigenaarcontrole expliciet in de spec |
+
 ## Transactiegrens in de spec
 
 Toets het transactieplan aan `routeHandler` in `src/core/api/http/create-app.ts` en de context in

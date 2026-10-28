@@ -51,6 +51,10 @@ uit "Open vragen". Index op `owner_id`. RLS aan en geforceerd.
 | PATCH | /api/__naam__/:id | __naam__:write | UNAUTHENTICATED, FORBIDDEN, MFA_REQUIRED, VALIDATION, NOT_FOUND |
 | DELETE | /api/__naam__/:id | __naam__:write | UNAUTHENTICATED, FORBIDDEN, MFA_REQUIRED, VALIDATION, NOT_FOUND |
 
+Padparameter `:id`: UUID, via `__Naam__Id` in het gedeelde contract; een ongeldige vorm geeft `VALIDATION` vóór de handler.
+Beschrijf bij externe aanroepen ook validatie vóór die aanroep en de foutvolgorde van eventuele voor-stappen.
+Neem gecombineerde foutgevallen als acceptatiecriteria op volgens "Padparameters en foutvolgorde" in `docs/gouden-pad.md`.
+
 Een rij van een ander bestaat voor de gebruiker niet: `NOT_FOUND`, niet `FORBIDDEN`. De lijst heeft een vaste paginagrootte
 (`__NAAM___PAGE_SIZE`, hooguit `MAX_PAGE_SIZE`) en een cursor.
 
