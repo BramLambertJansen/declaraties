@@ -6,6 +6,7 @@
     "secrets",
     "image",
     "check:new-resource",
+    "check:app-init",
     "codeql (javascript-typescript)",
     "codeql (actions)",
     "osv-scanner",

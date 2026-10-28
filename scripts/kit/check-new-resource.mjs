@@ -3,67 +3,20 @@
 // de gate-wijzigingen zoals de hoofdsessie dat met Edit doet, en draait gate:fast. Duurt minuten: eigen job in CI, niet in
 // gate:fast. gate:slow hoort er bewust niet bij: check-policies faalt tot de tester de pgTAP-tests schrijft.
 import { execFileSync } from 'node:child_process';
-import { cpSync, mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { snelleGates } from './gate-fast.mjs';
 import { pasToe, plan, schrijf } from './new-resource.mjs';
+import { kopie, ruimOp, schoneEnv, script } from './proef-kopie.mjs';
 
 // Met een streepje, zodat ook de afleiding van tabel-, camel- en PascalCase-namen door gate:fast gaat.
 const NAAM = 'time-entries';
+const PREFIX = 'new-resource-';
 const ROLLEN = ['user', 'admin'];
 
 /** @param {string} cwd @param {string} commando @param {readonly string[]} args */
 function draai(cwd, commando, args) {
-  execFileSync(commando, args, { cwd, stdio: 'inherit' });
-}
-
-/**
- * Een script uit package.json, zonder pnpm: pnpm wil in de kopie (node_modules als link) eerst installeren.
- * @param {string} root
- * @param {string} naam
- */
-function script(root, naam) {
-  /** @type {{ scripts: Record<string, string> }} */
-  const pkg = JSON.parse(readFileSync(path.join(root, 'package.json'), 'utf8'));
-  const regel = pkg.scripts[naam];
-  if (regel === undefined) throw new Error(`package.json: geen script ${naam}`);
-  for (const stap of regel.split(' && ')) {
-    if (stap.startsWith('pnpm ')) script(root, stap.slice('pnpm '.length));
-    else
-      execFileSync('sh', ['-c', stap], {
-        cwd: root,
-        stdio: 'inherit',
-        env: {
-          ...process.env,
-          PATH: `${path.join(root, 'node_modules/.bin')}${path.delimiter}${process.env['PATH'] ?? ''}`,
-        },
-      });
-  }
-}
-
-/** @param {string} bron @returns {string} */
-function kopie(bron) {
-  const doel = mkdtempSync(path.join(tmpdir(), 'new-resource-'));
-  const bestanden = execFileSync('git', ['ls-files', '-z', '--cached', '--others', '--exclude-standard'], {
-    cwd: bron,
-    encoding: 'utf8',
-  })
-    .split('\0')
-    .filter((pad) => pad !== '');
-  for (const pad of bestanden) {
-    mkdirSync(path.dirname(path.join(doel, pad)), { recursive: true });
-    // Een verwijderd maar nog niet gecommit bestand staat wel in de index, niet op schijf.
-    cpSync(path.join(bron, pad), path.join(doel, pad), { force: true, errorOnExist: false });
-  }
-  symlinkSync(path.join(bron, 'node_modules'), path.join(doel, 'node_modules'), 'dir');
-  // check:migrations vergelijkt met origin/main: de kopie zonder de gegenereerde bestanden is die basis.
-  const git = ['-c', 'user.name=check', '-c', 'user.email=check@example.test'];
-  draai(doel, 'git', ['init', '-q', '-b', 'main']);
-  draai(doel, 'git', ['add', '-A']);
-  draai(doel, 'git', [...git, 'commit', '-q', '--no-verify', '-m', 'basis']);
-  draai(doel, 'git', ['update-ref', 'refs/remotes/origin/main', 'HEAD']);
-  return doel;
+  execFileSync(commando, args, { cwd, stdio: 'inherit', env: schoneEnv() });
 }
 
 /** @param {string} root */
@@ -86,13 +39,13 @@ async function genereer(root) {
   }
 }
 
-const root = kopie(process.cwd());
+const root = kopie(process.cwd(), PREFIX);
 try {
   await genereer(root);
   // De snelle gates uit het register na elkaar, elk zonder pnpm (zie script()); gate:fast zelf start pnpm per gate.
-  for (const gate of snelleGates()) script(root, gate);
+  for (const gate of snelleGates()) await script(root, gate);
   console.log(`check:new-resource: ${NAAM} haalt gate:fast`);
 } finally {
-  if (!process.argv.includes('--bewaar')) rmSync(root, { recursive: true, force: true });
+  if (!process.argv.includes('--bewaar')) ruimOp(root, PREFIX);
   else console.log(`check:new-resource: kopie bewaard in ${root}`);
 }

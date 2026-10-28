@@ -48,6 +48,7 @@ Onleesbare geschiedenis is een fout; haal bij een verse of onvolledige checkout 
 De app-initialisatie heeft naast geïsoleerde fixtures ook een compatibiliteitsproef met de echte templatebestanden
 (`test/scripts/app-init-template.test.ts`). Na initialisatie vindt die proef de oorspronkelijke invoer in de gekoppelde
 Git-geschiedenis. CI haalt hiervoor de volledige geschiedenis op; er wordt niets teruggeschreven naar de eigen checkout.
+`pnpm check:app-init` (verplichte CI-check) draait `app:init` op een tijdelijke kopie en daarna de snelle suite, zodat een test die alleen in de template slaagt de template-CI rood maakt (leerpunt #334).
 
 Begin met de taakrelevante secties van `node scripts/kit/feiten.mjs`, bijvoorbeeld `gates specs fase`.
 De hoofdsessie kiest de route: licht alleen voor beperkte fixes binnen bestaand gedrag; anders volledig — framework §8.

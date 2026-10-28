@@ -6,6 +6,9 @@ Hier staan wijzigingen die van belang zijn bij het gebruiken of bijwerken van de
 
 ### Toegevoegd
 
+- `pnpm check:app-init` (spec `docs/specs/app-init-proef.md`, leerpunt #334): draait `app:init` op een tijdelijke kopie en daarna de
+  snelle suite; verplichte CI-check (`requiredChecks`, `scripts/github-ruleset.sh`: de eigenaar past de ruleset na de merge toe). De
+  kopie-, opruim- en git-env-logica van `check:new-resource` staat nu in `scripts/kit/proef-kopie.mjs`.
 - Leerlus van app naar template (ADR 0059, spec `docs/specs/leerlus.md`): een generieke les uit een app gaat als issue met
   label `leerpunt` naar de template-repo, via het formulier `.github/ISSUE_TEMPLATE/leerpunt.yml` en de leerpuntstap in de
   skill `opleveren` (Opruimen stap 8). De reviewer markeert per blokkerende bevinding `Leerpunt: ja (<soort>)` of `nee`.
