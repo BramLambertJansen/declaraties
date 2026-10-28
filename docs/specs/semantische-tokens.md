@@ -1,5 +1,5 @@
 ---
-status: voorstel # voorstel | goedgekeurd | gebouwd | vervallen — de architect zet de status in het voorstel, de merge door de eigenaar is het besluit (ADR 0046); gebouwd: # #<PR>; gevalideerd: <sha> (pnpm docs:status)
+status: goedgekeurd # voorstel | goedgekeurd | gebouwd | vervallen — de architect zet de status in het voorstel, de merge door de eigenaar is het besluit (ADR 0046); gebouwd: # #<PR>; gevalideerd: <sha> (pnpm docs:status)
 namespace: semantische-tokens
 ---
 
@@ -62,7 +62,7 @@ Er is geen ADR nodig. De drie lagen en de zone-indeling (ADR 0040) blijven, en e
 
 **Volgorde:**
 
-1. **Besluit-PR**: deze spec met status `goedgekeurd` (nadat de open vragen beantwoord zijn) en twee records in
+1. **Besluit-PR**: deze spec met status `goedgekeurd` en twee records in
    `.claude/decisions.json`. De hoofdsessie maakt die records:
 
    ```sh
@@ -391,10 +391,10 @@ Elk AC-id staat in de testnaam.
   `pnpm check:catalogus` in de bouw-PR.
 - Reviewer per PR op `git diff origin/main...HEAD`. De eigenaar merget.
 
-## Open vragen
+## Besluiten
 
-De keuzes hieronder zijn van de eigenaar. De architect geeft alleen een voorstel; de spec gaat pas naar `goedgekeurd`
-als Bram ze heeft bevestigd of aangepast.
+De eigenaar heeft op 2026-10-28 alle aanbevelingen hieronder overgenomen (OV-1 t/m OV-9). De gekozen optie is steeds
+de aanbeveling.
 
 - **OV-1** — Welk lettertype geldt standaard in de template? Opties: (a) de systeemstack zonder fontbestand, (b) een
   meegeleverd OFL-lettertype (bijvoorbeeld Inter en JetBrains Mono als woff2 in `src/web/styles/fonts/`).
