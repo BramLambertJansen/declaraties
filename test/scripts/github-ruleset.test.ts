@@ -126,6 +126,21 @@ describe('checknamen', () => {
     expect(checksUitWorkflows()).toStrictEqual(OPDRACHT.toSorted());
   });
 
+  test('het setup-playbook noemt precies de verplichte checks uit de rulesetpayload', () => {
+    const { status, payload } = run(['eigenaar/app']);
+    const playbook = readFileSync(path.join(ROOT, 'docs/nieuwe-app.md'), 'utf8');
+    const rulesetSection = playbook.split('**Ruleset op `main` (overdracht).**')[1]?.split('\n\n')[0] ?? '';
+    const list = /\((`[^`]+`(?:,\s*`[^`]+`)*), alle van GitHub Actions\)/.exec(rulesetSection)?.[1] ?? '';
+    const documented = [...list.matchAll(/`([^`]+)`/g)].map(([, name = '']) => name);
+
+    expect(status).toBe(0);
+    expect(documented.toSorted()).toStrictEqual(
+      checks(payload)
+        .map((check) => check.context)
+        .toSorted(),
+    );
+  });
+
   test('de controle vangt een payload met een ontbrekende check', () => {
     const { payload } = run(['eigenaar/app']);
     const zonderOsv = checks(payload).filter((check) => check.context !== 'osv-scanner');

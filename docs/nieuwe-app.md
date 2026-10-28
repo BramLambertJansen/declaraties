@@ -395,8 +395,10 @@ Zet de korte beschrijving uit de intake met `gh repo edit "$R" --description "<k
 
 **Ruleset op `main` (overdracht).** `scripts/github-ruleset.sh` zet de ruleset `main` volgens framework §10: geen delete of force push,
 PR-plicht, opgeloste reviewgesprekken, merge en squash, en de verplichte checks uit `.github/workflows/` (`gate:fast`, `gate:slow`,
-`secrets`, `image`, `check:new-resource`, `codeql (actions)`, `codeql (javascript-typescript)`, `osv-scanner`, alle van GitHub Actions). Dat is `main-dicht` van de template plus opgeloste gesprekken en `codeql (javascript-typescript)`.
-`test/scripts/github-ruleset.test.ts` houdt de lijst gelijk aan de workflows. Opnieuw draaien werkt de bestaande ruleset bij.
+`secrets`, `image`, `check:new-resource`, `check-core`, `codeql (actions)`, `codeql (javascript-typescript)`, `osv-scanner`, alle van GitHub Actions). Dat is `main-dicht` van de template plus opgeloste gesprekken en `codeql (javascript-typescript)`.
+`check-core` bewaakt in een app de grens rond `src/core` (ADR 0040); in de template is die check altijd groen.
+`test/scripts/github-ruleset.test.ts` houdt de ruleset gelijk aan de workflows en deze playbooklijst gelijk aan de rulesetpayload.
+Opnieuw draaien werkt de bestaande ruleset bij.
 Het script schrijft naar GitHub met de login van de eigenaar; jij draait het niet.
 
 > 1. `cd ~/code/<slug> && scripts/github-ruleset.sh <owner>/<slug>`
@@ -564,7 +566,7 @@ Schrijf het voortgangsbestand af en stuur één bericht, ongeveer zo:
 > Draait: Postgres 17 + pgTAP op 127.0.0.1:<pg>, Mailpit op http://127.0.0.1:<mailui>. Migraties toegepast, rollen bewezen.
 > API: http://localhost:<api>; web en beide origins: http://localhost:<web>.
 > Afgedwongen zoals in de template: git-hooks (pre-commit: format, lint, secrets; pre-push: `pnpm gate:fast`), de hooks, sandbox en
-> permissies van Claude Code (`.claude/`), CI (`gate:fast`, `gate:slow`, `secrets`, `image`, `check:new-resource`, CodeQL, osv-scanner)
+> permissies van Claude Code (`.claude/`), CI (`gate:fast`, `gate:slow`, `secrets`, `image`, `check:new-resource`, `check-core`, CodeQL, osv-scanner)
 > en de ruleset op `main` met die checks verplicht, uitsluitend voor zover hierboven werkelijk gecontroleerd.
 > Browser/login/MFA: <uitvoerder en uitslag, of niet uitgevoerd met reden>.
 >
