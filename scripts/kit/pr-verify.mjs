@@ -86,9 +86,15 @@ export function werkmapNegeer(root, base) {
 }
 
 /** @param {{ root: string, base: string }} context */
-function werkmapSchoon({ root, base }) {
+function verifyWorktree({ root, base }) {
   const status = gitText(root, ['status', '--porcelain', '--untracked-files=all', '--', '.', ':!node_modules']);
-  return status !== null && onbekendeWerkmapBestanden(status, werkmapNegeer(root, base)).length === 0;
+  if (status === null)
+    throw new Error('Werkmapstatus is niet leesbaar; controleer Git-toegang en haal het bewijs opnieuw op');
+  const blocked = onbekendeWerkmapBestanden(status, werkmapNegeer(root, base));
+  if (blocked.length > 0)
+    throw new Error(
+      `Werkmap bevat blokkerende wijzigingen:\n${blocked.map((file) => `- ${file}`).join('\n')}\nControleer werkmap en index; haal het bewijs opnieuw op`,
+    );
 }
 
 /** @param {{ root: string, head: string, base: string, authority: import('../../rails/hooks/lib/task-authority.mjs').Authority, number: number }} context */
@@ -98,10 +104,10 @@ function verifyHead(context) {
     pr.headSha !== context.head ||
     pr.branch !== context.authority.branch ||
     pr.state !== 'open' ||
-    !unchangedHead(context.root, { head: context.head, branch: context.authority.branch, base: context.base }) ||
-    !werkmapSchoon(context)
+    !unchangedHead(context.root, { head: context.head, branch: context.authority.branch, base: context.base })
   )
     throw new Error('PR, branch of werkmap wijkt af van de gecontroleerde commit; bewijs opnieuw ophalen');
+  verifyWorktree(context);
 }
 
 async function main() {
