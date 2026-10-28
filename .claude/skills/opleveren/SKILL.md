@@ -25,6 +25,12 @@ Feiten nu:
 5. Stop en vraag de eigenaar bij: (a) een fix die een regel, check, hook of test zou afzwakken; (b) dezelfde fout drie keer achter elkaar (voer dan eerst de leerpuntstap uit Opruimen stap 8 uit);
    (c) een oorzaak buiten de code (runner, GitHub-storing); (d) een gate-pad of beschermd pad dat moet wijzigen.
 6. De lus leeft alleen binnen de sessie: geen timer, token of credentialwerk.
+7. Noemt de PR een spec die naar `gebouwd` gaat: eerst groen op HEAD, dan `pnpm docs:status <spec> gebouwd --pr <nr> --roadmap`
+   (zonder `--roadmap` als geen roadmap-item de spec noemt) als laatste commit (het vinkje hoort in die commit, niet in de
+   implementatie), en pas na groen op die commit mag de eigenaar mergen of auto-merge aanzetten. Staat auto-merge al aan,
+   vraag de eigenaar hem uit te zetten. Is er een taakmandaat en kan `--roadmap` het item niet afvinken, of is er geen
+   `gh`-auth: stop en meld het (leerpunt #314; `docs/operations/agent-doorloop.md`,
+   "PR en statussen afronden").
 
 ## Mergen
 
