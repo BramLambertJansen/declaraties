@@ -5,7 +5,7 @@ import { describe, expect, test } from 'vitest';
 
 // Spec semantische-tokens, deel 3a (typografie en dichtheid). "Tailwind-compilatie" = src/web/styles/app.css met
 // compile() uit tailwindcss en de genoemde kandidaten; imports lossen we zelf op, zodat een fixture-thema theme.css
-// kan vervangen (AC-4). AC-7 is de lettertypeguard als pure functie, op de echte bron en op drie foute fixtures.
+// kan vervangen (AC-4). AC-7 is de lettertypeguard als pure functie, op de echte bron en op vier foute fixtures.
 const root = path.join(import.meta.dirname, '../..');
 const read = (file: string) => readFileSync(path.join(root, file), 'utf8');
 const APP_CSS = 'src/web/styles/app.css';
@@ -167,7 +167,7 @@ function fontFaceSources(content: string): string[] {
 function fontGuard({ css, fontFiles }: FontInput): string[] {
   const problems: string[] = [];
   for (const [file, content] of css) {
-    if (/@import\s+url\(/i.test(content)) problems.push(`${file}: @import url(`);
+    if (/@import\s+(?:url\(|['"](?:[a-z]+:|\/\/))/i.test(content)) problems.push(`${file}: externe @import`);
     if (EXTERNAL_URL.test(content)) problems.push(`${file}: externe url()`);
     for (const url of fontFaceSources(content))
       if (/^(?:[a-z]+:|\/)/i.test(url) || !url.endsWith('.woff2')) problems.push(`${file}: @font-face src ${url}`);
@@ -196,7 +196,7 @@ function walk(dir: string): string[] {
 }
 
 describe('semantische-tokens 3a: lettertypen', () => {
-  test('semantische-tokens/AC-7: lettertypeguard is schoon op src/**/*.css en src/web/styles/fonts/, en faalt op drie fixtures', () => {
+  test('semantische-tokens/AC-7: lettertypeguard is schoon op src/**/*.css en src/web/styles/fonts/, en faalt op vier fixtures', () => {
     const css = new Map(
       walk('src')
         .filter((file) => file.endsWith('.css'))
@@ -217,6 +217,10 @@ describe('semantische-tokens 3a: lettertypen', () => {
       },
       'CDN-import': {
         css: new Map([['theme.css', "@import url('https://fonts.googleapis.com/css2?family=Voorbeeld');"]]),
+        fontFiles: [],
+      },
+      'CDN-import zonder url()': {
+        css: new Map([['theme.css', "@import 'https://fonts.googleapis.com/css2?family=Voorbeeld';"]]),
         fontFiles: [],
       },
       'woff2 zonder licentie': {

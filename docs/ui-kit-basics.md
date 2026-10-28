@@ -87,8 +87,9 @@ Spec: [semantische-tokens](specs/semantische-tokens.md). Een app overschrijft al
   met `--type-*-leading`. Gewicht: `--weight-{normal,medium,semibold}`. Andere maten en gewichten (`text-xs`, `text-3xl`,
   `font-bold`, `font-serif`) bestaan niet: `src/core/web/styles/index.css` reset ze in `@theme`. Meer nodig? Stel een
   variant voor.
-- Dichtheid: `--density-space` is de basis van alle afstanden (`p-4` = 4 × de basis); `--density-control` is de hoogte
-  van bediening. `--control-h` (`src/core/web/styles/components.css:4`) houdt die op minstens 44 px.
+- Dichtheid: `--density-space` is de basis van alle afstanden en maten (`p-4`, `gap-2`, `w-*`, `size-*`: 4 × de basis bij
+  `p-4`); `--density-control` is de hoogte van bediening en moet een lengte zijn (`rem` of `px`), anders vervalt de
+  ondergrens. `--control-h` (`src/core/web/styles/components.css:4`) houdt die op minstens 44 px.
 - Eigen lettertype: zet het woff2-bestand met zijn licentiebestand (`LICENSE*` of `OFL*`) in `src/web/styles/fonts/`,
   declareer `@font-face` in `theme.css` met een relatieve `url()` en `font-display: swap`, en zet de familie vóór de
   systeemstack in `--font-family-sans`. Alleen lettertypen waarvan de licentie zelf hosten toestaat (bijvoorbeeld OFL 1.1
