@@ -154,3 +154,17 @@ describe('verse main: vormen uit de review', () => {
     expect(ROLLEN.map((role) => verdict(command, role))).toStrictEqual(['allow', 'allow']);
   });
 });
+
+describe('verse main: timeout achter een toewijzing', () => {
+  test('mag: fetch met GIT_TERMINAL_PROMPT=0 timeout', () => {
+    const command = 'GIT_TERMINAL_PROMPT=0 timeout 60 git fetch origin main && git switch -c feat/x origin/main';
+    expect(ROLLEN.map((role) => verdict(command, role))).toStrictEqual(['allow', 'allow']);
+  });
+
+  test('geweigerd: branch achter A=1 timeout', () => {
+    expect(ROLLEN.map((role) => verdict('A=1 timeout 9 git switch -c feat/x feat/y', role))).toStrictEqual([
+      'deny',
+      'deny',
+    ]);
+  });
+});

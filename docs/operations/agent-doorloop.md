@@ -42,8 +42,11 @@ Het rolhek weigert voor elke rol een nieuwe branch in een andere vorm (`rails/ho
 ervoor, met `;` of `||` ertussen, of vanaf een andere basis dan `origin/main` (lokale `main`, de vorige featurebranch,
 HEAD). Het rolhek gebruikt geen netwerk; door de `&&` ontstaat er geen branch als de fetch faalt. De SessionStart-melding
 over de achterstand op `origin/main` blijft daarnaast staan. Een branch op een andere basis maakt de eigenaar zelf. Bekende grenzen
-(vangnet, geen harde grens): omhulsels met opties (`env -i`, `nice -n 1`) peelt het rolhek niet af (`timeout` wel), en
+(vangnet, geen harde grens): omhulsels met opties (`env -i`, `nice -n 1`) en `setsid`, `stdbuf` of `flock` peelt het
+rolhek niet af (`timeout` wel); een `git -C <map>` die tussen fetch en branch verschilt, vergelijkt het niet; en
 `git stash branch`, `git checkout -t origin/<x>` en `git update-ref refs/heads/<x>` ziet deze regel niet.
+`git worktree add <pad>` telt altijd als nieuwe branch vanaf HEAD; voor een bestaande branch noem je hem:
+`git worktree add <pad> <branch>`.
 
 ## Besluit en taakscope voorbereiden
 

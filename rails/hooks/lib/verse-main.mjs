@@ -121,7 +121,7 @@ function fetchesMain(subcommand, rest) {
  * @returns {{ subcommand: string, rest: string[] } | null}
  */
 function gitCall(segment) {
-  const { argv } = splitCommand(withoutTimeout(segment.words));
+  const { argv } = splitCommand(withoutTimeout(splitCommand(segment.words).argv));
   if (programName(argv[0] ?? '') !== 'git') return null;
   const { subcommand, rest } = gitSubcommand(argv.slice(1));
   return { subcommand, rest };
