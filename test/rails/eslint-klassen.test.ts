@@ -27,7 +27,7 @@ describe('rails/klassen', () => {
     const meldingen = await klassenMeldingen('src/web/routes/x.tsx', 'export const x = <div style={{}} />;');
 
     expect(meldingen).toStrictEqual([
-      "In features/ en routes/ alleen layout-klassen als gewone string (flex, grid, gap, padding, breedte); kleur, " +
+      'In features/ en routes/ alleen layout-klassen als gewone string (flex, grid, gap, padding, breedte); kleur, ' +
         'typografie, rand, schaduw, arbitrary values, `!`, `dark:` en `style` komen uit componenten. Gebruik `Text`, ' +
         "`Heading`, `Stack` of `Inline` uit '#web/ui/…' (lijst: `node scripts/kit/feiten.mjs componenten`). Past er " +
         'geen, stel dan een variant voor (framework §7).',

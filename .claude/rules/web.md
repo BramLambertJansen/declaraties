@@ -19,7 +19,7 @@ paths:
   verzendknop uit tijdens de mutatie; serverveldfouten via `setError`.
 - UI-state (filters, tabs, paginering) in de URL. Geen globale store.
 - Styling in `features/` en `routes/`: alleen layout-utilities als gewone string (flex, grid, gap, padding, breedte) of
-  `Stack`/`Inline`. Kleur, radius, schaduw en typografie komen uit componenten (`Text`, `Heading`); `rails/klassen` dwingt het af.
+  `Stack`/`Inline`. Kleur, radius, schaduw en typografie komen uit componenten (`Text`, `Heading`); de rail `klassen` in `eslint.config.js` dwingt het af.
 - Responsive met breakpoints en container queries. Wat echt per formaat verschilt: één gedeelde hook, niet per component.
 - Alle zichtbare tekst in `src/web/copy`, Nederlands, volgens de woordenlijst ("Annuleren", niet "Annuleer").
 - Datums en bedragen alleen via `lib/format.ts`.
