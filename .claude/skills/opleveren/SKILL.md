@@ -20,11 +20,20 @@ Feiten nu:
    De bestaande pre-push-hook draait de volledige `pnpm gate:fast`; start die niet nogmaals alleen voor de overdracht.
    Gerichte feedback is geen volledige groene gate. Iedere PR behoudt alle CI-checks; geen oude uitslag hergebruiken.
 2. Wacht met `pnpm pr:verify <nr> --watch` (geen kale `gh pr checks --watch`: die toetst SHA, branch en herkomst van de check niet).
+   Start pnpm niet of weigert de werkmap ondanks gelijke head-SHA's, volg dan `docs/operations/agent-doorloop.md`,
+   "Als pr:verify niet start of de werkmap weigert" (leerpunt #329); dezelfde verificatie blijft vereist.
 3. Bij rood: `gh run view <run-id> --log-failed`, de oorzaak fixen, committen, pushen en opnieuw wachten. Geen vast aantal rondes.
 4. Na fixes bekijkt de reviewer alleen het verschil: `git diff <reviewer-sha>..HEAD`.
 5. Stop en vraag de eigenaar bij: (a) een fix die een regel, check, hook of test zou afzwakken; (b) dezelfde fout drie keer achter elkaar (voer dan eerst de leerpuntstap uit Opruimen stap 8 uit);
    (c) een oorzaak buiten de code (runner, GitHub-storing); (d) een gate-pad of beschermd pad dat moet wijzigen.
 6. De lus leeft alleen binnen de sessie: geen timer, token of credentialwerk.
+7. Noemt de PR een spec die naar `gebouwd` gaat: eerst groen op HEAD, dan `pnpm docs:status <spec> gebouwd --pr <nr> --roadmap`
+   (zonder `--roadmap` als geen roadmap-item de spec noemt) als laatste commit (het vinkje hoort in die commit, niet in de
+   implementatie), en pas na groen op die commit mag de eigenaar mergen of auto-merge aanzetten. Staat auto-merge al aan,
+   vraag de eigenaar hem uit te zetten. Is er een taakmandaat en noemt het roadmap-item het specpad niet tussen
+   backticks (dan kan `--roadmap` het niet afvinken), of is er geen `gh`-auth: stop en meld het. Zonder mandaat komt de
+   roadmapwijziging in de implementatie, niet in de statuscommit; een commit na de statuscommit maakt `document-status`
+   rood (leerpunt #314; `docs/operations/agent-doorloop.md`, "PR en statussen afronden").
 
 ## Mergen
 
@@ -38,8 +47,13 @@ Alleen nadat de PR is gemerged, ook als de eigenaar zelf mergde.
    (het veld `merged` bestaat niet in `gh`). Anders niets opruimen.
 2. Stop en meld, forceer niets, als: `git status --porcelain` niet leeg is; de lokale branch niet `headRefName` is; of de lokale branch
    commits heeft die niet in `headRefOid` zitten (ongepusht werk).
-3. `git switch main` (of `git switch --detach origin/main` als `main` elders is uitgecheckt), `git fetch origin`,
-   `git merge --ff-only origin/main`. Geen rebase: `main` wordt squash-gemerged. Faalt `--ff-only`, stop dan; nooit `reset --hard`.
+3. Eerst `git fetch origin` en de controle uit `docs/operations/agent-doorloop.md`, "Branchwissels in een sandbox",
+   vóór iedere afzonderlijke wissel of fast-forward. Raakt de stap een door de runtime beschermd bestand (zoals onder
+   `.claude/skills/`), probeer de wissel niet: een aparte schone worktree als dat is toegestaan, anders de eigenaar.
+   Daarna `git switch main` (of `git switch --detach origin/main` als `main` elders is uitgecheckt) en
+   `git merge --ff-only origin/main`, met de controle opnieuw vóór de fast-forward. Geen rebase: `main` wordt squash-gemerged.
+   Faalt een wissel of `--ff-only`, stop dan; lees HEAD, branch, werkmap en index volgens die procedure vóór herstel of
+   een commit. Nooit `reset --hard`; meld wat nog niet is opgeruimd.
 4. Een andere worktree van die branch eerst weghalen: `git worktree remove <pad>` zonder `--force` (git weigert anders de branch te verwijderen).
    De worktree waarin je zelf draait ruimt de runtime of de eigenaar op; heeft stap 3 de branch daar losgemaakt, dan lukt stap 5 gewoon.
 5. `git branch -D <headRefName>` (`-d` faalt na een squash-merge). Alleen die branch, nooit `main`.

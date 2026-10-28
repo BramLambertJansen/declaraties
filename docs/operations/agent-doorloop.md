@@ -30,6 +30,31 @@ De Stop-feedback (ook SubagentStop van de developer) kijkt naar de werkmap plus 
 gecommit (`rails/hooks/lib/werkstraat.mjs:48`); een schone werkmap met rode gecommitte code geeft dus nog feedback.
 Elke rode controle krijgt een eigen deel van de 40 regels (`rails/hooks/lib/werkstraat.mjs:109`).
 
+## Nieuw werk beginnen
+
+Elk nieuw ticket, elke feature en elke fix begint op een eigen branch vanaf een vers opgehaalde main, in één commando:
+
+```sh
+git fetch origin main && git switch -c <naam> origin/main
+```
+
+Het rolhek weigert voor elke rol een nieuwe branch in een andere vorm (`rails/hooks/lib/verse-main.mjs`): zonder fetch
+ervoor, met `;` of `||` ertussen, of vanaf een andere basis dan `origin/main` (lokale `main`, de vorige featurebranch,
+HEAD). Het rolhek gebruikt geen netwerk; door de `&&` ontstaat er geen branch als de fetch faalt. De SessionStart-melding
+over de achterstand op `origin/main` blijft daarnaast staan. Een branch op een andere basis maakt de eigenaar zelf. Bekende grenzen
+(vangnet, geen harde grens): omhulsels met opties (`env -i`, `nice -n 1`) en `setsid`, `stdbuf` of `flock` peelt het
+rolhek niet af (`timeout` wel); een `git -C <map>` die tussen fetch en branch verschilt, vergelijkt het niet; en
+`git stash branch`, `git checkout -t origin/<x>` en `git update-ref refs/heads/<x>` ziet deze regel niet.
+`git worktree add <pad>` zonder `--detach` telt altijd als nieuwe branch vanaf HEAD; voor een bestaande branch noem je hem:
+`git worktree add <pad> <branch>`.
+
+Pre-push waarschuwt (blokkeert niet) als de branch achterloopt op `origin/main`; haal main dan binnen met
+`git merge origin/main` (`scripts/kit/main-achterstand.mjs`). Een commitkop volgt conventional commits
+(`fix(hooks): …`); de commit-msg-hook weigert een andere vorm (`scripts/kit/commit-msg.mjs`). Bij de start van een sessie op een
+featurebranch staat de open PR met checks en reviewstatus in de context, zodat een hervatte sessie rode checks en
+reviewcommentaar direct ziet. Lokaal geeft Claude Code een melding als het op de eigenaar wacht (WSL2: Windows-melding;
+uit met `KIT_MELDING=uit`) en toont de statusregel branch, achterstand, gewijzigde bestanden en de stack.
+
 ## Besluit en taakscope voorbereiden
 
 `docs/roadmap-archief.md` bevat historisch bouwbewijs en is net als de actieve roadmap een beschermd gate-pad.
@@ -204,6 +229,38 @@ op een wegwerp-runner. Geen `--sta-wijzigingen-toe`, lokaal `CI=true`, Docker-aa
 `gate:slow` voert database-, UI- en snapshotchecks op iedere PR uit. Meld infrastructuurstoringen met uitvoer; vraag
 de eigenaar niet standaard om veilig uitvoerbare tests alsnog zelf te draaien.
 
+## Branchwissels in een sandbox
+
+Een schone werkmap bewijst niet dat een branchwissel uitvoerbaar is. De Claude Code-sandbox kan bijvoorbeeld
+`.claude/skills/` niet schrijven ([sandboxgrens](../ENVIRONMENT.md#grens-van-de-sandbox)). Een `git switch` of
+fast-forward kan daarop halverwege afbreken, nadat andere bestanden of de index al veranderd zijn (leerpunt #338).
+Dit geldt ook bij het starten van een nieuwe branch; controleer de gebruikte runtime en claim geen ongelezen sandboxinstelling.
+
+Haal eerst de bedoelde refs op met `git fetch origin`. Leg vóór iedere afzonderlijke branchwissel of fast-forward
+de huidige commit, branch en werkmap vast. Vergelijk HEAD met de **precieze doelref** van die stap:
+
+```sh
+git rev-parse HEAD
+git branch --show-current
+git status --porcelain
+git diff --name-only HEAD <doelref> -- .claude/skills .claude/hooks .claude/settings.json .claude/settings.local.json
+```
+
+Neem ook eventuele andere door de runtime beschermde paden mee. Een wissel naar lokale `main` vergelijkt met `main`;
+een daaropvolgende fast-forward vergelijkt opnieuw met `origin/main`. Alleen de vergelijking met `origin/main` vooraf
+volstaat niet: lokale `main` kan nog oude skillbestanden bevatten. De bestaande voorwaarden voor een schone werkmap
+en het opruimen na een merge blijven gelden.
+
+Moet de stap een door de sandbox beschermd bestand wijzigen, probeer de wissel dan niet. Begin verder werk in een
+aparte schone worktree vanaf de bedoelde doelref als de runtime dat toestaat, of laat de eigenaar de wissel uitvoeren.
+Een nieuwe worktree herstelt de oude niet; meld welke branch of werkmap nog niet is opgeruimd. Verruim de sandbox niet.
+
+Is een wissel al afgebroken, stop dan met schrijven. Lees eerst opnieuw `git rev-parse HEAD`, `git branch --show-current`
+en `git status --porcelain`, plus `git diff --name-status` en `git diff --cached --name-status`. Vergelijk met de vooraf
+vastgelegde commit en doelref: gestagede bestanden kunnen uit de mislukte wissel komen en bewijzen op zichzelf geen
+eigenaarswijziging. Bewaar de foutmelding en deze diagnose; commit, herstel of verwijder niets op basis van alleen
+`git status`. Leg de gedeeltelijke wissel aan de eigenaar voor; geen geforceerde checkout, `reset --hard` of versoepelde rechten.
+
 ## PR en statussen afronden
 
 Na de vereiste review opent de hoofdsessie de PR en wacht op werkelijke CI:
@@ -218,6 +275,33 @@ Bij CodeQL telt ook de aparte `CodeQL`-resultaatcheck van GitHub Advanced Securi
 bevindingen hebben. Een rode, lopende of nog ontbrekende resultaatcheck geeft geen groen oplever- of bouwbewijs.
 Met `--watch` maximaal 30 minuten wachten; een deadline is onvoltooid, daarna controleert de agent opnieuw.
 Een veranderende PR of werkmap vraagt nieuwe verificatie.
+
+### Als pr:verify niet start of de werkmap weigert
+
+`ERR_PNPM_ABORTED_REMOVE_MODULES_DIR_NO_TTY` komt van pnpm vóór de verificatie: pnpm wil `node_modules` installeren
+of opnieuw inrichten, maar kan de bevestiging niet interactief vragen. Alleen het bestaan van die map bewijst geen
+passende installatie, bijvoorbeeld na kopiëren uit een andere werkmap. Controleer de toolchain met
+`node scripts/kit/feiten.mjs gates` en herstel zo nodig de installatie met `pnpm install --frozen-lockfile` in een
+daarvoor toegestane interactieve omgeving volgens [de setup](../ENVIRONMENT.md). Onderdruk de vraag niet met lokaal
+`CI=true` en wijzig geen installatieregel om alleen de verificatie te laten starten.
+
+Werken de vereiste Node-versie en dependencies al aantoonbaar en blokkeert alleen pnpm het starten, dan kan dezelfde
+verificatie rechtstreeks vanuit de repositoryroot:
+
+```sh
+node scripts/kit/pr-verify.mjs <nr> --watch
+```
+
+Dit voert dezelfde SHA-, branch-, repository-, werkmap- en checkherkomstcontroles uit. Een kale
+`gh pr checks --watch` vervangt dat bewijs niet. Ontbreken Node, dependencies, Git- of GitHub-toegang, herstel dan eerst
+de omgeving; een andere aanroep maakt ontbrekend bewijs niet groen.
+
+Bij een vuile werkmap noemt `pr:verify` de blokkerende paden, zonder bestandsinhoud. Een onleesbare Git-status krijgt
+een aparte fout en telt nooit als schoon. Gelijke lokale en PR-head-SHA's sluiten wijzigingen in werkmap of index
+niet uit. Lees `git status --porcelain`, `git diff --name-status` en `git diff --cached --name-status`; bepaal de
+herkomst vóór committen of herstellen. Alleen de bestaande uitzonderingen uit `werkmapNegeer` op de vertrouwde basis
+gelden. Na een afgebroken branchwissel volg je "Branchwissels in een sandbox" hierboven (leerpunt #338); voeg geen
+onbekende paden aan de uitzonderingen toe om de weigering op te heffen (leerpunt #329).
 
 De hoofdsessie kan een documentatie-PR markeren:
 
@@ -239,6 +323,16 @@ Schrijft alleen de statusregel met PR en gevalideerde bron-SHA, en met `--roadma
 De guard mag de groene broncommit gebruiken als de latere diff uitsluitend statusregels en het vinkje van de eigen taak wijzigt. Inhoud, code, tests
 of configuratie wijzigen vraagt nieuw bouwbewijs. Gebouwd vereist geen merge. ADR's hebben geen gebouwd-status:
 implementatiebewijs hoort bij hun gekoppelde spec.
+
+Volgorde (leerpunt #314, anders kost het extra CI-rondes of merget de PR zonder `gebouwd`):
+
+1. `check:roadmap` eist een roadmapwijziging in dezelfde PR zodra de spectekst `ST-<n>` of "roadmap stuk <n>" noemt (bijvoorbeeld ST-09). Gebruik daarvoor `--roadmap`: het vinkje landt dan in de statuscommit. Zet het niet in de implementatie: onder een taakmandaat keurt `document-status` een vinkje vóór de statuscommit af (`BUITEN`), en `--roadmap` faalt als het item al is afgevinkt. Noemt het item het specpad niet tussen backticks, dan kan `--roadmap` het niet afvinken: stop en vraag de eigenaar (met mandaat); zonder mandaat komt de roadmapwijziging in de implementatie.
+2. Wacht op groen op HEAD (`pnpm pr:verify <n> --watch`).
+3. Draai `pnpm docs:status … gebouwd --pr <n> --roadmap`, commit en push dat als laatste commit. Noemt de spectekst geen `ST-<n>` of "roadmap stuk <n>", dan laat je `--roadmap` weg. Daarna mag alleen nog de statusregel (en het vinkje) wijzigen; elke andere commit erna maakt `document-status` rood, ook `git merge origin/main`.
+4. Pas na groen op die statuscommit mag de eigenaar de PR mergen of auto-merge aanzetten. Staat auto-merge al aan, vraag de eigenaar hem uit te zetten tot stap 3 klaar is: na de merge ligt de PR-head vast en eist `canRecordBuilt` dat die gelijk is aan de gecontroleerde HEAD op dezelfde branch, dus een latere statuscommit herstelt het niet.
+5. Landt er toch een commit na de statuscommit (ook `git merge origin/main`), dan is `document-status` rood. Wacht op groen voor de andere checks op de nieuwe HEAD en draai stap 3 opnieuw, zonder `--roadmap` als het item al is afgevinkt. Lukt dat niet, stop en vraag de eigenaar.
+
+Zonder `gh`-authenticatie kan `docs:status … --pr` het bouwbewijs niet ophalen. De statusregel met de hand zetten is geen alternatief: de volgorde hierboven blijft gelden en `document-status` valideert hem tegen de PR. Meld het en laat de eigenaar of een sessie met `gh`-auth stap 3 draaien.
 
 `vervallen` of `vervangen door NNNN` schrijft de architect of hoofdsessie in een besluit-PR; de merge door de eigenaar beslist.
 

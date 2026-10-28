@@ -7,6 +7,7 @@ import { A4_MELDING, beslisOvergang, documentInfo, documentKind, isHerschrijving
 import { canRecordStatus, canWriteProtected, TEMPLATE_REPOSITORY } from './task-authority.mjs';
 import { automaticRunner } from './runner-authority.mjs';
 import { isCoreUiSource, testChangeRisk } from './functional-ui.mjs';
+import { staleBranchStart } from './verse-main.mjs';
 
 /**
  * @typedef {{ gates: string[], testpaden: string[], jsonGates: Record<string, string[]>, gegenereerd: string[],
@@ -470,6 +471,7 @@ function gitMapMelding(file) {
  */
 function decideBash({ command, role }, ctx, decision) {
   decision.deny.push(...rawForbidden(command, role));
+  decision.deny.push(...staleBranchStart(command));
   // De inhoud van `$(…)` en backticks is zelf een commando; zo vallen ook geneste substituties onder dezelfde regels.
   for (const inner of substitutions(command)) decideBash({ command: inner, role }, ctx, decision);
   const setsGhEnv = zetGhOmgeving(parseCommands(command));

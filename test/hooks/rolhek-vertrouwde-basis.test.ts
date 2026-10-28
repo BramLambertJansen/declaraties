@@ -50,8 +50,11 @@ describe('vertrouwde basis: alleen git fetch werkt origin/main bij', () => {
     { name: 'git fetch --prune', command: 'git fetch --prune origin' },
     { name: 'origin/main lezen', command: 'git rev-parse origin/main' },
     { name: 'merge-base', command: 'git merge-base origin/main HEAD' },
-    { name: 'branch op een eigen naam', command: 'git branch feat/origin-main-fix' },
-    { name: 'checkout -b feature', command: 'git checkout -b feat/x origin/main' },
+    {
+      name: 'branch op een eigen naam',
+      command: 'git fetch origin main && git branch feat/origin-main-fix origin/main',
+    },
+    { name: 'checkout -b feature', command: 'git fetch origin main && git checkout -b feat/x origin/main' },
     { name: 'remote -v', command: 'git remote -v' },
     { name: 'remote url lezen', command: 'git config --get remote.origin.url' },
     { name: 'update-ref op een eigen ref', command: 'git update-ref refs/heads/feat/x HEAD' },

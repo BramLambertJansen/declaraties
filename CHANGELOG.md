@@ -9,6 +9,12 @@ Hier staan wijzigingen die van belang zijn bij het gebruiken of bijwerken van de
 - `pnpm check:app-init` (spec `docs/specs/app-init-proef.md`, leerpunt #334): draait `app:init` op een tijdelijke kopie en daarna de
   snelle suite; verplichte CI-check (`requiredChecks`, `scripts/github-ruleset.sh`: de eigenaar past de ruleset na de merge toe). De
   kopie-, opruim- en git-env-logica van `check:new-resource` staat nu in `scripts/kit/proef-kopie.mjs`.
+- Ontwikkelgemakken in de werkstraat: SessionStart toont op een featurebranch de open PR met checks en reviewstatus;
+  de Stop-hook herinnert één keer aan docs-drift; na een bewerkte migratie volgt de hint `pnpm db:generate`; pre-push
+  waarschuwt bij een achterstand op `origin/main`; een commit-msg-hook dwingt conventional commits af; Claude Code geeft een
+  melding als het wacht (Notification-hook; WSL2 via `powershell.exe`, anders `notify-send`; uit met `KIT_MELDING=uit`) en
+  krijgt een statusregel (framework §8, `rails/hooks/lib/{werkstraat,melding,statusregel}.mjs`). Bij een update: draai
+  `pnpm exec lefthook install` voor de commit-msg-hook.
 - Leerlus van app naar template (ADR 0059, spec `docs/specs/leerlus.md`): een generieke les uit een app gaat als issue met
   label `leerpunt` naar de template-repo, via het formulier `.github/ISSUE_TEMPLATE/leerpunt.yml` en de leerpuntstap in de
   skill `opleveren` (Opruimen stap 8). De reviewer markeert per blokkerende bevinding `Leerpunt: ja (<soort>)` of `nee`.
@@ -178,6 +184,12 @@ Hier staan wijzigingen die van belang zijn bij het gebruiken of bijwerken van de
 - Uitgewerkte roadmaptaken voor de verdere ontwikkeling van de starter.
 
 ### Gewijzigd
+
+- Nieuw werk begint vanaf een verse main: het rolhek weigert voor elke rol een nieuwe branch (`git switch -c`,
+  `checkout -b`, `git branch <naam>`, `worktree add -b`) tenzij het commando de vorm
+  `git fetch origin main && git switch -c <naam> origin/main` heeft (`rails/hooks/lib/verse-main.mjs`,
+  `docs/operations/agent-doorloop.md`). Geldt ook in elke app; een bestaande app krijgt het bij de volgende template-update.
+  De SessionStart-melding op `main` noemt die startvorm, en de template-update-instructie in `docs/nieuwe-app.md` volgt hem.
 
 - Nieuwe app starten is ook te volgen zonder technische kennis: `START-NIEUWE-APP.md` heeft een sectie Begeleiding
   (één eigenaarstaak tegelijk, met wat je ziet en hoe je meldt dat het gelukt is) en eenmalige Windows-stappen om
