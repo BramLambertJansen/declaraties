@@ -1,5 +1,5 @@
 // Live feiten (framework §8, ADR 0045): elke rol begint hiermee, niet met wat in proza staat.
-// Gebruik: node scripts/kit/feiten.mjs [gates|adr|specs|migraties|routes|permissies|foutcodes|componenten|fase] [--alle] [--json]
+// Gebruik: node scripts/kit/feiten.mjs [gates|adr|specs|migraties|routes|permissies|foutcodes|componenten|tokens|fase] [--alle] [--json]
 // Zonder sectie alles; elke rol vraagt in stap 1 van zijn agentbestand alleen wat hij nodig heeft (.claude/agents/*.md).
 // `--alle` toont bij `adr` ook de vervangen en vervallen ADR's; weergave en filters staan in feiten-tekst.mjs.
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
@@ -13,9 +13,12 @@ if (probleem !== null) {
   process.exit(1);
 }
 const { gates } = await import('./gates.mjs');
-const { adrOverzicht, componentenTekst, faseOverzicht, toText } = await import('./feiten-tekst.mjs');
+const { adrOverzicht, componentenTekst, faseOverzicht, toText, tokenOverzicht, tokensTekst } =
+  await import('./feiten-tekst.mjs');
 
 const CATALOGUS = '/design-system';
+const STYLES = 'src/core/web/styles';
+const THEME = 'src/web/styles/theme.css';
 
 /** @param {string} dir */
 function markdownFiles(dir) {
@@ -106,6 +109,18 @@ async function permissies() {
   }));
 }
 
+// Tokens alleen uit de CSS (spec semantische-tokens, 3c): geen Tailwind-, TypeScript- of catalogusimport.
+function tokens() {
+  const paden = { semantic: `${STYLES}/semantic.css`, components: `${STYLES}/components.css`, theme: THEME };
+  const css = {
+    semantic: readFileSync(paden.semantic, 'utf8'),
+    components: readFileSync(paden.components, 'utf8'),
+    index: readFileSync(`${STYLES}/index.css`, 'utf8'),
+    theme: readOrNull(THEME),
+  };
+  return tokenOverzicht(css, paden);
+}
+
 async function foutcodes() {
   const { errors } = await import('../../src/shared/errors.ts');
   return { codes: errors.codes.join(', '), teksten: 'src/web/copy/errors.ts', nieuw: 'src/shared/errors.ts' };
@@ -145,6 +160,14 @@ const sections = {
       json: { catalogus: CATALOGUS, lijst },
       kop: `catalogus ${CATALOGUS}; publiek = export uit src/web/ui, intern = alleen binnen de kit`,
       inhoud: componentenTekst(lijst),
+    };
+  },
+  tokens: () => {
+    const groepen = tokens();
+    return {
+      json: groepen,
+      kop: `klasse · standaard (licht) · donker · app (${THEME}) · bron; onbekend = niet in semantic.css`,
+      inhoud: tokensTekst(groepen),
     };
   },
   fase: plain(() =>

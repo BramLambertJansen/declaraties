@@ -120,6 +120,11 @@ const groups = [
     id: 'example-typografie',
     text: 'Typografie en afstand uit componenten: tekstgrootte, toon en gewicht, koppen per niveau en verticale of horizontale stapels.',
   },
+  {
+    names: ['TokenSwatch', 'TypeSample'],
+    id: 'example-tokens',
+    text: 'Elke kleur, tekstmaat, gewicht en het monolettertype; dichtheid, lagen en beweging als klasse en token.',
+  },
   { names: ['Section'], id: 'example-layout', text: 'De benoemde voorbeeldblokken gebruiken Section.' },
 ];
 

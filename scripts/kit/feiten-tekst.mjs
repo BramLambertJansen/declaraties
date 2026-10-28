@@ -179,3 +179,177 @@ export function toText(sections) {
     .map(({ naam, kop, inhoud }) => `## ${naam}${kop === undefined ? '' : ` (${kop})`}\n${render(inhoud)}`)
     .join('\n\n');
 }
+
+// Tokens (spec semantische-tokens, 3c): alleen CSS als tekst, geen Tailwind of TypeScript. Groepen en klassen volgen uit
+// de toewijzingen in `@theme inline` (index.css), de standaard uit semantic.css of components.css, de app-waarde uit
+// theme.css.
+
+/** @typedef {{ selector: string, naam: string, waarde: string, regel: number }} Declaratie */
+/** @typedef {{ token: string, klassen: string[], licht: string, donker?: string, app?: string, bron: string }} TokenItem */
+
+const TOKEN_GROEPEN = ['kleur', 'typografie', 'dichtheid', 'lagen', 'beweging'];
+const DARK = "[data-theme='dark']";
+
+// Volgorde telt: de langste namespace eerst (`--font-weight-` vóór `--font-`).
+/** @type {readonly { prefix: RegExp, groep: string, klassen: (naam: string) => string[] }[]} */
+const NAMESPACES = [
+  { prefix: /^--color-(.+)$/, groep: 'kleur', klassen: (n) => [`bg-${n}`, `text-${n}`, `border-${n}`] },
+  { prefix: /^--font-weight-(.+)$/, groep: 'typografie', klassen: (n) => [`font-${n}`] },
+  { prefix: /^--font-(sans|mono)$/, groep: 'typografie', klassen: (n) => [`font-${n}`] },
+  { prefix: /^--text-(\w+?)(?:--line-height)?$/, groep: 'typografie', klassen: (n) => [`text-${n}`] },
+  { prefix: /^--spacing$/, groep: 'dichtheid', klassen: () => ['p-*', 'm-*', 'gap-*'] },
+  { prefix: /^--spacing-(.+)$/, groep: 'dichtheid', klassen: (n) => [`min-h-${n}`, `h-${n}`] },
+  { prefix: /^--z-index-(.+)$/, groep: 'lagen', klassen: (n) => [`z-${n}`] },
+  { prefix: /^--transition-duration-(.+)$/, groep: 'beweging', klassen: (n) => [`duration-${n}`] },
+  { prefix: /^--ease-(.+)$/, groep: 'beweging', klassen: (n) => [`ease-${n}`] },
+];
+
+/**
+ * Declaraties van custom properties met het innerste blok als selector; een waarde over meer regels wordt samengevoegd.
+ * @param {string} text
+ * @returns {Declaratie[]}
+ */
+export function cssDeclaraties(text) {
+  /** @type {string[]} */
+  const stack = [];
+  /** @type {Declaratie[]} */
+  const out = [];
+  /** @type {Declaratie | null} */
+  let open = null;
+  text
+    .replace(/\/\*[\s\S]*?\*\//g, (comment) => comment.replace(/[^\n]/g, ' '))
+    .split('\n')
+    .forEach((line, index) => {
+      if (open !== null) {
+        open.waarde = `${open.waarde} ${line.trim()}`.trim();
+      } else {
+        const block = /^\s*([^{}]+?)\s*\{\s*$/.exec(line);
+        if (block !== null) stack.push(block[1] ?? '');
+        if (/^\s*\}\s*$/.test(line)) stack.pop();
+        const decl = /^\s*(--[\w-]+)\s*:\s*(.*)$/.exec(line);
+        if (decl === null) return;
+        open = { selector: stack.at(-1) ?? '', naam: decl[1] ?? '', waarde: (decl[2] ?? '').trim(), regel: index + 1 };
+        out.push(open);
+      }
+      if (open?.waarde.endsWith(';')) {
+        open.waarde = open.waarde.slice(0, -1).trim();
+        open = null;
+      }
+    });
+  return out;
+}
+
+/**
+ * Groep en klassen per token uit `@theme inline`; een verwijzing via een componenttoken
+ * (`--spacing-control: var(--control-h)` → `--density-control`) volgt één stap.
+ * @param {readonly Declaratie[]} theme
+ * @param {readonly Declaratie[]} components
+ */
+function themaKoppelingen(theme, components) {
+  /** @type {Map<string, { groep: string, klassen: string[] }>} */
+  const koppeling = new Map();
+  for (const { naam, waarde } of theme) {
+    const ns = NAMESPACES.map((space) => ({ space, match: space.prefix.exec(naam) })).find(({ match }) => match);
+    const doel = /^var\((--[\w-]+)\)$/.exec(waarde)?.[1];
+    if (ns === undefined || ns.match === null || doel === undefined) continue;
+    const via = components.find((decl) => decl.naam === doel);
+    const token = via === undefined ? doel : (/var\((--[\w-]+)\)/.exec(via.waarde)?.[1] ?? doel);
+    const klassen = [...(koppeling.get(token)?.klassen ?? []), ...ns.space.klassen(ns.match[1] ?? '')];
+    koppeling.set(token, { groep: ns.space.groep, klassen: [...new Set(klassen)] });
+  }
+  return koppeling;
+}
+
+/**
+ * @param {readonly Declaratie[]} decls
+ * @param {string} token
+ * @param {string} selector
+ */
+function waardeVan(decls, token, selector) {
+  return decls.find((decl) => decl.naam === token && decl.selector === selector);
+}
+
+/**
+ * De app-waarde(n) uit theme.css als tekst, of undefined.
+ * @param {readonly Declaratie[]} app
+ * @param {string} token
+ * @param {string} pad
+ */
+function appWaarde(app, token, pad) {
+  const licht = waardeVan(app, token, ':root');
+  const donker = waardeVan(app, token, DARK);
+  const delen = [
+    ...(licht === undefined ? [] : [`${licht.waarde} (${pad}:${String(licht.regel)})`]),
+    ...(donker === undefined ? [] : [`donker ${donker.waarde} (${pad}:${String(donker.regel)})`]),
+  ];
+  return delen.length === 0 ? undefined : delen.join('; ');
+}
+
+/**
+ * Tokens per groep met klasse, standaard (licht/donker), app-waarde en bron; theme.css-namen die niet in semantic.css
+ * staan onder `onbekend`.
+ * @param {{ semantic: string, components: string, index: string, theme: string | null }} css
+ * @param {{ semantic: string, components: string, theme: string }} paden
+ * @returns {Record<string, TokenItem[]>}
+ */
+export function tokenOverzicht(css, paden) {
+  const semantic = cssDeclaraties(css.semantic);
+  const components = cssDeclaraties(css.components);
+  const theme = cssDeclaraties(css.index).filter((decl) => decl.selector === '@theme inline');
+  const app = css.theme === null ? [] : cssDeclaraties(css.theme);
+  const koppeling = themaKoppelingen(theme, components);
+  /** @type {Record<string, TokenItem[]>} */
+  const groepen = Object.fromEntries(TOKEN_GROEPEN.map((groep) => [groep, []]));
+  const bronnen = [
+    { decls: semantic, pad: paden.semantic, semantisch: true },
+    { decls: components, pad: paden.components, semantisch: false },
+  ];
+  for (const { decls, pad, semantisch } of bronnen) {
+    for (const decl of decls.filter((item) => item.selector === ':root')) {
+      const gekoppeld = koppeling.get(decl.naam);
+      if (gekoppeld === undefined) continue;
+      const donker = semantisch ? waardeVan(semantic, decl.naam, DARK) : undefined;
+      const eigen = semantisch ? appWaarde(app, decl.naam, paden.theme) : undefined;
+      groepen[gekoppeld.groep]?.push({
+        token: decl.naam,
+        klassen: gekoppeld.klassen,
+        licht: decl.waarde,
+        ...(donker === undefined ? {} : { donker: donker.waarde }),
+        ...(eigen === undefined ? {} : { app: eigen }),
+        bron: `${pad}:${String(decl.regel)}`,
+      });
+    }
+  }
+  const bekend = new Set(semantic.map((decl) => decl.naam));
+  groepen['onbekend'] = app
+    .filter((decl) => !bekend.has(decl.naam))
+    .map((decl) => ({
+      token: decl.naam,
+      klassen: [],
+      licht: decl.waarde,
+      bron: `${paden.theme}:${String(decl.regel)}`,
+    }));
+  return groepen;
+}
+
+/**
+ * Tekstvorm: één regel per token met gelabelde velden.
+ * @param {Record<string, readonly TokenItem[]>} groepen
+ */
+export function tokensTekst(groepen) {
+  return Object.fromEntries(
+    Object.entries(groepen).map(([groep, items]) => [
+      groep,
+      items.map(({ token, klassen, licht, donker, app, bron }) =>
+        [
+          token,
+          `klasse ${klassen.length === 0 ? '(geen)' : klassen.join(', ')}`,
+          `standaard ${licht}`,
+          ...(donker === undefined ? [] : [`donker ${donker}`]),
+          ...(app === undefined ? [] : [`app ${app}`]),
+          bron,
+        ].join(' · '),
+      ),
+    ]),
+  );
+}

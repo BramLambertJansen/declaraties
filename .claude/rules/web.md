@@ -10,6 +10,7 @@ paths:
   en tokens staan daar; de app importeert ze via `src/web/ui` (barrel) en `src/web/lib/api.ts`.
 - Eerst zoeken wat er is: componenten in `src/web/ui` (her-exporteert core), voorbeelden op `/design-system`. Bestaand recept uitbreiden,
   geen nieuw component ernaast. Een variant leid je af in `src/web/ui` uit de basis en variantkaart van core. Past niets: stop en stel een variant voor.
+- tokens: `node scripts/kit/feiten.mjs tokens`
 - Route: bestandsroute in `routes/`, met `beforeLoad`-guard die `can()` controleert en een ErrorBoundary.
   Alleen inlog-, aanmeld- en resetschermen zijn publiek (framework §3).
 - Inloggen alleen via `src/core/web/lib/auth.ts` (Better Auth-client). Bij 401 van de API naar het inlogscherm.
