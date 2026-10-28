@@ -14,6 +14,7 @@ import {
   TableHead,
   TableHeader,
   TableRow,
+  Text,
   type SelectOption,
 } from '#web/ui/index.ts';
 import { use__Naam__ } from './queries.ts';
@@ -55,11 +56,11 @@ export function __Naam__Page() {
           const rows = uniqueById(data.pages.flatMap((page) => page.items));
           return (
             <div className="flex min-w-0 flex-col gap-4">
-              <p aria-live="polite" className="text-sm text-muted-foreground">
+              <Text size="sm" tone="muted" aria-live="polite">
                 {query.isPlaceholderData
                   ? copy.__naamCamel__.loading
                   : copy.__naamCamel__.shown(rows.length, query.hasNextPage)}
-              </p>
+              </Text>
               <Table label={copy.__naamCamel__.title} aria-busy={query.isPlaceholderData}>
                 <TableHeader>
                   <TableRow>
