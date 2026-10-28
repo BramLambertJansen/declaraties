@@ -1,29 +1,19 @@
 import { cleanup, render, screen } from '@testing-library/react';
-import { createElement, type ComponentType } from 'react';
 import { afterEach, describe, expect, test } from 'vitest';
+import { TypeSample, type TypeSampleProps } from './index.ts';
+import * as sourceModule from './type-sample.tsx';
 
-// semantische-tokens/AC-21 (3c). TypeSample bestaat nog niet; een statische import zou typecheck breken. Daarom laden we
-// de barrel en het bronbestand via import.meta.glob (Vite): ontbreekt het, dan is de glob leeg en faalt de assertie, niet
-// de import. Na de bouw kan dit een gewone import worden.
+// semantische-tokens/AC-21 (3c). Statische import uit de barrel, zodat de echte props-types gecontroleerd worden; de
+// glob toetst alleen dat het bronbestand precies src/web/ui/type-sample.tsx is.
 const SIZES = ['sm', 'base', 'lg', 'xl', '2xl'] as const;
 const WEIGHTS = ['normal', 'medium', 'semibold'] as const;
-interface TypeSampleProps {
-  readonly size?: (typeof SIZES)[number];
-  readonly weight?: (typeof WEIGHTS)[number];
-  readonly family?: 'sans' | 'mono';
-}
-interface Barrel {
-  readonly TypeSample?: ComponentType<TypeSampleProps>;
-}
-const barrel = Object.values(import.meta.glob<Barrel>('./index.ts', { eager: true }))[0];
-const source = import.meta.glob<Barrel>('./type-sample.tsx', { eager: true });
+const source = import.meta.glob('./type-sample.tsx');
 
 afterEach(cleanup);
 
 function sample(props: TypeSampleProps, text: string) {
-  const TypeSample = barrel?.TypeSample;
   expect(TypeSample, 'TypeSample in src/web/ui/index.ts').toBeTypeOf('function');
-  render(TypeSample === undefined ? null : createElement(TypeSample, props));
+  render(<TypeSample {...props} />);
   return [...screen.getByText(text, { exact: true }).classList];
 }
 
@@ -34,8 +24,8 @@ const weightClasses = (classes: readonly string[]) =>
 
 test('semantische-tokens/AC-21: TypeSample staat in src/web/ui/type-sample.tsx en in src/web/ui/index.ts', () => {
   expect(Object.keys(source)).toStrictEqual(['./type-sample.tsx']);
-  expect(barrel?.TypeSample, 'export uit index.ts').toBeTypeOf('function');
-  expect(barrel?.TypeSample).toBe(Object.values(source)[0]?.TypeSample);
+  expect(TypeSample, 'export uit index.ts').toBeTypeOf('function');
+  expect(TypeSample).toBe(sourceModule.TypeSample);
 });
 
 describe('semantische-tokens/AC-21: size en weight geven precies text-{size} en font-{weight}', () => {

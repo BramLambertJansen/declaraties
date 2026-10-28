@@ -1,28 +1,23 @@
 import { cleanup, render, screen } from '@testing-library/react';
-import { createElement, type ComponentType } from 'react';
 import { afterEach, expect, test } from 'vitest';
+import { TokenSwatch, type TokenColor } from './index.ts';
+import * as sourceModule from './token-swatch.tsx';
 
-// semantische-tokens/AC-21 (3c). TokenSwatch bestaat nog niet; een statische import zou typecheck breken. Daarom laden we
-// de barrel en het bronbestand via import.meta.glob (Vite): ontbreekt het, dan is de glob leeg en faalt de assertie, niet
-// de import. Na de bouw kan dit een gewone import worden.
-interface Barrel {
-  readonly TokenSwatch?: ComponentType<{ color: string }>;
-}
-const barrel = Object.values(import.meta.glob<Barrel>('./index.ts', { eager: true }))[0];
-const source = import.meta.glob<Barrel>('./token-swatch.tsx', { eager: true });
+// semantische-tokens/AC-21 (3c). Statische import uit de barrel, zodat de echte props-types gecontroleerd worden; de
+// glob toetst alleen dat het bronbestand precies src/web/ui/token-swatch.tsx is.
+const source = import.meta.glob('./token-swatch.tsx');
 
 afterEach(cleanup);
 
-function swatch(color: string) {
-  const TokenSwatch = barrel?.TokenSwatch;
+function swatch(color: TokenColor) {
   expect(TokenSwatch, 'TokenSwatch in src/web/ui/index.ts').toBeTypeOf('function');
-  return render(TokenSwatch === undefined ? null : createElement(TokenSwatch, { color }));
+  return render(<TokenSwatch color={color} />);
 }
 
 test('semantische-tokens/AC-21: TokenSwatch staat in src/web/ui/token-swatch.tsx en in src/web/ui/index.ts', () => {
   expect(Object.keys(source)).toStrictEqual(['./token-swatch.tsx']);
-  expect(barrel?.TokenSwatch, 'export uit index.ts').toBeTypeOf('function');
-  expect(barrel?.TokenSwatch).toBe(Object.values(source)[0]?.TokenSwatch);
+  expect(TokenSwatch, 'export uit index.ts').toBeTypeOf('function');
+  expect(TokenSwatch).toBe(sourceModule.TokenSwatch);
 });
 
 test('semantische-tokens/AC-21: het vlak heeft aria-hidden="true" en de tokennaam is zichtbare tekst', () => {

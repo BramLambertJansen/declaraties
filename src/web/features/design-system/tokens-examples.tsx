@@ -53,21 +53,23 @@ function TypeTokens() {
   );
 }
 
-const DENSITY = [{ id: 'control', term: 'min-h-control', value: '--density-control · 2.75rem (nooit onder 44 px)' }];
+const DENSITY = [
+  { id: 'control', term: 'min-h-control', value: '--density-control · standaard 2.75rem (nooit onder 44 px)' },
+];
 
 const LAYERS = [
-  { id: 'sticky', term: 'z-sticky', value: '--layer-sticky · 10' },
-  { id: 'dropdown', term: 'z-dropdown', value: '--layer-dropdown · 20' },
-  { id: 'overlay', term: 'z-overlay', value: '--layer-overlay · 30' },
-  { id: 'modal', term: 'z-modal', value: '--layer-modal · 40' },
-  { id: 'toast', term: 'z-toast', value: '--layer-toast · 50' },
+  { id: 'sticky', term: 'z-sticky', value: '--layer-sticky · standaard 10' },
+  { id: 'dropdown', term: 'z-dropdown', value: '--layer-dropdown · standaard 20' },
+  { id: 'overlay', term: 'z-overlay', value: '--layer-overlay · standaard 30' },
+  { id: 'modal', term: 'z-modal', value: '--layer-modal · standaard 40' },
+  { id: 'toast', term: 'z-toast', value: '--layer-toast · standaard 50' },
 ];
 
 const MOTION = [
-  { id: 'fast', term: 'duration-fast', value: '--motion-fast · 150ms' },
-  { id: 'normal', term: 'duration-normal', value: '--motion-normal · 200ms' },
-  { id: 'standard', term: 'ease-standard', value: '--motion-ease-standard · cubic-bezier(0.4, 0, 0.2, 1)' },
-  { id: 'out', term: 'ease-out', value: '--motion-ease-out · cubic-bezier(0, 0, 0.2, 1)' },
+  { id: 'fast', term: 'duration-fast', value: '--motion-fast · standaard 150ms' },
+  { id: 'normal', term: 'duration-normal', value: '--motion-normal · standaard 200ms' },
+  { id: 'standard', term: 'ease-standard', value: '--motion-ease-standard · standaard cubic-bezier(0.4, 0, 0.2, 1)' },
+  { id: 'out', term: 'ease-out', value: '--motion-ease-out · standaard cubic-bezier(0, 0, 0.2, 1)' },
 ];
 
 export function TokensExamples() {

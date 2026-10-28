@@ -242,10 +242,11 @@ describe('semantische-tokens/AC-19', () => {
   }
   const APP_PRIMARY = 'oklch(0.42 0.123 200)';
   const APP_DENSITY = '3.25rem';
+  const APP_RADIUS = '0.75rem';
   mkdirSync(path.dirname(path.join(fixture, THEME)), { recursive: true });
   writeFileSync(
     path.join(fixture, THEME),
-    `/* fixture */\n:root {\n  --primary: ${APP_PRIMARY};\n  --density-control: ${APP_DENSITY};\n  --primairy: oklch(0.5 0.1 10);\n}\n`,
+    `/* fixture */\n:root {\n  --primary: ${APP_PRIMARY};\n  --density-control: ${APP_DENSITY};\n  --radius: ${APP_RADIUS};\n  --primairy: oklch(0.5 0.1 10);\n}\n`,
   );
 
   test('semantische-tokens/AC-19: de app-waarde uit theme.css staat bij --primary en --density-control', () => {
@@ -257,6 +258,17 @@ describe('semantische-tokens/AC-19', () => {
     const tokens = tokensJson(fixture);
     expect(jsonEntry(tokens, '--primary').entry).toContain(APP_PRIMARY);
     expect(jsonEntry(tokens, '--density-control').entry).toContain(APP_DENSITY);
+  });
+
+  test('semantische-tokens/AC-19: een bekend token zonder groep (--radius) staat met de app-waarde onder overig', () => {
+    const result = feiten(fixture, 'tokens');
+    expect(result.status, result.stderr).toBe(0);
+    const line = textEntry(result.stdout, '--radius').line;
+    expect(line).toContain(APP_RADIUS);
+    expect(line).toContain(`${THEME}:5`);
+    const entry = jsonEntry(tokensJson(fixture), '--radius');
+    expect(entry.group).toBe('overig');
+    expect(entry.entry).toContain(APP_RADIUS);
   });
 
   test('semantische-tokens/AC-19: --primairy (niet in semantic.css) staat onder onbekend', () => {

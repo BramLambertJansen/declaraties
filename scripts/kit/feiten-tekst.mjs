@@ -286,8 +286,8 @@ function appWaarde(app, token, pad) {
 }
 
 /**
- * Tokens per groep met klasse, standaard (licht/donker), app-waarde en bron; theme.css-namen die niet in semantic.css
- * staan onder `onbekend`.
+ * Tokens per groep met klasse, standaard (licht/donker), app-waarde en bron; een app-override van een bekend token
+ * zonder groep onder `overig`, theme.css-namen die niet in semantic.css staan onder `onbekend`.
  * @param {{ semantic: string, components: string, index: string, theme: string | null }} css
  * @param {{ semantic: string, components: string, theme: string }} paden
  * @returns {Record<string, TokenItem[]>}
@@ -299,7 +299,7 @@ export function tokenOverzicht(css, paden) {
   const app = css.theme === null ? [] : cssDeclaraties(css.theme);
   const koppeling = themaKoppelingen(theme, components);
   /** @type {Record<string, TokenItem[]>} */
-  const groepen = Object.fromEntries(TOKEN_GROEPEN.map((groep) => [groep, []]));
+  const groepen = Object.fromEntries([...TOKEN_GROEPEN, 'overig'].map((groep) => [groep, []]));
   const bronnen = [
     { decls: semantic, pad: paden.semantic, semantisch: true },
     { decls: components, pad: paden.components, semantisch: false },
@@ -307,12 +307,14 @@ export function tokenOverzicht(css, paden) {
   for (const { decls, pad, semantisch } of bronnen) {
     for (const decl of decls.filter((item) => item.selector === ':root')) {
       const gekoppeld = koppeling.get(decl.naam);
-      if (gekoppeld === undefined) continue;
-      const donker = semantisch ? waardeVan(semantic, decl.naam, DARK) : undefined;
       const eigen = semantisch ? appWaarde(app, decl.naam, paden.theme) : undefined;
-      groepen[gekoppeld.groep]?.push({
+      // Bekend maar zonder groep (`--radius`): alleen zichtbaar als de app het overschrijft.
+      const groep = gekoppeld?.groep ?? (eigen === undefined ? undefined : 'overig');
+      if (groep === undefined) continue;
+      const donker = semantisch ? waardeVan(semantic, decl.naam, DARK) : undefined;
+      groepen[groep]?.push({
         token: decl.naam,
-        klassen: gekoppeld.klassen,
+        klassen: gekoppeld?.klassen ?? [],
         licht: decl.waarde,
         ...(donker === undefined ? {} : { donker: donker.waarde }),
         ...(eigen === undefined ? {} : { app: eigen }),
