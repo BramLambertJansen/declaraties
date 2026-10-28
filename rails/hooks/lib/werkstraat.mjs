@@ -232,7 +232,7 @@ export function sessionStart(deps) {
   const doctor = deps.run('scripts/doctor.sh', ['--quick']).output.trim();
   return {
     stdout: [
-      `Branch: ${branch}${branch === 'main' ? ' (maak een branch voor je wijzigt)' : ''}`,
+      `Branch: ${branch}${branch === 'main' ? ' (begin nieuw werk met `git fetch origin main && git switch -c <naam> origin/main`)' : ''}`,
       mainLag(deps),
       `Gewijzigde bestanden: ${changed.length === 0 ? 'geen' : changed.slice(0, 20).join(', ')}`,
       specs,
