@@ -35,7 +35,8 @@ export function toolchainProbleem({ node, miseToml, nodeModules }) {
   return `✗ toolchain ontbreekt: ${problemen.join('; ')} → draai \`bash scripts/cloud-setup.sh\` (cloud) of \`scripts/bootstrap.sh\` (lokaal), zie docs/ENVIRONMENT.md`;
 }
 
-// Een complete install, niet alleen de map: pnpm schrijft .modules.yaml pas aan het eind, en typescript laadt catalogus.mjs als eerste.
+// Snelle aanwezigheidscontrole: deze bestanden bewijzen geen synchronisatie met lockfile of workspace.
+// Voor run/exec controleert pnpm dat zelf met verifyDepsBeforeRun: error (pnpm-workspace.yaml).
 const INSTALLATIE = ['.modules.yaml', 'typescript/package.json'];
 
 /** @param {string} root */

@@ -277,12 +277,18 @@ Een veranderende PR of werkmap vraagt nieuwe verificatie.
 
 ### Als pr:verify niet start of de werkmap weigert
 
+`pnpm` controleert vóór `run` en `exec` of de installatie bij de workspace past. `verifyDepsBeforeRun: error` in
+`pnpm-workspace.yaml` laat een afwijking stoppen met `ERR_PNPM_VERIFY_DEPS_BEFORE_RUN`, voordat het werkcommando
+start. De controle werkt daarbij geen dependencies bij. Voer het expliciete installatieherstel uit volgens de setup; de snelle
+Node-controle in `feiten.mjs` bewijst alleen versie en aanwezigheid van installatiebestanden.
+
 `ERR_PNPM_ABORTED_REMOVE_MODULES_DIR_NO_TTY` komt van pnpm vóór de verificatie: pnpm wil `node_modules` installeren
-of opnieuw inrichten, maar kan de bevestiging niet interactief vragen. Alleen het bestaan van die map bewijst geen
+of opnieuw inrichten, maar kan de bevestiging niet interactief vragen. Die melding kan nog voorkomen bij een oudere
+configuratie of een expliciete installatie die bestaande modules opnieuw moet inrichten. Alleen het bestaan van die map bewijst geen
 passende installatie, bijvoorbeeld na kopiëren uit een andere werkmap. Controleer de toolchain met
 `node scripts/kit/feiten.mjs gates` en herstel zo nodig de installatie met `pnpm install --frozen-lockfile` in een
 daarvoor toegestane interactieve omgeving volgens [de setup](../ENVIRONMENT.md). Onderdruk de vraag niet met lokaal
-`CI=true` en wijzig geen installatieregel om alleen de verificatie te laten starten.
+`CI=true` en schakel de synchronisatiecontrole niet uit om alleen de verificatie te laten starten.
 
 Werken de vereiste Node-versie en dependencies al aantoonbaar en blokkeert alleen pnpm het starten, dan kan dezelfde
 verificatie rechtstreeks vanuit de repositoryroot:
