@@ -12,7 +12,15 @@ pre-commit:
     - name: secrets
       run: mise exec -- betterleaks git -c scripts/kit/betterleaks.toml --pre-commit --staged --redact --no-banner --ignore-gitleaks-allow
 
+commit-msg:
+  jobs:
+    - name: conventional-commit
+      run: node scripts/kit/commit-msg.mjs {1}
+
 pre-push:
   jobs:
     - name: gate-fast
       run: pnpm gate:fast
+    # Alleen een waarschuwing; `|| true` zodat ook een ontbrekend script de push nooit tegenhoudt.
+    - name: main-achterstand
+      run: node scripts/kit/main-achterstand.mjs || true

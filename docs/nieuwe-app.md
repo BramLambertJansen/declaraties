@@ -26,7 +26,7 @@ Stop als dit allemaal waar is, niet eerder:
 3. `main` bevat een merge-commit die de geschiedenis van de template koppelt (`-s ours`), plus één commit die de app hernoemt.
    De eigenaar heeft die zelf gepusht.
 4. De repo heeft een ruleset op `main` met verplichte checks en de merge-instellingen uit Fase 6 (of de eigenaar weet waarom dat niet kon).
-5. De eigenaar heeft `scripts/bootstrap.sh` gedraaid: toolchain uit `mise.toml`, dependencies en git-hooks (pre-commit, pre-push) staan.
+5. De eigenaar heeft `scripts/bootstrap.sh` gedraaid: toolchain uit `mise.toml`, dependencies en git-hooks (pre-commit, commit-msg, pre-push) staan.
 6. De lokale stack draait via `pnpm dev`: Postgres 17 + pgTAP en Mailpit, op poorten die niet botsen met een andere app.
    `scripts/doctor.sh` is groen.
 7. De migraties zijn toegepast als `app_migrator`, en je hebt met `psql` bewezen wat Fase 8 noemt.
@@ -431,7 +431,7 @@ Niets controleert daarna nog of de ruleset blijft staan: `check-github` bestaat 
 ## Fase 7 — Toolchain, git-hooks en lokale stack
 
 Jij maakt `.env.local` (7.1); de eigenaar installeert de toolchain (7.2) en start de stack (7.3). Zonder 7.2 heeft de app geen
-pre-commit en pre-push, en is de afdwinging lokaal zwakker dan in de template.
+pre-commit, commit-msg en pre-push, en is de afdwinging lokaal zwakker dan in de template.
 
 ### 7.1 Poorten en `.env.local`
 
@@ -467,7 +467,7 @@ bij een afwijkende bestaande configuratie vraag je de eigenaar om de beperkte po
 ### 7.2 Toolchain en git-hooks (overdracht)
 
 `scripts/bootstrap.sh` doet `mise trust`, `mise install` (Node, pnpm, dbmate, Betterleaks, osv-scanner uit `mise.toml`),
-`pnpm install --frozen-lockfile`, `pnpm exec lefthook install` (pre-commit en pre-push uit `lefthook.yml`) en daarna `scripts/doctor.sh --machine`.
+`pnpm install --frozen-lockfile`, `pnpm exec lefthook install` (pre-commit, commit-msg en pre-push uit `lefthook.yml`) en daarna `scripts/doctor.sh --machine`.
 Deze installatiecontrole vereist de toolchain, sandbox, Docker en git-hooks, maar nog geen draaiende appdiensten.
 
 > De toolchain installeer jij, niet ik (framework §8):
@@ -565,7 +565,7 @@ Schrijf het voortgangsbestand af en stuur één bericht, ongeveer zo:
 > **<App-naam> staat klaar** in `~/code/<slug>` → github.com/<owner>/<slug>.
 > Draait: Postgres 17 + pgTAP op 127.0.0.1:<pg>, Mailpit op http://127.0.0.1:<mailui>. Migraties toegepast, rollen bewezen.
 > API: http://localhost:<api>; web en beide origins: http://localhost:<web>.
-> Afgedwongen zoals in de template: git-hooks (pre-commit: format, lint, secrets; pre-push: `pnpm gate:fast`), de hooks, sandbox en
+> Afgedwongen zoals in de template: git-hooks (pre-commit: format, lint, secrets; commit-msg: conventional commits; pre-push: `pnpm gate:fast` en een waarschuwing bij achterstand op `origin/main`), de hooks, sandbox en
 > permissies van Claude Code (`.claude/`), CI (`gate:fast`, `gate:slow`, `secrets`, `image`, `check:new-resource`, `check-core`, CodeQL, osv-scanner)
 > en de ruleset op `main` met die checks verplicht, uitsluitend voor zover hierboven werkelijk gecontroleerd.
 > Browser/login/MFA: <uitvoerder en uitslag, of niet uitgevoerd met reden>.

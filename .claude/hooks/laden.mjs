@@ -118,7 +118,8 @@ function boomVan(sha, naam) {
 function bron(naam, sessieStart) {
   const anker = leesAnker();
   const huidig = sessieStart ? null : paar(anker, naam);
-  if (huidig !== null || naam === 'rolhek') return huidig;
+  // Het rolhek en de statusregel (die vaak draait) nooit via het netwerk; een nieuwe statusregel komt met session-start mee.
+  if (huidig !== null || naam === 'rolhek' || naam === 'statusregel') return huidig;
   return paar(ververs(), naam) ?? paar(anker, naam);
 }
 

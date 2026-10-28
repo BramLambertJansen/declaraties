@@ -48,6 +48,13 @@ rolhek niet af (`timeout` wel); een `git -C <map>` die tussen fetch en branch ve
 `git worktree add <pad>` zonder `--detach` telt altijd als nieuwe branch vanaf HEAD; voor een bestaande branch noem je hem:
 `git worktree add <pad> <branch>`.
 
+Pre-push waarschuwt (blokkeert niet) als de branch achterloopt op `origin/main`; haal main dan binnen met
+`git merge origin/main` (`scripts/kit/main-achterstand.mjs`). Een commitkop volgt conventional commits
+(`fix(hooks): …`); de commit-msg-hook weigert een andere vorm (`scripts/kit/commit-msg.mjs`). Bij de start van een sessie op een
+featurebranch staat de open PR met checks en reviewstatus in de context, zodat een hervatte sessie rode checks en
+reviewcommentaar direct ziet. Lokaal geeft Claude Code een melding als het op de eigenaar wacht (WSL2: Windows-melding;
+uit met `KIT_MELDING=uit`) en toont de statusregel branch, achterstand, gewijzigde bestanden en de stack.
+
 ## Besluit en taakscope voorbereiden
 
 `docs/roadmap-archief.md` bevat historisch bouwbewijs en is net als de actieve roadmap een beschermd gate-pad.
