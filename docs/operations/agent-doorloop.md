@@ -203,6 +203,38 @@ op een wegwerp-runner. Geen `--sta-wijzigingen-toe`, lokaal `CI=true`, Docker-aa
 `gate:slow` voert database-, UI- en snapshotchecks op iedere PR uit. Meld infrastructuurstoringen met uitvoer; vraag
 de eigenaar niet standaard om veilig uitvoerbare tests alsnog zelf te draaien.
 
+## Branchwissels in een sandbox
+
+Een schone werkmap bewijst niet dat een branchwissel uitvoerbaar is. De Claude Code-sandbox kan bijvoorbeeld
+`.claude/skills/` niet schrijven ([sandboxgrens](../ENVIRONMENT.md#grens-van-de-sandbox)). Een `git switch` of
+fast-forward kan daarop halverwege afbreken, nadat andere bestanden of de index al veranderd zijn (leerpunt #338).
+Dit geldt ook bij het starten van een nieuwe branch; controleer de gebruikte runtime en claim geen ongelezen sandboxinstelling.
+
+Haal eerst de bedoelde refs op met `git fetch origin`. Leg vóór iedere afzonderlijke branchwissel of fast-forward
+de huidige commit, branch en werkmap vast. Vergelijk HEAD met de **precieze doelref** van die stap:
+
+```sh
+git rev-parse HEAD
+git branch --show-current
+git status --porcelain
+git diff --name-only HEAD <doelref> -- .claude/skills .claude/hooks .claude/settings.json .claude/settings.local.json
+```
+
+Neem ook eventuele andere door de runtime beschermde paden mee. Een wissel naar lokale `main` vergelijkt met `main`;
+een daaropvolgende fast-forward vergelijkt opnieuw met `origin/main`. Alleen de vergelijking met `origin/main` vooraf
+volstaat niet: lokale `main` kan nog oude skillbestanden bevatten. De bestaande voorwaarden voor een schone werkmap
+en het opruimen na een merge blijven gelden.
+
+Moet de stap een door de sandbox beschermd bestand wijzigen, probeer de wissel dan niet. Begin verder werk in een
+aparte schone worktree vanaf de bedoelde doelref als de runtime dat toestaat, of laat de eigenaar de wissel uitvoeren.
+Een nieuwe worktree herstelt de oude niet; meld welke branch of werkmap nog niet is opgeruimd. Verruim de sandbox niet.
+
+Is een wissel al afgebroken, stop dan met schrijven. Lees eerst opnieuw `git rev-parse HEAD`, `git branch --show-current`
+en `git status --porcelain`, plus `git diff --name-status` en `git diff --cached --name-status`. Vergelijk met de vooraf
+vastgelegde commit en doelref: gestagede bestanden kunnen uit de mislukte wissel komen en bewijzen op zichzelf geen
+eigenaarswijziging. Bewaar de foutmelding en deze diagnose; commit, herstel of verwijder niets op basis van alleen
+`git status`. Leg de gedeeltelijke wissel aan de eigenaar voor; geen geforceerde checkout, `reset --hard` of versoepelde rechten.
+
 ## PR en statussen afronden
 
 Na de vereiste review opent de hoofdsessie de PR en wacht op werkelijke CI:

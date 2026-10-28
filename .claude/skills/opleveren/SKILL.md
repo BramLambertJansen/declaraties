@@ -45,8 +45,13 @@ Alleen nadat de PR is gemerged, ook als de eigenaar zelf mergde.
    (het veld `merged` bestaat niet in `gh`). Anders niets opruimen.
 2. Stop en meld, forceer niets, als: `git status --porcelain` niet leeg is; de lokale branch niet `headRefName` is; of de lokale branch
    commits heeft die niet in `headRefOid` zitten (ongepusht werk).
-3. `git switch main` (of `git switch --detach origin/main` als `main` elders is uitgecheckt), `git fetch origin`,
-   `git merge --ff-only origin/main`. Geen rebase: `main` wordt squash-gemerged. Faalt `--ff-only`, stop dan; nooit `reset --hard`.
+3. Eerst `git fetch origin` en de controle uit `docs/operations/agent-doorloop.md`, "Branchwissels in een sandbox",
+   vóór iedere afzonderlijke wissel of fast-forward. Raakt de stap een door de runtime beschermd bestand (zoals onder
+   `.claude/skills/`), probeer de wissel niet: een aparte schone worktree als dat is toegestaan, anders de eigenaar.
+   Daarna `git switch main` (of `git switch --detach origin/main` als `main` elders is uitgecheckt) en
+   `git merge --ff-only origin/main`, met de controle opnieuw vóór de fast-forward. Geen rebase: `main` wordt squash-gemerged.
+   Faalt een wissel of `--ff-only`, stop dan; lees HEAD, branch, werkmap en index volgens die procedure vóór herstel of
+   een commit. Nooit `reset --hard`; meld wat nog niet is opgeruimd.
 4. Een andere worktree van die branch eerst weghalen: `git worktree remove <pad>` zonder `--force` (git weigert anders de branch te verwijderen).
    De worktree waarin je zelf draait ruimt de runtime of de eigenaar op; heeft stap 3 de branch daar losgemaakt, dan lukt stap 5 gewoon.
 5. `git branch -D <headRefName>` (`-d` faalt na een squash-merge). Alleen die branch, nooit `main`.
