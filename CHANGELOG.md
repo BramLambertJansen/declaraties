@@ -6,11 +6,6 @@ Hier staan wijzigingen die van belang zijn bij het gebruiken of bijwerken van de
 
 ### Toegevoegd
 
-- Rail `rails/klassen` (spec `docs/specs/klassenrail.md`): in `src/web/features` en `src/web/routes` is `className` een
-  gewone string met alleen layout-utilities; kleur, typografie, arbitrary values, `!`, `dark:` en `style` geven een
-  lintfout die naar `Text`/`Heading`/`Stack`/`Inline` verwijst. Bij een update: verplaats eigen stijlklassen uit
-  schermen naar een component of variant in `src/web/ui`.
-
 - Typografie- en layoutcomponenten `Text`, `Heading`, `Stack` en `Inline` in de kit (spec
   `docs/specs/typografie-en-layout.md`, gebruik in `docs/ui-kit-basics.md`). `Section` gebruikt `Heading`; de sessietabel
   en de accountlijst halen hun typografie nu uit `Text` in plaats van utility-klassen.

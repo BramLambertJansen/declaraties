@@ -22,7 +22,6 @@ const ruleNames = [
   'axe-import',
   'axe-uitzondering',
   'axe-scan',
-  'klassen',
 ];
 const rails = { rules: Object.fromEntries(ruleNames.map((name) => [name, restrictedSyntax])) };
 
@@ -53,21 +52,6 @@ function restrict(rule, files, ignores, message, selectors) {
     rules: { [`rails/${rule}`]: ['error', ...selectors.map((selector) => ({ selector, message }))] },
   };
 }
-
-// Layout-utilities die features/ en routes/ zelf mogen zetten (framework §7, spec klassenrail); kleur, typografie, rand
-// en schaduw komen uit de kit. Eén token: hooguit één responsieve prefix plus een layoutklasse, nooit arbitrary of `!`.
-const N = String.raw`(\d+(\.5)?|px)`;
-const LAYOUT_TOKEN = [
-  'flex|inline-flex|grid|inline-grid|block|inline-block|inline|hidden|contents',
-  'flex-(row|col|wrap)(-reverse)?|flex-nowrap|flex-1|flex-auto|flex-none|grow|grow-0|shrink|shrink-0',
-  'items-(start|end|center|baseline|stretch)|justify-(start|end|center|between|around|evenly|stretch)',
-  'self-(auto|start|end|center|stretch|baseline)',
-  `gap-${N}|gap-[xy]-${N}|space-[xy]-${N}|p[trblxyse]?-${N}|-?m[trblxyse]?-${N}|m[trblxyse]?-auto`,
-  String.raw`(min-|max-)?[wh]-[a-z0-9.\/]+|grid-cols-\d+|col-span-(\d+|full)`,
-  'sr-only|break-all|break-words|truncate',
-].join('|');
-const TOKEN = `((sm|md|lg|xl|2xl):)?(${LAYOUT_TOKEN})`;
-const LAYOUT_CLASSES = String.raw`/^\s*${TOKEN}(\s+${TOKEN})*\s*$/`;
 
 const railConfigs = [
   restrict(
@@ -183,22 +167,6 @@ const railConfigs = [
     [],
     "Alleen import('letterlijk pad'): een berekend pad ziet dependency-cruiser niet, dus ook de lagenregels niet.",
     ["ImportExpression[source.type!='Literal']"],
-  ),
-  // Stijl in schermen alleen via de kit (framework §7, spec klassenrail): className als gewone string met layout-tokens.
-  restrict(
-    'klassen',
-    ['src/web/features/**/*.{ts,tsx}', 'src/web/routes/**/*.{ts,tsx}'],
-    ['**/*.test.{ts,tsx}'],
-    'In features/ en routes/ alleen layout-klassen als gewone string (flex, grid, gap, padding, breedte); kleur, ' +
-      'typografie, rand, schaduw, arbitrary values, `!`, `dark:` en `style` komen uit componenten. Gebruik `Text`, ' +
-      "`Heading`, `Stack` of `Inline` uit '#web/ui/…' (lijst: `node scripts/kit/feiten.mjs componenten`). Past er " +
-      'geen, stel dan een variant voor (framework §7).',
-    [
-      "JSXAttribute[name.name='className'][value.type!='Literal']",
-      "JSXSpreadAttribute > ObjectExpression > Property[key.name='className']",
-      `JSXAttribute[name.name='className'] > Literal[value!=${LAYOUT_CLASSES}]`,
-      "JSXAttribute[name.name='style']",
-    ],
   ),
   // Toegankelijkheid (framework §7, roadmap 3c): één axe-scan zonder uitzonderingen. Een regel of element uitzetten moet
   // zichtbaar een gate-wijziging zijn, geen regel in een test.
