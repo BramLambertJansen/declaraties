@@ -250,7 +250,8 @@
       "paths": [
         "eslint.config.js",
         ".claude/rules/web.md",
-        "docs/framework.md"
+        "docs/framework.md",
+        "scripts/kit/templates/page.tsx.tmpl"
       ]
     }
   ]
