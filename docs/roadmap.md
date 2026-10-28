@@ -30,6 +30,7 @@ Hooguit drie open items (`check:roadmap`); nummer 1 is bewijs vóór uitbreiding
   en instellingen, met conflicten alleen in vooraf als verwacht vastgelegde bestanden; rapport met exacte checks, handwerk en verbeter-PR's
   terug naar de template. Een demo in deze repo alleen telt niet.
   aanleiding: `docs/reviews/2026-10-15-principes-inventaris.md` (P1, besluit 1)
+  aanleiding: #321 (reproduceerbare nulmeting van leerpunten in het ST-09-protocol)
 - [ ] **ST-14 (P1) — documentatie en bouwresten opruimen** (opdracht stap 5). Doel: een repo waarmee mensen en agents apps bouwen zonder het
   bouwproces van het framework te reconstrueren; helder Nederlands over de huidige werking; bouwen met agents blijft het uitgangspunt.
   **Gedaan:** README, changelog, leeswijzer en de eerste inventaris (docs en roadmap, `docs/reviews/2026-10-15-principes-inventaris.md`).
