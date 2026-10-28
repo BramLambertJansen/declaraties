@@ -34,8 +34,10 @@ Besluit: [ADR 0059](../adr/0059-leerlus-van-app-naar-template.md) (eigenaar, 202
 | Blokkerende reviewbevinding | de regels `Leerpunt: ja (<soort>)` in het reviewerrapport |
 | Tweede mislukte correctiepoging | de stop-en-vraag uit `CLAUDE.md` ("Na twee mislukte correctiepogingen") in de sessie |
 
-De template-repo is de waarde van `onderhoud.repository` in `.claude/gates.json` (één bron; in een app geërfd via de
-template-merge). Het issue is zichtbaar voor iedereen met leesrecht op de template-repo; daarom geen appdata.
+De template-repo is de waarde van `onderhoud.repository` in `.claude/gates.json`. In een app heeft `pnpm app:init` die
+regel verwijderd; dan is het `TEMPLATE_REPOSITORY` (`rails/hooks/lib/task-authority.mjs`), hetzelfde doel als de
+allow-regel in `.claude/settings.json` (#317). Het issue is zichtbaar voor iedereen met leesrecht op de template-repo;
+daarom geen appdata.
 
 ## Datawijzigingen (met grants)
 
@@ -92,9 +94,9 @@ n.v.t. voor `docs/gouden-pad.md` (geen resource); railwerk volgt de bestaande vo
   sjabloon, in dezelfde volgorde; de test vergelijkt beide bestanden. Ook de stopgrond (b) verwijst naar deze stap.
 - **leerlus/AC-4** — `.claude/agents/reviewer.md` vraagt per blokkerende bevinding de regel `Leerpunt: ja (<soort>)` of
   `Leerpunt: nee`, met dezelfde soortenlijst als het sjabloon (de test vergelijkt).
-- **leerlus/AC-5** — Rolhek, hoofdsessie: `gh issue create` met `--repo`/`-R` exact gelijk aan `onderhoud.repository`
-  (hoofdletterongevoelig, vorm `<owner>/<repo>`) en precies één label `leerpunt` geeft geen deny en geen ask. Ontbreekt
-  `--repo`, wijst het naar een andere repo of andere vorm (URL, host), ontbreekt het label, staat er een ander label naast,
+- **leerlus/AC-5** — Rolhek, hoofdsessie: `gh issue create` met `--repo`/`-R` exact gelijk aan `onderhoud.repository`,
+  of zonder die regel (app) aan `TEMPLATE_REPOSITORY` (hoofdletterongevoelig, vorm `<owner>/<repo>`) en precies één label
+  `leerpunt` geeft geen deny en geen ask. Ontbreekt `--repo`, wijst het naar een andere repo of andere vorm (URL, host), ontbreekt het label, staat er een ander label naast,
   of zet het commando `GH_REPO`/`GH_HOST`, dan is de uitslag ask met een reden.
 - **leerlus/AC-6** — Rolhek, elke subagent (ook een onbekende): `gh issue create` geeft deny, ook met de juiste repo en het
   juiste label.

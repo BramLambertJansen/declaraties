@@ -1,13 +1,16 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, test } from 'vitest';
 import { decide, loadConfig } from '../../rails/hooks/lib/rolhek.mjs';
+import { TEMPLATE_REPOSITORY } from '../../rails/hooks/lib/task-authority.mjs';
+import { planAppInit } from '../../scripts/kit/app-init.mjs';
 
 // Spec leerlus (docs/specs/leerlus.md) AC-5 t/m AC-7, ADR 0059 punt 3: alleen de hoofdsessie dient een leerpunt in, met
 // `gh issue create --repo <onderhoud.repository> --label leerpunt …`; elke andere vorm is ask (met reden), elke subagent
 // krijgt deny op `gh issue create` en op schrijvende `gh issue`-opdrachten. Vorm als test/hooks/rolhek.test.ts.
 const ROOT = '/repo';
 const config = loadConfig(readFileSync('.claude/gates.json', 'utf8'));
-const REPO = config.onderhoud?.repository ?? '';
+// In een app haalt `pnpm app:init` de onderhoud-regel weg; het doel is dan TEMPLATE_REPOSITORY (leerlus AC-5, ADR 0059).
+const REPO = config.onderhoud?.repository ?? TEMPLATE_REPOSITORY;
 
 function ctx() {
   return {
@@ -283,5 +286,55 @@ describe('leerpuntvorm: lege woorden en een los - vóór het subcommando', () =>
         verdict(bash(command, agent)),
       ),
     ).toStrictEqual(['deny', 'deny', 'deny']);
+  });
+});
+
+// Issue #317: `pnpm app:init` haalt `onderhoud` uit gates.json; de leerpuntvorm moet dan blijven werken met
+// TEMPLATE_REPOSITORY als doel (leerlus AC-5/AC-6, ADR 0059). Geplande gates.json uit planAppInit, zonder te schrijven.
+describe('na pnpm app:init: gates.json zonder onderhoud', () => {
+  // Plannen kan alleen in de template (in een app is package.json al hernoemd en gooit planAppInit); daar is de echte
+  // gates.json al de app-vorm.
+  const gatesText = (): string => {
+    const real = readFileSync('.claude/gates.json', 'utf8');
+    if (config.onderhoud === undefined) return real;
+    const options = { slug: 'urenregistratie', name: 'Urenregistratie', sha: 'abc1234' };
+    return planAppInit(process.cwd(), options).find((change) => change.pad === '.claude/gates.json')?.inhoud ?? real;
+  };
+  const appConfig = loadConfig(gatesText());
+  const appCtx = () => ({ ...ctx(), config: appConfig });
+  const appVerdict = (payload: unknown): Verdict => {
+    const decision = decide(payload, appCtx());
+    if (decision.deny.length > 0) return 'deny';
+    return decision.ask.length > 0 ? 'ask' : 'allow';
+  };
+  const FORM = leerpunt(`--repo ${TEMPLATE_REPOSITORY}`);
+
+  test('de geplande gates.json bevat geen onderhoud', () => {
+    expect(appConfig.onderhoud).toBeUndefined();
+  });
+
+  test('leerlus/AC-5: hoofdsessie, template-repo met leerpunt-label → geen deny en geen ask', () => {
+    expect(decide(bash(FORM), appCtx())).toMatchObject({ deny: [], ask: [] });
+  });
+
+  test('leerlus/AC-5: hoofdsessie, andere repo → ask', () => {
+    expect(appVerdict(bash(leerpunt('--repo iemand/anders')))).toBe('ask');
+  });
+
+  test.each(SUBAGENTS)('leerlus/AC-6: %s → deny, ook zonder onderhoud in gates.json', (agent) => {
+    expect(appVerdict(bash(FORM, agent))).toBe('deny');
+  });
+});
+
+describe('met een onderhoud-regel in gates.json blijft die leidend', () => {
+  const forkConfig = { ...config, onderhoud: { ...config.onderhoud, repository: 'iemand/fork' } };
+  const forkDecide = (command: string) => decide(bash(command), { ...ctx(), config: forkConfig });
+
+  test('leerlus/AC-5: onderhoud.repository = iemand/fork → de template-repo is ask', () => {
+    expect(forkDecide(leerpunt(`--repo ${TEMPLATE_REPOSITORY}`)).ask.length).toBeGreaterThan(0);
+  });
+
+  test('leerlus/AC-5: onderhoud.repository = iemand/fork → die fork is geen deny en geen ask', () => {
+    expect(forkDecide(leerpunt('--repo iemand/fork'))).toMatchObject({ deny: [], ask: [] });
   });
 });
