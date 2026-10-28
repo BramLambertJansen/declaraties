@@ -4,15 +4,13 @@
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { snelleGates } from './gate-fast.mjs';
-import { git, kopie, ruimOp, script, start, stopKinderen } from './proef-kopie.mjs';
+import { bijSignaal, git, kopie, ruimOp, script, start } from './proef-kopie.mjs';
 
 const PREFIX = 'app-init-proef-';
 
 /** Een app heeft geen `onderhoud` in .claude/gates.json (ADR 0045). */
 function isTemplate(/** @type {string} */ bron) {
-  const pad = path.join(bron, '.claude/gates.json');
-  if (!existsSync(pad)) return false;
-  const gates = JSON.parse(readFileSync(pad, 'utf8'));
+  const gates = JSON.parse(readFileSync(path.join(bron, '.claude/gates.json'), 'utf8'));
   return typeof gates === 'object' && gates !== null && 'onderhoud' in gates;
 }
 
@@ -55,37 +53,16 @@ async function proefIn(doel, scripts) {
 }
 
 /**
- * Ruimt de kopie op bij SIGINT/SIGTERM (exit 130/143) en geeft de functie terug die de handlers weer weghaalt.
- * @param {string} doel
- * @param {boolean} bewaar
- */
-function bijSignaal(doel, bewaar) {
-  /** @type {ReadonlyArray<readonly [NodeJS.Signals, number]>} */
-  const signalen = [
-    ['SIGINT', 130],
-    ['SIGTERM', 143],
-  ];
-  const handlers = signalen.map(([signaal, code]) => {
-    const handler = () => {
-      stopKinderen();
-      if (!bewaar) ruimOp(doel, PREFIX);
-      process.exit(code);
-    };
-    process.once(signaal, handler);
-    return { signaal, handler };
-  });
-  return () => {
-    for (const { signaal, handler } of handlers) process.off(signaal, handler);
-  };
-}
-
-/**
  * @param {string} bron
  * @param {readonly string[]} scripts de scripts uit package.json die na de init draaien
  * @param {{ bewaar?: boolean }} [opties]
  * @returns {Promise<number>} exitcode
  */
 export async function draaiProef(bron, scripts, opties = {}) {
+  if (!existsSync(path.join(bron, '.claude/gates.json'))) {
+    console.error('✗ check:app-init: .claude/gates.json ontbreekt');
+    return 1;
+  }
   if (!isTemplate(bron)) {
     console.log('check:app-init: overgeslagen, dit is al een app');
     return 0;
@@ -95,14 +72,17 @@ export async function draaiProef(bron, scripts, opties = {}) {
     return 1;
   }
   const bewaar = opties.bewaar === true;
-  const doel = kopie(bron, PREFIX);
-  const ontkoppel = bijSignaal(doel, bewaar);
+  const signaal = bijSignaal(PREFIX, bewaar);
+  /** @type {string | undefined} */
+  let doel;
   try {
+    doel = kopie(bron, PREFIX);
+    signaal.zet(doel);
     return await proefIn(doel, scripts);
   } finally {
-    ontkoppel();
-    if (bewaar) console.log(`check:app-init: kopie bewaard in ${doel}`);
-    else ruimOp(doel, PREFIX);
+    signaal.ontkoppel();
+    if (doel !== undefined && bewaar) console.log(`check:app-init: kopie bewaard in ${doel}`);
+    else if (doel !== undefined) ruimOp(doel, PREFIX);
   }
 }
 

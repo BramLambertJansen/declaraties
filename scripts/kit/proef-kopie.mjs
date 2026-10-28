@@ -7,6 +7,12 @@ import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync,
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 
+/** De naam van de check bij elk prefix, voor de melding van de opruimguard. */
+const CHECKNAMEN = new Map([
+  ['app-init-proef-', 'check:app-init'],
+  ['new-resource-', 'check:new-resource'],
+]);
+
 /** @type {Set<import('node:child_process').ChildProcess>} */
 const lopend = new Set();
 
@@ -170,9 +176,47 @@ export function ruimOp(pad, prefix) {
   const absoluut = path.resolve(pad);
   const eigen = echt(path.dirname(absoluut)) === echt(tmpdir()) && path.basename(absoluut).startsWith(prefix);
   if (!eigen) {
-    console.error(`✗ check:app-init: weigert ${pad} te verwijderen: niet de eigen tijdelijke map`);
+    console.error(
+      `✗ ${CHECKNAMEN.get(prefix) ?? 'check:app-init'}: weigert ${pad} te verwijderen: niet de eigen tijdelijke map`,
+    );
     return false;
   }
-  rmSync(absoluut, { recursive: true, force: true });
+  // Een net gestopt kind kan nog een bestand schrijven; een paar nieuwe pogingen vangen ENOTEMPTY af.
+  rmSync(absoluut, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
   return true;
+}
+
+/**
+ * Ruimt de kopie op bij SIGINT/SIGTERM (exit 130/143) en stopt eerst de lopende kinderen. Installeer hem vóór `kopie()`
+ * en meld de map met `zet()` zodra `kopie()` terugkeert: een signaal tijdens het synchrone kopiëren wordt pas daarna
+ * afgehandeld, dus dan is de map bekend. `ontkoppel()` haalt de handlers weer weg.
+ * @param {string} prefix
+ * @param {boolean} bewaar
+ * @returns {{ zet: (doel: string) => void, ontkoppel: () => void }}
+ */
+export function bijSignaal(prefix, bewaar) {
+  /** @type {string | undefined} */
+  let doel;
+  /** @type {ReadonlyArray<readonly [NodeJS.Signals, number]>} */
+  const signalen = [
+    ['SIGINT', 130],
+    ['SIGTERM', 143],
+  ];
+  const handlers = signalen.map(([signaal, code]) => {
+    const handler = () => {
+      stopKinderen();
+      if (doel !== undefined && !bewaar) ruimOp(doel, prefix);
+      process.exit(code);
+    };
+    process.once(signaal, handler);
+    return { signaal, handler };
+  });
+  return {
+    zet(pad) {
+      doel = pad;
+    },
+    ontkoppel() {
+      for (const { signaal, handler } of handlers) process.off(signaal, handler);
+    },
+  };
 }

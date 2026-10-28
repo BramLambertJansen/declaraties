@@ -55,13 +55,13 @@ describe('import', () => {
       [
         '--input-type=module',
         '-e',
-        `const m = await import(${JSON.stringify(MODULE)}); console.log(['kopie','script','ruimOp'].map((n) => typeof m[n]).join());`,
+        `const m = await import(${JSON.stringify(MODULE)}); console.log(['kopie','script','ruimOp','bijSignaal'].map((n) => typeof m[n]).join());`,
       ],
       leeg,
       { TMPDIR: werkmap.tmp },
     );
     expect(result.code, result.alles).toBe(0);
-    expect(result.stdout.trim()).toBe('function,function,function');
+    expect(result.stdout.trim()).toBe('function,function,function,function');
     expect(result.stderr).toBe('');
     expect(readdirSync(werkmap.tmp)).toEqual([]);
   });
@@ -234,7 +234,8 @@ describe('ruimOp', () => {
     );
     const geweigerd = draaiNode([driver, pad, 'new-resource-'], werkmap.base, { TMPDIR: werkmap.tmp });
     expect(geweigerd.stdout).toContain('RESULTAAT:false');
-    expect(geweigerd.alles).toContain('weigert');
+    // De melding noemt de check die de guard aanroept, niet altijd check:app-init.
+    expect(geweigerd.alles).toContain('✗ check:new-resource: weigert');
     expect(existsSync(path.join(pad, 'bestand'))).toBe(true);
     // Met het eigen prefix gaat dezelfde map wel weg.
     const toegestaan = draaiNode([driver, pad, 'app-init-proef-'], werkmap.base, { TMPDIR: werkmap.tmp });
@@ -255,5 +256,75 @@ describe('ruimOp', () => {
     expect(result.stdout).toContain('RESULTAAT:true');
     expect(existsSync(doel)).toBe(false);
     expect(readFileSync(path.join(werkmap.bron, 'node_modules/.bin/tool'), 'utf8')).toBe('#!/bin/sh\n');
+  });
+});
+
+describe('bijSignaal', () => {
+  function metSignaal(werkmap: ReturnType<typeof nieuweWerkmap>, scriptTekst: string) {
+    const driver = path.join(werkmap.base, 'signaal.mjs');
+    writeFileSync(
+      driver,
+      [`import { bijSignaal, ruimOp } from ${JSON.stringify(MODULE)};`, 'void ruimOp;', scriptTekst, ''].join('\n'),
+    );
+    return draaiNode([driver], werkmap.base, { TMPDIR: werkmap.tmp });
+  }
+
+  test.each([
+    ['SIGTERM', 143],
+    ['SIGINT', 130],
+  ] as const)('een %s tijdens het synchrone kopiëren ruimt de map op en eindigt met exit %i', (signaal, code) => {
+    const werkmap = nieuweWerkmap(dirs);
+    const result = metSignaal(
+      werkmap,
+      [
+        "import { mkdtempSync, writeFileSync } from 'node:fs';",
+        "import { tmpdir } from 'node:os';",
+        "import path from 'node:path';",
+        "const s = bijSignaal('new-resource-', false);",
+        `process.kill(process.pid, '${signaal}');`,
+        "const doel = mkdtempSync(path.join(tmpdir(), 'new-resource-'));",
+        "writeFileSync(path.join(doel, 'bestand'), 'x');",
+        's.zet(doel);',
+        'await new Promise((resolve) => setTimeout(resolve, 5_000));',
+      ].join('\n'),
+    );
+    expect(result.code, result.alles).toBe(code);
+    expect(overgebleven(werkmap, 'new-resource-')).toEqual([]);
+  });
+
+  test('met bewaar blijft de map staan', () => {
+    const werkmap = nieuweWerkmap(dirs);
+    const result = metSignaal(
+      werkmap,
+      [
+        "import { mkdtempSync } from 'node:fs';",
+        "import { tmpdir } from 'node:os';",
+        "import path from 'node:path';",
+        "const s = bijSignaal('new-resource-', true);",
+        "s.zet(mkdtempSync(path.join(tmpdir(), 'new-resource-')));",
+        "process.kill(process.pid, 'SIGTERM');",
+        'await new Promise((resolve) => setTimeout(resolve, 5_000));',
+      ].join('\n'),
+    );
+    expect(result.code, result.alles).toBe(143);
+    expect(overgebleven(werkmap, 'new-resource-')).toHaveLength(1);
+  });
+
+  test('check:new-resource gebruikt hem, en een rode gate geeft een ✗-regel zonder stacktrace', () => {
+    expect(readFileSync(path.join(ROOT, 'scripts/kit/check-new-resource.mjs'), 'utf8')).toMatch(
+      /import \{[^}]*\bbijSignaal\b[^}]*\} from '\.\/proef-kopie\.mjs'/,
+    );
+    const werkmap = nieuweWerkmap(dirs);
+    // Zonder scripts/kit/new-resource.mjs in de kopie faalt de eerste stap van genereer().
+    maakBron(werkmap, { scripts: { ok: 'true' } });
+    const result = draaiNode([path.join(ROOT, 'scripts/kit/check-new-resource.mjs')], werkmap.bron, {
+      TMPDIR: werkmap.tmp,
+    });
+    expect(result.code, result.alles).toBe(1);
+    expect(result.stderr).toContain('✗ check:new-resource:');
+    // De stacktrace van het falende kindproces blijft; de check zelf eindigt met één ✗-regel, zonder eigen stacktrace.
+    expect(result.stderr.trim().split('\n').at(-1)).toMatch(/^✗ check:new-resource: /);
+    expect(result.stderr).not.toContain('check-new-resource.mjs');
+    expect(overgebleven(werkmap, 'new-resource-')).toEqual([]);
   });
 });

@@ -58,12 +58,13 @@ kopie-check die `docs/gouden-pad.md` al noemt (`pnpm check:new-resource`):
   - gate rood: `✗ check:app-init: <script> faalt na app:init (de template slaagt; zie leerpunt #334)`
   - geen node_modules: `✗ check:app-init: node_modules ontbreekt; draai eerst pnpm install`
   - bewaard: `check:app-init: kopie bewaard in <pad>`
-  - opruimen geweigerd: `✗ check:app-init: weigert <pad> te verwijderen: niet de eigen tijdelijke map`
+  - opruimen geweigerd: `✗ check:app-init: weigert <pad> te verwijderen: niet de eigen tijdelijke map` (bij `check:new-resource` staat daar `check:new-resource`: de guard noemt de check van zijn prefix)
+  - geen `.claude/gates.json`: `✗ check:app-init: .claude/gates.json ontbreekt`
 - Focusvolgorde en toetsenbord: n.v.t. — geen UI.
 
 ### Werking (bindend)
 
-0. **Alleen in de template.** Heeft `.claude/gates.json` van de bron geen `onderhoud`, dan is de bron al een app: exit 0 met de tekst "overgeslagen" (OV-4).
+0. **Alleen in de template.** Heeft `.claude/gates.json` van de bron geen `onderhoud`, dan is de bron al een app: exit 0 met de tekst "overgeslagen" (OV-4). Ontbreekt het bestand zelf, dan faalt de check (AC-18): anders slaagt de verplichte check stil als de template het bestand per ongeluk kwijtraakt.
 1. **Kopie.** Via `kopie()` uit `scripts/kit/proef-kopie.mjs` (OV-3) met prefix `app-init-proef-`: een map via `mkdtempSync(path.join(os.tmpdir(), 'app-init-proef-'))` (respecteert `TMPDIR`, dus de sandbox).
    Inhoud: `git ls-files -z --cached --others --exclude-standard` van de bron, plus een symlink naar `node_modules` van de bron.
    Daarin `git init -b main`, alles toevoegen, commit `basis` (de templatestand), en `refs/remotes/template/main` op die commit,
@@ -74,7 +75,7 @@ kopie-check die `docs/gouden-pad.md` al noemt (`pnpm check:new-resource`):
    init-PR). `template/main` blijft op `basis`, zodat `test/scripts/app-init-template.test.ts` zijn templateinvoer in de geschiedenis vindt.
 3. **Suite.** Elk script uit `snelleGates()` na elkaar via `script()` (zonder pnpm, met `node_modules/.bin` vooraan in `PATH`);
    de eerste rode stopt de check met exitcode ≠ 0. Alle snelle gates, geen eigen lijst (OV-2).
-4. **Opruimen.** In `finally` en bij `SIGINT`/`SIGTERM` (exit 130/143) `rmSync(kopie, { recursive: true, force: true })`,
+4. **Opruimen.** In `finally` en bij `SIGINT`/`SIGTERM` (exit 130/143, ook tijdens het kopiëren, en voor beide checks via `bijSignaal()` in de gedeelde module) `rmSync(kopie, { recursive: true, force: true })`,
    maar alleen als het pad direct onder `os.tmpdir()` ligt en met het eigen prefix begint; anders weigeren (tekst hierboven).
    Die opruimguard staat in `scripts/kit/proef-kopie.mjs`, met het prefix als parameter (`app-init-proef-` hier, `new-resource-` voor `check:new-resource`).
    `rmSync` volgt de `node_modules`-link niet; de bron blijft heel. `--bewaar` slaat het opruimen over en meldt het pad.
@@ -108,6 +109,8 @@ kopie-check die `docs/gouden-pad.md` al noemt (`pnpm check:new-resource`):
 - **app-init-proef/AC-16** — Gegeven `scripts/kit/proef-kopie.mjs`, dan importeren `scripts/kit/check-app-init.mjs` en `scripts/kit/check-new-resource.mjs` allebei `kopie()` en `script()` daaruit en definieert geen van beide ze zelf; importeren van `proef-kopie.mjs` start geen proces en maakt geen map; en `pnpm check:new-resource` eindigt na de refactor met exitcode 0 en zijn bestaande eindregel `check:new-resource: time-entries haalt gate:fast` (OV-3).
 - **app-init-proef/AC-17** — Gegeven `kopie(bron, 'new-resource-')` uit `scripts/kit/proef-kopie.mjs` met `GIT_DIR` en `GIT_INDEX_FILE` naar de bron, dan krijgt de bron geen commit en geen gewijzigde index; en de opruimfunctie met prefix `new-resource-` weigert een pad met prefix `app-init-proef-` (OV-3).
 
+- **app-init-proef/AC-18** — Gegeven een bron zonder `.claude/gates.json`, wanneer de check draait, dan is de exitcode 1 met `✗ check:app-init: .claude/gates.json ontbreekt` en wordt er geen tijdelijke map gemaakt.
+
 ## Randgevallen
 
 | Situatie | Gedrag | Foutcode |
@@ -138,7 +141,7 @@ kopie-check die `docs/gouden-pad.md` al noemt (`pnpm check:new-resource`):
 
 ## Testplan
 
-- `test/scripts/check-app-init.test.ts` (unit, fixture-repo in `mkdtempSync`, opruimen in `afterEach`): AC-2 t/m AC-11, AC-13, AC-14.
+- `test/scripts/check-app-init.test.ts` (unit, fixture-repo in `mkdtempSync`, opruimen in `afterEach`): AC-2 t/m AC-11, AC-13, AC-14, AC-18.
 - `test/scripts/proef-kopie.test.ts` (unit): AC-16 (import zonder bijwerking; beide checks importeren uit de module) en AC-17. De check exporteert daarvoor een functie die bron en de te draaien scripts als parameter neemt; de fixture heeft een eigen `package.json` met nepscripts, zodat de test seconden duurt en niet de volle suite draait.
 - AC-1: uitslag van `pnpm check:app-init` lokaal en de CI-job `check:app-init` op de PR-SHA (`pnpm pr:verify`).
 - AC-12: een test die `ci.yml` en `package.json` leest en job-naam, triggers en commando controleert.

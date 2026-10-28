@@ -235,12 +235,14 @@ describe('opruimen', () => {
     async (signal, verwacht) => {
       const werkmap = nieuweWerkmap(dirs);
       const marker = path.join(werkmap.base, 'gate-draait');
+      const laat = path.join(werkmap.base, 'gate-leeft-nog');
       maakBron(werkmap, {
         scripts: { hang: 'node probe/hang.mjs' },
         probes: {
           'hang.mjs': [
             "import { writeFileSync } from 'node:fs';",
             `writeFileSync(${JSON.stringify(marker)}, 'x');`,
+            `setTimeout(() => { writeFileSync(${JSON.stringify(laat)}, 'x'); }, 2_000);`,
             'setTimeout(() => {}, 15_000);',
             '',
           ].join('\n'),
@@ -273,9 +275,27 @@ describe('opruimen', () => {
       if (code === 'te-laat') child.kill('SIGKILL');
       expect(code).toBe(verwacht);
       expect(overgebleven(werkmap, PREFIX)).toEqual([]);
+      // De losgekoppelde gate is ook echt gestopt: hij haalt zijn tweede marker (na 2 s) niet meer.
+      await new Promise((resolve) => setTimeout(resolve, 2_500));
+      expect(existsSync(laat), 'de gate draait na het signaal nog door').toBe(false);
     },
     30_000,
   );
+
+  test('AC-18: een bron zonder .claude/gates.json faalt in plaats van stil over te slaan', () => {
+    const werkmap = nieuweWerkmap(dirs);
+    maakBron(werkmap, {
+      gates: null,
+      scripts: { ok: 'node probe/ok.mjs' },
+      probes: { 'ok.mjs': 'process.exit(0);\n' },
+    });
+    const result = draaiNode([schrijfDriver(werkmap), werkmap.bron, JSON.stringify(['ok'])], werkmap.bron, {
+      TMPDIR: werkmap.tmp,
+    });
+    expect(result.code, result.alles).toBe(1);
+    expect(result.alles).toContain('✗ check:app-init: .claude/gates.json ontbreekt');
+    expect(overgebleven(werkmap, PREFIX)).toEqual([]);
+  });
 });
 
 describe('de opruimguard', () => {
