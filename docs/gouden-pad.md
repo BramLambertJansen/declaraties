@@ -53,6 +53,8 @@ draait hem; `--dry-run` toont het plan zonder te schrijven, en bestaat een doel 
 Leg bij "Routes en foutcodes" voor iedere padparameter (zoals `:id`) de toegestane vorm, het gedeelde zod-schema
 in het contract, de foutcode en het validatiemoment vast. Een body-schema alleen dekt een padparameter niet.
 De vorm volgt het domein: een UUID voor een UUID-resource, geen UUID-aanname voor bijvoorbeeld een Better Auth-ID.
+Een typebrand bewijst geen vormvalidatie: `brandedId` in `src/core/shared/ids.ts` controleert alleen lengte. Noem dus
+het schema dat de vereiste vorm werkelijk controleert; alleen de naam van een branded ID is niet voldoende.
 Beschrijf vóór een externe aanroep hoe de gebruikte padparameters worden gevalideerd; ongeldige invoer mag die
 aanroep niet bereiken. Toets ook scheidingstekens en gecodeerde invoer, zoals `..%2F..%2Fx`, tegen de gekozen vorm;
 een UUID-parameter hoort zulke waarden af te wijzen.

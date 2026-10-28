@@ -51,7 +51,8 @@ uit "Open vragen". Index op `owner_id`. RLS aan en geforceerd.
 | PATCH | /api/__naam__/:id | __naam__:write | UNAUTHENTICATED, FORBIDDEN, MFA_REQUIRED, VALIDATION, NOT_FOUND |
 | DELETE | /api/__naam__/:id | __naam__:write | UNAUTHENTICATED, FORBIDDEN, MFA_REQUIRED, VALIDATION, NOT_FOUND |
 
-Padparameter `:id`: UUID, via `__Naam__Id` in het gedeelde contract; een ongeldige vorm geeft `VALIDATION` vóór de handler.
+Padparameter `:id`: de tabel gebruikt een UUID. Leg vast hoe het gedeelde contract die vorm controleert en vóór de
+handler `VALIDATION` geeft. Het gegenereerde `__Naam__Id` gebruikt `brandedId` en controleert alleen lengte, geen UUID-vorm.
 Beschrijf bij externe aanroepen ook validatie vóór die aanroep en de foutvolgorde van eventuele voor-stappen.
 Neem gecombineerde foutgevallen als acceptatiecriteria op volgens "Padparameters en foutvolgorde" in `docs/gouden-pad.md`.
 
