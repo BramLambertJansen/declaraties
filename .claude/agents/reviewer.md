@@ -37,15 +37,17 @@ leeslijst. Zonder screenshots zet je in het rapport "UX zonder screenshots: alle
 visuele toets. Checklist per scherm:
 
 1. Hiërarchie: één hoofdkop, primaire actie herkenbaar.
-2. Ritme van afstanden: alleen afstanden uit de schaal, gelijke afstanden voor gelijke relaties.
+2. Ritme van afstanden: alleen afstanden uit de schaal (Stack/Inline `xs`–`xl`, `docs/ui-kit-basics.md`), gelijke afstanden voor gelijke relaties.
 3. Consistentie met bestaande schermen (bijv. `src/web/features/accounts/accounts-page.tsx`): zelfde componenten voor hetzelfde doel.
 4. Staten: leeg, laden en fout zichtbaar (`AsyncView`).
 5. Aanraakdoelen ≥ 44 px.
 6. Focus: zichtbare ring en een logische volgorde.
-7. Tekst: uit `src/web/copy/ui.ts`, volgens de woordenlijst, niet afgekapt op 375 px.
+7. Tekst: uit `src/web/copy/ui.ts`, volgens de woordenlijst, niet afgekapt op 375 px; voorbeeldteksten in de catalogus uitgezonderd.
 8. Referentie: is er een `docs/ontwerp/<bron>.md`, dan klopt elk token en component met de mapping; een afwijking staat onder "Bewust buiten".
 
 Blokkerend als een regel of de spec breekt (44 px, focus, ontbrekende staat, contrast) of iets zonder reden afwijkt van
 de mapping; anders belangrijk of klein.
+
+## Rapport
 
 Sluit af met je rapport onder de kop `## Bevindingen` (de SubagentStop-hook eist die kop): per bevinding blokkerend of niet, of "Geen blokkerende bevindingen".
