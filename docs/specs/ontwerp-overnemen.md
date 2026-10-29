@@ -149,7 +149,8 @@ uitvoer is het herhaalbaar en testbaar. Geen nieuwe dependency: `chromium` uit `
   mee. Maten zijn in `rem` (16 px basis) en families zonder aanhalingstekens.
 - Exports voor tests: `parseArgs(argv)`, `naarOklch(css)`, `vatStijlenSamen(elementen)`, `uitvoerToegestaan(pad,
   isGenegeerd)`, `laadBron(page, bron, opties)` en `meetPagina(page)`. De CLI is een dunne laag erover.
-- Exitcodes: 0 klaar, 2 ongeldige invoer, 3 geen Chromium.
+- Exitcodes: 0 klaar, 1 meten mislukt, 2 ongeldige invoer, 3 geen Chromium. Erratum (2026-10-29, #356): exitcode 1 met
+  `Meten mislukt: <eerste regel>` vangt onverwachte fouten (bijv. een timeout van `goto`), door de eigenaar met de merge aanvaard.
 
 ### Mappingsjabloon `docs/ontwerp/_template.md` (5a)
 
