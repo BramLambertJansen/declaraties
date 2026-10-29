@@ -276,12 +276,13 @@ function echtPad(pad) {
 
 /**
  * Volgt een redirectketen onder eigen controle: `haal` haalt één stap op zonder redirect te volgen. Een doel dat
- * `verzoekToegestaan` weigert, wordt niet opgehaald maar gelogd; na 20 stappen stopt het (toegestaan: false).
+ * `verzoekToegestaan` weigert, wordt niet opgehaald maar gelogd; na 20 stappen stopt het (toegestaan: false) en staat
+ * het niet meer opgehaalde doel onder `geblokkeerd`. `url` is de stap die het eindantwoord gaf.
  * @template {Stap} T
  * @param {string} bron
  * @param {string} url
  * @param {(url: string) => Promise<T>} haal
- * @returns {Promise<{ toegestaan: boolean, antwoord?: T, geblokkeerd: string[] }>}
+ * @returns {Promise<{ toegestaan: boolean, antwoord?: T, url?: string, geblokkeerd: string[] }>}
  */
 export async function volgRedirects(bron, url, haal) {
   let huidig = url;
@@ -290,21 +291,40 @@ export async function volgRedirects(bron, url, haal) {
     const antwoord = await haal(huidig);
     const locatie = antwoord.headers['location'];
     if (antwoord.status < 300 || antwoord.status >= 400 || locatie === undefined)
-      return { toegestaan: true, antwoord, geblokkeerd: [] };
+      return { toegestaan: true, antwoord, url: huidig, geblokkeerd: [] };
     huidig = URL.canParse(locatie, huidig) ? new URL(locatie, huidig).href : locatie;
   }
-  return { toegestaan: false, geblokkeerd: [] };
+  return { toegestaan: false, geblokkeerd: [huidig] };
 }
 
-/** De resolverregel voor Chromium: geen enkele host, of bij een https-URL alleen die host. @param {string} bron */
+/**
+ * Wat de route met de uitkomst van `volgRedirects` doet. Eindigt de keten op een andere URL, dan gaat de browser daar
+ * zelf heen (een 302): anders lossen relatieve URL's op tegen de oorspronkelijke URL en meet het script de verkeerde
+ * stylesheets. De eind-URL komt daarna opnieuw langs de route.
+ * @param {string} verzoekUrl
+ * @param {{ toegestaan: boolean, antwoord?: unknown, url?: string }} uitkomst
+ * @returns {{ soort: 'afbreken' } | { soort: 'doorverwijzen', url: string } | { soort: 'leveren' }}
+ */
+export function routeAntwoord(verzoekUrl, uitkomst) {
+  if (!uitkomst.toegestaan || uitkomst.antwoord === undefined) return { soort: 'afbreken' };
+  if (uitkomst.url !== undefined && uitkomst.url !== verzoekUrl) return { soort: 'doorverwijzen', url: uitkomst.url };
+  return { soort: 'leveren' };
+}
+
+/**
+ * De resolverregel voor Chromium: geen enkele host, of bij een https-URL alleen die host. WebRTC (STUN naar een
+ * IP-adres) gaat buiten route en resolver om; zonder proxy zet de beleidsregel UDP daarvoor uit.
+ * @param {string} bron
+ */
 export function chromiumArgs(bron) {
   const regel = bron.startsWith('https:') ? `MAP * ~NOTFOUND, EXCLUDE ${new URL(bron).hostname}` : 'MAP * ~NOTFOUND';
-  return [`--host-resolver-rules=${regel}`];
+  return [`--host-resolver-rules=${regel}`, '--force-webrtc-ip-handling-policy=disable_non_proxied_udp'];
 }
 
 /**
  * Een https-verzoek met de hele redirectketen onder eigen controle (Playwright onderschept een gevolgde redirect niet):
- * elke stap via `route.fetch` zonder redirect, en alleen het laatste antwoord gaat naar de browser.
+ * elke stap via `route.fetch` zonder redirect. Eindigt de keten op dezelfde URL, dan gaat het antwoord naar de browser;
+ * anders een 302 naar de eind-URL (`routeAntwoord`).
  * @param {import('@playwright/test').Route} route
  * @param {string} bron
  * @param {Set<string>} geblokkeerd
@@ -315,7 +335,9 @@ async function haalOp(route, bron, geblokkeerd) {
     return { status: response.status(), headers: response.headers(), response };
   });
   for (const url of uitkomst.geblokkeerd) geblokkeerd.add(url);
-  if (!uitkomst.toegestaan || uitkomst.antwoord === undefined) return route.abort('blockedbyclient');
+  const antwoord = routeAntwoord(route.request().url(), uitkomst);
+  if (antwoord.soort === 'doorverwijzen') return route.fulfill({ status: 302, headers: { location: antwoord.url } });
+  if (antwoord.soort === 'afbreken' || uitkomst.antwoord === undefined) return route.abort('blockedbyclient');
   return route.fulfill({ response: uitkomst.antwoord.response });
 }
 

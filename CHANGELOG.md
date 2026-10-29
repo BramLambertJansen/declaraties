@@ -316,6 +316,11 @@ Hier staan wijzigingen die van belang zijn bij het gebruiken of bijwerken van de
 
 ### Opgelost
 
+- `scripts/kit/ontwerp-meten.mjs` meet na een redirect binnen de origin (bijv. `/docs` → `/docs/`) de juiste pagina:
+  de browser gaat zelf naar de eind-URL, zodat relatieve stylesheets en afbeeldingen van het goede pad komen
+  (`routeAntwoord`). Een redirectlus van meer dan 20 stappen staat nu onder `geblokkeerd`, en WebRTC-UDP buiten de route
+  om staat uit (`--force-webrtc-ip-handling-policy`).
+
 - `scripts/runner.sh` vergelijkt de host-bestanden met de merge-base van `main` zoals de remote die meldt
   (`git ls-remote origin refs/heads/main`), niet met de lokale ref `origin/main`; een omgebogen lokale ref opent de runner
   niet meer. Ontbreekt die commit lokaal, dan weigert het script met `git fetch origin main`. In CI blijft de controle
