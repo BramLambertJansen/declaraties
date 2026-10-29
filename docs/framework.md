@@ -388,7 +388,9 @@ CI zet gewijzigde bestaande tests als lijst in de PR.
 
 **Eisen aan de rollen, ongeacht runtime:** de aparte tester schrijft alleen tests; de reviewer schrijft niets en krijgt
 alleen leesopdrachten (`git diff/log/show/status`, `gh pr view/diff/checks`, `node scripts/kit/feiten.mjs` en de checks uit
-`docs/dod.md`), met een begrensd aantal beurten. Beide starten met schone, afgebakende context. Gebruik technische
+`docs/dod.md`), met een begrensd aantal beurten. In Modus UX (`.claude/agents/reviewer.md`) bekijkt de reviewer alleen
+de UX-screenshots uit de tests (`e2e/support/ux.ts`) en toetst hij aan een UX-checklist en `docs/ontwerp/<bron>.md`; zonder
+screenshots toetst hij alleen de code en zegt dat. Beide starten met schone, afgebakende context. Gebruik technische
 rolbeperking waar beschikbaar. Bij licht werk volstaat een aparte reviewagent met deze opdracht als technische isolatie
 ontbreekt; meld die beperking en claim geen afgedwongen onafhankelijkheid. Dat ontbreken alleen vraagt geen menselijke
 of externe reviewer. Ontbreekt een aparte reviewagent geheel, dan reviewt de eigenaar. Bij volledig werk telt een rol

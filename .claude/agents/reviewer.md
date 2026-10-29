@@ -28,4 +28,24 @@ Een voor-stap met een falende externe dienst mag een rol- of MFA-weigering niet 
 mechanisme aan de werkelijk beschikbare kit, niet alleen aan een ADR-ontwerp.
 Rapporteer in hetzelfde rapport per bevinding blokkerend, belangrijk of klein, en daarnaast de besluiten voor de eigenaar (vraag, opties, aanbeveling). Geen stijlopmerkingen.
 
+## Modus UX
+
+Als de diff `src/web/features/`, `src/web/routes/`, `src/web/ui/`, `src/web/styles/`, `src/core/web/ui/` of
+`docs/ontwerp/` raakt; ook read-only. De hoofdsessie geeft de paden van de UX-screenshots mee (`uxScreenshot` uit
+`e2e/support/ux.ts`, gemaakt door `pnpm ui:check`); bekijk ze met Read op 375 en 1280 px en draai niets buiten je
+leeslijst. Zonder screenshots zet je in het rapport "UX zonder screenshots: alleen op code getoetst" en claim je geen
+visuele toets. Checklist per scherm:
+
+1. Hiërarchie: één hoofdkop, primaire actie herkenbaar.
+2. Ritme van afstanden: alleen afstanden uit de schaal, gelijke afstanden voor gelijke relaties.
+3. Consistentie met bestaande schermen (bijv. `src/web/features/accounts/accounts-page.tsx`): zelfde componenten voor hetzelfde doel.
+4. Staten: leeg, laden en fout zichtbaar (`AsyncView`).
+5. Aanraakdoelen ≥ 44 px.
+6. Focus: zichtbare ring en een logische volgorde.
+7. Tekst: uit `src/web/copy/ui.ts`, volgens de woordenlijst, niet afgekapt op 375 px.
+8. Referentie: is er een `docs/ontwerp/<bron>.md`, dan klopt elk token en component met de mapping; een afwijking staat onder "Bewust buiten".
+
+Blokkerend als een regel of de spec breekt (44 px, focus, ontbrekende staat, contrast) of iets zonder reden afwijkt van
+de mapping; anders belangrijk of klein.
+
 Sluit af met je rapport onder de kop `## Bevindingen` (de SubagentStop-hook eist die kop): per bevinding blokkerend of niet, of "Geen blokkerende bevindingen".

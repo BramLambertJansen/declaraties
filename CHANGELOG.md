@@ -6,6 +6,11 @@ Hier staan wijzigingen die van belang zijn bij het gebruiken of bijwerken van de
 
 ### Toegevoegd
 
+- Reviewer in Modus UX (spec `docs/specs/ontwerp-overnemen.md`, deel 5b): bij een diff in de UI of `docs/ontwerp/`
+  bekijkt de reviewer, nog steeds alleen lezend, de UX-screenshots op 375 en 1280 px en toetst hij hiërarchie, ritme,
+  consistentie, staten, 44 px, focus, tekst en de referentie uit `docs/ontwerp/<bron>.md`. Screenshots maakt een e2e met
+  `uxScreenshot(page, testInfo, naam)` uit `e2e/support/ux.ts` (skill `nieuw-scherm`, stap 5).
+
 - Ontwerp overnemen (spec `docs/specs/ontwerp-overnemen.md`, deel 5a): skill `ontwerp-overnemen` vertaalt een
   referentie (HTML-bestand, URL, afbeelding of niets) naar semantische tokens in `theme.css`, een mappingdocument
   `docs/ontwerp/<bron>.md` (sjabloon `docs/ontwerp/_template.md`) en variantvoorstellen. Het meetscript
