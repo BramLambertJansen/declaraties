@@ -3,7 +3,17 @@
 // opruimguard. Geen bijwerkingen bij import. Elk kindproces krijgt de omgeving zonder de repovariabelen van git
 // (`git rev-parse --local-env-vars`, zoals test/setup/git-env.ts), zodat een git-hook de kopie niet naar de bron laat wijzen.
 import { execFileSync, spawn } from 'node:child_process';
-import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, symlinkSync } from 'node:fs';
+import {
+  cpSync,
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  realpathSync,
+  rmSync,
+  symlinkSync,
+  writeFileSync,
+} from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 
@@ -130,6 +140,24 @@ export function kopie(bron, prefix) {
 }
 
 /**
+ * Basis krijgt de HEAD van de bron als ouder, zodat een test die de templatestand in de geschiedenis zoekt
+ * (`test/scripts/app-init-template.test.ts` in een app) die ook in de kopie vindt (leerpunt #363). De objecten komen via
+ * alternates uit de bron, alleen-lezend; een ondiepe bron geeft zijn shallow-grens mee.
+ * @param {string} bron
+ * @param {string} doel
+ */
+function koppelGeschiedenis(bron, doel) {
+  const lees = (/** @type {string[]} */ args) =>
+    execFileSync('git', args, { cwd: bron, encoding: 'utf8', env: schoneEnv() }).trim();
+  const gemeenschappelijk = path.resolve(bron, lees(['rev-parse', '--git-common-dir']));
+  mkdirSync(path.join(doel, '.git/objects/info'), { recursive: true });
+  writeFileSync(path.join(doel, '.git/objects/info/alternates'), `${path.join(gemeenschappelijk, 'objects')}\n`);
+  const shallow = path.join(gemeenschappelijk, 'shallow');
+  if (existsSync(shallow)) cpSync(shallow, path.join(doel, '.git/shallow'));
+  git(doel, ['update-ref', 'refs/heads/main', lees(['rev-parse', 'HEAD'])]);
+}
+
+/**
  * @param {string} bron
  * @param {string} doel
  */
@@ -151,8 +179,10 @@ function vul(bron, doel) {
   symlinkSync(path.join(bron, 'node_modules'), path.join(doel, 'node_modules'), 'dir');
   // check:migrations vergelijkt met origin/main: de kopie zonder de gegenereerde bestanden is die basis.
   git(doel, ['init', '-q', '-b', 'main']);
+  koppelGeschiedenis(bron, doel);
   git(doel, ['add', '-A']);
-  git(doel, ['commit', '-q', '-m', 'basis']);
+  // Leeg als de bron schoon is: basis is dan inhoudelijk gelijk aan de HEAD van de bron.
+  git(doel, ['commit', '-q', '--allow-empty', '-m', 'basis']);
   git(doel, ['update-ref', 'refs/remotes/origin/main', 'HEAD']);
 }
 

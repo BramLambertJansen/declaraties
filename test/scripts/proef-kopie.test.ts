@@ -8,6 +8,7 @@ import {
   rmSync,
   writeFileSync,
 } from 'node:fs';
+import { spawnSync } from 'node:child_process';
 import path from 'node:path';
 import { afterEach, describe, expect, test } from 'vitest';
 import { draaiNode, git, maakBron, MODULE, nieuweWerkmap, overgebleven, ROOT } from './proef-fixture';
@@ -17,7 +18,8 @@ import { draaiNode, git, maakBron, MODULE, nieuweWerkmap, overgebleven, ROOT } f
 //   kopie(bron: string, prefix: string): string          synchroon; map direct onder os.tmpdir(), naam begint met prefix;
 //                                                          inhoud = git ls-files --cached --others --exclude-standard (bestanden
 //                                                          die op schijf ontbreken overgeslagen) + symlink node_modules naar bron;
-//                                                          git init -b main, commit `basis`, refs/remotes/origin/main = HEAD
+//                                                          git init -b main, commit `basis` met de HEAD van de bron als ouder
+//                                                          (objecten via alternates, shallow-grens mee), refs/remotes/origin/main = HEAD
 //   script(root: string, naam: string): void | Promise    package.json-script zonder pnpm; `&&`-stappen via sh -c met cwd root;
 //                                                          `pnpm <naam>` als stap wordt intern uitgevoerd; PATH begint met
 //                                                          <root>/node_modules/.bin; GIT_*-repovariabelen weg uit de omgeving
@@ -114,7 +116,8 @@ describe('kopie', () => {
     expect(realpathSync(path.join(doel, 'node_modules'))).toBe(realpathSync(path.join(werkmap.bron, 'node_modules')));
     expect(git(doel, ['rev-parse', '--abbrev-ref', 'HEAD'])).toBe('main');
     expect(git(doel, ['log', '-1', '--format=%s'])).toBe('basis');
-    expect(git(doel, ['rev-list', '--count', 'HEAD'])).toBe('1');
+    // basis staat op de HEAD van de bron (leerpunt #363): de bron heeft één commit, dus twee in totaal.
+    expect(git(doel, ['rev-list', '--count', 'HEAD'])).toBe('2');
     expect(git(doel, ['rev-parse', 'origin/main'])).toBe(git(doel, ['rev-parse', 'HEAD']));
     expect(git(doel, ['status', '--porcelain'])).toBe('');
   });
@@ -136,6 +139,76 @@ describe('kopie', () => {
     expect(git(werkmap.bron, ['rev-list', '--count', 'HEAD'])).toBe('1');
     // De kopie zelf heeft wél zijn eigen basiscommit.
     expect(git(result.stdout.trim(), ['log', '-1', '--format=%s'])).toBe('basis');
+  });
+});
+
+describe('kopie: geschiedenis van de bron (leerpunt #363)', () => {
+  // De app-init-test zoekt in de kopie de templatestand via `git log HEAD --full-history -- package.json`: dan moet de
+  // geschiedenis van de bron vanaf HEAD bereikbaar zijn. `basis` krijgt de HEAD van de bron als ouder (objecten via
+  // git-alternates, niets gekopieerd); de inhoud van `basis` blijft gelijk.
+
+  /** Git zonder te gooien: een git-fout wordt `FOUT: …`, zodat de test op een assertie faalt. */
+  function probeer(cwd: string, args: string[]): string {
+    const result = spawnSync('git', args, { cwd, encoding: 'utf8' });
+    return result.status === 0 ? result.stdout.trim() : `FOUT: ${result.stderr.trim()}`;
+  }
+
+  /** Bron met twee commits: de tweede wijzigt de naam in package.json, zoals app:init doet. */
+  function bronMetTweeCommits() {
+    const werkmap = nieuweWerkmap(dirs);
+    maakBron(werkmap, { scripts: { ok: 'true' } });
+    const eerste = git(werkmap.bron, ['rev-parse', 'HEAD']);
+    const pkgPad = path.join(werkmap.bron, 'package.json');
+    writeFileSync(pkgPad, readFileSync(pkgPad, 'utf8').replace('"app-template"', '"mijn-app"'));
+    git(werkmap.bron, ['commit', '-q', '-am', 'app:init']);
+    return { werkmap, eerste, tweede: git(werkmap.bron, ['rev-parse', 'HEAD']) };
+  }
+
+  test('basis heeft de HEAD van de bron als ouder; de package.json-geschiedenis van de bron is bereikbaar', () => {
+    const { werkmap, eerste, tweede } = bronMetTweeCommits();
+    const result = kopieInKind(werkmap, 'new-resource-');
+    expect(result.code, result.alles).toBe(0);
+    const doel = result.stdout.trim();
+    expect(git(doel, ['log', '-1', '--format=%s'])).toBe('basis');
+    expect(probeer(doel, ['rev-parse', 'HEAD^'])).toBe(tweede);
+    const log = probeer(doel, ['log', 'HEAD', '--full-history', '--format=%H', '--', 'package.json']).split('\n');
+    expect(log).toContain(tweede);
+    expect(log).toContain(eerste);
+    expect(probeer(doel, ['show', `${eerste}:package.json`])).toContain('"name": "app-template"');
+    // Inhoud, refs en werkmap zoals voorheen.
+    expect(readFileSync(path.join(doel, 'package.json'), 'utf8')).toContain('"name": "mijn-app"');
+    expect(git(doel, ['rev-parse', 'origin/main'])).toBe(git(doel, ['rev-parse', 'HEAD']));
+    expect(git(doel, ['rev-parse', '--abbrev-ref', 'HEAD'])).toBe('main');
+    expect(git(doel, ['status', '--porcelain'])).toBe('');
+  });
+
+  test('de objecten komen via alternates uit de bron, niet gekopieerd; de bron blijft onaangeroerd', () => {
+    const { werkmap, tweede } = bronMetTweeCommits();
+    const refsVoor = git(werkmap.bron, ['for-each-ref']);
+    const doel = kopieInKind(werkmap, 'new-resource-').stdout.trim();
+    const alternates = path.join(doel, '.git/objects/info/alternates');
+    expect(existsSync(alternates), 'geen .git/objects/info/alternates in de kopie').toBe(true);
+    const regels = existsSync(alternates) ? readFileSync(alternates, 'utf8').trim().split('\n') : [];
+    expect(regels.map((regel) => realpathSync(regel))).toContain(realpathSync(path.join(werkmap.bron, '.git/objects')));
+    expect(git(werkmap.bron, ['rev-parse', 'HEAD'])).toBe(tweede);
+    expect(git(werkmap.bron, ['for-each-ref'])).toBe(refsVoor);
+    expect(git(werkmap.bron, ['status', '--porcelain'])).toBe('');
+  });
+
+  test('ondiepe bron: de kopie slaagt, git log werkt en volgt dezelfde shallow-grens', () => {
+    const { werkmap, tweede } = bronMetTweeCommits();
+    const clone = path.join(werkmap.base, 'ondiep');
+    git(werkmap.base, ['clone', '-q', '--depth', '1', `file://${werkmap.bron}`, clone]);
+    expect(git(clone, ['rev-parse', '--is-shallow-repository'])).toBe('true');
+    mkdirSync(path.join(clone, 'node_modules/.bin'), { recursive: true });
+    writeFileSync(path.join(clone, 'node_modules/.bin/tool'), '#!/bin/sh\n');
+    const result = kopieInKind({ ...werkmap, bron: clone }, 'new-resource-');
+    expect(result.code, result.alles).toBe(0);
+    const doel = result.stdout.trim();
+    const basis = git(doel, ['rev-parse', 'HEAD']);
+    expect(probeer(doel, ['log', 'HEAD', '--format=%H'])).toBe(`${basis}\n${tweede}`);
+    expect(probeer(doel, ['log', 'HEAD', '--full-history', '--format=%H', '--', 'package.json'])).not.toMatch(/^FOUT/);
+    expect(git(doel, ['status', '--porcelain'])).toBe('');
   });
 });
 

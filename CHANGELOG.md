@@ -322,6 +322,11 @@ Hier staan wijzigingen die van belang zijn bij het gebruiken of bijwerken van de
 
 ### Opgelost
 
+- `check:new-resource` is niet langer rood op een verse app (leerpunt #363): de tijdelijke kopie uit
+  `scripts/kit/proef-kopie.mjs` zet `basis` op de HEAD van de bron (objecten via alternates, shallow-grens mee), zodat
+  `test/scripts/app-init-template.test.ts` de templatestand in de geschiedenis vindt. De CI-jobs `check:new-resource` en `check:app-init` checken daarvoor met
+  `fetch-depth: 0` uit. Bij een update: een app krijgt dit met de volgende template-merge.
+
 - `scripts/kit/ontwerp-meten.mjs` meet na een redirect binnen de origin (bijv. `/docs` → `/docs/`) de juiste pagina:
   het script volgt de keten eerst zelf en navigeert direct naar de eind-URL (`startUrl`), zodat relatieve stylesheets
   en afbeeldingen van het goede pad komen. Verlaat de keten de origin, dan stopt het meten (exitcode 1). Een

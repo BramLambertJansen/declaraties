@@ -144,6 +144,9 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+          # De kopie bouwt op de geschiedenis van de checkout; in een app zoekt app-init-template.test.ts daarin de
+          # templatestand (leerpunt #363). Een shallow checkout heeft die niet.
+          fetch-depth: 0
       - uses: jdx/mise-action@7a4e45a543138629540c9a1616d08632b893e492 # v5.0.1
         with:
           version: 2026.9.18
@@ -161,6 +164,8 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+          # Zelfde vorm als de job hierboven (AC-12): de kopie bouwt op de volledige geschiedenis.
+          fetch-depth: 0
       - uses: jdx/mise-action@7a4e45a543138629540c9a1616d08632b893e492 # v5.0.1
         with:
           version: 2026.9.18
