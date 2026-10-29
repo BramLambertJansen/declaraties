@@ -276,12 +276,13 @@ function echtPad(pad) {
 
 /**
  * Volgt een redirectketen onder eigen controle: `haal` haalt één stap op zonder redirect te volgen. Een doel dat
- * `verzoekToegestaan` weigert, wordt niet opgehaald maar gelogd; na 20 stappen stopt het (toegestaan: false).
+ * `verzoekToegestaan` weigert, wordt niet opgehaald maar gelogd; na 20 stappen stopt het (toegestaan: false) en staat
+ * het niet meer opgehaalde doel onder `geblokkeerd`. `url` is de stap die het eindantwoord gaf.
  * @template {Stap} T
  * @param {string} bron
  * @param {string} url
  * @param {(url: string) => Promise<T>} haal
- * @returns {Promise<{ toegestaan: boolean, antwoord?: T, geblokkeerd: string[] }>}
+ * @returns {Promise<{ toegestaan: boolean, antwoord?: T, url?: string, geblokkeerd: string[] }>}
  */
 export async function volgRedirects(bron, url, haal) {
   let huidig = url;
@@ -290,16 +291,33 @@ export async function volgRedirects(bron, url, haal) {
     const antwoord = await haal(huidig);
     const locatie = antwoord.headers['location'];
     if (antwoord.status < 300 || antwoord.status >= 400 || locatie === undefined)
-      return { toegestaan: true, antwoord, geblokkeerd: [] };
+      return { toegestaan: true, antwoord, url: huidig, geblokkeerd: [] };
     huidig = URL.canParse(locatie, huidig) ? new URL(locatie, huidig).href : locatie;
   }
-  return { toegestaan: false, geblokkeerd: [] };
+  return { toegestaan: false, geblokkeerd: [huidig] };
 }
 
-/** De resolverregel voor Chromium: geen enkele host, of bij een https-URL alleen die host. @param {string} bron */
+/**
+ * De URL waar de pagina werkelijk staat: de redirectketen vanaf de bron, onder eigen controle. `laadBron` navigeert
+ * daar direct heen, zodat relatieve URL's tegen de goede map oplossen. Een 3xx naar de browser kan niet: een gevolgde
+ * redirect komt niet langs de route. Verlaat de keten de origin of raakt hij de limiet, dan een fout (exitcode 1).
+ * @param {string} bron
+ * @param {(url: string) => Promise<Stap>} haal
+ */
+export async function startUrl(bron, haal) {
+  const uitkomst = await volgRedirects(bron, bron, haal);
+  if (uitkomst.toegestaan && uitkomst.url !== undefined) return uitkomst.url;
+  throw new Error(`Bron verwijst buiten de origin: ${uitkomst.geblokkeerd.join(', ')}`);
+}
+
+/**
+ * De resolverregel voor Chromium: geen enkele host, of bij een https-URL alleen die host. WebRTC (STUN naar een
+ * IP-adres) gaat buiten route en resolver om; zonder proxy zet de beleidsregel UDP daarvoor uit.
+ * @param {string} bron
+ */
 export function chromiumArgs(bron) {
   const regel = bron.startsWith('https:') ? `MAP * ~NOTFOUND, EXCLUDE ${new URL(bron).hostname}` : 'MAP * ~NOTFOUND';
-  return [`--host-resolver-rules=${regel}`];
+  return [`--host-resolver-rules=${regel}`, '--force-webrtc-ip-handling-policy=disable_non_proxied_udp'];
 }
 
 /**
@@ -357,8 +375,14 @@ async function routeer(context, bron, { js, geblokkeerd }) {
 export async function laadBron(page, bron, { js }) {
   /** @type {Set<string>} */
   const geblokkeerd = new Set();
-  await routeer(page.context(), bron, { js, geblokkeerd });
-  await page.goto(bron.startsWith('https:') ? bron : pathToFileURL(bron).href, { waitUntil: 'load' });
+  const context = page.context();
+  await routeer(context, bron, { js, geblokkeerd });
+  const haal = async (/** @type {string} */ url) => {
+    const response = await context.request.fetch(url, { maxRedirects: 0 });
+    return { status: response.status(), headers: response.headers() };
+  };
+  const start = bron.startsWith('https:') ? await startUrl(bron, haal) : pathToFileURL(bron).href;
+  await page.goto(start, { waitUntil: 'load' });
   return {
     get geblokkeerd() {
       return [...geblokkeerd].sort();
