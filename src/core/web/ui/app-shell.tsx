@@ -118,7 +118,7 @@ export function AppShell({ nav, userName, menuItems, topbarActions, routeKey, ch
           event.preventDefault();
           mainRef.current?.focus();
         }}
-        className="sr-only rounded-md bg-background text-sm text-foreground focus:not-sr-only focus:fixed focus:start-2 focus:top-2 focus:z-50 focus:inline-flex focus:min-h-control focus:items-center focus:px-3 focus:ring-2 focus:ring-ring"
+        className="sr-only rounded-md bg-background text-sm text-foreground focus:not-sr-only focus:fixed focus:start-2 focus:top-2 focus:z-toast focus:inline-flex focus:min-h-control focus:items-center focus:px-3 focus:ring-2 focus:ring-ring"
       >
         {uiTexts.skipToContent}
       </a>

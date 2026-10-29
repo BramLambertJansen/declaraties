@@ -1,5 +1,6 @@
-/* Tokens en Tailwind (framework §7). In @theme gaan kleur, radius en schaduw van Tailwind eruit: alleen de tokens
-   hieronder bestaan (bg-red-500 bestaat niet). Dark mode via [data-theme=dark]. */
+/* Tokens en Tailwind (framework §7). In @theme gaan kleur, radius, schaduw, lettertype, tekstmaat en gewicht van
+   Tailwind eruit, net als de easing: alleen de tokens hieronder bestaan (bg-red-500, text-xs, font-bold en ease-in
+   bestaan niet). Kale getallen als z-50 en duration-200 weert test/ui/semantische-tokens-3b.test.ts (AC-15). Dark mode via [data-theme=dark]. */
 @import 'tailwindcss';
 @import './primitives.css';
 @import './components.css';
@@ -13,6 +14,10 @@
   --shadow-*: initial;
   --inset-shadow-*: initial;
   --drop-shadow-*: initial;
+  --font-*: initial;
+  --font-weight-*: initial;
+  --text-*: initial;
+  --ease-*: initial;
 
   --color-transparent: transparent;
   --color-current: currentColor;
@@ -32,6 +37,10 @@
   --color-accent-foreground: var(--accent-foreground);
   --color-destructive: var(--destructive);
   --color-destructive-foreground: var(--destructive-foreground);
+  --color-success: var(--success);
+  --color-success-foreground: var(--success-foreground);
+  --color-warning: var(--warning);
+  --color-warning-foreground: var(--warning-foreground);
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
@@ -49,7 +58,41 @@
   --shadow-md: 0 4px 6px -1px oklch(0 0 0 / 0.1), 0 2px 4px -2px oklch(0 0 0 / 0.1);
   --shadow-lg: 0 10px 15px -3px oklch(0 0 0 / 0.1), 0 4px 6px -4px oklch(0 0 0 / 0.1);
 
+  --font-sans: var(--font-family-sans);
+  --font-mono: var(--font-family-mono);
+  --default-font-family: var(--font-family-sans);
+  --default-mono-font-family: var(--font-family-mono);
+
+  --text-sm: var(--type-sm);
+  --text-sm--line-height: var(--type-sm-leading);
+  --text-base: var(--type-base);
+  --text-base--line-height: var(--type-base-leading);
+  --text-lg: var(--type-lg);
+  --text-lg--line-height: var(--type-lg-leading);
+  --text-xl: var(--type-xl);
+  --text-xl--line-height: var(--type-xl-leading);
+  --text-2xl: var(--type-2xl);
+  --text-2xl--line-height: var(--type-2xl-leading);
+
+  --font-weight-normal: var(--weight-normal);
+  --font-weight-medium: var(--weight-medium);
+  --font-weight-semibold: var(--weight-semibold);
+
+  --spacing: var(--density-space);
   --spacing-control: var(--control-h);
+
+  --z-index-sticky: var(--layer-sticky);
+  --z-index-dropdown: var(--layer-dropdown);
+  --z-index-overlay: var(--layer-overlay);
+  --z-index-modal: var(--layer-modal);
+  --z-index-toast: var(--layer-toast);
+
+  --transition-duration-fast: var(--motion-fast);
+  --transition-duration-normal: var(--motion-normal);
+  --ease-standard: var(--motion-ease-standard);
+  --ease-out: var(--motion-ease-out);
+  --default-transition-duration: var(--motion-fast);
+  --default-transition-timing-function: var(--motion-ease-standard);
 }
 
 @layer base {
@@ -76,7 +119,8 @@
   @media (prefers-reduced-motion: reduce) {
     *,
     ::before,
-    ::after {
+    ::after,
+    ::backdrop {
       animation-duration: 0.01ms !important;
       transition-duration: 0.01ms !important;
     }

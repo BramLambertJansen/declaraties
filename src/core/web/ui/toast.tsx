@@ -233,7 +233,7 @@ export function Toaster() {
   const successes = toasts.filter((toast) => toast.tone === 'success');
   const errors = toasts.filter((toast) => toast.tone === 'error');
   return (
-    <div className="pointer-events-none fixed inset-x-4 bottom-4 z-50 flex flex-col items-end gap-2 sm:start-auto sm:w-96">
+    <div className="pointer-events-none fixed inset-x-4 bottom-4 z-toast flex flex-col items-end gap-2 sm:start-auto sm:w-96">
       <div className="flex w-full flex-col gap-2">
         {successes.map((toast) => (
           <ToastCard key={toast.id} toast={toast} />

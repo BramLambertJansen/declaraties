@@ -23,5 +23,5 @@ het menu-item. Daarna, of voor een los scherm, `docs/gouden-pad.md`, stap 8 t/m 
 2. Scherm in `src/web/features/<resource>/` met componenten uit `#web/ui/index.ts`; in `features/` alleen layout-klassen. Laden, leeg en fout via `<AsyncView>`, formulieren via `<Form>`.
 3. Alle zichtbare tekst in `src/web/copy/ui.ts`, Nederlands volgens de woordenlijst (`src/web/copy/woordenlijst.test.ts`).
 4. Bestandsroute in `src/web/routes/` met `beforeLoad: guard('<permissie>')`; menu-item per rol in `src/web/lib/nav.ts`.
-5. E2E in `e2e/` per acceptatiecriterium met `scanAxe` op 375 en 1280 px en zonder horizontaal scrollen (voorbeeld: `e2e/accounts.spec.ts`).
+5. E2E in `e2e/` per acceptatiecriterium met `scanAxe` op 375 en 1280 px en zonder horizontaal scrollen (voorbeeld: `e2e/accounts.spec.ts`). Voor de reviewer in Modus UX: `uxScreenshot(page, testInfo, naam)` uit `e2e/support/ux.ts` (375 en 1280 px).
 6. Bewijs: `pnpm gate:fast` en `pnpm ui:check`.

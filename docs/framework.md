@@ -267,15 +267,21 @@ Ankers: OWASP Top 10:2025, OWASP API Security Top 10, ASVS 5.0 niveau 1 (checkli
 ## 7. Design system
 
 - **Tokens in drie lagen** in CSS (enige bron): primitief (OKLCH-palet, nooit direct gebruikt) → semantisch (shadcn-namen:
-  `--background`, `--foreground`, `--primary`, … `--radius`; de enige laag die een app aanpast) → component (`--control-h-*`, `--focus-ring-*`).
-- In `@theme` worden kleur, radius en schaduw van Tailwind gereset; `bg-red-500` bestaat niet. Dark mode via `[data-theme=dark]` met `@custom-variant dark (&:where([data-theme=dark], [data-theme=dark] *));`.
+  `--background`, `--foreground`, `--primary`, … `--radius`, plus `--success`/`--warning`, `--font-family-*`, `--type-*`,
+  `--weight-*`, `--density-*` en `--motion-*`; de enige laag die een app aanpast) → component (`--control-h`, `--focus-ring-*`, `--layer-*`).
+  Per token klasse, standaard, app-waarde en `bestand:regel`: `node scripts/kit/feiten.mjs tokens` (namen in `theme.css`
+  die niet in `semantic.css` staan: `onbekend`); zichtbaar in de sectie "Tokens" op `/design-system`.
+- **Ontwerp overnemen**: skill `ontwerp-overnemen` vertaalt een referentie naar semantische tokens en componenten; meten met
+  `scripts/kit/ontwerp-meten.mjs` (screenshots en berekende stijlen, buiten de repo), vertaling in `docs/ontwerp/<bron>.md`.
+- In `@theme` worden kleur, radius, schaduw, lettertype, tekstmaat, gewicht en easing van Tailwind gereset (ook
+  `--font-*`, `--font-weight-*`, `--text-*` en `--ease-*`: `initial`); `bg-red-500`, `text-xs` en `font-bold` bestaan niet. Dark mode via `[data-theme=dark]` met `@custom-variant dark (&:where([data-theme=dark], [data-theme=dark] *));`.
   De reset sloopt klassen die shadcn gebruikt (`bg-black/50`, `shadow-xs`): de codemod vangt die op. Vite `build.target` gelijk aan browserslist.
 - **Tokens per zone** (ADR 0040): primitief, component en standaard-semantisch in `src/core/web/styles/`; een app past alleen de
   semantische laag aan in `src/web/styles/theme.css`.
 - **Componenten**: shadcn/ui gekopieerd naar `src/core/web/ui` (basiskit, van de template); app-specifieke componenten en
   afgeleide varianten in `src/web/ui`, die ook de enige importbron voor `features/` is (her-exporteert core). Een basiscomponent dat
   elke app kan gebruiken, komt via een PR in de template. Na elke `shadcn add` zet een codemod het component op de eigen tokens; varianten in één CVA-recept; afleiden, niet forken; 44 px en focusring in de basis van elk recept.
-- **Afgedwongen**: alleen bestaande klassen; in `features/` geen arbitrary values, `!` of `dark:` en alleen layout-klassen;
+- **Afgedwongen**: alleen bestaande klassen; in `features/` en `routes/` alleen layout-klassen als gewone string, geen arbitrary values, `!`, `dark:` of `style` (`rails/klassen`);
   geen rauwe `<button> <input> <select> <textarea> <dialog> <a>` buiten `src/core/web/ui` en `src/web/ui`; geen hex/benoemde kleuren buiten tokens;
   contrasttest over alle receptvarianten; `outline-none` alleen met `focus-visible:ring-*`; één `scanAxe(page)` (wcag2a/aa, 21aa, 22aa; lint verbiedt losse `AxeBuilder`);
   woordenlijsttest op `src/web/copy`; geen `matchMedia`/`userAgent`/`isMobile` in `src/web`; browserslist in `package.json`.
@@ -382,7 +388,10 @@ CI zet gewijzigde bestaande tests als lijst in de PR.
 
 **Eisen aan de rollen, ongeacht runtime:** de aparte tester schrijft alleen tests; de reviewer schrijft niets en krijgt
 alleen leesopdrachten (`git diff/log/show/status`, `gh pr view/diff/checks`, `node scripts/kit/feiten.mjs` en de checks uit
-`docs/dod.md`), met een begrensd aantal beurten. Beide starten met schone, afgebakende context. Gebruik technische
+`docs/dod.md`), met een begrensd aantal beurten. Beide starten met schone, afgebakende context. In Modus UX
+(`.claude/agents/reviewer.md`) leest de reviewer daarnaast met Read de UX-screenshots uit de tests (`e2e/support/ux.ts`) en
+toetst hij aan een UX-checklist en `docs/ontwerp/<bron>.md`; zonder screenshots toetst hij alleen de code en meldt dat
+letterlijk. Gebruik technische
 rolbeperking waar beschikbaar. Bij licht werk volstaat een aparte reviewagent met deze opdracht als technische isolatie
 ontbreekt; meld die beperking en claim geen afgedwongen onafhankelijkheid. Dat ontbreken alleen vraagt geen menselijke
 of externe reviewer. Ontbreekt een aparte reviewagent geheel, dan reviewt de eigenaar. Bij volledig werk telt een rol

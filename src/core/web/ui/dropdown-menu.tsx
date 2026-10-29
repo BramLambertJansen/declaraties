@@ -27,7 +27,7 @@ export function DropdownMenu({ trigger, items, align = 'end' }: DropdownMenuProp
         <Menu.Content
           align={align}
           sideOffset={4}
-          className="z-50 min-w-48 rounded-md border bg-popover p-1 text-popover-foreground shadow-md"
+          className="z-dropdown min-w-48 rounded-md border bg-popover p-1 text-popover-foreground shadow-md"
         >
           {items.map((item) => (
             <Menu.Item

@@ -30,6 +30,30 @@ De Stop-feedback (ook SubagentStop van de developer) kijkt naar de werkmap plus 
 gecommit (`rails/hooks/lib/werkstraat.mjs:48`); een schone werkmap met rode gecommitte code geeft dus nog feedback.
 Elke rode controle krijgt een eigen deel van de 40 regels (`rails/hooks/lib/werkstraat.mjs:109`).
 
+## Metingen lezen
+
+Gebruik `pnpm meting --help` voor de teldefinities en `--sessie <id>` of `--branch <naam>` voor een vaste selectie.
+De meethook is voor Claude Code; in andere runtimes ontstaan hiermee niet vanzelf meetgegevens. De meetbestanden
+staan buiten git-tracking in `<git common dir>/agent-meting/`, ook bij worktrees; `METING_DIR` kiest een andere map.
+
+`prompts` telt ontvangen `PermissionRequest`-events (permissievragen), geen opdrachten of berichten van de eigenaar.
+`UserPromptSubmit` telt voor `eigenaarberichten`, waarbij het eerste bericht van de sessie de opdracht is en niet meetelt.
+`promptsPerModus` verdeelt alleen die permissievragen naar hun meegeleverde `permission_mode`; ontbreekt die, dan is de
+modus `onbekend`. Nul prompts en een lege modusverdeling bewijzen geen permissiemodus en ook niet dat er geen
+eigenaarberichten waren. Een classifierbeslissing in auto mode is geen bewijs van een klik van de eigenaar.
+
+`weigeringen` is een bovengrens: een ontvangen `PermissionDenied` telt, evenals een `PreToolUse` met ID waarvoor nog
+geen `PostToolUse` of `PostToolUseFailure` met hetzelfde ID geregistreerd is. Beide voor dezelfde ID tellen samen één
+keer. Een lopende, afgebroken of niet volledig geregistreerde aanroep kan daardoor als weigering meetellen. Tijdens een
+meetopdracht kan bijvoorbeeld de nog lopende `pnpm meting` meetellen; na de geregistreerde afronding daalt de teller.
+Vergelijk daarom dezelfde sessie en branch op hetzelfde afgeronde meetmoment en bewaar de momentopname met tijdstip;
+vergelijkingen tijdens en na een aanroep zijn geen gelijke waarnemingen.
+
+Alleen ontvangen en opgeslagen events tellen. Een geregistreerde weigering van `Read` kan dus meetellen; een weigering
+waarvoor de runtime geen bruikbaar event doorgeeft is niet uit deze bestanden te reconstrueren. De hook is fail-open:
+ontbrekende registraties bewijzen geen nul. De telling en regressieproeven staan in `scripts/kit/meting.mjs` en
+`test/rails/meting-eventketen.test.ts`. `--json` gebruikt dezelfde teldefinities als de tekstuitvoer.
+
 ## Nieuw werk beginnen
 
 Elk nieuw ticket, elke feature en elke fix begint op een eigen branch vanaf een vers opgehaalde main, in één commando:

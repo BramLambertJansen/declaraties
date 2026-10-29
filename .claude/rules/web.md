@@ -10,6 +10,7 @@ paths:
   en tokens staan daar; de app importeert ze via `src/web/ui` (barrel) en `src/web/lib/api.ts`.
 - Eerst zoeken wat er is: componenten in `src/web/ui` (her-exporteert core), voorbeelden op `/design-system`. Bestaand recept uitbreiden,
   geen nieuw component ernaast. Een variant leid je af in `src/web/ui` uit de basis en variantkaart van core. Past niets: stop en stel een variant voor.
+- tokens: `node scripts/kit/feiten.mjs tokens`
 - Route: bestandsroute in `routes/`, met `beforeLoad`-guard die `can()` controleert en een ErrorBoundary.
   Alleen inlog-, aanmeld- en resetschermen zijn publiek (framework §3).
 - Inloggen alleen via `src/core/web/lib/auth.ts` (Better Auth-client). Bij 401 van de API naar het inlogscherm.
@@ -18,8 +19,8 @@ paths:
 - Laden, leeg en fout altijd via `<AsyncView>`. Formulieren via `<Form>`/`<FormField>` met het gedeelde zod-schema;
   verzendknop uit tijdens de mutatie; serverveldfouten via `setError`.
 - UI-state (filters, tabs, paginering) in de URL. Geen globale store.
-- Styling in `features/`: alleen layout-utilities (flex, grid, gap, padding, breedte) of `Stack`/`Inline`/`Container`.
-  Kleur, radius, schaduw en typografie komen uit componenten.
+- Styling in `features/` en `routes/`: alleen layout-utilities als gewone string (flex, grid, gap, padding, breedte) of
+  `Stack`/`Inline`. Kleur, radius, schaduw en typografie komen uit componenten (`Text`, `Heading`); de rail `klassen` in `eslint.config.js` dwingt het af.
 - Responsive met breakpoints en container queries. Wat echt per formaat verschilt: één gedeelde hook, niet per component.
 - Alle zichtbare tekst in `src/web/copy`, Nederlands, volgens de woordenlijst ("Annuleren", niet "Annuleer").
 - Datums en bedragen alleen via `lib/format.ts`.

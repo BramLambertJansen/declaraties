@@ -133,8 +133,8 @@ const badgeTones = [
 ].map((match) => [match[1] ?? '', `--${match[3] ?? ''}`, `--${match[2] ?? ''}`] as const);
 
 describe.each<Theme>(['light', 'dark'])('StatusBadge (%s)', (theme) => {
-  test('alle drie de tonen zijn gevonden', () => {
-    expect(badgeTones.map(([tone]) => tone)).toStrictEqual(['neutral', 'accent', 'destructive']);
+  test('semantische-tokens/AC-11: alle vijf de tonen zijn gevonden, in volgorde', () => {
+    expect(badgeTones.map(([tone]) => tone)).toStrictEqual(['neutral', 'accent', 'destructive', 'success', 'warning']);
   });
 
   test.each(badgeTones)('tone %s: %s op %s ≥ 4,5:1', (_tone, fg, bg) => {

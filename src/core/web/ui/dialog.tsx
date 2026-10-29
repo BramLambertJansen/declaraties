@@ -31,9 +31,9 @@ const variantClasses = {
   modal: 'm-auto w-[calc(100%-2rem)] max-w-lg rounded-lg border bg-popover text-popover-foreground',
   sheet:
     'my-0 ms-0 me-auto h-dvh max-h-none w-72 max-w-[calc(100%-3rem)] border-e bg-sidebar text-sidebar-foreground ' +
-    'transition-[translate,overlay,display] transition-discrete duration-200 ease-out ' +
+    'transition-[translate,overlay,display] transition-discrete duration-normal ease-out ' +
     '-translate-x-full open:translate-x-0 starting:open:-translate-x-full ' +
-    'backdrop:transition-[opacity,overlay,display] backdrop:transition-discrete backdrop:duration-200 ' +
+    'backdrop:transition-[opacity,overlay,display] backdrop:transition-discrete backdrop:duration-normal ' +
     'backdrop:opacity-0 open:backdrop:opacity-100 starting:open:backdrop:opacity-0',
 } as const;
 

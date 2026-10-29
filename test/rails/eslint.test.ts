@@ -256,6 +256,95 @@ const fixtures: Fixture[] = [
     code: "export { default as AxeBuilder } from '@axe-core/playwright';",
     rule: 'rails/axe-scan',
   },
+
+  // klassen (framework §7, docs/specs/klassenrail.md): alleen layout-klassen als gewone string in features/ en routes/.
+  // klassenrail/AC-1: typografie- of kleurtoken
+  ...['text-sm', 'text-muted-foreground', 'bg-primary', 'font-medium', 'rounded-md', 'flex text-sm'].map((cls) => ({
+    name: `klassenrail/AC-1: className="${cls}"`,
+    file: 'src/web/features/x.tsx',
+    code: `export const x = <div className="${cls}" />;`,
+    rule: 'rails/klassen',
+  })),
+  // klassenrail/AC-2: omzeiling binnen de string
+  ...['w-[3px]', '!flex', 'dark:flex', 'md:text-lg', 'md:lg:flex'].map((cls) => ({
+    name: `klassenrail/AC-2: className="${cls}"`,
+    file: 'src/web/features/x.tsx',
+    code: `export const x = <div className="${cls}" />;`,
+    rule: 'rails/klassen',
+  })),
+  // klassenrail/AC-3: className die geen stringliteral is, ook met layout-inhoud
+  {
+    name: 'klassenrail/AC-3: template literal',
+    file: 'src/web/features/x.tsx',
+    code: 'export const x = <div className={`flex`} />;',
+    rule: 'rails/klassen',
+  },
+  {
+    name: 'klassenrail/AC-3: cn()-aanroep',
+    file: 'src/web/features/x.tsx',
+    code: "declare const cn: (...c: string[]) => string; export const x = <div className={cn('flex', 'text-sm')} />;",
+    rule: 'rails/klassen',
+  },
+  {
+    name: 'klassenrail/AC-3: variabele',
+    file: 'src/web/features/x.tsx',
+    code: "const c = 'flex'; export const x = <div className={c} />;",
+    rule: 'rails/klassen',
+  },
+  {
+    name: 'klassenrail/AC-3: stringliteral in expressie',
+    file: 'src/web/features/x.tsx',
+    code: "export const x = <div className={'flex'} />;",
+    rule: 'rails/klassen',
+  },
+  // klassenrail/AC-4: className via spread-object
+  {
+    name: 'klassenrail/AC-4: spread-object',
+    file: 'src/web/features/x.tsx',
+    code: "export const x = <div {...{ className: 'flex' }} />;",
+    rule: 'rails/klassen',
+  },
+  // klassenrail/AC-5: inline stijl
+  {
+    name: 'klassenrail/AC-5: leeg style-object in features',
+    file: 'src/web/features/x.tsx',
+    code: 'export const x = <div style={{}} />;',
+    rule: 'rails/klassen',
+  },
+  {
+    name: 'klassenrail/AC-5: style met kleur in routes',
+    file: 'src/web/routes/x.tsx',
+    code: "export const x = <div style={{ color: 'red' }} />;",
+    rule: 'rails/klassen',
+  },
+  // klassenrail/AC-6: routes vallen ook onder de rail
+  {
+    name: 'klassenrail/AC-6: typografie in routes',
+    file: 'src/web/routes/x.tsx',
+    code: 'export const x = <div className="text-sm" />;',
+    rule: 'rails/klassen',
+  },
+  // klassenrail/AC-7: alleen layout-tokens mag
+  ...[
+    '<div className="flex flex-col gap-4" />',
+    '<div className="max-w-sm" />',
+    '<div className="md:flex-row w-1/2" />',
+    '<span className="sr-only" />',
+    '<div className="flex min-w-0 flex-col gap-4 pb-4 -mt-2 mx-auto" />',
+    '<Card className="grid grid-cols-2 gap-x-6" />',
+  ].map((jsx) => ({
+    name: `klassenrail/AC-7: layout mag: ${jsx}`,
+    file: 'src/web/features/x.tsx',
+    code: `export const x = ${jsx};`,
+    rule: null,
+  })),
+  // klassenrail/AC-8: buiten het bereik (recepten en tests) mag het
+  ...['src/web/ui/x.tsx', 'src/core/web/ui/x.tsx', 'src/web/features/x.test.tsx'].map((file) => ({
+    name: 'klassenrail/AC-8: buiten het bereik mag',
+    file,
+    code: 'export const x = <div className="text-sm" style={{}} />;',
+    rule: null,
+  })),
 ];
 
 describe('rails in eslint.config.js', () => {

@@ -241,6 +241,51 @@
       "branch": "docs/adr-0036-geaccepteerd",
       "status": "geaccepteerd",
       "paths": []
+    },
+    {
+      "file": "docs/specs/klassenrail.md",
+      "digest": "32248ecfa3f806564e682097d14508f2dbce333a5c27fcb98fd7445dfdcc13e6",
+      "repository": "BramLambertJansen/template",
+      "branch": "claude/project-thread-7qck53",
+      "status": "goedgekeurd",
+      "paths": [
+        "eslint.config.js",
+        ".claude/rules/web.md",
+        "docs/framework.md",
+        "scripts/kit/templates/page.tsx.tmpl"
+      ]
+    },
+    {
+      "file": "docs/specs/semantische-tokens.md",
+      "digest": "968686218b664c273e8b2933d8fe80a323b650896b4da600ca02e1fa325ada28",
+      "repository": "BramLambertJansen/template",
+      "branch": "claude/tokens-typography-density",
+      "status": "goedgekeurd",
+      "paths": [
+        "src/core/web/styles/semantic.css",
+        "src/core/web/styles/components.css",
+        "src/core/web/styles/index.css"
+      ]
+    },
+    {
+      "file": "docs/specs/semantische-tokens.md",
+      "digest": "968686218b664c273e8b2933d8fe80a323b650896b4da600ca02e1fa325ada28",
+      "repository": "BramLambertJansen/template",
+      "branch": "claude/tokens-status-layers-motion",
+      "status": "goedgekeurd",
+      "paths": [
+        "src/core/web/styles/primitives.css",
+        "src/core/web/styles/semantic.css",
+        "src/core/web/styles/components.css",
+        "src/core/web/styles/index.css",
+        "src/core/web/ui/status-badge.tsx",
+        "src/core/web/ui/notice.tsx",
+        "src/core/web/ui/combobox.tsx",
+        "src/core/web/ui/dropdown-menu.tsx",
+        "src/core/web/ui/toast.tsx",
+        "src/core/web/ui/app-shell.tsx",
+        "src/core/web/ui/dialog.tsx"
+      ]
     }
   ]
 }

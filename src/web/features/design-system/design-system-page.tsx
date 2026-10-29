@@ -40,6 +40,8 @@ import { ComponentIndex } from './component-index.tsx';
 import { AdditionalExamples } from './additional-examples.tsx';
 import { FormStateExamples } from './form-state-examples.tsx';
 import { UiBasicsExamples } from './ui-basics-examples.tsx';
+import { TypographyExamples } from './typography-examples.tsx';
+import { TokensExamples } from './tokens-examples.tsx';
 
 function RoutedComponentIndex() {
   const { search, setQuery } = useListSearch();
@@ -267,6 +269,8 @@ export function DesignSystemPage() {
         <PageHeader title="Accounts" preview actions={<Button>Account uitnodigen</Button>} />
         <Notice>Uitnodiging verstuurd naar anna@example.test.</Notice>
         <Notice tone="error">Er ging iets mis. Probeer het later opnieuw.</Notice>
+        <Notice tone="success">Wijzigingen opgeslagen.</Notice>
+        <Notice tone="warning">Je sessie verloopt over 5 minuten.</Notice>
       </Section>
 
       <Section id="example-toast" title="Toast">
@@ -343,6 +347,8 @@ export function DesignSystemPage() {
       </Section>
       <AdditionalExamples />
       <UiBasicsExamples />
+      <TypographyExamples />
+      <TokensExamples />
       <FormStateExamples />
       <ComboboxExamples />
       <CollectionExamples />

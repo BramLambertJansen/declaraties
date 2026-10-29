@@ -61,7 +61,16 @@ describe('skills', () => {
 
   test('de skills uit de roadmap (zonder release: fase 3)', () => {
     expect(skills.sort()).toStrictEqual(
-      ['migratie', 'nieuw-component', 'nieuw-route', 'nieuw-scherm', 'opleveren', 'security-review', 'spec'].sort(),
+      [
+        'migratie',
+        'nieuw-component',
+        'nieuw-route',
+        'nieuw-scherm',
+        'ontwerp-overnemen',
+        'opleveren',
+        'security-review',
+        'spec',
+      ].sort(),
     );
   });
 

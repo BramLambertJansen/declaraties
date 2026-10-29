@@ -9,6 +9,43 @@ Hier staan wijzigingen die van belang zijn bij het gebruiken of bijwerken van de
 - `pnpm check:app-init` (spec `docs/specs/app-init-proef.md`, leerpunt #334): draait `app:init` op een tijdelijke kopie en daarna de
   snelle suite; verplichte CI-check (`requiredChecks`, `scripts/github-ruleset.sh`: de eigenaar past de ruleset na de merge toe). De
   kopie-, opruim- en git-env-logica van `check:new-resource` staat nu in `scripts/kit/proef-kopie.mjs`.
+
+- Reviewer in Modus UX (spec `docs/specs/ontwerp-overnemen.md`, deel 5b): bij een diff in de UI of `docs/ontwerp/`
+  bekijkt de reviewer, nog steeds alleen lezend, de UX-screenshots op 375 en 1280 px en toetst hij hiërarchie, ritme,
+  consistentie, staten, 44 px, focus, tekst en de referentie uit `docs/ontwerp/<bron>.md`. Screenshots maakt een e2e met
+  `uxScreenshot(page, testInfo, naam)` uit `e2e/support/ux.ts` (skill `nieuw-scherm`, stap 5).
+
+- Ontwerp overnemen (spec `docs/specs/ontwerp-overnemen.md`, deel 5a): skill `ontwerp-overnemen` vertaalt een
+  referentie (HTML-bestand, URL, afbeelding of niets) naar semantische tokens in `theme.css`, een mappingdocument
+  `docs/ontwerp/<bron>.md` (sjabloon `docs/ontwerp/_template.md`) en variantvoorstellen. Het meetscript
+  `node scripts/kit/ontwerp-meten.mjs <bron> --naam <naam> [--js] [--uit <map>]` maakt screenshots op 375 en 1280 px
+  en `stijlen.json` (kleuren in `oklch`, maten in `rem`) in een door git genegeerde map; JavaScript staat standaard uit en
+  externe verzoeken worden geblokkeerd. Lettertypen worden zelf gehost als woff2 met licentie (`docs/ui-kit-basics.md`).
+
+- Tokens vindbaar (deel 3c): `node scripts/kit/feiten.mjs tokens` (ook `--json`) toont per groep (kleur, typografie,
+  dichtheid, lagen, beweging) klasse, standaard, app-waarde uit `theme.css` en `bestand:regel`; onbekende namen in
+  `theme.css` staan onder `onbekend`. Op `/design-system` staat de sectie "Tokens" met de nieuwe catalogus-componenten
+  `TokenSwatch` en `TypeSample` (`src/web/ui`, alleen voor de catalogus).
+
+- Semantische tokens voor typografie en dichtheid (spec `docs/specs/semantische-tokens.md`, deel 3a): lettertype,
+  tekstschaal, gewicht, `--density-space` en `--density-control` in `semantic.css`, te overschrijven in `theme.css`
+  (`docs/ui-kit-basics.md`, "Thema en tokens"). `--control-h` blijft minstens 44 px. Bij een update: `text-xs`,
+  `text-3xl` en groter, `font-bold`, `font-light`, `font-thin` en `font-serif` bestaan niet meer; vervang eigen gebruik.
+
+- Semantische tokens voor status, lagen en beweging (deel 3b): `--success`/`--warning` met voorgrond, `--layer-*`
+  (`z-sticky` … `z-toast`) en `--motion-*` (`duration-fast`/`-normal`, `ease-standard`/`-out`); `StatusBadge` en
+  `Notice` krijgen de tonen `success` en `warning` (`docs/ui-kit-basics.md`, "Thema en tokens"). Bij een update:
+  `ease-in` en `ease-in-out` bestaan niet meer; vervang kale `z-<getal>`/`duration-<getal>` door de tokens.
+
+- Rail `rails/klassen` (spec `docs/specs/klassenrail.md`): in `src/web/features` en `src/web/routes` is `className` een
+  gewone string met alleen layout-utilities; kleur, typografie, arbitrary values, `!`, `dark:` en `style` geven een
+  lintfout die naar `Text`/`Heading`/`Stack`/`Inline` verwijst. Bij een update: verplaats eigen stijlklassen uit
+  schermen naar een component of variant in `src/web/ui`.
+
+- Typografie- en layoutcomponenten `Text`, `Heading`, `Stack` en `Inline` in de kit (spec
+  `docs/specs/typografie-en-layout.md`, gebruik in `docs/ui-kit-basics.md`). `Section` gebruikt `Heading`; de sessietabel
+  en de accountlijst halen hun typografie nu uit `Text` in plaats van utility-klassen.
+
 - Ontwikkelgemakken in de werkstraat: SessionStart toont op een featurebranch de open PR met checks en reviewstatus;
   de Stop-hook herinnert één keer aan docs-drift; na een bewerkte migratie volgt de hint `pnpm db:generate`; pre-push
   waarschuwt bij een achterstand op `origin/main`; een commit-msg-hook dwingt conventional commits af; Claude Code geeft een
@@ -281,6 +318,12 @@ Hier staan wijzigingen die van belang zijn bij het gebruiken of bijwerken van de
 - Beslisroute (ADR 0038): de merge door de eigenaar is de acceptatie. Architect en hoofdsessie schrijven de eigenaarstatus in het voorstel; `check-document-status` laat zonder record en zonder web-flow een besluit-PR met meerdere ADR's en specs toe, en guard en rolhek weigeren een ADR met eigenaarstatus terug naar `voorgesteld` of met nieuwe inhoud (`rails/hooks/lib/document-state.mjs`, `scripts/kit/lane.mjs`).
 
 ### Opgelost
+
+- `scripts/kit/ontwerp-meten.mjs` meet na een redirect binnen de origin (bijv. `/docs` → `/docs/`) de juiste pagina:
+  het script volgt de keten eerst zelf en navigeert direct naar de eind-URL (`startUrl`), zodat relatieve stylesheets
+  en afbeeldingen van het goede pad komen. Verlaat de keten de origin, dan stopt het meten (exitcode 1). Een
+  redirectlus van meer dan 20 stappen staat nu onder `geblokkeerd`, en WebRTC-UDP buiten de route om staat uit
+  (`--force-webrtc-ip-handling-policy`).
 
 - `scripts/runner.sh` vergelijkt de host-bestanden met de merge-base van `main` zoals de remote die meldt
   (`git ls-remote origin refs/heads/main`), niet met de lokale ref `origin/main`; een omgebogen lokale ref opent de runner
