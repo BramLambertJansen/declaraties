@@ -317,8 +317,8 @@ Hier staan wijzigingen die van belang zijn bij het gebruiken of bijwerken van de
 ### Opgelost
 
 - `scripts/kit/ontwerp-meten.mjs` meet na een redirect binnen de origin (bijv. `/docs` → `/docs/`) de juiste pagina:
-  de browser gaat zelf naar de eind-URL, zodat relatieve stylesheets en afbeeldingen van het goede pad komen
-  (`routeAntwoord`). Een redirectlus van meer dan 20 stappen staat nu onder `geblokkeerd`, en WebRTC-UDP buiten de route
+  het script volgt de keten eerst zelf en navigeert direct naar de eind-URL (`startUrl`), zodat relatieve stylesheets
+  en afbeeldingen van het goede pad komen. Verlaat de keten de origin, dan stopt het meten (exitcode 1). Een redirectlus van meer dan 20 stappen staat nu onder `geblokkeerd`, en WebRTC-UDP buiten de route
   om staat uit (`--force-webrtc-ip-handling-policy`).
 
 - `scripts/runner.sh` vergelijkt de host-bestanden met de merge-base van `main` zoals de remote die meldt

@@ -298,17 +298,16 @@ export async function volgRedirects(bron, url, haal) {
 }
 
 /**
- * Wat de route met de uitkomst van `volgRedirects` doet. Eindigt de keten op een andere URL, dan gaat de browser daar
- * zelf heen (een 302): anders lossen relatieve URL's op tegen de oorspronkelijke URL en meet het script de verkeerde
- * stylesheets. De eind-URL komt daarna opnieuw langs de route.
- * @param {string} verzoekUrl
- * @param {{ toegestaan: boolean, antwoord?: unknown, url?: string }} uitkomst
- * @returns {{ soort: 'afbreken' } | { soort: 'doorverwijzen', url: string } | { soort: 'leveren' }}
+ * De URL waar de pagina werkelijk staat: de redirectketen vanaf de bron, onder eigen controle. `laadBron` navigeert
+ * daar direct heen, zodat relatieve URL's tegen de goede map oplossen. Een 3xx naar de browser kan niet: een gevolgde
+ * redirect komt niet langs de route. Verlaat de keten de origin of raakt hij de limiet, dan een fout (exitcode 1).
+ * @param {string} bron
+ * @param {(url: string) => Promise<Stap>} haal
  */
-export function routeAntwoord(verzoekUrl, uitkomst) {
-  if (!uitkomst.toegestaan || uitkomst.antwoord === undefined) return { soort: 'afbreken' };
-  if (uitkomst.url !== undefined && uitkomst.url !== verzoekUrl) return { soort: 'doorverwijzen', url: uitkomst.url };
-  return { soort: 'leveren' };
+export async function startUrl(bron, haal) {
+  const uitkomst = await volgRedirects(bron, bron, haal);
+  if (uitkomst.toegestaan && uitkomst.url !== undefined) return uitkomst.url;
+  throw new Error(`Bron verwijst buiten de origin: ${uitkomst.geblokkeerd.join(', ')}`);
 }
 
 /**
@@ -323,8 +322,7 @@ export function chromiumArgs(bron) {
 
 /**
  * Een https-verzoek met de hele redirectketen onder eigen controle (Playwright onderschept een gevolgde redirect niet):
- * elke stap via `route.fetch` zonder redirect. Eindigt de keten op dezelfde URL, dan gaat het antwoord naar de browser;
- * anders een 302 naar de eind-URL (`routeAntwoord`).
+ * elke stap via `route.fetch` zonder redirect, en alleen het laatste antwoord gaat naar de browser.
  * @param {import('@playwright/test').Route} route
  * @param {string} bron
  * @param {Set<string>} geblokkeerd
@@ -335,9 +333,7 @@ async function haalOp(route, bron, geblokkeerd) {
     return { status: response.status(), headers: response.headers(), response };
   });
   for (const url of uitkomst.geblokkeerd) geblokkeerd.add(url);
-  const antwoord = routeAntwoord(route.request().url(), uitkomst);
-  if (antwoord.soort === 'doorverwijzen') return route.fulfill({ status: 302, headers: { location: antwoord.url } });
-  if (antwoord.soort === 'afbreken' || uitkomst.antwoord === undefined) return route.abort('blockedbyclient');
+  if (!uitkomst.toegestaan || uitkomst.antwoord === undefined) return route.abort('blockedbyclient');
   return route.fulfill({ response: uitkomst.antwoord.response });
 }
 
@@ -379,8 +375,14 @@ async function routeer(context, bron, { js, geblokkeerd }) {
 export async function laadBron(page, bron, { js }) {
   /** @type {Set<string>} */
   const geblokkeerd = new Set();
-  await routeer(page.context(), bron, { js, geblokkeerd });
-  await page.goto(bron.startsWith('https:') ? bron : pathToFileURL(bron).href, { waitUntil: 'load' });
+  const context = page.context();
+  await routeer(context, bron, { js, geblokkeerd });
+  const haal = async (/** @type {string} */ url) => {
+    const response = await context.request.fetch(url, { maxRedirects: 0 });
+    return { status: response.status(), headers: response.headers() };
+  };
+  const start = bron.startsWith('https:') ? await startUrl(bron, haal) : pathToFileURL(bron).href;
+  await page.goto(start, { waitUntil: 'load' });
   return {
     get geblokkeerd() {
       return [...geblokkeerd].sort();
