@@ -1,5 +1,5 @@
 ---
-status: voorstel # voorstel | goedgekeurd | gebouwd | vervallen — de architect zet de status in het voorstel, de merge door de eigenaar is het besluit (ADR 0046); gebouwd: # #<PR>; gevalideerd: <sha> (pnpm docs:status)
+status: goedgekeurd # voorstel | goedgekeurd | gebouwd | vervallen — de architect zet de status in het voorstel, de merge door de eigenaar is het besluit (ADR 0046); gebouwd: # #<PR>; gevalideerd: <sha> (pnpm docs:status)
 namespace: ontwerp-overnemen
 ---
 
@@ -332,7 +332,10 @@ Elk AC-id staat in de testnaam. "Teksttoets" betekent: de test leest het bestand
 - Reviewer per PR op `git diff origin/main...HEAD`; in 5b ook een droge UX-review van een bestaand scherm als proef. De
   eigenaar zet het label `gate-wijziging`, keurt goed en merget.
 
-## Open vragen
+## Besluiten
+
+De eigenaar heeft op 2026-10-29 alle aanbevelingen hieronder overgenomen (OV-1 t/m OV-6). De gekozen optie is steeds
+de aanbeveling.
 
 - **OV-1** — Waar staan screenshots en meetuitvoer? Opties: (a) niet in de repo: `.runner-output/ontwerp/<naam>/` en
   `.runner-output/test-results/`, met in het mappingdocument alleen herkomst en datum; (b) gecommit onder `docs/ontwerp/`.
