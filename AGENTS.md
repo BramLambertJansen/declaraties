@@ -81,6 +81,8 @@ vangen het later toch, en dan is het werk verloren. Uitzonderingen staan limitat
 
 ## Werkafspraken
 
+- Moet de gebruiker terminalcommando's uitvoeren, bij setup of later: geef genummerde stappen met terminal, werkmap en verwachte uitkomst. Bundel wat achtereen kan in één kopieerbaar codeblok; splits alleen bij interactie, controle of een andere terminal. Geen uitvoercommando's in lopende tekst, geen prompttekens; vul bekende waarden in.
+- Heb je informatie, een keuze of bevestiging van de gebruiker nodig, open dan meteen de beschikbare interactieve vraagprompt; wacht niet tot de gebruiker daarom vraagt. Stel een concrete vraag, met korte antwoordopties waar zinvol, en bundel samenhangende vragen. Verstop geen vragen in uitleg of voortgangstekst. Is voor die vraag geen geschikte vraagtool beschikbaar, meld dat kort en stel de vraag duidelijk apart. Dit geldt bij setup én later; vraag geen bevestiging voor al toegestaan werk.
 - Ontbreekt een beslissing (bedrag, tekst, randgeval, providerkeuze): vraag het, vul geen aanname in.
 - Raakt een wijziging gedrag, API, configuratie of conventies, werk dan de relevante doc bij in dezelfde PR (kort, `bestand:regel` in plaats van gekopieerde code). `pnpm check:docs-drift` waarschuwt als `src/` wijzigt zonder `docs/` of `CHANGELOG.md`.
 - Nieuwe feature/pagina/interactie, migratie, route of permissie: architect en spec (`docs/specs/_template.md`), bouwen pas bij `status: goedgekeurd`; passende spec hergebruiken.

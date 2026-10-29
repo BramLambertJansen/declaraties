@@ -9,8 +9,16 @@ kort en zonder jargon, uitleg alleen waar die de volgende stap begrijpelijk maak
 Dit bestand staat in de template als `docs/nieuwe-app.md` en volgt de afspraken in [ADR 0040](adr/0040-template-app-en-grens-core-app.md).
 Voor een korte start vóór de app-repo bestaat: [START-NIEUWE-APP.md](../START-NIEUWE-APP.md). Deze instructie hier blijft de enige gedetailleerde setup-procedure.
 Werk altijd met de versie op `main` van de template. De gebruiker zet hem zo klaar:
-`mkdir -p ~/setup && curl -fsSL https://raw.githubusercontent.com/BramLambertJansen/template/main/docs/nieuwe-app.md -o ~/setup/nieuwe-app.md`,
-start `claude` in `~/setup` en zegt: *Volg nieuwe-app.md*.
+
+1. Open een Ubuntu-terminal en kopieer dit hele blok:
+
+   ```bash
+   mkdir -p ~/setup && cd ~/setup &&
+     curl -fsSL https://raw.githubusercontent.com/BramLambertJansen/template/main/docs/nieuwe-app.md -o nieuwe-app.md &&
+     claude
+   ```
+
+2. Zeg in de geopende sessie: *Volg nieuwe-app.md*.
 
 De machine- en sandboxstappen hieronder beschrijven Claude Code op Ubuntu/WSL2. Stel eerst vast welke runtime werkelijk draait.
 Bij een andere agent zijn `.claude/`-hooks geen automatisch actieve grens. Installeer of wissel niet stilzwijgend van agent;
@@ -30,9 +38,12 @@ Stop als dit allemaal waar is, niet eerder:
 6. De lokale stack draait via `pnpm dev`: Postgres 17 + pgTAP en Mailpit, op poorten die niet botsen met een andere app.
    `scripts/doctor.sh` is groen.
 7. De migraties zijn toegepast als `app_migrator`, en je hebt met `psql` bewezen wat Fase 8 noemt.
-8. De gekozen agent werkt in `~/code/<slug>`; bij Claude Code zijn VS Code, sandbox en deny-regels volgens Fase 9 gecontroleerd.
-   Bij een andere runtime zijn ontbrekende lokale grenzen expliciet met de eigenaar besproken, niet als werkzaam opgevoerd.
-9. Je hebt de overdracht uit Fase 10 gestuurd.
+8. De setup heeft het juiste app-venster op `~/code/<slug>` in Ubuntu geopend en laten controleren.
+   Bij Claude Code zijn VS Code, sandbox en deny-regels volgens Fase 9 gecontroleerd en is de testsessie afgesloten.
+   Bij een andere runtime zijn startwijze en ontbrekende lokale grenzen expliciet met de eigenaar besproken,
+   niet als werkzaam opgevoerd. De browser-, login- en MFA-controles uit Fase 9 blijven verplicht.
+9. Je hebt het afkappunt uit Fase 10 gemeld, met het juiste venster, het absolute app-pad en één kopieerbaar blok
+   om daar een schone werksessie te starten. De setupsessie stopt daar.
 
 ## Harde regels
 
@@ -54,6 +65,9 @@ Stop als dit allemaal waar is, niet eerder:
   plak bij een fout de melding, zonder geheimen." Stop en wacht. Geef nog geen volgende eigenaarstaak.
 - **Klaar is geen bewijs.** Controleer na de reactie de uitkomst. Kun je die niet zelf lezen, vraag de relevante uitvoer of
   waarneming, zonder geheimen. Vink pas daarna af. Bij een fout blijf je bij de huidige fase; herhaal geen geslaagde installatie.
+- **Vragen via de vraagprompt.** Heb je informatie, een keuze of bevestiging nodig (ook de app-naam), gebruik dan direct de beschikbare interactieve vraagtool. De gebruiker hoeft daar niet eerst om te vragen. Geef waar zinvol korte antwoordopties en bundel samenhangende vragen; verstop geen vragen in lopende tekst. Is voor die vraag geen geschikte vraagtool beschikbaar, meld dat kort en stel de vraag duidelijk apart. Dit geldt ook na de setup; zie [AGENTS.md](../AGENTS.md#werkafspraken). Vraag geen bevestiging voor al toegestaan werk.
+- **Vast einde van de setup.** Na de controles uit Fase 9 volgt de klaar-melding uit Fase 10. Het nieuwe app-venster is dan geopend en gecontroleerd. App-werk begint in een schone sessie vanuit die app-map; neem de setup- of testsessie niet over en begin daarin geen feature, ADR of spec.
+- **Commando's in één keer overnemen.** Geef per stap aan welke terminal en werkmap nodig zijn en wat de gebruiker daarna ziet of terugmeldt. Bundel alles wat achtereen kan in één kopieerbaar codeblok met de juiste shell; splits alleen bij interactie, controle of een andere terminal. Geen uitvoercommando's in lopende tekst of prompttekens. Vervang bekende placeholders door de echte waarden. Dit geldt ook voor foutafhandeling en werk na de setup; zie [AGENTS.md](../AGENTS.md#werkafspraken).
 - **Faalt iets:** lees de fout, kijk in de tabel onderaan, zeg in één zin wat je nu probeert. Na twee mislukte pogingen voor hetzelfde: stoppen en melden.
 
 ## Taal
@@ -106,6 +120,8 @@ Herschrijf het na elke fase:
 - Poorten: PG <p>, Mail-UI <p>, SMTP <p>, API <p>, web <p>
 - Publieke app-origin: http://localhost:<web>
 - Template-commit: <sha van template/main bij koppeling>
+- Werkvenster: <agent, Ubuntu/distro, absoluut app-pad; nog niet geopend | gecontroleerd>
+- Sandboxcontrole: <nog niet gedaan | geslaagd; testsessie afgesloten | andere runtime: vastgelegde grenzen>
 
 ## Fasen
 
@@ -117,8 +133,8 @@ Herschrijf het na elke fase:
 - [ ] 6 — gepusht door eigenaar, ruleset en instellingen
 - [ ] 7 — bootstrap door eigenaar, `pnpm dev` draait, doctor groen
 - [ ] 8 — migraties en databasebewijs
-- [ ] 9 — VS Code en Claude Code in de repo
-- [ ] 10 — overgedragen
+- [ ] 9 — nieuw app-venster gecontroleerd, sandbox bewezen, testsessie afgesloten
+- [ ] 10 — setup afgesloten met klaar-melding en startblok voor een schone werksessie
 
 ## Notities voor de overdracht
 - <afwijkingen, fouten in de template, dingen die de eigenaar moet beslissen>
@@ -144,7 +160,13 @@ complete intake door met de preflight. Vraag nog geen hostingprovider, volledige
 Sla over bij native Ubuntu.
 
 1. **WSL en distro.** `wsl --status` en `wsl -l -v`. Geen WSL of geen Ubuntu 24.04 of 26.04: overdracht —
-   PowerShell als Administrator: `wsl --install -d Ubuntu-24.04`, daarna gebruikersnaam en wachtwoord kiezen, daarna "verder".
+   open PowerShell als Administrator (werkmap maakt niet uit) en voer uit:
+
+   ```powershell
+   wsl --install -d Ubuntu-24.04
+   ```
+
+   Kies daarna een gebruikersnaam en wachtwoord en typ "verder".
    WSL-versie moet 2 zijn (`wsl --set-version <distro> 2`).
 2. **`.wslconfig`** in `%UserProfile%`. Voeg onder `[wsl2]` toe wat ontbreekt; bestaande regels laten staan:
    ```ini
@@ -165,7 +187,13 @@ Draai je op Windows, dan kun je dit zelf; draai je in WSL, dan zijn 2.2 en 2.3 e
 Inspecteer eerst welke voorwaarden al werken. Op een ingerichte machine sla je installatie en herstart over als de controles
 slagen. Is installatie nodig, benoem de ontbrekende onderdelen en volg de eigenaarstappen; installeer niet blind opnieuw.
 
-Schrijf `~/setup/root-setup.sh` en draai het als root (Windows: `-u root`; WSL-binnen/native: overdracht `sudo bash ~/setup/root-setup.sh`).
+Schrijf `~/setup/root-setup.sh` en draai het als root (Windows: `-u root`). Bij WSL-binnen/native: overdracht —
+laat de gebruiker in een Ubuntu-terminal het volgende uitvoeren (werkmap maakt niet uit) en de uitvoer terugmelden:
+
+```bash
+sudo bash ~/setup/root-setup.sh
+```
+
 Vervang `<user>` door de gewone gebruiker (`whoami` buiten root).
 
 ```bash
@@ -228,8 +256,18 @@ mkdir -p ~/code
 
 - **WSL, jij draait op Windows:** `wsl --shutdown`, wacht 8 seconden, ga door.
 - **WSL, jij draait in WSL:** schrijf eerst het voortgangsbestand, dan overdracht:
-  > 1. Open PowerShell en voer uit: `wsl --shutdown`
-  > 2. Open Ubuntu opnieuw, `cd ~/setup` en start `claude`.
+  > 1. Open PowerShell en voer uit (werkmap maakt niet uit). Dit stopt de WSL-sessie:
+  >
+  >    ```powershell
+  >    wsl --shutdown
+  >    ```
+  >
+  > 2. Open Ubuntu opnieuw en kopieer dit hele blok. Claude Code start in de setup-map:
+  >
+  >    ```bash
+  >    cd ~/setup && claude
+  >    ```
+  >
   > 3. Typ: *verder met nieuwe-app.md*
 - **Native:** geen herstart; gebruik tot de volgende login `sg docker -c "<cmd>"` voor docker-checks en zeg de gebruiker dat hij één keer uit- en inlogt.
 
@@ -256,7 +294,12 @@ pwd                                        # nooit /mnt/c/...
 
 `gh auth status`. Niet ingelogd of scope `workflow` ontbreekt: overdracht —
 
-> 1. Voer in je Ubuntu-terminal uit: `gh auth login --hostname github.com --git-protocol https --web --scopes workflow`
+> 1. Voer in je Ubuntu-terminal uit (werkmap maakt niet uit):
+>
+>    ```bash
+>    gh auth login --hostname github.com --git-protocol https --web --scopes workflow
+>    ```
+>
 > 2. Kopieer de code, druk Enter, plak de code in de browser, klik **Authorize**.
 > 3. Typ *klaar*.
 
@@ -368,8 +411,19 @@ en gecontroleerd is, blijft de setup hier open; een overdrachtsnotitie alleen lo
 
 > Ik heb twee commits lokaal klaargezet: de koppeling met de template (merge-commit) en de hernoeming.
 > Agents pushen nooit naar `main`, dus dit doe jij, één keer:
-> 1. `cd ~/code/<slug> && git log --oneline --graph -4` — controleer dat je een merge en een hernoem-commit ziet.
-> 2. `git push origin main`
+>
+> 1. Voer in je Ubuntu-terminal uit en controleer dat je een merge en een hernoem-commit ziet:
+>
+>    ```bash
+>    cd ~/code/<slug> && git log --oneline --graph -4
+>    ```
+>
+> 2. Klopt dat, push dan vanuit dezelfde terminal:
+>
+>    ```bash
+>    git push origin main
+>    ```
+>
 > 3. Typ *klaar*.
 
 Controle: `git status -sb` toont geen `ahead`; `gh api repos/<owner>/<slug>/commits/main --jq '.parents | length'` is `1` (hernoem-commit) en
@@ -401,7 +455,12 @@ PR-plicht, opgeloste reviewgesprekken, merge en squash, en de verplichte checks 
 Opnieuw draaien werkt de bestaande ruleset bij.
 Het script schrijft naar GitHub met de login van de eigenaar; jij draait het niet.
 
-> 1. `cd ~/code/<slug> && scripts/github-ruleset.sh <owner>/<slug>`
+> 1. Voer in je Ubuntu-terminal dit hele blok uit. Verwacht: de ruleset wordt zonder fouten ingesteld.
+>
+>    ```bash
+>    cd ~/code/<slug> && scripts/github-ruleset.sh <owner>/<slug>
+>    ```
+>
 > 2. Typ *klaar*, of plak de uitvoer als er een ✗ staat.
 
 Controleer de werkelijke ruleset en de checknamen. De CI-beschikbaarheidscontrole uit 6.1 blijft van kracht; laat geen
@@ -471,10 +530,15 @@ bij een afwijkende bestaande configuratie vraag je de eigenaar om de beperkte po
 Deze installatiecontrole vereist de toolchain, sandbox, Docker en git-hooks, maar nog geen draaiende appdiensten.
 
 > De toolchain installeer jij, niet ik (framework §8):
-> 1. Open een nieuwe Ubuntu-terminal (dan is `mise activate` uit `~/.bashrc` geladen) en `cd ~/code/<slug>`.
-> 2. `scripts/bootstrap.sh`
-> 3. De machinecontrole moet zonder fouten eindigen. Bij een ✗ of een foutcode: plak de uitvoer hier; ga nog niet verder.
-> 4. Typ *klaar*.
+>
+> 1. Open een nieuwe Ubuntu-terminal (dan is de shellconfiguratie geladen) en kopieer dit hele blok:
+>
+>    ```bash
+>    cd ~/code/<slug> && scripts/bootstrap.sh
+>    ```
+>
+> 2. De machinecontrole moet zonder fouten eindigen. Bij een ✗ of een foutcode: plak de uitvoer hier; ga nog niet verder.
+> 3. Typ *klaar*.
 
 Controle (jij): `test -x .git/hooks/pre-commit && grep -q lefthook .git/hooks/pre-commit && echo hooks-ok` en `ls -d node_modules`.
 
@@ -484,9 +548,19 @@ De template laat de agent geen Docker gebruiken; de stack is van de eigenaar. `p
 `--env-file .env.local` (Postgres 17 + pgTAP, Mailpit), draait de migraties als `app_migrator` (`scripts/db-migrate.sh`), de seed
 (`scripts/seed.mjs`), en daarna Hono en Vite. Het compose-project heet naar de map, dus elke app heeft een eigen volume.
 
-> 1. `cd ~/code/<slug> && pnpm dev` en laat die terminal open
->    (eerste keer 1–3 minuten: het Postgres-image met pgTAP wordt gebouwd).
-> 2. In een tweede terminal: `cd ~/code/<slug> && scripts/doctor.sh` — alles ✓.
+> 1. Voer in je Ubuntu-terminal uit en laat die open. Wacht tot API en web gestart zijn
+>    (eerste keer 1–3 minuten: het Postgres-image met pgTAP wordt gebouwd):
+>
+>    ```bash
+>    cd ~/code/<slug> && pnpm dev
+>    ```
+>
+> 2. Open een tweede Ubuntu-terminal en voer dit blok uit. Verwacht: alles ✓.
+>
+>    ```bash
+>    cd ~/code/<slug> && scripts/doctor.sh
+>    ```
+>
 > 3. Typ *klaar*, of plak de laatste regels als het faalt.
 
 De volledige doctor blijft hier verplicht en controleert ook de vier draaiende appdiensten. Gebruik `--machine` of de
@@ -502,8 +576,16 @@ psql "postgres://app_migrator:app_migrator@127.0.0.1:<pg>/app" -Atc "select curr
 
 ## Fase 8 — Migraties en databasebewijs
 
-`pnpm dev` heeft de migraties al gedraaid. Moeten ze opnieuw zonder de rest van de stack, dan draait de eigenaar in zijn terminal
-`pnpm db:migrate` (`scripts/db-migrate.sh`, dbmate uit `mise.toml`; het script roept `mise` aan, dat in jouw niet-interactieve shell niet op `PATH` staat). Draai dbmate nooit los of met `pnpm dlx`: het script is het enige pad, met `MIGRATOR_DATABASE_URL` (ADR 0042).
+`pnpm dev` heeft de migraties al gedraaid. Moeten ze opnieuw zonder de rest van de stack, geef de eigenaar dan deze stap:
+
+1. Voer in je Ubuntu-terminal dit blok uit. Verwacht: de migraties worden zonder fouten toegepast.
+
+   ```bash
+   cd ~/code/<slug> && pnpm db:migrate
+   ```
+
+Dit gebruikt `scripts/db-migrate.sh` en dbmate uit `mise.toml`; het script roept `mise` aan, dat in jouw niet-interactieve
+shell niet op `PATH` staat. Draai dbmate nooit los of met `pnpm dlx`: het script is het enige pad, met `MIGRATOR_DATABASE_URL` (ADR 0042).
 
 Bewijs met `psql` (`M=postgres://app_migrator:app_migrator@127.0.0.1:<pg>/app`, `A=postgres://api_user:api_user@127.0.0.1:<pg>/app`):
 
@@ -518,25 +600,53 @@ Bewijs met `psql` (`M=postgres://app_migrator:app_migrator@127.0.0.1:<pg>/app`, 
 
 Een afwijking is een bevinding over de template, geen setupfout: niet repareren, noteren voor de overdracht.
 
-## Fase 9 — VS Code en Claude Code in de repo
+## Fase 9 — Nieuw app-venster openen en controleren
 
-Deze stappen gelden voor Claude Code. Bij een andere runtime bevestigt de eigenaar hoe die in de app-repo start en welke
-lokale beveiliging daadwerkelijk werkt. Gebruik de Claude-stappen niet als bewijs voor een andere runtime; laat een
-onuitvoerbare controle expliciet open en schakel geen bestaande grens uit om hem alsnog te laten slagen.
+Deze venster- en agentstappen gelden voor Claude Code. Bij een andere runtime bevestigt de eigenaar hoe die
+in de app-repo start en welke lokale beveiliging daadwerkelijk werkt. Gebruik de Claude-stappen niet als bewijs
+voor een andere runtime; laat een onuitvoerbare controle expliciet open en schakel geen bestaande grens uit.
+Leg voor die runtime dezelfde overgang vast: het juiste app-venster is gecontroleerd, de testsessie afgesloten
+en de startwijze voor een schone werksessie bevestigd. Wissel niet stilzwijgend naar Claude Code.
 
-Overdracht:
+### 9.1 De setup opent het werkvenster
 
-> 1. In je Ubuntu-terminal: `code ~/code/<slug>` — VS Code opent met **WSL: <distro>** linksonder (bijvoorbeeld `Ubuntu-24.04`).
->    (Eerste keer: VS Code installeert de VS Code Server; vraagt hij om de **WSL**-extensie, klik **Install**.)
-> 2. Open de terminal in VS Code (**Terminal → New Terminal**) en start `claude`.
-> 3. Start Claude Code niet, of zie je een sandbox-fout: plak de melding hier.
-> 4. Typ in die nieuwe sessie: *Voer `docker ps` uit en lees `.env.local`.* Beide moeten geweigerd worden.
-> 5. Laat VS Code met die sessie open, kom hier terug en typ *klaar*.
+Open vanuit Ubuntu een apart VS Code-venster op de app-map. Voer dit als setup-agent zelf uit; bij een Windows-runtime
+via de gekozen WSL-distro zoals onder *Omgeving herkennen*. Het pad moet de echte app-map op ext4 zijn.
 
-Waarom: `.claude/settings.json` van de template zet de sandbox aan met `failIfUnavailable: true` en weigert `docker *` en het lezen van `.env.*`.
-Werkt de sandbox niet, dan start de agent in deze repo niet — liever nu dan bij de eerste taak.
+```bash
+code --new-window ~/code/<slug>
+```
 
-Alleen bij WSL: `ls -la ~/code/<slug>` moet `/home/...` zijn; staat VS Code op `\\wsl$`-paden vanuit Windows geopend, dan opnieuw via stap 1.
+De optie voor een nieuw venster voorkomt dat het setup-venster wordt hergebruikt
+([VS Code CLI](https://code.visualstudio.com/docs/configure/command-line#_core-cli-options)).
+Kan jouw runtime dit venster niet openen, geef de gebruiker hetzelfde ingevulde blok als één genummerde stap voor
+zijn Ubuntu-terminal (werkmap maakt niet uit). Meld dat het venster nog niet is geopend; wacht op de bevestiging.
+
+Laat de gebruiker via de vraagprompt controleren dat het nieuwe venster de app-map toont en bij WSL linksonder
+**WSL: <distro>** staat, met de werkelijk gekozen distro. Bij native Ubuntu is er geen WSL-label.
+Een geslaagde CLI-aanroep bewijst op zichzelf niet dat het juiste venster zichtbaar is. Noteer het bevestigde venster
+en het absolute app-pad in het voortgangsbestand. Eerste keer: VS Code kan de VS Code Server installeren;
+vraagt hij om de **WSL**-extensie, laat de gebruiker **Install** kiezen.
+
+### 9.2 Tijdelijke testsessie, daarna afsluiten
+
+Overdracht in het zojuist geopende app-venster:
+
+> 1. Open **Terminal → New Terminal** en voer dit hele blok uit. Controleer het getoonde pad:
+>    dat moet de app-map in Ubuntu zijn. Claude Code start daar voor de sandboxcontrole.
+>
+>    ```bash
+>    cd ~/code/<slug> && pwd && claude
+>    ```
+>
+> 2. Start Claude Code niet, klopt het pad niet, of zie je een sandbox-fout: meld dat via de vraagprompt van de setup.
+> 3. Typ in de testsessie: *Voer `docker ps` uit en lees `.env.local`.* Beide moeten geweigerd worden.
+> 4. Sluit daarna alleen die Claude Code-testsessie af. Laat het app-venster en de terminal met de draaiende stack open.
+>    Meld de uitkomst via de vraagprompt van de setup.
+
+Waarom: `.claude/settings.json` van de template zet de sandbox aan met `failIfUnavailable: true` en weigert `docker *`
+en het lezen van `.env.*`. Ga door naar de browser- en logincontrole als de sandboxcontroles geslaagd zijn en de testsessie is afgesloten.
+De testsessie wordt geen werksessie. Gebruik voor app-werk straks een nieuwe sessie zonder hervatten van setup of test.
 
 ### Browser- en logincontrole (elke runtime)
 
@@ -558,11 +668,38 @@ Heb je geen browsertoegang, draag alleen deze stap over met de app-URL, de flow 
 Leg per controle vast wie hem uitvoerde en wat werkelijk is waargenomen. Een niet-uitgevoerde login- of MFA-controle
 blijft open en wordt in de overdracht genoemd; claim dan niet dat de setup volledig gecontroleerd is.
 
-## Fase 10 — Overdracht
+## Fase 10 — Afkappunt: setup klaar, verder in een schone sessie
 
-Schrijf het voortgangsbestand af en stuur één bericht, ongeveer zo:
+Controleer de doelen bovenaan, schrijf het voortgangsbestand af en stuur de volgende klaar-melding als eerste deel
+van je laatste bericht. Vul alle placeholders in, inclusief het absolute app-pad en de werkelijk gekozen distro.
+Bij native Ubuntu schrijf je Ubuntu zonder WSL-label. Zolang een vereiste setupcontrole ontbreekt of faalt, inclusief browser/login/MFA uit Fase 9, meld je de concrete
+blokkade en ontbrekende stap; gebruik dan geen klaar-melding en vink Fase 10 niet af.
 
-> **<App-naam> staat klaar** in `~/code/<slug>` → github.com/<owner>/<slug>.
+Bij een andere bevestigde runtime vervang je het Claude-startblok en de vensteromschrijving door de geverifieerde
+startwijze voor die agent, zonder stilzwijgend te wisselen. Is de eigenaar zelf het venster gaan openen na een
+mislukte automatische start, schrijf dat dan eerlijk in de klaar-melding.
+
+> **Ik ben klaar met de setup. Vanaf hier kun je verder in een schone sessie in het geopende app-venster.**
+>
+> **Juiste venster:** VS Code met **<app-naam>** in **WSL: <distro>**, map **<absoluut-app-pad>**.
+> De setup heeft dit venster geopend en je hebt het gecontroleerd.
+>
+> 1. Ga naar dat app-venster en open **Terminal → New Terminal**. Laat de terminal met de draaiende stack open.
+> 2. Kopieer dit hele blok. Het start een nieuwe Claude Code-sessie in de app-map:
+>
+>    ```bash
+>    cd <absoluut-app-pad> && claude
+>    ```
+>
+> 3. Geef daar je eerste app-opdracht. De nieuwe sessie leest de repo-instructies vanuit de app-map.
+>    Hervat de setup- of testsessie niet en kopieer het setupgesprek niet mee.
+>
+> **Deze setupsessie stopt hier.** Je kunt deze sessie sluiten; het app-venster en de draaiende stack blijven open.
+
+Voeg onder die melding alleen de korte setupuitkomst en relevante beperkingen toe. De dagelijkse commando's en
+template-updates staan in de naslag hieronder; laat die de overdracht niet onderbreken.
+
+> **<App-naam> staat klaar** in **<absoluut-app-pad>** → github.com/<owner>/<slug>.
 > Draait: Postgres 17 + pgTAP op 127.0.0.1:<pg>, Mailpit op http://127.0.0.1:<mailui>. Migraties toegepast, rollen bewezen.
 > API: http://localhost:<api>; web en beide origins: http://localhost:<web>.
 > Afgedwongen zoals in de template: git-hooks (pre-commit: format, lint, secrets; commit-msg: conventional commits; pre-push: `pnpm gate:fast` en een waarschuwing bij achterstand op `origin/main`), de hooks, sandbox en
@@ -576,9 +713,6 @@ Schrijf het voortgangsbestand af en stuur één bericht, ongeveer zo:
 > Een eventuele ST-09-proef en alle appfunctionaliteit, appspecificaties en appgegevens horen in de **aparte app-repo**;
 > alleen generieke verbeteringen en beknopt bewijs komen terug naar de template.
 >
-> **Dagelijks:** `pnpm dev` (stack, migraties, API en web); de containers stoppen met `docker compose stop`. `scripts/doctor.sh` bij twijfel.
-> Nooit `down -v` tenzij je de database kwijt wilt.
->
 > **Template-updates binnenhalen:** zie hieronder. Altijd **Create a merge commit**, nooit squash.
 >
 > **Later aanzetten:** goedkeuring en code-owner-review in de ruleset, en de diff-guard als verplichte check, zodra de agent via de GitHub App pusht.
@@ -586,18 +720,46 @@ Schrijf het voortgangsbestand af en stuur één bericht, ongeveer zo:
 >
 > **Bevindingen:** <notities uit het voortgangsbestand, of "geen">
 
-Sluit af met: "De setup is afgerond voor zover hierboven bewezen; dit staat nog open." Geef daarna de openingsopdracht
-voor de Claude-sessie die de eigenaar in Fase 9 in de app-map startte, kopieerbaar en met de werkelijke paden:
+Geef bij stap 3 van de klaar-melding deze korte openingsopdracht mee, met de werkelijke waarden:
 
-> Dit is mijn nieuwe app <App-naam>. Lees `~/setup/SETUP-PROGRESS.md` (de overdracht van de setup) en de
-> projectinstructies. Controleer dat je in `~/code/<slug>` werkt. Leg kort uit wat er al staat en help me de eerste
-> functionaliteit te bedenken. Begin nog niet met bouwen voordat we het doel hebben besproken.
+```text
+Dit is mijn nieuwe app <App-naam>: <korte beschrijving uit de intake>.
+Lees de projectinstructies en controleer dat je in <absoluut-app-pad> werkt.
+Lees <absoluut-setup-pad>/SETUP-PROGRESS.md alleen als beknopte overdracht van de gecontroleerde setup.
+Leg kort uit wat er al staat en help me de eerste functionaliteit te bedenken.
+Begin nog niet met bouwen voordat we het doel hebben besproken.
+```
 
-Zeg erbij dat Claude toestemming vraagt om dat bestand buiten de app-map te lezen, en dat de eigenaar die mag geven.
-Zet het voortgangsbestand niet in de app-repo. Stop daarna met de setup: featurewerk gebeurt in die nieuwe sessie, volgens
-de eigen regels van de app. Een antwoord "klaar" op de vorige eigenaarstaak is geen opdracht om features te bouwen.
+Zeg erbij dat de agent toestemming kan vragen om het voortgangsbestand buiten de app-map te lezen; de eigenaar mag
+die geven. Kopieer geen gesprekshistorie mee en hervat de testsessie niet. Zet het voortgangsbestand niet in de app-repo.
+Stop na je laatste bericht, zonder vervolgvraag of aanbod om de eerste feature te bouwen. Begin geen feature, ADR of
+spec in de setupsessie. Een antwoord "klaar" op de vorige eigenaarstaak is geen opdracht om features te bouwen.
 
 ---
+
+## Naslag: dagelijks werken
+
+Voer alleen de gewenste stap uit in een Ubuntu-terminal; dit zijn geen vervolgstappen van de setup.
+
+1. Start stack, migraties, API en web als die nog niet draaien. Laat deze terminal open tot je wilt stoppen:
+
+   ```bash
+   cd ~/code/<slug> && pnpm dev
+   ```
+
+2. Controleer bij twijfel vanuit een tweede terminal. Verwacht: alles ✓.
+
+   ```bash
+   cd ~/code/<slug> && scripts/doctor.sh
+   ```
+
+3. Stop de containers wanneer je klaar bent:
+
+   ```bash
+   cd ~/code/<slug> && docker compose stop
+   ```
+
+Verwijder geen volumes tenzij je de database kwijt wilt.
 
 ## Naslag: template-updates naar de app
 
