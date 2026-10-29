@@ -26,6 +26,24 @@ import {
   type Werkmap,
 } from './proef-fixture';
 
+const escapeUnsafeJsLiteral = (str: string): string =>
+  str.replace(/[<>\/\u2028\u2029]/g, (ch) => {
+    switch (ch) {
+      case '<':
+        return '\\u003C';
+      case '>':
+        return '\\u003E';
+      case '/':
+        return '\\u002F';
+      case '\u2028':
+        return '\\u2028';
+      case '\u2029':
+        return '\\u2029';
+      default:
+        return ch;
+    }
+  });
+
 // check:app-init (docs/specs/app-init-proef.md): app:init op een tijdelijke kopie, daarna de snelle suite in die kopie.
 // Contract van scripts/kit/check-app-init.mjs voor deze tests:
 //   export async function draaiProef(bron: string, scripts: readonly string[], opties?: { bewaar?: boolean }): Promise<number>
@@ -241,8 +259,8 @@ describe('opruimen', () => {
         probes: {
           'hang.mjs': [
             "import { writeFileSync } from 'node:fs';",
-            `writeFileSync(${JSON.stringify(marker)}, 'x');`,
-            `setTimeout(() => { writeFileSync(${JSON.stringify(laat)}, 'x'); }, 2_000);`,
+            `writeFileSync(${escapeUnsafeJsLiteral(JSON.stringify(marker))}, 'x');`,
+            `setTimeout(() => { writeFileSync(${escapeUnsafeJsLiteral(JSON.stringify(laat))}, 'x'); }, 2_000);`,
             'setTimeout(() => {}, 15_000);',
             '',
           ].join('\n'),
