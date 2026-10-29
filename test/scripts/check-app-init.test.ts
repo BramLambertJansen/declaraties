@@ -27,7 +27,7 @@ import {
 } from './proef-fixture';
 
 const escapeUnsafeJsLiteral = (str: string): string =>
-  str.replace(/[<>\/\u2028\u2029]/g, (ch) => {
+  str.replace(/[</>\u2028\u2029]/g, (ch) => {
     switch (ch) {
       case '<':
         return '\\u003C';
