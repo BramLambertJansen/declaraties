@@ -1,0 +1,22 @@
+{
+  "scripts/db/schema-source.mjs": {
+    "max-params": {
+      "count": 1
+    }
+  },
+  "src/core/api/route/route.test.ts": {
+    "max-params": {
+      "count": 1
+    }
+  },
+  "src/core/shared/unsafe-cast.ts": {
+    "@typescript-eslint/no-unnecessary-type-parameters": {
+      "count": 1
+    }
+  },
+  "test/scripts/schema-source.test.ts": {
+    "max-params": {
+      "count": 1
+    }
+  }
+}

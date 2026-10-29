@@ -1,0 +1,174 @@
+# gate:fast en gate:slow op elke push naar main en elke PR (framework §10); check:new-resource als eigen job (ADR 0047 punt 9);
+# image bouwt en controleert de productie-image (ADR 0049); secrets draait Betterleaks (PR: eigen commits, anders alle gefetchte refs). CodeQL in codeql.yml.
+# osv-scanner in osv.yml, de diff-guard in guard.yml. Actions op volledige SHA; Renovate werkt ze bij.
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions: read-all
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  gate-fast:
+    name: gate:fast
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          # check:migrations vergelijkt met origin/main; een shallow checkout heeft die niet.
+          fetch-depth: 0
+      - uses: jdx/mise-action@7a4e45a543138629540c9a1616d08632b893e492 # v5.0.1
+        with:
+          version: 2026.9.18
+          install_args: node pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm gate:fast
+      - run: pnpm build
+      # Waarschuwing, geen blokkade: src/ zonder docs/ of CHANGELOG.md (AGENTS.md "Docs in dezelfde PR").
+      - run: pnpm check:docs-drift
+
+  # pgTAP, integratie, e2e met axe en de schema-snapshot tegen een verse database, in de runner van ADR 0044 (compose op de
+  # Docker van de GitHub-runner). Zo zijn de RLS-invarianten een harde grens in CI, niet alleen lokaal (framework §1.2).
+  # De drie trage gates uit gate:slow draaien als parallelle jobs, elk met een eigen verse stack (runner.sh brengt die per
+  # suite toch al opnieuw op); de job gate:slow hieronder houdt de naam van de verplichte check.
+  gate-slow-part:
+    name: gate:slow (${{ matrix.script }})
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        script: [test:db, ui:check, check:snapshot]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: jdx/mise-action@7a4e45a543138629540c9a1616d08632b893e492 # v5.0.1
+        with:
+          version: 2026.9.18
+          install_args: node pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm "$SCRIPT"
+        env:
+          SCRIPT: ${{ matrix.script }}
+      # Playwright-traces en screenshots bij een rode e2e; de runner schrijft ze naar .runner-output.
+      - if: failure()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: runner-output-${{ strategy.job-index }}
+          path: .runner-output/
+          include-hidden-files: true
+          retention-days: 7
+          if-no-files-found: ignore
+
+  # De verplichte check gate:slow (ruleset, scripts/github-ruleset.sh): groen alleen als elk deel geslaagd is. always(),
+  # zodat een rood, overgeslagen of geannuleerd deel hier rood wordt in plaats van gate:slow over te slaan.
+  gate-slow:
+    name: gate:slow
+    needs: gate-slow-part
+    if: always()
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - run: |
+          if [ "$RESULT" != "success" ]; then
+            echo "::error title=gate:slow::een deel van gate:slow is $RESULT"
+            exit 1
+          fi
+        env:
+          RESULT: ${{ needs.gate-slow-part.result }}
+
+  # Betterleaks (framework §6): wat lefthook lokaal tegenhoudt, kan via --no-verify of een andere machine toch binnenkomen.
+  # Op een PR de commits van die PR, anders alle gefetchte refs. Altijd met scripts/kit/betterleaks.toml; inline allows tellen niet.
+  secrets:
+    name: secrets
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - uses: jdx/mise-action@7a4e45a543138629540c9a1616d08632b893e492 # v5.0.1
+        with:
+          version: 2026.9.18
+          install_args: betterleaks
+      # Op een PR alleen de commits van die PR, anders alle gefetchte refs: een melding op een andere branch maakt anders
+      # elke open PR rood (framework §6). Een geheim in een PR-commit blijft ook na een herstelcommit zichtbaar.
+      - run: |
+          if [ "$EVENT" = "pull_request" ]; then
+            betterleaks git -c scripts/kit/betterleaks.toml --log-opts "origin/main..HEAD" --redact --no-banner --ignore-gitleaks-allow
+          else
+            betterleaks git -c scripts/kit/betterleaks.toml --redact --no-banner --ignore-gitleaks-allow
+          fi
+        env:
+          EVENT: ${{ github.event_name }}
+
+  # De productie-image (ADR 0049) bouwt en start: niet als root, liveness, readiness, SPA met CSP en netjes stoppen; daarna
+  # de browser-smoke (SMOKE_BROWSER=1): / en /admin/accounts uit de image in Chromium (Playwright-image van ui:check),
+  # zonder database: bundel laadt, router en foutscherm renderen, zonder CSP-schending, ongevangen JS-fout, mislukte asset
+  # of onverwachte console.error. node_modules alleen voor @playwright/test, dat in dat image draait.
+  image:
+    name: image
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: jdx/mise-action@7a4e45a543138629540c9a1616d08632b893e492 # v5.0.1
+        with:
+          version: 2026.9.18
+          install_args: node pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: docker build -t app:ci .
+      - run: scripts/check-image.sh app:ci
+        env:
+          SMOKE_BROWSER: "1"
+
+  # Code uit pnpm new:resource haalt gate:fast (ADR 0047 punt 9). Duurt minuten, daarom niet in gate:fast zelf; wel altijd,
+  # want de templates doen bijna alles in src/ na.
+  new-resource:
+    name: check:new-resource
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          # De kopie bouwt op de geschiedenis van de checkout; in een app zoekt app-init-template.test.ts daarin de
+          # templatestand (leerpunt #363). Een shallow checkout heeft die niet.
+          fetch-depth: 0
+      - uses: jdx/mise-action@7a4e45a543138629540c9a1616d08632b893e492 # v5.0.1
+        with:
+          version: 2026.9.18
+          install_args: node pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm check:new-resource
+
+  # De snelle suite draait ook na pnpm app:init in een kopie, zodat een test die alleen in de template slaagt de template-CI
+  # rood maakt in plaats van de eerste app (leerpunt #334, spec app-init-proef). Duurt minuten, daarom niet in gate:fast.
+  app-init:
+    name: check:app-init
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          # Zelfde vorm als de job hierboven (AC-12): de kopie bouwt op de volledige geschiedenis.
+          fetch-depth: 0
+      - uses: jdx/mise-action@7a4e45a543138629540c9a1616d08632b893e492 # v5.0.1
+        with:
+          version: 2026.9.18
+          install_args: node pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm check:app-init

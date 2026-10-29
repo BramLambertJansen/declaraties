@@ -1,0 +1,67 @@
+// De enige importbron voor features/ (framework §7): her-exporteert de basiskit uit core. Eigen componenten en afgeleide
+// varianten van de app komen hier ook (afleiden uit de basis en variantkaart van core, niet forken).
+export { AppShell } from '#core/web/ui/app-shell.tsx';
+export { AsyncView } from '#core/web/ui/async-view.tsx';
+export { Button, buttonBase, buttonVariantMap, buttonVariants, type ButtonProps } from '#core/web/ui/button.tsx';
+export { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '#core/web/ui/card.tsx';
+export { CenteredCard } from '#core/web/ui/centered-card.tsx';
+export { cn } from '#core/web/ui/cn.ts';
+export { ConfirmDialog } from '#core/web/ui/confirm-dialog.tsx';
+export { Dialog } from '#core/web/ui/dialog.tsx';
+export { ErrorTextsProvider, useErrorText } from '#core/web/ui/error-texts.tsx';
+export { DropdownMenu, type MenuItem } from '#core/web/ui/dropdown-menu.tsx';
+export { Field } from '#core/web/ui/field.tsx';
+export { Form, FormField, useZodForm } from '#core/web/ui/form.tsx';
+export { Input } from '#core/web/ui/input.tsx';
+export { PasswordInput, type PasswordInputProps } from '#core/web/ui/password-input.tsx';
+export { DateInput, type DateInputProps } from '#core/web/ui/date-input.tsx';
+export { Breadcrumbs, type BreadcrumbsProps, type BreadcrumbItem } from '#core/web/ui/breadcrumbs.tsx';
+export { CopyButton, type CopyButtonProps } from '#core/web/ui/copy-button.tsx';
+export { Textarea } from '#core/web/ui/textarea.tsx';
+export { Checkbox, type CheckboxProps } from '#core/web/ui/checkbox.tsx';
+export { RadioGroup, type RadioGroupProps, type RadioOption } from '#core/web/ui/radio-group.tsx';
+export { FormCheckboxField } from '#core/web/ui/form-checkbox-field.tsx';
+export { FormRadioGroupField } from '#core/web/ui/form-radio-group-field.tsx';
+export { StatusBadge, type StatusBadgeProps } from '#core/web/ui/status-badge.tsx';
+export { EmptyState } from '#core/web/ui/empty-state.tsx';
+export { ListToolbar } from '#core/web/ui/list-toolbar.tsx';
+export { NavLink } from '#core/web/ui/nav-link.tsx';
+export { Notice } from '#core/web/ui/notice.tsx';
+export { Toaster, ToastProvider, useToast } from '#core/web/ui/toast.tsx';
+export { PageHeader } from '#core/web/ui/page-header.tsx';
+export { PageTitle } from '#core/web/ui/page-title.tsx';
+export { NotFound, RouteError } from '#core/web/ui/route-error.tsx';
+export { QrCode } from '#core/web/ui/qr-code.tsx';
+export { Section } from './section.tsx';
+export { TokenSwatch, type TokenColor, type TokenSwatchProps } from './token-swatch.tsx';
+export { TypeSample, type TypeSampleProps } from './type-sample.tsx';
+export { Text, type TextProps } from '#core/web/ui/text.tsx';
+export { Heading, type HeadingProps } from '#core/web/ui/heading.tsx';
+export { Stack, type StackProps } from '#core/web/ui/stack.tsx';
+export { Inline, type InlineProps } from '#core/web/ui/inline.tsx';
+export { Select, type SelectOption } from '#core/web/ui/select.tsx';
+export { Sidebar, visibleNavItems, type NavItem } from '#core/web/ui/sidebar.tsx';
+export { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '#core/web/ui/table.tsx';
+export { ThemeToggle } from '#core/web/ui/theme-toggle.tsx';
+export { Topbar } from '#core/web/ui/topbar.tsx';
+export { Combobox, type ComboboxProps, type ComboboxOption, type ComboboxClearProps } from '#core/web/ui/combobox.tsx';
+export { FormComboboxField, type FormComboboxFieldProps } from '#core/web/ui/form-combobox-field.tsx';
+export { Accordion, type AccordionProps, type AccordionItemData } from '#core/web/ui/accordion.tsx';
+export { List, ListItem, type ListProps, type ListItemProps } from '#core/web/ui/list.tsx';
+export { DescriptionList, type DescriptionListProps, type DescriptionItem } from '#core/web/ui/description-list.tsx';
+export {
+  DataTable,
+  type DataTableProps,
+  type DataTableColumn,
+  type DataTableSort,
+  type DataTableSelection,
+  type DataTableLoadMore,
+} from '#core/web/ui/data-table.tsx';
+export { Tabs, type TabsProps, type TabItem } from '#core/web/ui/tabs.tsx';
+export { Gallery, type GalleryProps, type GalleryItem } from '#core/web/ui/gallery.tsx';
+export type { ListToolbarProps, ListToolbarFilter } from '#core/web/ui/list-toolbar.tsx';
+export { FormErrorSummary, type FormErrorSummaryOptions } from '#core/web/ui/form-error-summary.tsx';
+export { FormChanges } from '#core/web/ui/form-changes.tsx';
+export { UnsavedChangesGuard, type UnsavedChangesGuardProps } from '#core/web/ui/unsaved-changes-guard.tsx';
+export { EditableSection, type EditableSectionProps } from '#core/web/ui/editable-section.tsx';
+export { BulkActions, type BulkActionsProps } from '#core/web/ui/bulk-actions.tsx';

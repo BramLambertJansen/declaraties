@@ -1,0 +1,32 @@
+# Bekende kwetsbaarheden in de dependencies (framework §6): op elke PR, op main en wekelijks, want een nieuwe advisory
+# raakt ook code die niet verandert. Uitzonderingen alleen in osv-scanner.toml, met reden en ignoreUntil.
+name: osv-scanner
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  schedule:
+    - cron: "17 5 * * 1"
+  workflow_dispatch:
+
+permissions: read-all
+
+concurrency:
+  group: osv-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  osv-scanner:
+    name: osv-scanner
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: jdx/mise-action@7a4e45a543138629540c9a1616d08632b893e492 # v5.0.1
+        with:
+          version: 2026.9.18
+          install_args: osv-scanner
+      - run: osv-scanner scan source --config osv-scanner.toml --lockfile pnpm-lock.yaml

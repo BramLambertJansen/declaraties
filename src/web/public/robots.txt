@@ -1,0 +1,5 @@
+# Crawlen mag, indexeren niet (roadmap 3f): de app staat achter een login. Niet "Disallow: /", want dan ziet een crawler
+# de <meta name="robots" content="noindex"> in index.html nooit en kan een gelinkte URL toch (zonder inhoud) in de index.
+# Een app met publieke pagina's haalt de meta-tag weg.
+User-agent: *
+Allow: /

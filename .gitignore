@@ -1,0 +1,26 @@
+node_modules/
+dist/
+coverage/
+playwright-report/
+test-results/
+.vitest/
+.eslintcache
+*.tsbuildinfo
+.env
+.env.*
+!.env.example
+.DS_Store
+.claude/settings.local.json
+# Worktrees van subagents (Claude Code); elk een eigen kopie van de repo.
+.claude/worktrees/
+.claude/hooks/.cache/
+mise.local.toml
+blob-report/
+.runner-output/
+.runner-canary.*
+*.log
+# Fixture-pakketten voor dependency-cruiser (test/rails/depcruise.test.ts).
+!test/rails/fixtures/depcruise/node_modules/
+
+# Tijdelijke uitvoer van de rails-tests
+test/rails/.tmp-*

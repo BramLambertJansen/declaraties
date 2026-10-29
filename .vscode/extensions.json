@@ -1,0 +1,17 @@
+{
+  "recommendations": [
+    "dbaeumer.vscode-eslint",
+    "esbenp.prettier-vscode",
+    "bradlc.vscode-tailwindcss",
+    "editorconfig.editorconfig",
+    "vitest.explorer",
+    "ms-playwright.playwright",
+    "anthropic.claude-code",
+    "github.vscode-pull-request-github",
+    "github.vscode-github-actions",
+    "usernamehw.errorlens",
+    "yoavbls.pretty-ts-errors",
+    "hverlo.vscode-mise",
+    "redhat.vscode-yaml"
+  ]
+}

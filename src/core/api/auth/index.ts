@@ -1,0 +1,30 @@
+// Better Auth in de API (ADR 0041, 0043). Ingang voor de app; de opties zelf staan in options.ts.
+export {
+  authGateway,
+  createAuth,
+  type Auth,
+  type AuthGateway,
+  type CreateAuthConfig,
+  type SessionInfo,
+} from './auth.ts';
+export {
+  AccountAlreadyActiveError,
+  AccountExistsError,
+  AccountNotFoundError,
+  inviteUser,
+  reinviteUser,
+  type InvitationLifecycle,
+} from './invitations.ts';
+export type { Invitation } from './options.ts';
+export {
+  confirmEmail,
+  CurrentSessionError,
+  EmailLinkInvalidError,
+  listOwnSessions,
+  renameUser,
+  revokeOtherSessions,
+  revokeOwnSession,
+  SessionNotFoundError,
+  type OwnSession,
+  type SessionOwner,
+} from './profile.ts';

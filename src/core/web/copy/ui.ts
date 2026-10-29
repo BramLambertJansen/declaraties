@@ -1,0 +1,23 @@
+// Vaste teksten van de core-componenten (AsyncView, RouteError, NotFound, Form).
+export const uiTexts = {
+  loading: 'Laden…',
+  retry: 'Opnieuw proberen',
+  notFoundTitle: 'Pagina niet gevonden',
+  errorTitle: 'Er ging iets mis',
+  forbiddenTitle: 'Geen toegang',
+  empty: 'Er is nog niets om te tonen.',
+  mainMenu: 'Hoofdmenu',
+  openMenu: 'Menu openen',
+  profileMenu: 'Profielmenu',
+  close: 'Sluiten',
+  busy: 'Bezig…',
+  cancel: 'Annuleren',
+  darkTheme: 'Donker thema',
+  skipToContent: 'Naar de inhoud',
+  visibilityToggle: 'Wachtwoord tonen',
+  openCalendar: 'Kalender openen',
+  breadcrumbs: 'Kruimelpad',
+  copy: 'Kopiëren',
+  copied: 'Gekopieerd.',
+  copyFailed: 'Kopiëren is niet gelukt. Selecteer en kopieer de tekst zelf.',
+} as const;

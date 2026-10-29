@@ -1,0 +1,15 @@
+# Betterleaks (framework §6): standaardregels plus een allowlist voor exact de lokale demo-waarden.
+# Altijd met `-c scripts/kit/betterleaks.toml` (lefthook, CI): die vlag wint van een .betterleaks.toml elders.
+# Uitzonderingen alleen met reden; inline `betterleaks:allow` telt niet (--ignore-gitleaks-allow).
+[extend]
+useDefault = true
+
+[[allowlists]]
+description = """Lokale demo-wachtwoorden (gelijk aan de rolnaam) uit db/init/01-roles.sql, .env.example, compose.yaml
+en db/test.env. Ze werken alleen tegen de lokale of test-database; buiten APP_ENV=local/test weigert het env-schema
+ze (framework §6, Secrets)."""
+regexTarget = "match"
+regexes = [
+  '''^postgres://(app_migrator:app_migrator|api_user:api_user|auth_service:auth_service|postgres:postgres)@''',
+  '''^(POSTGRES_)?PASSWORD(: |=)postgres$''',
+]

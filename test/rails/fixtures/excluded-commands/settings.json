@@ -1,0 +1,4 @@
+{
+  "sandbox": { "excludedCommands": ["pnpm test:db *", "pnpm db:reset *"] },
+  "permissions": { "ask": ["Bash(pnpm test:db *)"] }
+}

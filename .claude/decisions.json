@@ -1,0 +1,291 @@
+{
+  "version": 1,
+  "requiredChecks": [
+    "gate:fast",
+    "gate:slow",
+    "secrets",
+    "image",
+    "check:new-resource",
+    "check:app-init",
+    "codeql (javascript-typescript)",
+    "codeql (actions)",
+    "osv-scanner",
+    "document-status"
+  ],
+  "decisions": [
+    {
+      "file": "docs/adr/0028-volledige-ui-catalogus.md",
+      "digest": "1d4c48ea75672c5f81d710f2d43f711388d2b6127a72b8c269f40c48417b29ab",
+      "repository": "BramLambertJansen/template",
+      "branch": "fix/post-merge-review",
+      "status": "geaccepteerd",
+      "paths": []
+    },
+    {
+      "file": "docs/specs/taakmandaat-vervolg.md",
+      "digest": "3bcaf05f3a71a85577046396918c257829353c1fc8a38c342e65f7ca068fac2c",
+      "repository": "BramLambertJansen/template",
+      "branch": "feat/task-mandate-follow-up",
+      "status": "goedgekeurd",
+      "paths": [
+        "scripts/kit/check-document-status.mjs",
+        "scripts/kit/status-git.mjs",
+        "scripts/kit/document-status.mjs",
+        "scripts/kit/check-roadmap.mjs",
+        "scripts/kit/roadmap-item.mjs",
+        "scripts/kit/gates.mjs",
+        "scripts/runner.sh",
+        "docs/dod.md",
+        "docs/framework.md",
+        "docs/specs/_template.md",
+        "docs/adr/0027-taakmandaat-voor-frameworkwerk.md",
+        "docs/specs/taakmandaat-frameworkwerk.md",
+        "docs/specs/roadmap-vinkjes.md"
+      ]
+    },
+    {
+      "file": "docs/specs/ui-kit-basics.md",
+      "digest": "851ad33438c2e02bc118577681286ac9f65c217138394e799f75f2652bea9d55",
+      "repository": "BramLambertJansen/template",
+      "branch": "codex/ui-kit-basics",
+      "status": "goedgekeurd",
+      "paths": [
+        "src/core/web/ui/textarea.tsx",
+        "src/core/web/ui/checkbox.tsx",
+        "src/core/web/ui/radio-group.tsx",
+        "src/core/web/ui/status-badge.tsx",
+        "src/core/web/ui/empty-state.tsx",
+        "src/core/web/ui/form-checkbox-field.tsx",
+        "src/core/web/ui/form-radio-group-field.tsx",
+        "src/core/web/ui/form.tsx",
+        "src/core/web/ui/async-view.tsx",
+        "src/core/web/ui/button.tsx",
+        "src/core/web/ui/dropdown-menu.tsx"
+      ]
+    },
+    {
+      "file": "docs/specs/ui-collections.md",
+      "digest": "42f58b6d2a41d75cab031782b1d9a0e1c97cebf81349be4e89515284ee70b138",
+      "repository": "BramLambertJansen/template",
+      "branch": "codex/ui-collections",
+      "status": "goedgekeurd",
+      "paths": [
+        "src/core/web/ui/combobox.tsx",
+        "src/core/web/ui/form-combobox-field.tsx",
+        "src/core/web/ui/accordion.tsx",
+        "src/core/web/ui/list.tsx",
+        "src/core/web/ui/description-list.tsx"
+      ]
+    },
+    {
+      "file": "docs/specs/ui-data-display.md",
+      "digest": "8f53b0eeac6c6322749333071e123d087ca3df57a323af23d29f6c1d4ffced28",
+      "repository": "BramLambertJansen/template",
+      "branch": "codex/ui-data-display",
+      "status": "goedgekeurd",
+      "paths": [
+        "src/core/web/ui/data-table.tsx",
+        "src/core/web/ui/tabs.tsx",
+        "src/core/web/ui/gallery.tsx",
+        "src/core/web/ui/list-toolbar.tsx",
+        "src/core/web/ui/carousel.tsx"
+      ]
+    },
+    {
+      "file": "docs/adr/0029-snellere-beslisroute.md",
+      "digest": "bd72f91c47ed3c1a78928c67b11d7516f7462258c68f90894e62f2ab93d44a3b",
+      "repository": "BramLambertJansen/template",
+      "branch": "claude/youthful-carson-r5jhlr",
+      "status": "geaccepteerd",
+      "paths": []
+    },
+    {
+      "file": "docs/adr/0023-tokenzuinige-werkstraat.md",
+      "digest": "fc61fdd279c19b93c05e4c790ccbb9df1b6fb71321dca5b517653f4d6684fb52",
+      "repository": "BramLambertJansen/template",
+      "branch": "claude/youthful-carson-r5jhlr",
+      "status": "vervangen door 0029",
+      "paths": []
+    },
+    {
+      "file": "docs/adr/0032-developer-volgt-hoofdsessie-buiten-voorreview.md",
+      "digest": "d0168371ee6adefe2e65defe1ab39e6dd06954359ccd902b4ee2516428c0bd2f",
+      "repository": "BramLambertJansen/template",
+      "branch": "docs/adr-0032-developer-voorreview",
+      "status": "geaccepteerd",
+      "paths": []
+    },
+    {
+      "file": "docs/adr/0033-onderhoudsmodus-voor-templatewerk.md",
+      "digest": "1a0948ac5a39f7efc7c2af8925aa6056c1b9f7fd35d38ee1c9f272bde16f9986",
+      "repository": "BramLambertJansen/template",
+      "branch": "docs/adr-0033-geaccepteerd",
+      "status": "geaccepteerd",
+      "paths": []
+    },
+    {
+      "file": "docs/adr/0034-gedeelde-claude-permissies.md",
+      "digest": "2225a2ca2d51c8f93d14d9dba8d4c0891c8276fd33bf5e93447342a1871e2002",
+      "repository": "BramLambertJansen/template",
+      "branch": "docs/adr-0034-geaccepteerd",
+      "status": "geaccepteerd",
+      "paths": []
+    },
+    {
+      "file": "docs/adr/0029-snellere-beslisroute.md",
+      "digest": "7763a2d137f7df0988a56726ab72e9ded290d3a2fa1f3e062b00c61d541af478",
+      "repository": "BramLambertJansen/template",
+      "branch": "docs/adr-0029-agent-merge",
+      "status": "geaccepteerd",
+      "paths": []
+    },
+    {
+      "file": "docs/specs/achtergrondtaken.md",
+      "digest": "76c37b691d0066f67fdacc932a48b7c874ee5ca85048ba5672af9ff9917d5555",
+      "repository": "BramLambertJansen/template",
+      "branch": "feat/jobs-retention",
+      "status": "goedgekeurd",
+      "paths": []
+    },
+    {
+      "file": "docs/specs/achtergrondtaken.md",
+      "digest": "8c258e9aa18cc1c3b49ac42473806d7198497b911f2c977032f01a43a4fb7fa8",
+      "repository": "BramLambertJansen/template",
+      "branch": "feat/jobs-role",
+      "status": "goedgekeurd",
+      "paths": []
+    },
+    {
+      "file": "docs/specs/achtergrondtaken.md",
+      "digest": "8c258e9aa18cc1c3b49ac42473806d7198497b911f2c977032f01a43a4fb7fa8",
+      "repository": "BramLambertJansen/template",
+      "branch": "feat/jobs-runner",
+      "status": "goedgekeurd",
+      "paths": []
+    },
+    {
+      "file": "docs/specs/achtergrondtaken.md",
+      "digest": "8c258e9aa18cc1c3b49ac42473806d7198497b911f2c977032f01a43a4fb7fa8",
+      "repository": "BramLambertJansen/template",
+      "branch": "feat/jobs-purge",
+      "status": "goedgekeurd",
+      "paths": []
+    },
+    {
+      "file": "docs/specs/mail-outbox.md",
+      "digest": "084e14589eb8ee78535036b0519059d7c2f0ac9c4cf9d20434e7c869ddd702bd",
+      "repository": "BramLambertJansen/template",
+      "branch": "feat/outbox-db",
+      "status": "goedgekeurd",
+      "paths": []
+    },
+    {
+      "file": "docs/specs/mail-outbox.md",
+      "digest": "084e14589eb8ee78535036b0519059d7c2f0ac9c4cf9d20434e7c869ddd702bd",
+      "repository": "BramLambertJansen/template",
+      "branch": "feat/outbox-worker",
+      "status": "goedgekeurd",
+      "paths": []
+    },
+    {
+      "file": "docs/specs/mail-outbox.md",
+      "digest": "084e14589eb8ee78535036b0519059d7c2f0ac9c4cf9d20434e7c869ddd702bd",
+      "repository": "BramLambertJansen/template",
+      "branch": "feat/outbox-status",
+      "status": "goedgekeurd",
+      "paths": []
+    },
+    {
+      "file": "docs/specs/security-suite.md",
+      "digest": "2792fa1c65828b65b8ca354074c23c70440b793db3dc21a093039f7dc621d0f8",
+      "repository": "BramLambertJansen/template",
+      "branch": "test/security-route-suite",
+      "status": "goedgekeurd",
+      "paths": []
+    },
+    {
+      "file": "docs/specs/security-suite.md",
+      "digest": "2792fa1c65828b65b8ca354074c23c70440b793db3dc21a093039f7dc621d0f8",
+      "repository": "BramLambertJansen/template",
+      "branch": "test/security-ownership",
+      "status": "goedgekeurd",
+      "paths": []
+    },
+    {
+      "file": "docs/specs/security-suite.md",
+      "digest": "2792fa1c65828b65b8ca354074c23c70440b793db3dc21a093039f7dc621d0f8",
+      "repository": "BramLambertJansen/template",
+      "branch": "feat/new-resource-security-declaration",
+      "status": "goedgekeurd",
+      "paths": [
+        "scripts/kit/new-resource.mjs",
+        "docs/framework.md",
+        "docs/gouden-pad.md",
+        "docs/dod.md",
+        "AGENTS.md",
+        "CHANGELOG.md"
+      ]
+    },
+    {
+      "file": "docs/adr/0035-statusakkoord-in-de-sessie.md",
+      "digest": "bf6aa68c6da126494d39f06d5a95b75e98f6095c1064adc064dc13c61150bf92",
+      "repository": "BramLambertJansen/template",
+      "branch": "docs/adr-0035-geaccepteerd",
+      "status": "geaccepteerd",
+      "paths": []
+    },
+    {
+      "file": "docs/adr/0036-achtergrondtaken-correcties.md",
+      "digest": "55704d46ab01b867b2c02bf1a7ef75636534a624d0aef21aeef5434a9d6498f9",
+      "repository": "BramLambertJansen/template",
+      "branch": "docs/adr-0036-geaccepteerd",
+      "status": "geaccepteerd",
+      "paths": []
+    },
+    {
+      "file": "docs/specs/klassenrail.md",
+      "digest": "32248ecfa3f806564e682097d14508f2dbce333a5c27fcb98fd7445dfdcc13e6",
+      "repository": "BramLambertJansen/template",
+      "branch": "claude/project-thread-7qck53",
+      "status": "goedgekeurd",
+      "paths": [
+        "eslint.config.js",
+        ".claude/rules/web.md",
+        "docs/framework.md",
+        "scripts/kit/templates/page.tsx.tmpl"
+      ]
+    },
+    {
+      "file": "docs/specs/semantische-tokens.md",
+      "digest": "968686218b664c273e8b2933d8fe80a323b650896b4da600ca02e1fa325ada28",
+      "repository": "BramLambertJansen/template",
+      "branch": "claude/tokens-typography-density",
+      "status": "goedgekeurd",
+      "paths": [
+        "src/core/web/styles/semantic.css",
+        "src/core/web/styles/components.css",
+        "src/core/web/styles/index.css"
+      ]
+    },
+    {
+      "file": "docs/specs/semantische-tokens.md",
+      "digest": "968686218b664c273e8b2933d8fe80a323b650896b4da600ca02e1fa325ada28",
+      "repository": "BramLambertJansen/template",
+      "branch": "claude/tokens-status-layers-motion",
+      "status": "goedgekeurd",
+      "paths": [
+        "src/core/web/styles/primitives.css",
+        "src/core/web/styles/semantic.css",
+        "src/core/web/styles/components.css",
+        "src/core/web/styles/index.css",
+        "src/core/web/ui/status-badge.tsx",
+        "src/core/web/ui/notice.tsx",
+        "src/core/web/ui/combobox.tsx",
+        "src/core/web/ui/dropdown-menu.tsx",
+        "src/core/web/ui/toast.tsx",
+        "src/core/web/ui/app-shell.tsx",
+        "src/core/web/ui/dialog.tsx"
+      ]
+    }
+  ]
+}

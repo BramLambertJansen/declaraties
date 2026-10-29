@@ -1,0 +1,11 @@
+pnpm-lock.yaml
+dist/
+coverage/
+playwright-report/
+test-results/
+docs/
+*.md
+.claude/
+rails/hooks/
+# Gegenereerd door @tanstack/router-plugin.
+src/web/routeTree.gen.ts

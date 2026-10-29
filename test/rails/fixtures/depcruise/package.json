@@ -1,0 +1,11 @@
+{
+  "name": "depcruise-fixtures",
+  "private": true,
+  "type": "module",
+  "imports": {
+    "#core/*": "./src/core/*",
+    "#api/*": "./src/api/*",
+    "#web/*": "./src/web/*",
+    "#shared/*": "./src/shared/*"
+  }
+}

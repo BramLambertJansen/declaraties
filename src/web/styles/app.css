@@ -1,0 +1,5 @@
+/* Ingang van de stijlen (main.tsx): core-tokens en Tailwind, dan het thema van de app. */
+@import '../../core/web/styles/index.css';
+@import './theme.css';
+
+@source '../..';

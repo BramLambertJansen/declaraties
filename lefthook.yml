@@ -1,0 +1,26 @@
+# Git-hooks (framework §4, Feedbacklus). scripts/bootstrap.sh installeert ze (`pnpm exec lefthook install`).
+# Overslaan (--no-verify, LEFTHOOK=0) is verboden; CI draait dezelfde checks.
+pre-commit:
+  piped: true
+  jobs:
+    - name: format
+      glob: "*"
+      run: pnpm exec prettier --ignore-unknown --check {staged_files}
+    - name: lint
+      glob: "*.{ts,tsx,js,mjs}"
+      run: pnpm exec eslint --max-warnings 0 --no-warn-ignored {staged_files}
+    - name: secrets
+      run: mise exec -- betterleaks git -c scripts/kit/betterleaks.toml --pre-commit --staged --redact --no-banner --ignore-gitleaks-allow
+
+commit-msg:
+  jobs:
+    - name: conventional-commit
+      run: node scripts/kit/commit-msg.mjs {1}
+
+pre-push:
+  jobs:
+    - name: gate-fast
+      run: pnpm gate:fast
+    # Alleen een waarschuwing; `|| true` zodat ook een ontbrekend script de push nooit tegenhoudt.
+    - name: main-achterstand
+      run: node scripts/kit/main-achterstand.mjs || true

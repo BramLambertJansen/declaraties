@@ -1,0 +1,257 @@
+# Lokale stack. De app (Vite, Hono) draait native; alleen diensten draaien hier.
+# Geen vaste projectnaam: elke app krijgt zijn eigen volume (naam van de map).
+# Poorten alleen op 127.0.0.1 en instelbaar, zodat meerdere apps naast elkaar draaien.
+# Wachtwoorden zijn lokale demo-waarden, nooit echt.
+# Starten: docker compose --env-file .env.local up -d --build --wait (zonder --env-file leest compose alleen .env).
+# Profiel test: de runner van ADR 0044, alleen via scripts/runner.sh (pnpm test:db, pnpm ui:check).
+
+# Runner: draait door de agent geschreven tests en configs zonder rechten op de host (ADR 0044).
+x-runner: &runner
+  profiles: [test]
+  user: "${RUNNER_UID:-65534}:${RUNNER_GID:-65534}"
+  read_only: true
+  cap_drop: [ALL]
+  security_opt: ["no-new-privileges:true"]
+  working_dir: /repo
+  networks: [test-net]
+  volumes:
+    - type: bind
+      source: ${RUNNER_INPUT_DIR:-./.runner-output/geen-invoer-start-via-runner}
+      target: /repo
+      read_only: true
+      bind: { create_host_path: false }
+    - ./node_modules:/repo/node_modules:ro
+    - ./.runner-output:/output
+  tmpfs:
+    - /tmp
+  environment:
+    HOME: /tmp
+    CI: "true"
+    RUNNER: "1"
+    RUNNER_CACHE_DIR: /tmp/cache
+    RUNNER_OUTPUT_DIR: /output
+    RUNNER_PRIVATE_CANARY: /repo/${RUNNER_PRIVATE_CANARY_NAME:-missing-canary}
+    APP_ENV: ${APP_ENV}
+    APP_ORIGIN: ${APP_ORIGIN}
+    AUTH_BASE_URL: ${AUTH_BASE_URL}
+    AUTH_SECRET: ${AUTH_SECRET}
+    SMTP_URL: ${SMTP_URL}
+    DATABASE_URL: ${DATABASE_URL}
+    AUTH_DATABASE_URL: ${AUTH_DATABASE_URL}
+    POOLER_DATABASE_URL: ${POOLER_DATABASE_URL:-}
+    MAILPIT_URL: ${MAILPIT_URL:-}
+    CLIENT_IP_HEADER: ${CLIENT_IP_HEADER:-}
+    # Alleen voor tests die rollen klaarzetten zoals de seed (nooit in src/, framework §6).
+    MIGRATOR_DATABASE_URL: ${MIGRATOR_DATABASE_URL}
+  depends_on:
+    test-migrate:
+      condition: service_completed_successfully
+    test-pooler:
+      condition: service_started
+    test-mailpit:
+      condition: service_started
+
+x-hardened: &hardened
+  read_only: true
+  cap_drop: [ALL]
+  security_opt: ["no-new-privileges:true"]
+  networks: [test-net]
+
+services:
+  postgres:
+    build: db/docker
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: app
+    ports:
+      - "127.0.0.1:${PG_PORT:-54322}:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./db/init:/docker-entrypoint-initdb.d:ro
+      - ./db:/db:ro
+    healthcheck:
+      # Via TCP: de tijdelijke init-server luistert alleen op de socket, dus pas na db/init gezond.
+      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -U postgres -d app"]
+      start_period: 30s
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
+  # Profiel pooler: PgBouncer in transaction mode voor api_user, zoals bij een beheerde provider (ADR 0042).
+  # Starten: docker compose --env-file .env.local --profile pooler up -d; verbinden via 127.0.0.1:${POOLER_PORT:-54323}.
+  pgbouncer:
+    profiles: [pooler]
+    image: edoburu/pgbouncer:v1.26.0-p0@sha256:b17551c776ef7e5769ef80b956d20f85e2fd25dd8912d31d58f782aad495b711
+    environment:
+      DATABASE_URL: postgres://api_user:api_user@postgres:5432/app
+      POOL_MODE: transaction
+      AUTH_TYPE: scram-sha-256
+      LISTEN_PORT: 5432
+    ports:
+      - "127.0.0.1:${POOLER_PORT:-54323}:5432"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  mailpit:
+    image: axllent/mailpit:v1.31.4
+    ports:
+      - "127.0.0.1:${MAIL_UI_PORT:-54324}:8025"
+      - "127.0.0.1:${SMTP_PORT:-54325}:1025"
+
+  # --- Profiel test (ADR 0044) ---
+
+  test-db:
+    profiles: [test]
+    build: db/docker
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: app
+    command: ["postgres", "-c", "hba_file=/etc/postgresql/pg_hba.test.conf"]
+    volumes:
+      - type: bind
+        source: ${RUNNER_INPUT_DIR:-./.runner-output/geen-invoer-start-via-runner}/db/init
+        target: /docker-entrypoint-initdb.d
+        read_only: true
+        bind: { create_host_path: false }
+      - type: bind
+        source: ${RUNNER_INPUT_DIR:-./.runner-output/geen-invoer-start-via-runner}/db/docker/pg_hba.test.conf
+        target: /etc/postgresql/pg_hba.test.conf
+        read_only: true
+        bind: { create_host_path: false }
+    # Verse database bij elke run: geen volume, data in tmpfs; scripts/runner.sh ruimt op.
+    tmpfs:
+      - /var/lib/postgresql/data
+    networks: [test-net]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -U postgres -d app"]
+      start_period: 30s
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
+  test-pooler:
+    profiles: [test]
+    image: edoburu/pgbouncer:v1.26.0-p0@sha256:b17551c776ef7e5769ef80b956d20f85e2fd25dd8912d31d58f782aad495b711
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    networks: [test-net]
+    environment:
+      DATABASE_URL: ${DATABASE_URL}
+      POOL_MODE: transaction
+      AUTH_TYPE: scram-sha-256
+      LISTEN_PORT: 5432
+    depends_on:
+      test-db:
+        condition: service_healthy
+
+  test-mailpit:
+    profiles: [test]
+    image: axllent/mailpit:v1.31.4@sha256:b68349e3a014b90c5610bfb26b2ae36f3892d7b8cf25ee140c6c71c98d2fcf48
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    networks: [test-net]
+
+  test-migrate:
+    <<: *hardened
+    profiles: [test]
+    image: ghcr.io/amacneil/dbmate:2.36.0@sha256:520c740c6e0ad73fde2cd1ea7e2b779aaf789d22aca8858f87a478e7094535fb
+    environment:
+      DATABASE_URL: ${MIGRATOR_DATABASE_URL}
+    command: ["--migrations-dir", "/db/migrations", "--no-dump-schema", "--wait", "up"]
+    volumes:
+      - type: bind
+        source: ${RUNNER_INPUT_DIR:-./.runner-output/geen-invoer-start-via-runner}/db/migrations
+        target: /db/migrations
+        read_only: true
+        bind: { create_host_path: false }
+    depends_on:
+      test-db:
+        condition: service_healthy
+
+  test-pgtap:
+    <<: *hardened
+    profiles: [test]
+    build: db/docker
+    user: postgres
+    environment:
+      DATABASE_URL: ${MIGRATOR_DATABASE_URL}
+      # pg_prove geeft een URL niet betrouwbaar door aan psql; libpq-variabelen wel (ADR 0042).
+      PGHOST: test-db
+      PGPORT: "5432"
+      PGDATABASE: app
+      PGUSER: app_migrator
+      PGSSLMODE: disable
+    entrypoint: ["sh", "-c"]
+    command:
+      - >-
+        set -- /db/tests/*.sql;
+        if [ ! -e "$$1" ]; then echo "geen pgTAP-tests in db/tests" >&2; exit 1; fi;
+        export PGPASSWORD="$$(printf '%s' "$$DATABASE_URL" | sed -E 's#^[^:]+://[^:]+:([^@]+)@.*#\1#')";
+        who=$$(psql --no-psqlrc -Atc 'select current_user') || exit 1;
+        echo "pgTAP verbindt als: $$who";
+        exec pg_prove --failures --ext .sql --recurse /db/tests
+    volumes:
+      - type: bind
+        source: ${RUNNER_INPUT_DIR:-./.runner-output/geen-invoer-start-via-runner}/db/tests
+        target: /db/tests
+        read_only: true
+        bind: { create_host_path: false }
+    tmpfs:
+      - /tmp
+    depends_on:
+      test-migrate:
+        condition: service_completed_successfully
+
+  runner:
+    <<: *runner
+    image: node:26.11.1-bookworm-slim@sha256:86f07bc9c5dce4578cf37e5a418b7bfc7f817cda25cde66e2b66e95ed86c4567
+    command: ["node", "node_modules/vitest/vitest.mjs", "run", "--project", "int", "--configLoader", "native"]
+
+  # pnpm db:generate (scripts/db-generate.sh): snapshot met pg_dump uit het gepinde image, schema.ts uit de catalogus.
+  gen-snapshot:
+    <<: *hardened
+    profiles: [test]
+    build: db/docker
+    user: "${RUNNER_UID:-65534}:${RUNNER_GID:-65534}"
+    environment:
+      HOME: /tmp
+      DATABASE_URL: ${MIGRATOR_DATABASE_URL}
+    entrypoint: ["sh", "-c"]
+    command:
+      - >-
+        mkdir -p /output/gen &&
+        exec pg_dump --dbname "$$DATABASE_URL" --schema-only -N tap --exclude-extension=pgtap
+        --file /output/gen/schema.snapshot.sql
+    volumes:
+      - ./.runner-output:/output
+    tmpfs:
+      - /tmp
+    depends_on:
+      test-migrate:
+        condition: service_completed_successfully
+
+  gen-schema:
+    <<: *runner
+    image: node:26.11.1-bookworm-slim@sha256:86f07bc9c5dce4578cf37e5a418b7bfc7f817cda25cde66e2b66e95ed86c4567
+    command: ["node", "scripts/db-introspect.mjs"]
+    depends_on:
+      test-migrate:
+        condition: service_completed_successfully
+
+  ui-runner:
+    <<: *runner
+    # Exact de versie van @playwright/test (framework §11); screenshot-baselines alleen in dit image.
+    image: mcr.microsoft.com/playwright:v1.63.0-noble@sha256:eff16c30e6f3f4af0a03fa4b706120d5e9b0891c344a27d64559aff5900a4a27
+    shm_size: 1gb
+    command: ["node", "node_modules/@playwright/test/cli.js", "test"]
+
+networks:
+  # Geen route naar internet of de host (ADR 0044).
+  test-net:
+    internal: true
+
+volumes:
+  pgdata:

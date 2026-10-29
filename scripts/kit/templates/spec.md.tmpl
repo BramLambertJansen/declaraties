@@ -1,0 +1,102 @@
+---
+status: voorstel # voorstel | goedgekeurd | gebouwd | vervallen — alleen de eigenaar zet goedgekeurd
+namespace: __naam__
+---
+
+# __naam__
+
+Skelet van `pnpm new:resource __naam__` (fase 1, ADR 0047). Routes, permissies en de tabel zijn afgeleid uit de naam; de
+vragen onder "Open vragen" (bewust vooraan, anders dan in `_template.md`) beantwoordt de eigenaar. Geen kop weglaten; "n.v.t. — reden" mag. Ontbreekt een antwoord, dan
+vraagt de agent het. Na `goedgekeurd` maakt `pnpm new:resource __naam__ --rollen <rollen>` het contract, de 501-handlers,
+de migratie, de queries, het scherm, de route en het menu-item; de tests schrijft de tester.
+
+## Open vragen
+
+- **OV-1 ⚠ open** — de eigenaar beantwoordt de onderstaande vragen; daarna gaat OV-1 op `✅ besloten` (pas dan laat `check-docs` `goedgekeurd` toe); opties: zie de vragen (geen aanbeveling: de eigenaar kiest)
+- **Rollen:** welke rollen mogen `__naam__:read` en `__naam__:write`? (wordt `--rollen`; de generator kiest niet zelf)
+- **Velden:** welke kolommen, met type, grens (`src/shared/limits.ts`) en of de gebruiker ze bij aanmaken en wijzigen zet?
+- **Admin:** ziet een admin rijen van anderen? Zo ja: een aparte policy `__tabel___select_admin` met
+  `(select app.is_mfa_admin())`, nooit `using (true)` (review tabelpatroon, B2).
+- **Verwijderd account:** wat gebeurt er met de rijen als het account weg is? Standaard gaan ze mee (`on delete cascade`);
+  geldt er een bewaarplicht, dan iets anders (review tabelpatroon, B3).
+- **Zoeken en filters:** op welke velden zoekt `q`, en welke filters (enum uit het contract) krijgt de lijst? De standaard is alleen
+  zoeken en de sorteringen `nieuwste` en `oudste`.
+- **Teksten:** paginatitel, menu-item, lege lijst, kolommen, knoppen en meldingen, letterlijk.
+
+## Doel
+
+<één zin>
+
+## Rollen en wie wat ziet
+
+Een gebruiker ziet, wijzigt en verwijdert alleen eigen rijen (RLS op `owner_id`). Rollen per permissie: zie "Open vragen".
+
+## Datawijzigingen (met grants)
+
+Tabel `public.__tabel__`: `id uuid` (`gen_random_uuid()`, brand `__Naam__Id` in `db/ids.json`), `owner_id text`
+(`app.current_user_id()`, verwijst naar `better_auth."user"`, `on delete cascade`), `created_at timestamptz`, plus de velden
+uit "Open vragen". Index op `owner_id`. RLS aan en geforceerd.
+
+- Grants aan `app_authenticated`: `select` en `delete` op de tabel; `insert` en `update` alleen op de velden, nooit op
+  `id`, `owner_id` of `created_at` (review tabelpatroon, A1/A2).
+- Policies: `__tabel___select_own`, `__tabel___insert_own`, `__tabel___update_own`, `__tabel___delete_own`, elk met
+  `owner_id = (select app.current_user_id())`.
+
+## Routes en foutcodes
+
+| Methode | Pad | Permissie | Foutcodes |
+|---|---|---|---|
+| GET | /api/__naam__ | __naam__:read | UNAUTHENTICATED, FORBIDDEN, MFA_REQUIRED, VALIDATION |
+| POST | /api/__naam__ | __naam__:write | UNAUTHENTICATED, FORBIDDEN, MFA_REQUIRED, VALIDATION |
+| PATCH | /api/__naam__/:id | __naam__:write | UNAUTHENTICATED, FORBIDDEN, MFA_REQUIRED, VALIDATION, NOT_FOUND |
+| DELETE | /api/__naam__/:id | __naam__:write | UNAUTHENTICATED, FORBIDDEN, MFA_REQUIRED, VALIDATION, NOT_FOUND |
+
+Padparameter `:id`: de tabel gebruikt een UUID. Leg vast hoe het gedeelde contract die vorm controleert en vóór de
+handler `VALIDATION` geeft. Het gegenereerde `__Naam__Id` gebruikt `brandedId` en controleert alleen lengte, geen UUID-vorm.
+Beschrijf bij externe aanroepen ook validatie vóór die aanroep en de foutvolgorde van eventuele voor-stappen.
+Neem gecombineerde foutgevallen als acceptatiecriteria op volgens "Padparameters en foutvolgorde" in `docs/gouden-pad.md`.
+
+Een rij van een ander bestaat voor de gebruiker niet: `NOT_FOUND`, niet `FORBIDDEN`. De lijst heeft een vaste paginagrootte
+(`__NAAM___PAGE_SIZE`, hooguit `MAX_PAGE_SIZE`) en een cursor.
+
+Zoeken en sorteren (spec lijstpagina): `GET` neemt `/api/__naam__?q=&sort=&cursor=` (`q` zoekt, `sort` is `nieuwste` of `oudste`).
+De cursor is aan de sortering gebonden: een cursor van een andere sortering, een vreemde cursor of een ongeldige `sort` geeft `VALIDATION`.
+In `q` worden `%`, `_` en `\` ge-escaped, zodat ze letterlijk worden gezocht. Velden en filters: zie "Open vragen", vraag "Zoeken en filters".
+
+## Kopieer de vorm van
+
+Per regel een bestaand pad uit `docs/gouden-pad.md` (accountbeheer) en wat je overneemt; `check-docs` controleert het pad.
+
+- `src/api/routes/accounts.ts` — de vorm van een route met `defineRoute`, permissie en foutcodes
+
+## Hergebruik en UX
+
+- Bestaande componenten: `PageHeader`, `AsyncView`, `Table`, `ListToolbar` en `useListSearch` voor zoeken en sorteren in de
+  search params (`node scripts/kit/feiten.mjs componenten`).
+- Staten per scherm: laden, leeg, fout, bezig, gelukt, verouderd
+- Alle zichtbare tekst letterlijk: zie "Open vragen".
+- Focusvolgorde en toetsenbord:
+
+## Acceptatiecriteria
+
+- **__naam__/AC-1** — Gegeven … wanneer … dan …
+
+## Randgevallen
+
+| Situatie | Gedrag | Foutcode |
+|---|---|---|
+| Rij van een ander opvragen, wijzigen of verwijderen | bestaat niet | NOT_FOUND |
+
+## Raakt ook
+
+- `src/shared/contracts/__naam__.ts` (`defineListSearch`), de lijstquery in `src/api/routes/__naam__.ts` en `ListToolbar` in het scherm.
+- Menu-item per rol in `src/web/lib/nav.ts` en de menutest in `src/web/routes.test.tsx`.
+
+## Buiten scope
+
+## Testplan
+
+- pgTAP per policy (`db/tests/__tabel__.sql`), met de rijen "Wat standhoudt" en A1/A2 uit de review tabelpatroon.
+- Integratietests (`test/api/__naam__.int.test.ts`): per verboden rol `FORBIDDEN`, een admin zonder MFA `MFA_REQUIRED`,
+  ongeldige invoer `VALIDATION`, elk acceptatiecriterium.
+- E2E per acceptatiecriterium met axe op 375 en 1280 px (`e2e/__naam__.spec.ts`).

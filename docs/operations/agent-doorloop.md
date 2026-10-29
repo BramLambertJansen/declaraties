@@ -1,0 +1,424 @@
+# Agentdoorloop met bewijs
+
+De eigenaar beslist inhoudelijk met zijn merge ([ADR 0046](../adr/0046-werkstraat-en-beslisroute.md)). De agent schrijft de bedoelde status in
+het voorstel, bouwt, verzamelt bewijs en zet `gebouwd` zodra het bouwbewijs bestaat ([ADR 0046](../adr/0046-werkstraat-en-beslisroute.md) punt 10).
+
+## Lokale belasting
+
+De geheugengrens staat in `scripts/kit/geheugen.mjs`: weinig geheugen is minder dan 6 GiB beschikbaar; op macOS, waar
+libuv alleen vrije pagina's telt, een host met hooguit 8 GiB RAM. `GATE_WEINIG_GEHEUGEN=1` of `0` beslist voor de host. `pnpm gate:fast` meldt het onder de grens: lint en tests wachten dan op elkaar,
+terwijl de overige snelle gates hun bestaande baan houden. Alle controles draaien precies eenmaal, ook na rood.
+Aanleiding: op de gedeelde 8-GiB-host liep een ESLint-proces van 1,8 GiB naast de tests; de swap was vol en de gate
+duurde 486 s met time-outs. Dit is een lokale waarneming, geen vaste looptijd. De CLI-regressies in
+`test/rails/gate-fast-memory.test.ts` bewaken beide planningen en het behoud van alle gates en exitcodes.
+
+Dezelfde geheugengrens begrenst Playwright: één worker onder de grens, anders de helft van de CPU's (minstens één,
+hooguit vier). Op CI stijgt het aantal workers daardoor nooit, maar het kan dalen: een runner met 4 vCPU gaat van vier
+naar twee workers. Dat is bedoeld (elke worker draait een eigen Chromium naast API en Vite). Alle e2e-tests, CSP, axe en time-outs blijven behouden. Aanleiding: de lokale run met acht workers op de gedeelde
+8-GiB-host eindigde na 10,3 minuten met 67 time-outs/fouten en zeven geslaagde tests; de gewone pre-commitcontrole duurde
+tegelijk 422 s. De nieuwe planning is op de echte configuratie getest; uitvoering in de runner vraagt CI-bewijs, omdat
+`playwright.config.ts` hostcode is (ADR 0044). Een nieuwe planning maakt de oude rode run niet groen.
+
+Vraag bij `node scripts/kit/feiten.mjs` alleen de secties die de taak nodig heeft. De UI-catalogus en TypeScript-compiler
+worden pas geladen bij `componenten` of bij een aanroep zonder secties; tekst- en JSON-uitvoer blijven gelijk.
+
+Lokale vergelijking op 25 oktober 2026 (Node 26.11.1, vijf losse processen per versie, `gates --json`): mediaan 426 ms
+vóór en 32 ms na uitgesteld laden. Dit is een momentopname. `test/scripts/feiten-lazy.test.ts` bewaakt de vermeden import;
+de bestaande feiten- en toolchaintests bewaken de uitvoer en foutafhandeling.
+
+De Stop-feedback (ook SubagentStop van de developer) kijkt naar de werkmap plus wat de branch sinds `origin/main` heeft
+gecommit (`rails/hooks/lib/werkstraat.mjs:48`); een schone werkmap met rode gecommitte code geeft dus nog feedback.
+Elke rode controle krijgt een eigen deel van de 40 regels (`rails/hooks/lib/werkstraat.mjs:109`).
+
+## Metingen lezen
+
+Gebruik `pnpm meting --help` voor de teldefinities en `--sessie <id>` of `--branch <naam>` voor een vaste selectie.
+De meethook is voor Claude Code; in andere runtimes ontstaan hiermee niet vanzelf meetgegevens. De meetbestanden
+staan buiten git-tracking in `<git common dir>/agent-meting/`, ook bij worktrees; `METING_DIR` kiest een andere map.
+
+`prompts` telt ontvangen `PermissionRequest`-events (permissievragen), geen opdrachten of berichten van de eigenaar.
+`UserPromptSubmit` telt voor `eigenaarberichten`, waarbij het eerste bericht van de sessie de opdracht is en niet meetelt.
+`promptsPerModus` verdeelt alleen die permissievragen naar hun meegeleverde `permission_mode`; ontbreekt die, dan is de
+modus `onbekend`. Nul prompts en een lege modusverdeling bewijzen geen permissiemodus en ook niet dat er geen
+eigenaarberichten waren. Een classifierbeslissing in auto mode is geen bewijs van een klik van de eigenaar.
+
+`weigeringen` is een bovengrens: een ontvangen `PermissionDenied` telt, evenals een `PreToolUse` met ID waarvoor nog
+geen `PostToolUse` of `PostToolUseFailure` met hetzelfde ID geregistreerd is. Beide voor dezelfde ID tellen samen één
+keer. Een lopende, afgebroken of niet volledig geregistreerde aanroep kan daardoor als weigering meetellen. Tijdens een
+meetopdracht kan bijvoorbeeld de nog lopende `pnpm meting` meetellen; na de geregistreerde afronding daalt de teller.
+Vergelijk daarom dezelfde sessie en branch op hetzelfde afgeronde meetmoment en bewaar de momentopname met tijdstip;
+vergelijkingen tijdens en na een aanroep zijn geen gelijke waarnemingen.
+
+Alleen ontvangen en opgeslagen events tellen. Een geregistreerde weigering van `Read` kan dus meetellen; een weigering
+waarvoor de runtime geen bruikbaar event doorgeeft is niet uit deze bestanden te reconstrueren. De hook is fail-open:
+ontbrekende registraties bewijzen geen nul. De telling en regressieproeven staan in `scripts/kit/meting.mjs` en
+`test/rails/meting-eventketen.test.ts`. `--json` gebruikt dezelfde teldefinities als de tekstuitvoer.
+
+## Nieuw werk beginnen
+
+Elk nieuw ticket, elke feature en elke fix begint op een eigen branch vanaf een vers opgehaalde main, in één commando:
+
+```sh
+git fetch origin main && git switch -c <naam> origin/main
+```
+
+Het rolhek weigert voor elke rol een nieuwe branch in een andere vorm (`rails/hooks/lib/verse-main.mjs`): zonder fetch
+ervoor, met `;` of `||` ertussen, of vanaf een andere basis dan `origin/main` (lokale `main`, de vorige featurebranch,
+HEAD). Het rolhek gebruikt geen netwerk; door de `&&` ontstaat er geen branch als de fetch faalt. De SessionStart-melding
+over de achterstand op `origin/main` blijft daarnaast staan. Een branch op een andere basis maakt de eigenaar zelf. Bekende grenzen
+(vangnet, geen harde grens): omhulsels met opties (`env -i`, `nice -n 1`) en `setsid`, `stdbuf` of `flock` peelt het
+rolhek niet af (`timeout` wel); een `git -C <map>` die tussen fetch en branch verschilt, vergelijkt het niet; en
+`git stash branch`, `git checkout -t origin/<x>` en `git update-ref refs/heads/<x>` ziet deze regel niet.
+`git worktree add <pad>` zonder `--detach` telt altijd als nieuwe branch vanaf HEAD; voor een bestaande branch noem je hem:
+`git worktree add <pad> <branch>`.
+
+Pre-push waarschuwt (blokkeert niet) als de branch achterloopt op `origin/main`; haal main dan binnen met
+`git merge origin/main` (`scripts/kit/main-achterstand.mjs`). Een commitkop volgt conventional commits
+(`fix(hooks): …`); de commit-msg-hook weigert een andere vorm (`scripts/kit/commit-msg.mjs`). Bij de start van een sessie op een
+featurebranch staat de open PR met checks en reviewstatus in de context, zodat een hervatte sessie rode checks en
+reviewcommentaar direct ziet. Lokaal geeft Claude Code een melding als het op de eigenaar wacht (WSL2: Windows-melding;
+uit met `KIT_MELDING=uit`) en toont de statusregel branch, achterstand, gewijzigde bestanden en de stack.
+
+## Besluit en taakscope voorbereiden
+
+`docs/roadmap-archief.md` bevat historisch bouwbewijs en is net als de actieve roadmap een beschermd gate-pad.
+De diff-guard beoordeelt ook verwijderen en weg-hernoemen; CODEOWNERS volgt dezelfde lijst in `.claude/gates.json`.
+
+ADR-nummers worden samen gecontroleerd voor de actieve map en het archief. Verwijderde nummers blijven gereserveerd via
+de Git-geschiedenis van de vertrouwde basis. Heeft main een nummer inmiddels gebruikt, werk de branch dan eerst bij.
+Alleen het bestaande paar 0039-bestanden blijft een ratchet-afwijking; nieuwe dubbelen worden geweigerd.
+Een vervangingsverwijzing eindigt bij een bestaand ADR, zonder zelfverwijzing of cyclus. De besluit-lane accepteert
+uitsluitend records die ook door de bestaande registervalidator komen.
+
+De ADR-sectie van `feiten.mjs` gebruikt dezelfde nummerherkenning en reserveert nummers uit het werkmaparchief en de
+bekende Git-geschiedenis van HEAD en origin/main. Die nummerreservering voegt geen fictieve documenten toe aan de lijst.
+Onleesbare geschiedenis is een fout; haal bij een verse of onvolledige checkout de geschiedenis eerst op.
+
+De app-initialisatie heeft naast geïsoleerde fixtures ook een compatibiliteitsproef met de echte templatebestanden
+(`test/scripts/app-init-template.test.ts`). Na initialisatie vindt die proef de oorspronkelijke invoer in de gekoppelde
+Git-geschiedenis. CI haalt hiervoor de volledige geschiedenis op; er wordt niets teruggeschreven naar de eigen checkout.
+`pnpm check:app-init` (verplichte CI-check) draait `app:init` op een tijdelijke kopie en daarna de snelle suite, zodat een test die alleen in de template slaagt de template-CI rood maakt (leerpunt #334).
+
+Begin met de taakrelevante secties van `node scripts/kit/feiten.mjs`, bijvoorbeeld `gates specs fase`.
+De hoofdsessie kiest de route: licht alleen voor beperkte fixes binnen bestaand gedrag; anders volledig — framework §8.
+Spec (in de volledige straat door de architect) of ADR krijgt direct de bedoelde status; de eigenaar merget
+(besluit) of sluit de PR (afwijzen). Alleen voor een broncodemandaat (`--path`) bereidt de hoofdsessie een besluitrecord voor:
+
+```sh
+pnpm docs:decision docs/specs/voorbeeld.md goedgekeurd --branch feat/voorbeeld --path src/api/app.ts
+```
+
+Herhaal `--path` voor exacte bronbestanden. Het record bindt de inhoudsdigest aan repository en bouwbranch; wijzigt de
+spec daarna van inhoud, dan vervalt het mandaat en is een nieuw record nodig (ADR 0046 punt 7).
+De agent legt document en record in één reviewbare PR voor. Het register in de werkbranch geeft nog geen rechten.
+
+Na eigenaarreview en merge haalt de hoofdsessie `origin/main` op. De bouwbranch neemt het document ongewijzigd over
+en registreert de status:
+
+```sh
+pnpm docs:status docs/specs/voorbeeld.md goedgekeurd
+```
+
+Werkmap en HEAD moeten overeenkomen. Commit de status voordat je een volgende registreert. De eigenaar hoeft geen
+YAML-regel te typen. Intrekking van een mandaat: eigenaar
+verwijdert of vervangt het record op main; lokaal verversen, CI gebruikt de actuele basis. Een verouderde lokale
+basis kan nog oud akkoord zien.
+
+### Gerichte feedback en één volledige lokale eindgate
+
+Developer-stop gebruikt dezelfde typecheck, lint op gewijzigde code en gerelateerde unit-/DOM-tests als Stop.
+Daarbij worden de volledige unit-suite en overige `gate:fast`-onderdelen niet bij iedere overdracht herhaald.
+De gerichte feedback kijkt naar nog gewijzigde bestanden; voer vóór review ook toepasselijke controles op de
+gecommitte branchdiff uit. Geen codewijziging betekent geen feedback, nooit een volledige groene einduitslag.
+
+Pre-push blijft ongewijzigd en start de volledige `pnpm gate:fast`. Alle CI-workflows en vereiste checks blijven
+ongewijzigd op iedere PR. Toepasselijke runnerchecks blijven verplicht. Een codewijziging of ongeldige controle-invoer
+vraagt nieuw bewijs; geen hergebruik van een oude groene uitslag of generieke cache.
+
+Overdracht bevat alleen doel, toepasselijke spec/contract of verwachte uitkomst uit de opdracht/PR, gewijzigde paden,
+open keuzes en echte checkuitslagen. Wie reviewt en wanneer de eigenaar dat overneemt: framework §8 (eisen aan de rollen).
+
+De gerichte feedback volgt ADR 0057. De vertrouwde
+hooklader gebruikt main; een branch activeert geen nieuwe rechten. De App, live ruleset en strikte build-proof uit dat
+ADR zijn afzonderlijk vervolgwerk en worden door deze hookwijziging niet als gebouwd of actief verklaard.
+
+`test/hooks/lean-workflow.test.ts` bewaakt de gerichte feedback en het blokkeren op type-, lint- en testfouten,
+en voert de echte pre-push-config in een tijdelijke repository uit met groene en rode gate-uitvoer.
+De bestaande tests in `werkstraat.test.ts` en `werkstraat-script.test.ts` zijn aangepast omdat developer-stop
+nu gerichte controles uitvoert; de controle op de git-root uit de payload blijft behouden.
+
+### Feature-lane en mini-spec (ADR 0046)
+
+Een besluit kost één PR: de merge is het besluit. Architect of hoofdsessie zet de statusregel in het voorstel; commitvolgorde,
+inhoud na de status en committer doen er niet toe (ADR 0046 punt 7). Zonder record herkent `check-document-status` twee gevallen
+(`scripts/kit/lane.mjs`); de samenvatting noemt elk document dat een eigenaarstatus krijgt. Een PR met een eigenaarstatus merget altijd de eigenaar.
+
+**Functionele UI in de template (ADR 0056/0058):** een lichte fix volgt framework §8, zonder mini-spec.
+Voor overige functionele UI gebruik je de mini-spec met aanvullend `scope: functionele-ui` in de frontmatter.
+Beschrijf het gevraagde gedrag en de acceptatiecriteria en bouw in dezelfde PR; een vooraf gemergde spec en een record met
+bronpaden zijn hiervoor niet nodig. De scope omvat bestaande componenten in `src/core/web/ui`, vaste teksten in
+`src/core/web/copy`, aansluitende app-UI, UI-tests en gebruiksdocs. Gewijzigde bestaande UI-tests krijgen per bestand een
+reden en vervangend bewijs in de PR. Auth, API/contracten, queries, andere core, dependencies, agentinstructies, gedeelde
+fixtures en testsetup blijven erbuiten; een gemengde PR volgt de strengste route. De guard meldt de gebruikte uitzondering,
+corepaden en bestaande UI-tests voor eigenaarreview. Een app-repository krijgt deze core-uitzondering niet.
+Na groene verplichte checks werkt `pnpm docs:status` ook voor de nieuwe UI-mini-spec: het bewijs blijft aan dezelfde
+broncommit, repository en geopende PR gebonden. Een gewijzigde implementatie na die broncommit vraagt nieuw bewijs.
+
+- **Overige feature-lane:** app-werk met een mini-spec (`docs/specs/_mini.md`, veld `sjabloon: mini`). Alles mag meewijzigen (ook docs,
+  `CHANGELOG.md`, de roadmap en gegenereerde bestanden zoals het schema-snapshot) behalve `src/core`, een pad uit `voorReview`
+  (`.claude/gates.json`), een ADR, een gewijzigde of verwijderde bestaande test of migratie, en een tweede document met een eigenaarstatus.
+  Een PR bevat hoogstens één nieuwe migratie. Die maakt precies één owner-tabel in `public` volgens `pnpm new:resource`:
+  vaste id-, owner_id- en created_at-kolommen, ENABLE en FORCE RLS, vier afzonderlijke eigenaarpolicies met
+  `(select app.current_user_id())` en expliciete SELECT/DELETE-grants aan `app_authenticated`. INSERT/UPDATE-grants
+  zijn alleen per app-kolom toegestaan. Eenvoudige extra velden mogen text, integer/int, bigint, boolean, uuid of
+  timestamptz zijn, eventueel met NOT NULL en een letterlijke default. Indexen bevatten alleen kolomnamen;
+  quoted objectnamen, expressies en andere SQL-vormen volgen de framework-lane (`scripts/kit/lane.mjs`). De vaste
+  verwijzing naar `better_auth."user" (id)` blijft toegestaan. Een retentionregistratie heeft precies de volgorde
+  NO FORCE → één rij voor de nieuwe tabel → FORCE; losse of herhaalde toggles worden geweigerd. De mini-spec heeft de kop
+  "Datawijzigingen (met grants)". Een geneste `CLAUDE.md` of `AGENTS.md` valt eruit. Een onbekend pad buiten `gates` en buiten `src/`, `docs/` en `db/` (zoals `.vscode/` of `.mcp.json`) valt eruit. Diff-guard en
+  CODEOWNERS blijven gelden voor elk gate-pad in de PR. Het bereik is ruimer dan de letter van ADR 0046 punt 14 (eigenaarbesluit).
+- **Besluit-PR (framework-lane):** een of meer ADR's en specs die een eigenaarstatus krijgen (ook `vervangen door NNNN` of `vervallen`, of nieuwe inhoud van een goedgekeurde spec), met hooguit hun eigen records in `.claude/decisions.json` (andere records of `requiredChecks` wijzigen telt niet), zonder code of andere bestanden: alleen documenten in `docs/adr/` en `docs/specs/` die zelf een besluit krijgen, ook geen index of ander document. Wijzigt de inhoud van een spec met een `--path`-mandaat, dan vervalt dat mandaat; code eronder vraagt een nieuw record. Bouwen volgt in een volgende PR.
+- Past de PR in geen van beide, dan geldt de strenge route: de status heeft een record op main nodig (ADR 0046, hierboven).
+
+## Ontwikkelen en runnerchecks
+
+`check-core` weigert een core-veranderende merge die een eerder geïmporteerde templateversie terugdraait, ook als de
+oudere ouder zelf vertrouwd is of de merge-ouders omgedraaid zijn (`scripts/kit/check-core.mjs`). De controle gebruikt
+de gedeelde Git-geschiedenis van beide ouders en `template/main`, zonder extra versieregister. Een template-update
+zonder core-wijziging en een nieuwere core met behoud van app-code blijven mogelijk; ontbrekende geschiedenis vraagt
+een volledige fetch. Dit bewaakt core; het vervangt de inhoudelijke review van app-code niet.
+
+Het rolhek reserveert PR-creatie en elke schrijvende gh-opdracht voor de hoofdsessie; subagents krijgen alleen een
+leeslijst (`gh pr view/diff/checks`, `gh run view`, REST-GET via `gh api`) en geen GraphQL, ook geen leesquery
+(`docs/framework.md`, rij "PreToolUse rolhek (Bash)"). Een grove regel op de ruwe tekst, zonder `\`, `'` en `"`,
+weigert voor elke rol mergen en goedkeuren in tekst die gh, `/pulls/`, `api.github.com` of GraphQL noemt, ook verhuld
+(`g\h`, `mer""ge`), ook binnen `$(…)` en backticks; een commandowoord dat niet letterlijk is (`$CMD …`, `$(…)`, een glob of
+`~` vooraan, na `!`, `if`, `while` of een omhulsel als `env`/`nice`/`sudo` moet elk woord van het segment
+letterlijk zijn; en achter xargs of find
+`-exec`). Een glob op welke positie ook die naar `gh` kan wijzen (`/usr/bin/g[h]`, `g?`), brace-expansie (`g{h..h}`, `{g,x}h`) en POSIX-klassen (`[[:alpha:]]`) zijn los daarvan dicht (bewust vals positief: `echo {a,b}`, `echo {1..3}`, een `--jq`-object met een komma), een variabel woord (`${G}h`, `$G`) naast een gh-subcommandowoord als `pr`, `api` of `run`
+(bewust vals positief: `echo $HOME run`); met een geëxpandeerd argument mag alleen een programma uit een vaste lijst
+(`echo`, `cat`, `ls`, `cp`, `rm`, `grep`, …; niet `sed`/`awk`, die zelf een commando kunnen uitvoeren), anders deny voor subagents en ask voor de hoofdsessie; en `eval`/`bash -c` met expansie zijn voor elke rol dicht; subagents
+gebruiken geen xargs met een commando en geen find `-exec`. `gh` telt alleen als los woord (niet in `gh-notes` of een testpad). Bewuste valse meldingen: een PR-titel of
+-body met het woord `merge ` als argument (gebruik `--body-file` en een titel zonder dat woord), en een commitbericht
+met `merge` naast `gh`, `graphql` of `/pulls/` (gebruik `git commit -F <bestand>`), en elk argument met `pr merge` of
+`pr review … --approve`, ook `grep 'pr merge'` (gebruik `-F <bestand>`/`--body-file`). Ook `git commit -m "$(cat <<EOF…)"`
+en `gh pr create --body "$(…)"` geven een ask of deny (substitutie en heredoc); schrijf het bericht naar een bestand en
+gebruik `git commit -F <bestand>` of `gh pr create --body-file <bestand>`. Voor elke rol zijn verder dicht: `pr review`
+naast een los `gh`, ook zonder `--approve` en achter een omhulsel (`env -i gh pr review …`, `timeout 9 gh pr review …`;
+bewust vals positief: `grep 'pr review' gh`), `pr merge`
+en `pr review … --approve` (ook `-a` vooraan een cluster: `-ab`, `-aF`) en een GraphQL-merge ook zonder herkenbaar `gh`, `env -S`/`--split-string` (ook als `-vS`, na
+`-u NAAM`/`-C MAP`/`--unset`/`--chdir` en met escapes als `-S'\_gh'`; dicht falen, dus ook `-uS`), een git-alias met `!` (`-c alias.x=!…`,
+`git config alias.x '!…'`) of via `--config-env`, en xargs of find `-exec` met `gh`, `git`, een shell, `eval` of een omhulsel als `env`, `command`, `nice` of `timeout`
+als commandowoord (ook zonder zichtbare `gh` erna; bewust vals positief: `xargs nice prettier` en
+`git ls-files -z | xargs -0 git add`). Label, `@file`/`--input` en `gh alias` weigert `ghForbidden` alleen waar
+`splitCommand` (`rails/hooks/lib/shell.mjs:198`) `gh` als commandowoord ziet; achter een omhulsel met opties
+(`env -i gh …`, `nice -n 1 gh …`, `timeout 9 gh …`, `stdbuf`, `setsid`) geldt dat voor de hoofdsessie niet.
+Lege woorden vóór of tussen groep en actie (`gh "" api …`, `gh '' pr review 1`) slaat het rolhek over zoals gh/cobra
+doet, dus gelden dezelfde regels (`withoutRepo` in `rails/hooks/lib/rolhek.mjs`).
+`pnpm format` en `pnpm run format`
+vragen de hoofdsessie expliciet akkoord omdat ze ook beschermde bestanden schrijven; subagents gebruiken gerichte
+formattering. De padcontrole volgt bij cp/mv/ln/install ook `-t` en `--target-directory`.
+`git update-ref --stdin` (ook afgekort) wordt geweigerd omdat de te wijzigen refs niet in de opdracht staan.
+Dit sluit bekende omwegen; scripts in de repo en interpreters (`node -e`) blijven open, voor de hoofdsessie ook `curl -K <bestand>`, net als een kopie of link van gh onder een andere naam, of een zelfgeschreven uitvoerbaar bestand (bijvoorbeeld `cp /usr/bin/gh ./x; ./x …`); deze klasse komt samen met `node_modules/.bin` in een aparte rail-PR. Ook open voor de hoofdsessie: (a) een omhulsel met opties vóór gh (label, `@file`/`--input`, `gh alias`), (b) xargs met een long option of een cluster met waarde (`--arg-file F`, `-0a F`, `-rn 1`), waarvan de optiewaarde als commandowoord wordt gelezen, en (c) `coreutils --coreutils-prog=env`; (a) en (b) staan in `docs/roadmap.md`. De harde grens is GitHub zelf
+(ruleset en eigenaarmerge); sandbox en CI blijven nodig voor niet-geclassificeerde programma's.
+
+Een geldig broncodemandaat geeft alleen de bekende developer toegang tot genoemde beschermde bronbestanden.
+Core kan uitsluitend in de template zelf worden ontwikkeld. App-uitbreidingen blijven via registratie en app-code
+lopen. Tests en bewaking houden hun bestaande bescherming.
+
+Bij een weigering meldt de developer commando/bestand en werkelijke rolhekreden als onvoltooid. De hoofdsessie
+verwerkt de grens of vraagt een concrete scope-uitbreiding. Een blokkadetekst schakelt de groen-eis niet uit.
+
+De bestaande runner start zijn eigen verse teststack; hiervoor hoeft de eigenaar geen dev-stack te starten.
+Zo draait hij (ADR 0044): `scripts/runner.sh` roept compose aan met vaste argumenten: alleen `compose.yaml`, een eigen
+projectnaam, `--env-file db/test.env` en `--profile test` (`scripts/runner.sh:91`), nooit `.env`, `.env.local` of een
+override. Het anker `x-runner` (`compose.yaml:9`) zet de container op `read_only`, `cap_drop: [ALL]` en
+`no-new-privileges`, mount de repo read-only met één uitvoermap `.runner-output`, houdt `/tmp` (ook de caches,
+`RUNNER_CACHE_DIR`) in tmpfs en hangt hem alleen aan het interne netwerk `test-net` (`compose.yaml:231`). Vooraf weigert
+`check_host_files` bij afwijkende hostbestanden (`HOST_FILES`, `scripts/runner.sh:15`). `test/isolatie/runner.int.test.ts`
+bewijst de isolatie: geen internet, geen route naar de host, `postgres` geweigerd en een read-only repo.
+`pnpm test:db`, `pnpm ui:check` en `pnpm gate:slow` mogen automatisch bij `autoRunner` op main en onveranderde
+hostbestanden. Start ze vanuit de repositoryroot; een package in een submap krijgt geen automatische hosttoestemming.
+Alleen de exacte opdrachten krijgen expliciete toestemming, zonder extra argumenten, environment-
+overrides of samengestelde shellopdracht.
+
+`pnpm pr:verify` weigert een vuile werkmap, behalve ongetrackte bestanden onder `werkmapNegeer` in `.claude/gates.json`
+(uit `origin/main`, nooit uit de werkmap; `scripts/kit/pr-verify.mjs`, ADR 0045 punt 23). Een getrackte wijziging onder zo'n
+pad weigert wel. `check-docs` eist dat de paden onder `.claude/` vallen en niet getrackt zijn. Bekende beperking: `.mcp.json` en
+`.claude/commands/` staan er niet in; een app commit ze, zet ze in `.gitignore` of (alleen `.claude/commands/`, want het ligt onder
+`.claude/`) in `werkmapNegeer`. `.mcp.json` kan alleen gecommit of genegeerd worden.
+
+Bij gewijzigde scripts, compose-, package- of andere hostconfiguratie gebruikt de hoofdsessie de bestaande GitHub CI
+op een wegwerp-runner. Geen `--sta-wijzigingen-toe`, lokaal `CI=true`, Docker-aanroep of afgezwakte hostcontrole.
+`gate:slow` voert database-, UI- en snapshotchecks op iedere PR uit. Meld infrastructuurstoringen met uitvoer; vraag
+de eigenaar niet standaard om veilig uitvoerbare tests alsnog zelf te draaien.
+
+## Branchwissels in een sandbox
+
+Een schone werkmap bewijst niet dat een branchwissel uitvoerbaar is. De Claude Code-sandbox kan bijvoorbeeld
+`.claude/skills/` niet schrijven ([sandboxgrens](../ENVIRONMENT.md#grens-van-de-sandbox)). Een `git switch` of
+fast-forward kan daarop halverwege afbreken, nadat andere bestanden of de index al veranderd zijn (leerpunt #338).
+Dit geldt ook bij het starten van een nieuwe branch; controleer de gebruikte runtime en claim geen ongelezen sandboxinstelling.
+
+Haal eerst de bedoelde refs op met `git fetch origin`. Leg vóór iedere afzonderlijke branchwissel of fast-forward
+de huidige commit, branch en werkmap vast. Vergelijk HEAD met de **precieze doelref** van die stap:
+
+```sh
+git rev-parse HEAD
+git branch --show-current
+git status --porcelain
+git diff --name-only HEAD <doelref> -- .claude/skills .claude/hooks .claude/settings.json .claude/settings.local.json
+```
+
+Neem ook eventuele andere door de runtime beschermde paden mee. Een wissel naar lokale `main` vergelijkt met `main`;
+een daaropvolgende fast-forward vergelijkt opnieuw met `origin/main`. Alleen de vergelijking met `origin/main` vooraf
+volstaat niet: lokale `main` kan nog oude skillbestanden bevatten. De bestaande voorwaarden voor een schone werkmap
+en het opruimen na een merge blijven gelden.
+
+Moet de stap een door de sandbox beschermd bestand wijzigen, probeer de wissel dan niet. Begin verder werk in een
+aparte schone worktree vanaf de bedoelde doelref als de runtime dat toestaat, of laat de eigenaar de wissel uitvoeren.
+Een nieuwe worktree herstelt de oude niet; meld welke branch of werkmap nog niet is opgeruimd. Verruim de sandbox niet.
+
+Is een wissel al afgebroken, stop dan met schrijven. Lees eerst opnieuw `git rev-parse HEAD`, `git branch --show-current`
+en `git status --porcelain`, plus `git diff --name-status` en `git diff --cached --name-status`. Vergelijk met de vooraf
+vastgelegde commit en doelref: gestagede bestanden kunnen uit de mislukte wissel komen en bewijzen op zichzelf geen
+eigenaarswijziging. Bewaar de foutmelding en deze diagnose; commit, herstel of verwijder niets op basis van alleen
+`git status`. Leg de gedeeltelijke wissel aan de eigenaar voor; geen geforceerde checkout, `reset --hard` of versoepelde rechten.
+
+## PR en statussen afronden
+
+Na de vereiste review opent de hoofdsessie de PR en wacht op werkelijke CI:
+
+```sh
+pnpm pr:verify 123 --watch
+```
+
+Controleert huidige commit, PR-branch, repository en verplichte checks uit main. Alleen Actions-uitslagen op de juiste
+SHA tellen; een mislukte rerun maakt eerder groen ongeldig. Zonder `--watch` volgt direct de huidige toestand.
+Bij CodeQL telt ook de aparte `CodeQL`-resultaatcheck van GitHub Advanced Security mee: een geslaagde analysejob kan
+bevindingen hebben. Een rode, lopende of nog ontbrekende resultaatcheck geeft geen groen oplever- of bouwbewijs.
+Met `--watch` maximaal 30 minuten wachten; een deadline is onvoltooid, daarna controleert de agent opnieuw.
+Een veranderende PR of werkmap vraagt nieuwe verificatie.
+
+### Als pr:verify niet start of de werkmap weigert
+
+`pnpm` controleert vóór `run` en `exec` of de installatie bij de workspace past. `verifyDepsBeforeRun: error` in
+`pnpm-workspace.yaml` laat een afwijking stoppen met `ERR_PNPM_VERIFY_DEPS_BEFORE_RUN`, voordat het werkcommando
+start. De controle werkt daarbij geen dependencies bij. Voer het expliciete installatieherstel uit volgens de setup; de snelle
+Node-controle in `feiten.mjs` bewijst alleen versie en aanwezigheid van installatiebestanden.
+
+`ERR_PNPM_ABORTED_REMOVE_MODULES_DIR_NO_TTY` komt van pnpm vóór de verificatie: pnpm wil `node_modules` installeren
+of opnieuw inrichten, maar kan de bevestiging niet interactief vragen. Die melding kan nog voorkomen bij een oudere
+configuratie of een expliciete installatie die bestaande modules opnieuw moet inrichten. Alleen het bestaan van die map bewijst geen
+passende installatie, bijvoorbeeld na kopiëren uit een andere werkmap. Controleer de toolchain met
+`node scripts/kit/feiten.mjs gates` en herstel zo nodig de installatie met `pnpm install --frozen-lockfile` in een
+daarvoor toegestane interactieve omgeving volgens [de setup](../ENVIRONMENT.md). Onderdruk de vraag niet met lokaal
+`CI=true` en schakel de synchronisatiecontrole niet uit om alleen de verificatie te laten starten.
+
+Werken de vereiste Node-versie en dependencies al aantoonbaar en blokkeert alleen pnpm het starten, dan kan dezelfde
+verificatie rechtstreeks vanuit de repositoryroot:
+
+```sh
+node scripts/kit/pr-verify.mjs <nr> --watch
+```
+
+Dit voert dezelfde SHA-, branch-, repository-, werkmap- en checkherkomstcontroles uit. Een kale
+`gh pr checks --watch` vervangt dat bewijs niet. Ontbreken Node, dependencies, Git- of GitHub-toegang, herstel dan eerst
+de omgeving; een andere aanroep maakt ontbrekend bewijs niet groen.
+
+Bij een vuile werkmap noemt `pr:verify` de blokkerende paden, zonder bestandsinhoud. Een onleesbare Git-status krijgt
+een aparte fout en telt nooit als schoon. Gelijke lokale en PR-head-SHA's sluiten wijzigingen in werkmap of index
+niet uit. Lees `git status --porcelain`, `git diff --name-status` en `git diff --cached --name-status`; bepaal de
+herkomst vóór committen of herstellen. Alleen de bestaande uitzonderingen uit `werkmapNegeer` op de vertrouwde basis
+gelden. Na een afgebroken branchwissel volg je "Branchwissels in een sandbox" hierboven (leerpunt #338); voeg geen
+onbekende paden aan de uitzonderingen toe om de weigering op te heffen (leerpunt #329).
+
+De hoofdsessie kan een documentatie-PR markeren:
+
+```sh
+pnpm pr:label-gate 123
+```
+
+Dit is administratie. `gateMarker: docs` op main beperkt het tot documentatie; `all` kan uitsluitend na een nieuw
+eigenaarbesluit worden ingesteld. De helper zet geen review of check-status. Directe labelschrijfacties blijven
+verboden. Diff-guard behoudt label én eigenaarreview op de uiteindelijke head-SHA, met de overgang uit ADR 0045 punt 17.
+
+Bij afgeronde implementatie en groene verplichte checks registreert de agent:
+
+```sh
+pnpm docs:status docs/specs/voorbeeld.md gebouwd --pr 123 --roadmap
+```
+
+Schrijft alleen de statusregel met PR en gevalideerde bron-SHA, en met `--roadmap` het vinkje van het item dat de spec noemt. Commit en push de administratie, controleer CI opnieuw.
+De guard mag de groene broncommit gebruiken als de latere diff uitsluitend statusregels en het vinkje van de eigen taak wijzigt. Inhoud, code, tests
+of configuratie wijzigen vraagt nieuw bouwbewijs. Gebouwd vereist geen merge. ADR's hebben geen gebouwd-status:
+implementatiebewijs hoort bij hun gekoppelde spec.
+
+Volgorde (leerpunt #314, anders kost het extra CI-rondes of merget de PR zonder `gebouwd`):
+
+1. `check:roadmap` eist een roadmapwijziging in dezelfde PR zodra de spectekst `ST-<n>` of "roadmap stuk <n>" noemt (bijvoorbeeld ST-09). Gebruik daarvoor `--roadmap`: het vinkje landt dan in de statuscommit. Zet het niet in de implementatie: onder een taakmandaat keurt `document-status` een vinkje vóór de statuscommit af (`BUITEN`), en `--roadmap` faalt als het item al is afgevinkt. Noemt het item het specpad niet tussen backticks, dan kan `--roadmap` het niet afvinken: stop en vraag de eigenaar (met mandaat); zonder mandaat komt de roadmapwijziging in de implementatie.
+2. Wacht op groen op HEAD (`pnpm pr:verify <n> --watch`).
+3. Draai `pnpm docs:status … gebouwd --pr <n> --roadmap`, commit en push dat als laatste commit. Noemt de spectekst geen `ST-<n>` of "roadmap stuk <n>", dan laat je `--roadmap` weg. Daarna mag alleen nog de statusregel (en het vinkje) wijzigen; elke andere commit erna maakt `document-status` rood, ook `git merge origin/main`.
+4. Pas na groen op die statuscommit mag de eigenaar de PR mergen of auto-merge aanzetten. Staat auto-merge al aan, vraag de eigenaar hem uit te zetten tot stap 3 klaar is: na de merge ligt de PR-head vast en eist `canRecordBuilt` dat die gelijk is aan de gecontroleerde HEAD op dezelfde branch, dus een latere statuscommit herstelt het niet.
+5. Landt er toch een commit na de statuscommit (ook `git merge origin/main`), dan is `document-status` rood. Wacht op groen voor de andere checks op de nieuwe HEAD en draai stap 3 opnieuw, zonder `--roadmap` als het item al is afgevinkt. Lukt dat niet, stop en vraag de eigenaar.
+
+Zonder `gh`-authenticatie kan `docs:status … --pr` het bouwbewijs niet ophalen. De statusregel met de hand zetten is geen alternatief: de volgorde hierboven blijft gelden en `document-status` valideert hem tegen de PR. Meld het en laat de eigenaar of een sessie met `gh`-auth stap 3 draaien.
+
+`vervallen` of `vervangen door NNNN` schrijft de architect of hoofdsessie in een besluit-PR; de merge door de eigenaar beslist.
+
+## Invoering en runtime
+
+Zonder record op main geeft het register geen taakmandaat. De invoering is gebeurd (#130, #144): de guard staat op main en
+helpers en taakrechten worden vanuit main actief; werkbranchconfig activeert geen automatische runner of ruimere labelscope.
+Een wijziging aan die guard zelf vraagt, zolang hij nog niet op main staat, eigenaarreview vóór merge.
+
+Claude Code gebruikt de geteste hooks. Codex en andere runtimes draaien ze niet automatisch: volg dezelfde procedure
+en meld ontbrekende lokale rolgrenzen. Een subagent met dezelfde rechten als de hoofdsessie is geen afgedwongen
+onafhankelijke reviewer; wat dan per route volstaat, staat in framework §8. De agent merget nooit.
+
+## Bekende beperkingen
+
+- De automatische runner draait ook door de agent geschreven tests buiten de sandbox, zonder prompt (het gat uit ADR 0044).
+  De hostbestanden in `rails/hooks/lib/runner-authority.mjs` en `scripts/runner.sh` zijn de enige controle vooraf: scripts,
+  packagebestanden, compose en de configs van vite, vitest en playwright. De testbestanden zelf horen daar niet bij; die vraagt
+  de agent juist te mogen toevoegen en draaien.
+- De hooks lezen de vertrouwde basis uit de lokale ref `origin/main` en doen geen netwerkwerk. Het rolhek weigert elke andere
+  manier om die ref of de remote `origin` te veranderen dan `git fetch origin` (`movesTrustedBase` in `rails/hooks/lib/rolhek.mjs`),
+ook een fetch van `origin` met als bestemming `refs/remotes/origin/main`, `git replace` (behalve `--list`), config op
+`include.*`/`includeIf.*` en, voor elke rol en elk programma, `GIT_CONFIG_*`, `GIT_DIR` of `GIT_WORK_TREE` als
+toewijzing, `export` of `declare -x`. `scripts/runner.sh` vergelijkt niet met die lokale ref maar met `git ls-remote origin refs/heads/main`.
+  Een commando buiten de hooks, of een andere runtime, valt daar niet onder; de CI-guard leest `main` bij GitHub en is de echte grens
+  (`scripts/kit/check-document-status.mjs`).
+
+## Gate-PR in de overgang
+
+Is de auteur van een PR zelf goedkeurder, dan geeft `diff-guard` de uitslag `overgang` (groen met waarschuwing;
+[ADR 0045](../adr/0045-railwerk.md) punt 17). Dan:
+
+1. Lees de samenvatting van `diff-guard` (de geraakte gate-paden, bewaakte sleutels, gewijzigde tests en het Risico-overzicht: nieuwe, gewijzigde of hernoemde migraties, permissiesleutels, elke tekstwijziging in een contractbestand onder `src/shared/contracts/**` (elk bestandstype, ook alleen commentaar of witruimte; `permission:` oud → nieuw waar eenduidig, anders "controleer permissie met de hand"; buiten het overzicht vallen verwijderde bestanden, hernoeming uit `contracts/` (een hernoeming naar `contracts/` telt als nieuw), `*.spec.*`-bestanden en permissiewaarden uit een bestand buiten `src/shared/contracts/**`), nieuwe dependencies en nieuwe routes (op method en path of contract)) en de uitslag van
+   `document-status` (een eigen job in `.github/workflows/guard.yml`, ADR 0045 punt 20; een fout staat als `::error title=document-status::`).
+2. Een label `gate-wijziging` of een review is niet nodig; een review is ook niet mogelijk, want GitHub laat de auteur zijn
+   eigen PR niet goedkeuren. De eigenaar merget zelf.
+3. Is `document-status` rood, merge dan niet: laat de oorzaak herstellen.
+
+## Correctie aan een geaccepteerd ADR
+
+Een geaccepteerd ADR herschrijven of een ADR met een eigenaarstatus op main verwijderen mag alleen in een besluit-PR (alleen `docs/adr/`,
+`docs/specs/` en het record), door architect of hoofdsessie. Een vervallen of vervangen ADR verandert niet van inhoud, en geen ADR gaat terug
+naar `voorgesteld` of wordt hernoemd: guard en rolhek (dat vergelijkt met main) weigeren dat (A4, ADR 0046 punt 2). Kies het spoor naar wat
+er verandert ([ADR 0045](../adr/0045-railwerk.md) punt 21):
+
+1. **Normatief** (wat besloten is): herschrijf het bestaande ADR in een besluit-PR, met een nieuwe herzieningsregel
+   `Herzien: JJJJ-MM-DD (#NNN): wat` (bestaande datum, het PR-nummer, wat er verandert; oude regels blijven staan). Een nieuw ADR
+   alleen voor een onderwerp dat in geen bestaand ADR past; `vervangen door NNNN` op het oude mag in dezelfde PR, zonder record.
+   Een oud ADR verwijderen mag in een besluit-PR nadat een reviewer heeft bevestigd dat de inhoud volledig in het nieuwe staat.
+   De guard eist dat een nieuwe herzieningsregel deze PR noemt, dat een verwijderd nummer nooit terugkomt, en dat na een
+   verwijdering elke `vervangen door NNNN` nog naar een bestaand ADR wijst; `docs/adr/archief/` telt daarbij mee als doel en
+   als verwijzer, en een nummer dat alleen nog in het archief staat blijft bezet (`scripts/kit/check-document-status.mjs`).
+2. **Verwijzing naar een later ADR**: een ADR-link achter de statuswaarde, met alleen het nummer als linktekst en het
+   bestand ernaast als doel (zoals `0045` naar het bestand van ADR 0045). Geen record nodig; de eigenaar ziet het in de gate-PR.
+   Achter de statuswaarde mag verder alleen `(JJJJ-MM-DD)` en `#<nr>`, gescheiden door `, ` of ` — ` (punt 22,
+   `statusregelOvertreding` in `rails/hooks/lib/document-state.mjs`); anders is `document-status` rood. Een ongewijzigde regel
+   op main blijft geldig.
+
+Een niet-normatieve tekstcorrectie (taalfout, kapotte link) heeft geen eigen spoor meer: ze verdwijnt bij de volgende vervanging.

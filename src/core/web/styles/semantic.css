@@ -1,0 +1,92 @@
+/* Laag 2: semantisch (shadcn-namen, framework §7). De standaard van de template; een app past alleen deze laag aan,
+   in src/web/styles/theme.css. De contrasttest (contrast.test.ts) leest dit bestand. */
+:root {
+  --background: var(--p-white);
+  --foreground: var(--p-zinc-950);
+  --card: var(--p-white);
+  --card-foreground: var(--p-zinc-950);
+  --popover: var(--p-white);
+  --popover-foreground: var(--p-zinc-950);
+  --primary: var(--p-blue-700);
+  --primary-foreground: var(--p-white);
+  --secondary: var(--p-zinc-100);
+  --secondary-foreground: var(--p-zinc-900);
+  --muted: var(--p-zinc-100);
+  --muted-foreground: var(--p-zinc-600);
+  --accent: var(--p-zinc-100);
+  --accent-foreground: var(--p-zinc-900);
+  --destructive: var(--p-red-700);
+  --destructive-foreground: var(--p-white);
+  --success: var(--p-green-700);
+  --success-foreground: var(--p-white);
+  --warning: var(--p-amber-700);
+  --warning-foreground: var(--p-white);
+  --border: var(--p-zinc-200);
+  --input: var(--p-zinc-500);
+  --ring: var(--p-blue-600);
+  --sidebar: var(--p-zinc-50);
+  --sidebar-foreground: var(--p-zinc-900);
+  --sidebar-accent: var(--p-zinc-200);
+  --sidebar-accent-foreground: var(--p-zinc-950);
+  --radius: 0.5rem;
+
+  /* Typografie (index.css koppelt deze aan font-*, text-* en font-<gewicht>). Standaard de systeemstack en de
+     Tailwind-maten; alleen sm t/m 2xl en normal/medium/semibold bestaan. */
+  --font-family-sans:
+    ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
+  --font-family-mono:
+    ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;
+  --type-sm: 0.875rem;
+  --type-sm-leading: 1.25rem;
+  --type-base: 1rem;
+  --type-base-leading: 1.5rem;
+  --type-lg: 1.125rem;
+  --type-lg-leading: 1.75rem;
+  --type-xl: 1.25rem;
+  --type-xl-leading: 1.75rem;
+  --type-2xl: 1.5rem;
+  --type-2xl-leading: 2rem;
+  --weight-normal: 400;
+  --weight-medium: 500;
+  --weight-semibold: 600;
+
+  /* Dichtheid: hoogte van bediening (nooit onder 44 px, zie --control-h) en de basis van alle afstanden (p-4, gap-2). */
+  --density-control: 2.75rem;
+  --density-space: 0.25rem;
+
+  /* Beweging (duration-*, ease-*, standaard van transition-*). Bij prefers-reduced-motion kort index.css alles in. */
+  --motion-fast: 150ms;
+  --motion-normal: 200ms;
+  --motion-ease-standard: cubic-bezier(0.4, 0, 0.2, 1);
+  --motion-ease-out: cubic-bezier(0, 0, 0.2, 1);
+}
+
+[data-theme='dark'] {
+  --background: var(--p-zinc-950);
+  --foreground: var(--p-zinc-50);
+  --card: var(--p-zinc-900);
+  --card-foreground: var(--p-zinc-50);
+  --popover: var(--p-zinc-900);
+  --popover-foreground: var(--p-zinc-50);
+  --primary: var(--p-blue-300);
+  --primary-foreground: var(--p-zinc-950);
+  --secondary: var(--p-zinc-800);
+  --secondary-foreground: var(--p-zinc-50);
+  --muted: var(--p-zinc-800);
+  --muted-foreground: var(--p-zinc-400);
+  --accent: var(--p-zinc-800);
+  --accent-foreground: var(--p-zinc-50);
+  --destructive: var(--p-red-300);
+  --destructive-foreground: var(--p-zinc-950);
+  --success: var(--p-green-300);
+  --success-foreground: var(--p-zinc-950);
+  --warning: var(--p-amber-300);
+  --warning-foreground: var(--p-zinc-950);
+  --border: var(--p-zinc-800);
+  --input: var(--p-zinc-500);
+  --ring: var(--p-blue-400);
+  --sidebar: var(--p-zinc-900);
+  --sidebar-foreground: var(--p-zinc-50);
+  --sidebar-accent: var(--p-zinc-800);
+  --sidebar-accent-foreground: var(--p-zinc-50);
+}
