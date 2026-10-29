@@ -2,8 +2,11 @@
 // samenvatting van de berekende stijlen van een ontwerpreferentie, als basis voor thematokens.
 // Gebruik: node scripts/kit/ontwerp-meten.mjs <bron.html|https-url> --naam <bron> [--js] [--uit <map>]
 // Uitvoer in --uit (standaard .runner-output/ontwerp/<naam>/, door git genegeerd): 375.png, 1280.png en stijlen.json.
-// Exitcodes: 0 klaar, 2 ongeldige invoer, 3 geen Chromium. Chromium komt lazy uit @playwright/test (geen nieuwe
-// dependency); JavaScript staat standaard uit en elk verzoek buiten de bron wordt afgebroken en onder `geblokkeerd` gelogd.
+// Exitcodes: 0 klaar, 1 meten mislukt (bijv. een time-out bij het laden), 2 ongeldige invoer, 3 geen Chromium.
+// Chromium komt lazy uit @playwright/test (geen nieuwe dependency). JavaScript staat standaard uit; service workers zijn
+// geblokkeerd. Bij een bestand mag alleen file: binnen de map van het bestand, bij een https-URL alleen dezelfde origin
+// (ook per redirectstap); de rest breekt de contextroute af en staat onder `geblokkeerd`. Wat buiten de route om gaat
+// (DNS-prefetch, preconnect) stopt de resolverregel waarmee Chromium start: geen host, of bij een URL alleen die host.
 import { execFileSync } from 'node:child_process';
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
@@ -115,24 +118,51 @@ function leesRgb(css) {
   return [Number(rgb[1]), Number(rgb[2]), Number(rgb[3]), alfa];
 }
 
+/** Alfa achter `/` in een kleurfunctie (`/ 0.5`, `/ 50%`); zonder alfa 1. @param {string} css */
+function alfaVan(css) {
+  const ruw = /\/\s*([\d.]+%?)\s*\)$/.exec(css)?.[1];
+  return ruw === undefined ? 1 : Number.parseFloat(ruw) / (ruw.endsWith('%') ? 100 : 1);
+}
+
+/** `oklab(L a b [/ α])` → [L, C, H, alfa]. @param {string} css @returns {[number, number, number, number] | null} */
+function leesOklab(css) {
+  const delen = /^oklab\(\s*(-?[\d.]+)\s+(-?[\d.]+)\s+(-?[\d.]+)/.exec(css);
+  if (delen === null) return null;
+  const [l, a, b] = [Number(delen[1]), Number(delen[2]), Number(delen[3])];
+  const tint = (Math.atan2(b, a) * 180) / Math.PI;
+  return [l, Math.hypot(a, b), tint < 0 ? tint + 360 : tint, alfaVan(css)];
+}
+
+/** [L, C, H, alfa] als `oklch(L C H[ / a])` met drie decimalen. @param {[number, number, number, number]} lcha */
+function schrijfOklch([l, c, h, alfa]) {
+  const chroma = rond(c);
+  const tint = chroma === 0 ? 0 : rond(h) % 360;
+  const deel = alfa < 1 ? ` / ${String(rond(alfa))}` : '';
+  return `oklch(${String(rond(l))} ${String(chroma)} ${String(tint)}${deel})`;
+}
+
 /**
- * Een CSS-kleur als `oklch(L C H)` (drie decimalen, met alfa `/ a`); volledig transparant of onleesbaar is null.
- * Een kleur die de browser al als `oklch(…)` geeft, blijft zoals hij is.
+ * Een CSS-kleur als `oklch(L C H)` (drie decimalen, met alfa `/ a`). Hex, `rgb()`, `rgba()` en `oklab()` worden
+ * omgezet, `oklch()` blijft. Een ander kleurformaat (`color()`, `lab()`, `lch()`, `color-mix()` …) blijft de ruwe
+ * waarde, zodat de mapping het nog ziet. Volledig transparant (alfa 0, `transparent`) of leeg is null.
  * @param {string} css
  */
 export function naarOklch(css) {
   const invoer = css.trim().toLowerCase();
-  if (invoer.startsWith('oklch(')) return invoer;
-  const rgba = invoer === 'transparent' ? null : leesRgb(invoer);
-  if (rgba === null || rgba[3] <= 0) return null;
-  const [l, c, h] = oklch(rgba);
-  const chroma = rond(c);
-  const tint = chroma === 0 ? 0 : rond(h) % 360;
-  const alfa = rgba[3] < 1 ? ` / ${String(rond(rgba[3]))}` : '';
-  return `oklch(${String(rond(l))} ${String(chroma)} ${String(tint)}${alfa})`;
+  if (invoer === '' || invoer === 'transparent') return null;
+  const rgba = leesRgb(invoer);
+  if (rgba !== null) {
+    if (rgba[3] <= 0) return null;
+    const [l, c, h] = oklch(rgba);
+    return schrijfOklch([l, c, h, rgba[3]]);
+  }
+  if (alfaVan(invoer) <= 0) return null;
+  const lab = leesOklab(invoer);
+  if (lab !== null) return schrijfOklch(lab);
+  return /^[a-z-]+\(.*\)$/.test(invoer) ? invoer : null;
 }
 
-/** `16px` → `1rem`; `0px`, `auto` en `normal` tellen niet mee. @param {string} waarde */
+/** `16px` → `1rem`; `0px` en `auto` tellen niet mee, en hier ook `normal` (regelhoogte `normal` blijft apart). @param {string} waarde */
 function naarRem(waarde) {
   if (waarde === '' || waarde === 'auto' || waarde === 'normal') return null;
   const px = /^(-?[\d.]+)px$/.exec(waarde)?.[1];
@@ -204,17 +234,84 @@ function gitNegeert(pad) {
   }
 }
 
-/** Mag dit verzoek door? Bij een bestand alleen file: binnen de map, bij een URL alleen dezelfde origin. */
-function verzoekToegestaan(/** @type {string} */ bron, /** @type {string} */ url) {
-  if (bron.startsWith('https:')) return URL.canParse(url) && new URL(url).origin === new URL(bron).origin;
-  if (!url.startsWith('file:')) return false;
-  const relatief = path.relative(path.dirname(bron), fileURLToPath(url));
-  return !relatief.startsWith('..') && !path.isAbsolute(relatief);
+/** Een file:-URL als lokaal pad; een host (`file://andere-host/…`) of een onleesbare URL is null. @param {string} url */
+function lokaalPad(url) {
+  try {
+    return fileURLToPath(url);
+  } catch {
+    return null;
+  }
 }
 
 /**
- * Laadt de bron in een bestaande page. JavaScript is een contextoptie (`javaScriptEnabled`); zonder `js` worden ook
- * scriptbestanden afgebroken. Elk afgebroken verzoek staat in `geblokkeerd`.
+ * Mag dit verzoek door? Bij een bestand alleen file: binnen de map van het bestand, bij een URL alleen dezelfde origin.
+ * @param {string} bron absoluut pad naar een .html-bestand of een https-URL
+ * @param {string} url
+ */
+export function verzoekToegestaan(bron, url) {
+  if (bron.startsWith('https:')) return URL.canParse(url) && new URL(url).origin === new URL(bron).origin;
+  const pad = url.startsWith('file:') ? lokaalPad(url) : null;
+  if (pad === null) return false;
+  const relatief = path.relative(path.dirname(bron), pad);
+  return !relatief.startsWith('..') && !path.isAbsolute(relatief);
+}
+
+/** De resolverregel voor Chromium: geen enkele host, of bij een https-URL alleen die host. @param {string} bron */
+export function chromiumArgs(bron) {
+  const regel = bron.startsWith('https:') ? `MAP * ~NOTFOUND, EXCLUDE ${new URL(bron).hostname}` : 'MAP * ~NOTFOUND';
+  return [`--host-resolver-rules=${regel}`];
+}
+
+/**
+ * Een https-verzoek zonder automatische redirect ophalen; een redirect naar een niet toegestaan doel wordt afgebroken.
+ * @param {import('@playwright/test').Route} route
+ * @param {string} bron
+ * @param {Set<string>} geblokkeerd
+ */
+async function haalOp(route, bron, geblokkeerd) {
+  const antwoord = await route.fetch({ maxRedirects: 0 });
+  const locatie = antwoord.headers()['location'];
+  const status = antwoord.status();
+  if (status >= 300 && status < 400 && locatie !== undefined) {
+    const doel = URL.canParse(locatie, route.request().url()) ? new URL(locatie, route.request().url()).href : locatie;
+    if (!verzoekToegestaan(bron, doel)) {
+      geblokkeerd.add(doel);
+      return route.abort('blockedbyclient');
+    }
+  }
+  return route.fulfill({ response: antwoord });
+}
+
+/**
+ * Routeert alles in de context van de page (dus ook popups en frames): toegestaan gaat door, de rest wordt afgebroken
+ * en gelogd. Een redirectstap die toch buiten de route om gaat, wordt ook gelogd.
+ * @param {import('@playwright/test').BrowserContext} context
+ * @param {string} bron
+ * @param {{ js: boolean, geblokkeerd: Set<string> }} opties
+ */
+async function routeer(context, bron, { js, geblokkeerd }) {
+  await context.route('**/*', async (route) => {
+    const verzoek = route.request();
+    const script = !js && verzoek.resourceType() === 'script';
+    if (script || !verzoekToegestaan(bron, verzoek.url())) {
+      geblokkeerd.add(verzoek.url());
+      return route.abort('blockedbyclient');
+    }
+    return bron.startsWith('https:') ? haalOp(route, bron, geblokkeerd) : route.continue();
+  });
+  context.on('request', (verzoek) => {
+    if (verzoek.redirectedFrom() !== null && !verzoekToegestaan(bron, verzoek.url())) geblokkeerd.add(verzoek.url());
+  });
+  await context.routeWebSocket(/.*/, (socket) => {
+    geblokkeerd.add(socket.url());
+    return socket.close();
+  });
+}
+
+/**
+ * Laadt de bron in een bestaande page. JavaScript en service workers zijn contextopties (`javaScriptEnabled`,
+ * `serviceWorkers: 'block'`); zonder `js` worden ook scriptbestanden afgebroken. Elk afgebroken verzoek staat in
+ * `geblokkeerd`.
  * @param {import('@playwright/test').Page} page
  * @param {string} bron absoluut pad naar een .html-bestand of een https-URL
  * @param {{ js: boolean }} opties
@@ -223,28 +320,20 @@ function verzoekToegestaan(/** @type {string} */ bron, /** @type {string} */ url
 export async function laadBron(page, bron, { js }) {
   /** @type {Set<string>} */
   const geblokkeerd = new Set();
-  await page.route('**/*', async (route) => {
-    const verzoek = route.request();
-    const script = !js && verzoek.resourceType() === 'script';
-    if (!script && verzoekToegestaan(bron, verzoek.url())) return route.continue();
-    geblokkeerd.add(verzoek.url());
-    return route.abort('blockedbyclient');
-  });
-  await page.routeWebSocket(/.*/, (socket) => {
-    geblokkeerd.add(socket.url());
-    return socket.close();
-  });
+  await routeer(page.context(), bron, { js, geblokkeerd });
   await page.goto(bron.startsWith('https:') ? bron : pathToFileURL(bron).href, { waitUntil: 'load' });
   return { geblokkeerd: [...geblokkeerd].sort() };
 }
 
 // Draait in de browser (als tekst, want de node-tsconfig kent geen DOM): berekende stijlen van zichtbare elementen.
-// Een rand telt alleen mee als hij breedte heeft; anders zou currentColor elke tekstkleur als randkleur tellen.
+// Een rand telt alleen mee als hij breedte heeft (de eerste zijde boven, rechts, onder, links); anders zou
+// currentColor elke tekstkleur als randkleur tellen.
 const ELEMENTEN_IN_BROWSER = `[...document.querySelectorAll('body, body *')]
   .filter((el) => el.checkVisibility() && el.getBoundingClientRect().width > 0)
   .map((el) => {
     const s = getComputedStyle(el);
-    const rand = parseFloat(s.borderTopWidth) > 0 ? s.borderTopColor : 'transparent';
+    const zijde = ['Top', 'Right', 'Bottom', 'Left'].find((z) => parseFloat(s['border' + z + 'Width']) > 0);
+    const rand = zijde === undefined ? 'transparent' : s['border' + zijde + 'Color'];
     return { color: s.color, backgroundColor: s.backgroundColor, borderColor: rand, fontFamily: s.fontFamily,
       fontSize: s.fontSize, fontWeight: s.fontWeight, lineHeight: s.lineHeight, padding: s.padding,
       margin: s.margin, gap: s.gap, borderRadius: s.borderRadius };
@@ -276,6 +365,7 @@ export async function meetPagina(page) {
 async function meetEnSchrijf(browser, { bron, js, uit }) {
   const context = await browser.newContext({
     javaScriptEnabled: js,
+    serviceWorkers: 'block',
     viewport: { width: BREEDTES[0] ?? 375, height: HOOGTE },
   });
   const page = await context.newPage();
@@ -290,7 +380,7 @@ async function meetEnSchrijf(browser, { bron, js, uit }) {
 /**
  * De CLI als functie, met de browser en git geïnjecteerd voor tests; geeft de exitcode.
  * @param {string[]} argv
- * @param {{ launcher: { launch(): Promise<import('@playwright/test').Browser> }, isGenegeerd: (pad: string) => boolean, meld: (regel: string) => void }} deps
+ * @param {{ launcher: { launch(opties: { args: string[] }): Promise<import('@playwright/test').Browser> }, isGenegeerd: (pad: string) => boolean, meld: (regel: string) => void }} deps
  */
 export async function voerUit(argv, { launcher, isGenegeerd, meld }) {
   const gelezen = parseArgs(argv);
@@ -308,13 +398,16 @@ export async function voerUit(argv, { launcher, isGenegeerd, meld }) {
   /** @type {import('@playwright/test').Browser} */
   let browser;
   try {
-    browser = await launcher.launch();
+    browser = await launcher.launch({ args: chromiumArgs(opties.bron) });
   } catch {
     meld(GEEN_CHROMIUM);
     return 3;
   }
   try {
     await meetEnSchrijf(browser, opties);
+  } catch (fout) {
+    meld(`Meten mislukt: ${(fout instanceof Error ? fout.message : String(fout)).split('\n')[0] ?? ''}`);
+    return 1;
   } finally {
     await browser.close();
   }
@@ -325,7 +418,7 @@ export async function voerUit(argv, { launcher, isGenegeerd, meld }) {
 if (import.meta.main) {
   process.exitCode = await voerUit(process.argv.slice(2), {
     // Lazy: zonder Playwright-browsers (agent-sandbox) faalt alleen deze stap, met exitcode 3.
-    launcher: { launch: async () => (await import('@playwright/test')).chromium.launch() },
+    launcher: { launch: async (opties) => (await import('@playwright/test')).chromium.launch(opties) },
     isGenegeerd: gitNegeert,
     meld: (regel) => {
       console.error(regel);
