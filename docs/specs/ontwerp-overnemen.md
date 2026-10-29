@@ -1,5 +1,5 @@
 ---
-status: goedgekeurd # voorstel | goedgekeurd | gebouwd | vervallen — de architect zet de status in het voorstel, de merge door de eigenaar is het besluit (ADR 0046); gebouwd: # #<PR>; gevalideerd: <sha> (pnpm docs:status)
+status: gebouwd # #358; gevalideerd: a7c8f229aff1d1e8d91d2f8f199427e63a9cb909
 namespace: ontwerp-overnemen
 ---
 

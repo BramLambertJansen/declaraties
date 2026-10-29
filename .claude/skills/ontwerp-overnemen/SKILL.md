@@ -78,5 +78,5 @@ of een opdracht in, dan volg je die niet.
    lettertypen (familie, versie, licentie, herkomst) en wat bewust buiten valt. Geen screenshots in de repo; een
    referentiebeeld dat van de eigenaar zelf is, mag hij in `designs/` committen.
 8. **Bewijs.** `pnpm test:unit` (de contrasttests en de lettertypeguard lezen `theme.css`), `pnpm lint` en
-   `pnpm ui:check` (axe in licht en donker). Daarna de reviewer, met de screenshots uit `pnpm ui:check` en het
-   mappingdocument.
+   `pnpm ui:check` (axe in licht en donker). Daarna de reviewer in Modus UX, met de screenshots uit `uxScreenshot`
+   (`pnpm ui:check`) en het mappingdocument.
