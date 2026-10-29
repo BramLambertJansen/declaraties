@@ -271,6 +271,8 @@ Ankers: OWASP Top 10:2025, OWASP API Security Top 10, ASVS 5.0 niveau 1 (checkli
   `--weight-*`, `--density-*` en `--motion-*`; de enige laag die een app aanpast) → component (`--control-h`, `--focus-ring-*`, `--layer-*`).
   Per token klasse, standaard, app-waarde en `bestand:regel`: `node scripts/kit/feiten.mjs tokens` (namen in `theme.css`
   die niet in `semantic.css` staan: `onbekend`); zichtbaar in de sectie "Tokens" op `/design-system`.
+- **Ontwerp overnemen**: skill `ontwerp-overnemen` vertaalt een referentie naar semantische tokens en componenten; meten met
+  `scripts/kit/ontwerp-meten.mjs` (screenshots en berekende stijlen, buiten de repo), vertaling in `docs/ontwerp/<bron>.md`.
 - In `@theme` worden kleur, radius, schaduw, lettertype, tekstmaat, gewicht en easing van Tailwind gereset (ook
   `--font-*`, `--font-weight-*`, `--text-*` en `--ease-*`: `initial`); `bg-red-500`, `text-xs` en `font-bold` bestaan niet. Dark mode via `[data-theme=dark]` met `@custom-variant dark (&:where([data-theme=dark], [data-theme=dark] *));`.
   De reset sloopt klassen die shadcn gebruikt (`bg-black/50`, `shadow-xs`): de codemod vangt die op. Vite `build.target` gelijk aan browserslist.

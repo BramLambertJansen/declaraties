@@ -6,6 +6,13 @@ Hier staan wijzigingen die van belang zijn bij het gebruiken of bijwerken van de
 
 ### Toegevoegd
 
+- Ontwerp overnemen (spec `docs/specs/ontwerp-overnemen.md`, deel 5a): skill `ontwerp-overnemen` vertaalt een
+  referentie (HTML-bestand, URL, afbeelding of niets) naar semantische tokens in `theme.css`, een mappingdocument
+  `docs/ontwerp/<bron>.md` (sjabloon `docs/ontwerp/_template.md`) en variantvoorstellen. Het meetscript
+  `node scripts/kit/ontwerp-meten.mjs <bron> --naam <naam> [--js] [--uit <map>]` maakt screenshots op 375 en 1280 px
+  en `stijlen.json` (kleuren in `oklch`, maten in `rem`) in een door git genegeerde map; JavaScript staat standaard uit en
+  externe verzoeken worden geblokkeerd. Lettertypen worden zelf gehost als woff2 met licentie (`docs/ui-kit-basics.md`).
+
 - Tokens vindbaar (deel 3c): `node scripts/kit/feiten.mjs tokens` (ook `--json`) toont per groep (kleur, typografie,
   dichtheid, lagen, beweging) klasse, standaard, app-waarde uit `theme.css` en `bestand:regel`; onbekende namen in
   `theme.css` staan onder `onbekend`. Op `/design-system` staat de sectie "Tokens" met de nieuwe catalogus-componenten

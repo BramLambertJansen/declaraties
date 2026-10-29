@@ -13,6 +13,7 @@ Deze template is bedoeld om webapps met code-agents te bouwen. De documentatie h
 | De template met een echte app beproeven | [ST-09 praktijkproef](operations/st-09-praktijkproef.md): generiek protocol; appkeuze, appdata en resultaten blijven in de aparte app-repo |
 | Een feature bouwen | [Gouden pad](gouden-pad.md), daarna de bijbehorende featurespec |
 | UI-componenten vinden en uitproberen | [UI-catalogus](design-system-catalogue.md) |
+| Een ontwerp of huisstijl overnemen | Skill `ontwerp-overnemen`; mappingdocumenten in [ontwerp/](ontwerp/_template.md) |
 | Tabellen, tabs, galerijen en filters gebruiken | [Gegevensweergave en navigatie](ui-data-display.md) |
 | De architectuur of regels begrijpen | [Framework](framework.md) |
 | Een PR beoordelen | [Definition of Done](dod.md) |
