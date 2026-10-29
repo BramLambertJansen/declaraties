@@ -6,6 +6,9 @@ Hier staan wijzigingen die van belang zijn bij het gebruiken of bijwerken van de
 
 ### Toegevoegd
 
+- Ubuntu 26.04 is naast 24.04 ondersteund (#318). `scripts/doctor.sh` controleert de versie uit `/etc/os-release`
+  en faalt bij een andere; het playbook (`docs/nieuwe-app.md`) zegt dan: stoppen en de eigenaar vragen.
+
 - Reviewer in Modus UX (spec `docs/specs/ontwerp-overnemen.md`, deel 5b): bij een diff in de UI of `docs/ontwerp/`
   bekijkt de reviewer, nog steeds alleen lezend, de UX-screenshots op 375 en 1280 px en toetst hij hiërarchie, ritme,
   consistentie, staten, 44 px, focus, tekst en de referentie uit `docs/ontwerp/<bron>.md`. Screenshots maakt een e2e met
