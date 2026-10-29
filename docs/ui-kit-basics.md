@@ -110,5 +110,12 @@ tikfout; een override van een token zonder groep, zoals `--radius`: `overig`). Z
   als een app langere duren zet. Kale getallen (`z-50`, `duration-200`) horen niet in de kit
   (`test/ui/semantische-tokens-3b.test.ts`, AC-15).
 
+Een ontwerp overnemen (HTML-bestand, URL, afbeelding of niets): de skill `ontwerp-overnemen`
+(`.claude/skills/ontwerp-overnemen/SKILL.md`, spec [ontwerp-overnemen](specs/ontwerp-overnemen.md)). Zonder referentie
+blijft de bestaande stijl de basis; met een referentie meet `node scripts/kit/ontwerp-meten.mjs <bron> --naam <naam>`
+screenshots op 375 en 1280 px en de berekende stijlen (`oklch`, `rem`) naar `.runner-output/ontwerp/<naam>/` (door git
+genegeerd; exitcode 3 zonder Chromium). De vertaling naar tokens en componenten staat in `docs/ontwerp/<bron>.md`, volgens
+[het sjabloon](ontwerp/_template.md).
+
 Bewijs: `test/ui/semantische-tokens.test.ts`, `test/ui/semantische-tokens-3b.test.ts`, `test/ui/contrast-status.test.ts`,
 `e2e/semantische-tokens.spec.ts` en `e2e/semantische-tokens-beweging.spec.ts` (`semantische-tokens/AC-*`).
