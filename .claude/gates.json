@@ -97,7 +97,6 @@
     "package.json",
     "pnpm-lock.yaml"
   ],
-  "onderhoud": { "repository": "BramLambertJansen/template" },
   "testpaden": ["**/*.test.*", "**/*.spec.*", "e2e/**", "db/tests/**", "test/**"],
   "jsonGates": { "package.json": ["scripts"] },
   "gegenereerd": ["src/web/routeTree.gen.ts", "src/api/db/schema.ts", "db/schema.snapshot.sql"],

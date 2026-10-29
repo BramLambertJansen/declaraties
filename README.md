@@ -1,6 +1,8 @@
-# App-template
+# Declaraties
 
-Fundering voor webapps die je met code-agents bouwt, met React, een Hono-API en Postgres. De template bevat inloggen met tweestapsverificatie, accountbeheer, een UI-kit en controles voor codekwaliteit en datatoegang.
+Medewerkers dienen declaraties in en volgen de status; beheerders keuren ze goed of af.
+
+Gebouwd op [BramLambertJansen/template](https://github.com/BramLambertJansen/template).
 
 Gedeelde onderdelen staan in `src/core`; eigen schermen, routes en contracten komen in de app-laag. Zo kunnen apps later updates uit de template overnemen.
 
@@ -101,20 +103,3 @@ Bij installatie-, proxy- of sandboxproblemen volg je de [probleemdiagnose voor d
 Database- en schermtests draaien in de runner-container. Zie [ADR 0044](docs/adr/0044-tests-buiten-de-sandbox.md) voor de inrichting en [de DoD](docs/dod.md) voor controles per wijziging. GitHub Actions voert controles uit; branchbescherming wordt apart ingesteld.
 
 De [agentdoorloop](docs/operations/agent-doorloop.md) beschrijft taakgebonden core-ontwikkeling, statusadministratie op basis van eigenaarbesluiten en automatische runner/CI-opvolging. De agent verwerkt het bewijs; de eigenaar beslist inhoudelijk en merget.
-
-## Nieuwe app starten
-
-Volg het [setup-playbook](docs/nieuwe-app.md) om een app aan te maken, te hernoemen en aan de templategeschiedenis te koppelen. Dat playbook is geschreven voor Claude Code. Je kunt het zo klaarzetten:
-
-```sh
-mkdir -p ~/setup
-curl -fsSL https://raw.githubusercontent.com/BramLambertJansen/template/main/docs/nieuwe-app.md -o ~/setup/nieuwe-app.md
-cd ~/setup
-claude
-```
-
-Geef Claude Code de opdracht: `Volg nieuwe-app.md`.
-
-De eigenaar moet **Settings → Template repository** inschakelen voordat **Use this template** beschikbaar is. Een nieuwe app krijgt daarna eenmalig een merge-commit die de geschiedenis koppelt. Latere updates gaan met `git merge template/main` op een branch en via een PR. Merge zulke updates met **Create a merge commit**, zodat de koppeling behouden blijft; zie [ADR 0040](docs/adr/0040-template-app-en-grens-core-app.md).
-
-App-eigen architectuurbesluiten nummeren vanaf `0100`. De keuze voor hosting en een beheerde database volgt bij de eerste release.
