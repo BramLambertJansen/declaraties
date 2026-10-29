@@ -1,0 +1,40 @@
+<!doctype html>
+<!--
+  Fixture voor e2e/ontwerp-meten.spec.ts (spec ontwerp-overnemen/AC-10). Bekende waarden: kaartkleur rgb(29, 78, 216),
+  familie "Voorbeeldletter", serif, radius 12px (0.75rem). Het script maakt de achtergrond rgb(220, 38, 38); de afbeelding
+  wijst naar een externe URL die het meetscript moet blokkeren.
+-->
+<html lang="nl">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Ontwerpvoorbeeld</title>
+    <style>
+      body {
+        margin: 0;
+        padding: 16px;
+        font-family: 'Voorbeeldletter', serif;
+        color: rgb(17, 24, 39);
+        background-color: rgb(255, 255, 255);
+      }
+      .kaart {
+        padding: 24px;
+        color: rgb(255, 255, 255);
+        background-color: rgb(29, 78, 216);
+        border-radius: 12px;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>Voorbeeld</h1>
+      <section class="kaart">
+        <p>Een kaart met de merkkleur.</p>
+      </section>
+      <img src="https://ontwerp-voorbeeld.invalid/logo.png" alt="Logo" width="32" height="32" />
+    </main>
+    <script>
+      document.body.style.backgroundColor = 'rgb(220, 38, 38)';
+    </script>
+  </body>
+</html>
