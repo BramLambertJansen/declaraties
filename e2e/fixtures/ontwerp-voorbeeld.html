@@ -2,7 +2,9 @@
 <!--
   Fixture voor e2e/ontwerp-meten.spec.ts (spec ontwerp-overnemen/AC-10). Bekende waarden: kaartkleur rgb(29, 78, 216),
   familie "Voorbeeldletter", serif, radius 12px (0.75rem). Het script maakt de achtergrond rgb(220, 38, 38); de afbeelding
-  wijst naar een externe URL die het meetscript moet blokkeren.
+  wijst naar een externe URL die het meetscript moet blokkeren. Verder: een afbeelding binnen de map (mag laden), een buiten
+  de map (../buiten-de-map.png, geblokkeerd), een file:-URL met een host (geblokkeerd, zonder fout) en een kop met alleen
+  een onderrand rgb(5, 150, 105) (telt onder rand).
 -->
 <html lang="nl">
   <head>
@@ -16,6 +18,9 @@
         font-family: 'Voorbeeldletter', serif;
         color: rgb(17, 24, 39);
         background-color: rgb(255, 255, 255);
+      }
+      h1 {
+        border-bottom: 2px solid rgb(5, 150, 105);
       }
       .kaart {
         padding: 24px;
@@ -32,6 +37,9 @@
         <p>Een kaart met de merkkleur.</p>
       </section>
       <img src="https://ontwerp-voorbeeld.invalid/logo.png" alt="Logo" width="32" height="32" />
+      <img src="ontwerp-binnen.png" alt="Binnen de map" width="4" height="4" />
+      <img src="../buiten-de-map.png" alt="Buiten de map" width="4" height="4" />
+      <img src="file://ontwerp-host/elders.png" alt="Andere host" width="4" height="4" />
     </main>
     <script>
       document.body.style.backgroundColor = 'rgb(220, 38, 38)';

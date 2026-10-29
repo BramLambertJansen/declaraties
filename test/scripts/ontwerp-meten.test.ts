@@ -14,7 +14,9 @@ import { afterAll, describe, expect, test } from 'vitest';
 //     afstanden, radii }, elke lijst [{ waarde: string, aantal: number }]; een element is een object met de berekende
 //     stijlen in camelCase (zie ELEMENTEN)
 //   uitvoerToegestaan(pad: string, isGenegeerd: (pad) => boolean) → { ok: true } | { ok: false, code: 2, melding }
-//   voerUit(argv: string[], { launcher: { launch() }, isGenegeerd, meld: (regel) => void }) → Promise<number> (exitcode)
+//   voerUit(argv: string[], { launcher: { launch(opties) }, isGenegeerd, meld: (regel) => void }) → Promise<number>
+//     (exitcode); bij een lokaal bestand krijgt launch { args } met --host-resolver-rules=MAP * ~NOTFOUND
+//   naarOklch: ook oklab() en oklch() met alfa; een onbekend modern formaat (color(), lab()) blijft de ruwe waarde
 const MODULE = ['../../scripts/kit', 'ontwerp-meten.mjs'].join('/');
 
 const GEBRUIK = 'Gebruik: node scripts/kit/ontwerp-meten.mjs <bron.html|https-url> --naam <bron> [--js] [--uit <map>]';
@@ -131,6 +133,37 @@ describe('ontwerp-overnemen/AC-7: naarOklch', () => {
     for (const deel of String(uitkomst).slice('oklch('.length, -1).split(' '))
       expect(deel).toMatch(/^\d+(?:\.\d{1,3})?$/);
   });
+
+  // Vaste externe referentie, onafhankelijk van referentieOklch hierboven berekend via de route van CSS Color 4: sRGB →
+  // XYZ (D65) → LMS (M1) → kubuswortel → OKLab (M2) → OKLCH: L 0.48820, C 0.21717, H 264.376°. Beide routes verschillen
+  // minder dan 1e-4; 0,002 laat alleen de afronding op drie decimalen over, ook voor de tint in graden.
+  test('ontwerp-overnemen/AC-7: rgb(29, 78, 216) ligt binnen 0,002 van de vaste referentie oklch(0.4882 0.2172 264.376)', async () => {
+    const [l = Number.NaN, c = Number.NaN, h = Number.NaN] = leesOklch(await roep('naarOklch', 'rgb(29, 78, 216)'));
+
+    expect(Math.abs(l - 0.4882)).toBeLessThanOrEqual(0.002);
+    expect(Math.abs(c - 0.21717)).toBeLessThanOrEqual(0.002);
+    expect(Math.abs(h - 264.376)).toBeLessThanOrEqual(0.002);
+  });
+
+  // De browser geeft moderne kleuren soms al als oklab(); C = √(a² + b²), H = atan2(b, a): 0,1 en -0,1 → 0,141 en 315°.
+  test.each([
+    { css: 'oklab(0.5 0.1 -0.1)', verwacht: 'oklch(0.5 0.141 315)' },
+    { css: 'oklab(0.5 0.1 -0.1 / 0.5)', verwacht: 'oklch(0.5 0.141 315 / 0.5)' },
+  ])('ontwerp-overnemen/AC-7: $css wordt $verwacht', async ({ css, verwacht }) => {
+    expect(await roep('naarOklch', css)).toBe(verwacht);
+  });
+
+  test('ontwerp-overnemen/AC-7: oklch met alfa 0 is volledig transparant en geeft null', async () => {
+    expect(await roep('naarOklch', 'oklch(0.5 0.1 200 / 0)')).toBeNull();
+  });
+
+  // Een onbekend modern formaat gaat niet verloren: het blijft de ruwe waarde, zodat de mapping het nog ziet.
+  test.each(['color(display-p3 1 0 0)', 'lab(50 40 30)'])(
+    'ontwerp-overnemen/AC-7: %s blijft de ruwe waarde, niet null',
+    async (css) => {
+      expect(await roep('naarOklch', css)).toBe(css);
+    },
+  );
 
   test('ontwerp-overnemen/AC-7: rgba(255, 0, 0, 0.5) eindigt op / 0.5', async () => {
     expect(String(await roep('naarOklch', 'rgba(255, 0, 0, 0.5)'))).toMatch(/^oklch\(\S+ \S+ \S+ \/ 0\.5\)$/);
@@ -279,6 +312,30 @@ describe('ontwerp-overnemen/AC-9: uitvoermap en geen Chromium', () => {
     expect(code).toBe(3);
     expect(meldingen).toContain(GEEN_CHROMIUM);
     expect(existsSync(uit) ? readdirSync(uit, { recursive: true }) : []).toStrictEqual([]);
+  });
+
+  // Bij een lokaal bestand lost Chromium geen enkele host op, ook niet via DNS-prefetch buiten page.route om.
+  test('ontwerp-overnemen/AC-9: bij een lokaal bestand krijgt launch --host-resolver-rules=MAP * ~NOTFOUND', async () => {
+    const bron = path.join(tijdelijk, 'voorbeeld.html');
+    writeFileSync(bron, '<!doctype html><title>Voorbeeld</title><p>Hallo</p>');
+    const opties: unknown[] = [];
+    const launcher = {
+      launch: (optie?: unknown) => {
+        opties.push(optie);
+        return Promise.reject(new Error("Executable doesn't exist"));
+      },
+    };
+
+    const code = await roep('voerUit', [bron, '--naam', 'voorbeeld', '--uit', path.join(tijdelijk, 'resolver')], {
+      launcher,
+      isGenegeerd: () => true,
+      meld: () => undefined,
+    });
+    const args = veld(opties[0], 'args');
+
+    expect(code).toBe(3);
+    expect(opties).toHaveLength(1);
+    expect(Array.isArray(args) ? args.map(String) : []).toContain('--host-resolver-rules=MAP * ~NOTFOUND');
   });
 
   test('ontwerp-overnemen/AC-9: een niet-genegeerde --uit geeft exitcode 2 zonder de browser te starten', async () => {

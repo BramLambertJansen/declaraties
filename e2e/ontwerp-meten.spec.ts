@@ -1,5 +1,7 @@
-import { expect, test, type Browser } from '@playwright/test';
+import { expect, test, type Browser, type Page } from '@playwright/test';
+import { readFileSync, statSync } from 'node:fs';
 import path from 'node:path';
+import { pathToFileURL } from 'node:url';
 
 // Spec ontwerp-overnemen/AC-10: het meetscript in de runner van `pnpm ui:check` (Chromium staat niet in de agent-sandbox).
 // De fixture heeft een bekende kaartkleur, familie en radius, een script dat de achtergrond verandert en een externe
@@ -12,6 +14,10 @@ import path from 'node:path';
 const MODULE = ['../scripts/kit', 'ontwerp-meten.mjs'].join('/');
 const FIXTURE = path.join(import.meta.dirname, 'fixtures/ontwerp-voorbeeld.html');
 const EXTERN = 'https://ontwerp-voorbeeld.invalid/logo.png';
+// Bestaat wel, maar ligt één map hoger dan de fixture: alleen file: binnen de map van de bron mag laden.
+const BUITEN = pathToFileURL(path.join(import.meta.dirname, 'buiten-de-map.png')).href;
+const ANDERE_HOST = 'file://ontwerp-host/elders.png';
+const ONDERRAND = [5, 150, 105] as const;
 const KAART = [29, 78, 216] as const;
 const SCRIPTKLEUR = [220, 38, 38] as const;
 
@@ -69,13 +75,25 @@ function bevatKleur(lijst: unknown, rgb: readonly [number, number, number]): boo
   });
 }
 
+// naturalWidth per alt-tekst: 0 betekent dat de afbeelding niet geladen is. Als tekst, want de node-tsconfig kent geen DOM.
+async function afbeeldingen(page: Page): Promise<Record<string, number>> {
+  const lijst: unknown = await page.evaluate(
+    '[...document.images].map((img) => [img.alt, img.complete ? img.naturalWidth : -1])',
+  );
+  const paren: unknown[] = Array.isArray(lijst) ? lijst : [];
+  return Object.fromEntries(
+    paren.map((paar) => (Array.isArray(paar) ? [String(paar[0]), Number(paar[1])] : ['', Number.NaN])),
+  );
+}
+
 async function meet(browser: Browser, js: boolean) {
   const context = await browser.newContext({ javaScriptEnabled: js, viewport: { width: 1280, height: 900 } });
   const page = await context.newPage();
   try {
     const geladen = await (await functie('laadBron'))(page, FIXTURE, { js });
+    const geladenAfbeeldingen = await afbeeldingen(page);
     const gemeten = await (await functie('meetPagina'))(page);
-    return { geblokkeerd: veld(geladen, 'geblokkeerd'), gemeten };
+    return { geblokkeerd: veld(geladen, 'geblokkeerd'), gemeten, afbeeldingen: geladenAfbeeldingen };
   } finally {
     await context.close();
   }
@@ -105,6 +123,60 @@ test.describe('ontwerp-meten op een lokale fixture', () => {
     const { geblokkeerd } = await meet(browser, false);
 
     expect(geblokkeerd).toContain(EXTERN);
+  });
+
+  test('ontwerp-overnemen/AC-10: een bestand buiten de map van de bron is geblokkeerd en niet geladen', async ({
+    browser,
+  }) => {
+    const { geblokkeerd, afbeeldingen: geladen } = await meet(browser, false);
+
+    expect(geblokkeerd).toContain(BUITEN);
+    expect(geladen['Buiten de map']).toBe(0);
+    // Tegenproef: binnen de map laadt wel, dus 0 hierboven komt van de blokkade.
+    expect(geladen['Binnen de map']).toBeGreaterThan(0);
+    expect(geblokkeerd).not.toContain(
+      pathToFileURL(path.join(import.meta.dirname, 'fixtures/ontwerp-binnen.png')).href,
+    );
+  });
+
+  test('ontwerp-overnemen/AC-10: een file:-URL met een host wordt geweigerd zonder fout', async ({ browser }) => {
+    const { geblokkeerd, afbeeldingen: geladen } = await meet(browser, false);
+
+    expect(geblokkeerd).toContain(ANDERE_HOST);
+    expect(geladen['Andere host']).toBe(0);
+  });
+
+  test('ontwerp-overnemen/AC-10: een element met alleen een onderrand telt die kleur onder rand', async ({
+    browser,
+  }) => {
+    const { gemeten } = await meet(browser, false);
+
+    expect(bevatKleur(veld(gemeten, 'stijlen', 'kleuren', 'rand'), ONDERRAND)).toBe(true);
+  });
+
+  test('ontwerp-overnemen/AC-10: voerUit met Chromium schrijft 375.png, 1280.png en stijlen.json', async ({
+    playwright,
+  }, testInfo) => {
+    const uit = testInfo.outputPath('x');
+    const meldingen: string[] = [];
+
+    const code = await (
+      await functie('voerUit')
+    )([FIXTURE, '--naam', 'x', '--uit', uit], {
+      launcher: playwright.chromium,
+      isGenegeerd: () => true,
+      meld: (regel: string) => meldingen.push(regel),
+    });
+
+    expect(code, meldingen.join('\n')).toBe(0);
+    for (const png of ['375.png', '1280.png']) expect(statSync(path.join(uit, png)).size).toBeGreaterThan(0);
+    const json: unknown = JSON.parse(readFileSync(path.join(uit, 'stijlen.json'), 'utf8'));
+    const gemeten = String(veld(json, 'gemeten'));
+    expect(String(veld(json, 'bron'))).toMatch(/ontwerp-voorbeeld\.html$/);
+    expect(new Date(gemeten).toISOString()).toBe(gemeten);
+    expect(veld(json, 'geblokkeerd')).toContain(EXTERN);
+    expect(veld(json, 'breedtes')).toStrictEqual([375, 1280]);
+    expect(bevatKleur(veld(json, 'kleuren', 'vlak'), KAART)).toBe(true);
   });
 
   test('ontwerp-overnemen/AC-10: de achtergrond uit het script komt alleen met --js voor', async ({ browser }) => {
