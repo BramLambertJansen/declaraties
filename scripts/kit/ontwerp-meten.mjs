@@ -8,7 +8,7 @@
 // (ook per redirectstap); de rest breekt de contextroute af en staat onder `geblokkeerd`. Wat buiten de route om gaat
 // (DNS-prefetch, preconnect) stopt de resolverregel waarmee Chromium start: geen host, of bij een URL alleen die host.
 import { execFileSync } from 'node:child_process';
-import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, realpathSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { parseArgs as nodeParseArgs } from 'node:util';
@@ -27,6 +27,9 @@ const NAAM = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 const BREEDTES = [375, 1280];
 const HOOGTE = 900;
 const REM = 16;
+const MAX_REDIRECTS = 20;
+// Verzoeken die een nieuwe breedte opwekt (media queries, srcset), krijgen even de tijd om de route te bereiken.
+const RUST_MS = 250;
 
 /** @typedef {{ waarde: string, aantal: number }} Telling */
 /** @typedef {Record<string, string>} Element berekende stijlen van één zichtbaar element, in camelCase */
@@ -251,9 +254,46 @@ function lokaalPad(url) {
 export function verzoekToegestaan(bron, url) {
   if (bron.startsWith('https:')) return URL.canParse(url) && new URL(url).origin === new URL(bron).origin;
   const pad = url.startsWith('file:') ? lokaalPad(url) : null;
-  if (pad === null) return false;
-  const relatief = path.relative(path.dirname(bron), pad);
+  // Realpath aan beide kanten: een symlink in de map die naar buiten wijst, telt als buiten. Een bestand dat niet
+  // bestaat, valt niets te laden en wordt geweigerd.
+  const doel = pad === null ? null : echtPad(pad);
+  if (doel === null) return false;
+  const map = path.dirname(bron);
+  const relatief = path.relative(echtPad(map) ?? path.resolve(map), doel);
   return !relatief.startsWith('..') && !path.isAbsolute(relatief);
+}
+
+/** @param {string} pad @returns {string | null} */
+function echtPad(pad) {
+  try {
+    return realpathSync(pad);
+  } catch {
+    return null;
+  }
+}
+
+/** @typedef {{ status: number, headers: Record<string, string> }} Stap */
+
+/**
+ * Volgt een redirectketen onder eigen controle: `haal` haalt één stap op zonder redirect te volgen. Een doel dat
+ * `verzoekToegestaan` weigert, wordt niet opgehaald maar gelogd; na 20 stappen stopt het (toegestaan: false).
+ * @template {Stap} T
+ * @param {string} bron
+ * @param {string} url
+ * @param {(url: string) => Promise<T>} haal
+ * @returns {Promise<{ toegestaan: boolean, antwoord?: T, geblokkeerd: string[] }>}
+ */
+export async function volgRedirects(bron, url, haal) {
+  let huidig = url;
+  for (let stap = 0; stap < MAX_REDIRECTS; stap += 1) {
+    if (!verzoekToegestaan(bron, huidig)) return { toegestaan: false, geblokkeerd: [huidig] };
+    const antwoord = await haal(huidig);
+    const locatie = antwoord.headers['location'];
+    if (antwoord.status < 300 || antwoord.status >= 400 || locatie === undefined)
+      return { toegestaan: true, antwoord, geblokkeerd: [] };
+    huidig = URL.canParse(locatie, huidig) ? new URL(locatie, huidig).href : locatie;
+  }
+  return { toegestaan: false, geblokkeerd: [] };
 }
 
 /** De resolverregel voor Chromium: geen enkele host, of bij een https-URL alleen die host. @param {string} bron */
@@ -263,23 +303,20 @@ export function chromiumArgs(bron) {
 }
 
 /**
- * Een https-verzoek zonder automatische redirect ophalen; een redirect naar een niet toegestaan doel wordt afgebroken.
+ * Een https-verzoek met de hele redirectketen onder eigen controle (Playwright onderschept een gevolgde redirect niet):
+ * elke stap via `route.fetch` zonder redirect, en alleen het laatste antwoord gaat naar de browser.
  * @param {import('@playwright/test').Route} route
  * @param {string} bron
  * @param {Set<string>} geblokkeerd
  */
 async function haalOp(route, bron, geblokkeerd) {
-  const antwoord = await route.fetch({ maxRedirects: 0 });
-  const locatie = antwoord.headers()['location'];
-  const status = antwoord.status();
-  if (status >= 300 && status < 400 && locatie !== undefined) {
-    const doel = URL.canParse(locatie, route.request().url()) ? new URL(locatie, route.request().url()).href : locatie;
-    if (!verzoekToegestaan(bron, doel)) {
-      geblokkeerd.add(doel);
-      return route.abort('blockedbyclient');
-    }
-  }
-  return route.fulfill({ response: antwoord });
+  const uitkomst = await volgRedirects(bron, route.request().url(), async (url) => {
+    const response = await route.fetch({ url, maxRedirects: 0 });
+    return { status: response.status(), headers: response.headers(), response };
+  });
+  for (const url of uitkomst.geblokkeerd) geblokkeerd.add(url);
+  if (!uitkomst.toegestaan || uitkomst.antwoord === undefined) return route.abort('blockedbyclient');
+  return route.fulfill({ response: uitkomst.antwoord.response });
 }
 
 /**
@@ -311,25 +348,31 @@ async function routeer(context, bron, { js, geblokkeerd }) {
 /**
  * Laadt de bron in een bestaande page. JavaScript en service workers zijn contextopties (`javaScriptEnabled`,
  * `serviceWorkers: 'block'`); zonder `js` worden ook scriptbestanden afgebroken. Elk afgebroken verzoek staat in
- * `geblokkeerd`.
+ * `geblokkeerd`. Die lijst is live: lees hem pas na `meetPagina`, want een andere breedte kan nieuwe verzoeken opwekken.
  * @param {import('@playwright/test').Page} page
  * @param {string} bron absoluut pad naar een .html-bestand of een https-URL
  * @param {{ js: boolean }} opties
- * @returns {Promise<{ geblokkeerd: string[] }>}
+ * @returns {Promise<{ readonly geblokkeerd: string[] }>}
  */
 export async function laadBron(page, bron, { js }) {
   /** @type {Set<string>} */
   const geblokkeerd = new Set();
   await routeer(page.context(), bron, { js, geblokkeerd });
   await page.goto(bron.startsWith('https:') ? bron : pathToFileURL(bron).href, { waitUntil: 'load' });
-  return { geblokkeerd: [...geblokkeerd].sort() };
+  return {
+    get geblokkeerd() {
+      return [...geblokkeerd].sort();
+    },
+  };
 }
 
 // Draait in de browser (als tekst, want de node-tsconfig kent geen DOM): berekende stijlen van zichtbare elementen.
-// Een rand telt alleen mee als hij breedte heeft (de eerste zijde boven, rechts, onder, links); anders zou
+// Zichtbaar: niet `display: none`, niet `visibility: hidden`, geen `opacity: 0` (ook niet via een voorouder) en met
+// breedte. Een rand telt alleen mee als hij breedte heeft (de eerste zijde boven, rechts, onder, links); anders zou
 // currentColor elke tekstkleur als randkleur tellen.
 const ELEMENTEN_IN_BROWSER = `[...document.querySelectorAll('body, body *')]
-  .filter((el) => el.checkVisibility() && el.getBoundingClientRect().width > 0)
+  .filter((el) => el.checkVisibility({ visibilityProperty: true, opacityProperty: true })
+    && el.getBoundingClientRect().width > 0)
   .map((el) => {
     const s = getComputedStyle(el);
     const zijde = ['Top', 'Right', 'Bottom', 'Left'].find((z) => parseFloat(s['border' + z + 'Width']) > 0);
@@ -351,6 +394,7 @@ export async function meetPagina(page) {
   for (const breedte of BREEDTES) {
     await page.setViewportSize({ width: breedte, height: HOOGTE });
     screenshots[String(breedte)] = await page.screenshot({ fullPage: true });
+    await page.waitForTimeout(RUST_MS);
     /** @type {Element[]} */
     const gemeten = await page.evaluate(ELEMENTEN_IN_BROWSER);
     elementen.push(...gemeten);
@@ -369,8 +413,10 @@ async function meetEnSchrijf(browser, { bron, js, uit }) {
     viewport: { width: BREEDTES[0] ?? 375, height: HOOGTE },
   });
   const page = await context.newPage();
-  const { geblokkeerd } = await laadBron(page, bron, { js });
+  const geladen = await laadBron(page, bron, { js });
   const { screenshots, stijlen } = await meetPagina(page);
+  // Pas na beide breedtes: ook verzoeken die alleen op 1280 px ontstaan, staan erin.
+  const { geblokkeerd } = geladen;
   mkdirSync(uit, { recursive: true });
   for (const [breedte, png] of Object.entries(screenshots)) writeFileSync(path.join(uit, `${breedte}.png`), png);
   const json = { bron, gemeten: new Date().toISOString(), ...stijlen, geblokkeerd };
