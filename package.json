@@ -40,6 +40,7 @@
     "check:secdef": "node scripts/kit/check-secdef.mjs",
     "check:roadmap": "node scripts/kit/check-roadmap.mjs",
     "check:new-resource": "node scripts/kit/check-new-resource.mjs",
+    "check:app-init": "node scripts/kit/check-app-init.mjs",
     "test:unit": "vitest run --project unit --project web",
     "test:db": "scripts/runner.sh db",
     "test:e2e": "playwright test",

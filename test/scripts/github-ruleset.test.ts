@@ -23,6 +23,7 @@ const OPDRACHT = [
   'secrets',
   'image',
   'check:new-resource',
+  'check:app-init',
   'check-core',
   'codeql (actions)',
   'codeql (javascript-typescript)',

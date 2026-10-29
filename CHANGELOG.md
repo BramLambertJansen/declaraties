@@ -6,6 +6,10 @@ Hier staan wijzigingen die van belang zijn bij het gebruiken of bijwerken van de
 
 ### Toegevoegd
 
+- `pnpm check:app-init` (spec `docs/specs/app-init-proef.md`, leerpunt #334): draait `app:init` op een tijdelijke kopie en daarna de
+  snelle suite; verplichte CI-check (`requiredChecks`, `scripts/github-ruleset.sh`: de eigenaar past de ruleset na de merge toe). De
+  kopie-, opruim- en git-env-logica van `check:new-resource` staat nu in `scripts/kit/proef-kopie.mjs`.
+  
 - Ubuntu 26.04 is naast 24.04 ondersteund (#318). `scripts/doctor.sh` controleert de versie uit `/etc/os-release`
   en faalt bij een andere; het playbook (`docs/nieuwe-app.md`) zegt dan: stoppen en de eigenaar vragen.
 
@@ -51,7 +55,6 @@ Hier staan wijzigingen die van belang zijn bij het gebruiken of bijwerken van de
   melding als het wacht (Notification-hook; WSL2 via `powershell.exe`, anders `notify-send`; uit met `KIT_MELDING=uit`) en
   krijgt een statusregel (framework §8, `rails/hooks/lib/{werkstraat,melding,statusregel}.mjs`). Bij een update: draai
   `pnpm exec lefthook install` voor de commit-msg-hook.
-
 - Leerlus van app naar template (ADR 0059, spec `docs/specs/leerlus.md`): een generieke les uit een app gaat als issue met
   label `leerpunt` naar de template-repo, via het formulier `.github/ISSUE_TEMPLATE/leerpunt.yml` en de leerpuntstap in de
   skill `opleveren` (Opruimen stap 8). De reviewer markeert per blokkerende bevinding `Leerpunt: ja (<soort>)` of `nee`.
