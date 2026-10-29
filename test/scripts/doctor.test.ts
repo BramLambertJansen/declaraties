@@ -6,7 +6,7 @@ import { afterEach, expect, test } from 'vitest';
 
 const ROOT = path.join(import.meta.dirname, '../..');
 const dirs: string[] = [];
-type Options = { stack?: boolean; fail?: string; hooks?: boolean };
+type Options = { stack?: boolean; fail?: string; hooks?: boolean; osRelease?: string };
 
 function stub(root: string, name: string, body: string) {
   const file = path.join(root, 'bin', name);
@@ -25,6 +25,7 @@ function fixture(options: Options) {
     chmodSync(path.join(root, '.git/hooks/pre-commit'), 0o755);
   }
   writeFileSync(path.join(root, 'log'), '');
+  writeFileSync(path.join(root, 'os-release'), options.osRelease ?? 'NAME="Ubuntu"\nID=ubuntu\nVERSION_ID="24.04"\n');
   stub(
     root,
     'mise',
@@ -57,6 +58,7 @@ function run(script: string, args: string[], options: Options = {}) {
       STUB_LOG: path.join(root, 'log'),
       STUB_STACK: options.stack === true ? 'up' : 'down',
       STUB_FAIL: options.fail ?? '',
+      DOCTOR_OS_RELEASE: path.join(root, 'os-release'),
     },
   });
   return { ...result, calls: readFileSync(path.join(root, 'log'), 'utf8').split('\n') };
@@ -123,3 +125,19 @@ test.each([{ args: ['--onbekend'] }, { args: ['--machine', '--quick'] }])(
     expect(result.calls).not.toContain('mise');
   },
 );
+
+test.each(['24.04', '26.04'])('machinecontrole accepteert Ubuntu %s', (version) => {
+  const result = run('doctor.sh', ['--machine'], { osRelease: `ID=ubuntu\nVERSION_ID="${version}"\n` });
+  expect(result.status, result.stdout).toBe(0);
+  expect(result.stdout).toContain(`✓ Ubuntu ${version}`);
+});
+
+test.each([
+  { osRelease: 'ID=ubuntu\nVERSION_ID="22.04"\n', label: "'ubuntu 22.04'" },
+  { osRelease: 'ID=debian\nVERSION_ID="13"\n', label: "'debian 13'" },
+  { osRelease: '', label: "'onbekend onbekend'" },
+])('machinecontrole faalt op een niet-ondersteund besturingssysteem $label', ({ osRelease, label }) => {
+  const result = run('doctor.sh', ['--machine'], { osRelease });
+  expect(result.status).toBe(1);
+  expect(result.stdout).toContain(`✗ besturingssysteem ${label} is niet ondersteund (Ubuntu 24.04 of 26.04)`);
+});

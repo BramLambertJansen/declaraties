@@ -578,7 +578,7 @@ zijn bovengrenzen, en correcties zijn elk eigenaarbericht na de opdracht in deze
 
 ## 11. Lokaal ontwikkelen
 
-- Ubuntu 24.04 (native of WSL2), code op ext4 (`~/code`), Docker Engine, mise (`mise.toml`), gh, `bubblewrap` en `socat` (sandbox van Claude Code). WSL2: `systemd=true` in `/etc/wsl.conf`
+- Ubuntu 24.04 of 26.04 (native of WSL2; een andere versie: stoppen en de eigenaar vragen, `scripts/doctor.sh` controleert het), code op ext4 (`~/code`), Docker Engine, mise (`mise.toml`), gh, `bubblewrap` en `socat` (sandbox van Claude Code). WSL2: `systemd=true` in `/etc/wsl.conf`
   (nodig voor Docker Engine), `fs.inotify.max_user_watches=524288`, `networkingMode=mirrored`.
 - `compose.yaml` levert Postgres (eigen image met pgTAP) en Mailpit, gebonden aan `127.0.0.1`. De app (Vite, Hono) draait native, niet in Docker.
 - `pnpm dev` (fase 1): Docker-check, `.env.local` uit `.env.example`, `docker compose --env-file .env.local up -d --build --wait`, migraties, Hono :8787 + Vite :5173.
