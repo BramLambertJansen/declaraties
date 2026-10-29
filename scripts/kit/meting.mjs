@@ -1,4 +1,4 @@
-// Overzicht van de meethook (ADR 0046 punt 36): `pnpm meting [--json] [--sessie <id>] [--branch <naam>]`.
+// Overzicht van de meethook (ADR 0046 punt 36): `pnpm meting [--json] [--sessie <id>] [--branch <naam>] [--help]`.
 // Leest `<opslagmap>/*.jsonl` (rails/hooks/lib/meting.mjs: METING_DIR of `<git common dir>/agent-meting`) en telt per
 // sessie en per branch: prompts (permissievragen) per pad of commandoprefix en per modus (`m`, ontbrekend → onbekend), weigeringen, beurten, eigenaarberichten na de
 // opdracht (een bovengrens), pushes (geslaagde `git push`) en CI-rondes via `gh run list` (METING_GH, METING_GH_TIMEOUT_MS):
@@ -18,6 +18,35 @@ import { opslagmap } from '../../rails/hooks/lib/meting.mjs';
 /** @typedef {(branch: string, venster: Venster) => Ci} CiVoor */
 
 const UUR = 60 * 60 * 1000;
+
+const HELP = `Gebruik: pnpm meting [--json] [--sessie <id>] [--branch <naam>] [--help]
+
+  --json           Dezelfde tellingen als JSON.
+  --sessie <id>    Alleen deze sessie.
+  --branch <naam>  Alleen deze branch binnen elke sessie.
+  --help           Deze uitleg, zonder meetbestanden te lezen of gh aan te roepen.
+
+Teldefinities (alleen ontvangen en opgeslagen Claude Code-events):
+  prompts: PermissionRequest-events (permissievragen), geen UserPromptSubmit of eigenaarberichten.
+  prompts per modus: alleen permissievragen, volgens hun permission_mode; ontbrekend = onbekend.
+  Een lege modusverdeling is geen bewijs van een permissiemodus, ook niet bij prompts 0.
+  In auto mode is een classifierbeslissing geen bewijs van een klik van de eigenaar.
+  eigenaarberichten: UserPromptSubmit na het eerste bericht van de sessie (de opdracht).
+  weigeringen: PermissionDenied of PreToolUse met ID zonder PostToolUse/PostToolUseFailure.
+  PreToolUse en PermissionDenied met dezelfde ID tellen samen eenmaal.
+  Dit is een bovengrens: ook lopende, afgebroken of onvolledig geregistreerde aanroepen tellen mee.
+  Tijdens pnpm meting kan de meetaanroep zelf meetellen; na afronding kan de teller dalen.
+  Vergelijk dezelfde sessie/branch op hetzelfde afgeronde meetmoment; bewaar tijdstip en momentopname.
+  Een geregistreerde Read-weigering telt; zonder bruikbaar event is een weigering niet te reconstrueren.
+  De hook is fail-open: ontbrekende registraties bewijzen geen nul; andere runtimes leveren niet vanzelf events.
+  beurten: Stop-events (een bovengrens).
+  pushes: PostToolUse voor git push; een proefpush telt niet mee.
+  ci-rondes: gh run list per branch, binnen eerste eventtijd tot laatste eventtijd + 60 minuten.
+  Een gh-fout, timeout of ontbrekend tijdvenster geeft onbekend, geen nul.
+
+Opslag: METING_DIR of <git common dir>/agent-meting/ (gedeeld door worktrees, buiten git-tracking).
+Meer uitleg: docs/operations/agent-doorloop.md, "Metingen lezen".
+`;
 
 /** @param {unknown} value @param {string} fallback */
 function tekst(value, fallback) {
@@ -306,11 +335,20 @@ function opties(args) {
   return { json: args.includes('--json'), sessie: waarde('--sessie'), branch: waarde('--branch') };
 }
 
-const args = opties(process.argv.slice(2));
-const dir = opslagmap(process.cwd(), process.env);
-const filter = {
-  ...(args.sessie === undefined ? {} : { sessie: args.sessie }),
-  ...(args.branch === undefined ? {} : { branch: args.branch }),
-};
-const data = overzicht(dir, filter, ghCi(process.env));
-process.stdout.write(args.json ? alsJson(data) : alsTekst(data, dir));
+/** @param {readonly string[]} argv */
+function main(argv) {
+  if (argv.includes('--help')) {
+    process.stdout.write(HELP);
+    return;
+  }
+  const args = opties(argv);
+  const dir = opslagmap(process.cwd(), process.env);
+  const filter = {
+    ...(args.sessie === undefined ? {} : { sessie: args.sessie }),
+    ...(args.branch === undefined ? {} : { branch: args.branch }),
+  };
+  const data = overzicht(dir, filter, ghCi(process.env));
+  process.stdout.write(args.json ? alsJson(data) : alsTekst(data, dir));
+}
+
+main(process.argv.slice(2));
