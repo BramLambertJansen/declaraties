@@ -1,6 +1,7 @@
-import { mkdtempSync, readdirSync, rmSync, writeFileSync, existsSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readdirSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
+import { pathToFileURL } from 'node:url';
 import { afterAll, describe, expect, test } from 'vitest';
 
 // Spec ontwerp-overnemen, deel 5a: de pure functies van `scripts/kit/ontwerp-meten.mjs` (AC-6 t/m AC-9). De module wordt
@@ -16,6 +17,12 @@ import { afterAll, describe, expect, test } from 'vitest';
 //   uitvoerToegestaan(pad: string, isGenegeerd: (pad) => boolean) → { ok: true } | { ok: false, code: 2, melding }
 //   voerUit(argv: string[], { launcher: { launch(opties) }, isGenegeerd, meld: (regel) => void }) → Promise<number>
 //     (exitcode); bij een lokaal bestand krijgt launch { args } met --host-resolver-rules=MAP * ~NOTFOUND
+//   verzoekToegestaan(bron: string, url: string) → boolean; bron is een absoluut pad naar het .html-bestand (of een
+//     https-URL); een symlink binnen de map die naar buiten wijst, telt als buiten (realpath van beide kanten)
+//   volgRedirects(bron: string, url: string, haal: (url) => Promise<{ status, headers }>) →
+//     Promise<{ toegestaan: boolean, antwoord?: <laatste resultaat van haal>, geblokkeerd: string[] }>; volgt 3xx met
+//     headers.location (relatief tegen de huidige stap), roept haal nooit aan voor een doel dat verzoekToegestaan weigert,
+//     en stopt na hoogstens 20 aanroepen van haal (dan toegestaan: false)
 //   naarOklch: ook oklab() en oklch() met alfa; een onbekend modern formaat (color(), lab()) blijft de ruwe waarde
 const MODULE = ['../../scripts/kit', 'ontwerp-meten.mjs'].join('/');
 
@@ -361,5 +368,99 @@ describe('ontwerp-overnemen/AC-9: uitvoermap en geen Chromium', () => {
     expect(meldingen).toContain(nietGenegeerd(uit));
     expect(gestart).toBe(false);
     expect(existsSync(uit)).toBe(false);
+  });
+});
+
+// Netwerkgrenzen van laadBron als pure functies (review van PR #356): symlinks en redirectketens.
+describe('ontwerp-overnemen/AC-10: verzoekToegestaan en symlinks', () => {
+  const basis = path.join(tijdelijk, 'symlinks');
+  const map = path.join(basis, 'bron');
+  const bron = path.join(map, 'index.html');
+  mkdirSync(map, { recursive: true });
+  writeFileSync(bron, '<!doctype html><title>Bron</title>');
+  writeFileSync(path.join(basis, 'buiten.css'), 'body { color: red; }');
+  writeFileSync(path.join(map, 'echt.css'), 'body { color: blue; }');
+  symlinkSync('../buiten.css', path.join(map, 'binnen.css'));
+  symlinkSync('bron', path.join(basis, 'via'));
+  const url = (pad: string) => pathToFileURL(pad).href;
+
+  test('ontwerp-overnemen/AC-10: een gewoon bestand in de map mag', async () => {
+    expect(await roep('verzoekToegestaan', bron, url(path.join(map, 'echt.css')))).toBe(true);
+  });
+
+  test('ontwerp-overnemen/AC-10: een symlink in de map die naar buiten wijst, wordt geweigerd', async () => {
+    expect(await roep('verzoekToegestaan', bron, url(path.join(map, 'binnen.css')))).toBe(false);
+  });
+
+  test('ontwerp-overnemen/AC-10: een bron via een gesymlinkte map mag zijn eigen bestanden laden', async () => {
+    const via = path.join(basis, 'via');
+
+    expect(await roep('verzoekToegestaan', path.join(via, 'index.html'), url(path.join(via, 'echt.css')))).toBe(true);
+    expect(await roep('verzoekToegestaan', path.join(via, 'index.html'), url(path.join(via, 'binnen.css')))).toBe(
+      false,
+    );
+  });
+
+  test('ontwerp-overnemen/AC-10: een file:-URL met een host wordt geweigerd zonder fout', async () => {
+    expect(await roep('verzoekToegestaan', bron, 'file://ontwerp-host/elders.png')).toBe(false);
+  });
+});
+
+describe('ontwerp-overnemen/AC-10: volgRedirects', () => {
+  const BRON = 'https://a.test/';
+  type Antwoord = { status: number; headers: Record<string, string> };
+
+  function keten(stappen: Record<string, Antwoord>) {
+    const gehaald: string[] = [];
+    const haal = (doel: unknown) => {
+      const sleutel = String(doel);
+      gehaald.push(sleutel);
+      const antwoord = stappen[sleutel];
+      return antwoord === undefined ? Promise.reject(new Error(`onverwacht ${sleutel}`)) : Promise.resolve(antwoord);
+    };
+    return { gehaald, haal };
+  }
+
+  test('ontwerp-overnemen/AC-10: stopt bij de derde stap naar een andere poort en haalt die niet op', async () => {
+    const { gehaald, haal } = keten({
+      'https://a.test/x': { status: 302, headers: { location: '/y' } },
+      'https://a.test/y': { status: 301, headers: { location: 'https://a.test:8443/z' } },
+    });
+
+    const uitkomst = await roep('volgRedirects', BRON, 'https://a.test/x', haal);
+
+    expect(veld(uitkomst, 'toegestaan')).toBe(false);
+    expect(veld(uitkomst, 'geblokkeerd')).toStrictEqual(['https://a.test:8443/z']);
+    expect(veld(uitkomst, 'antwoord')).toBeUndefined();
+    expect(gehaald).toStrictEqual(['https://a.test/x', 'https://a.test/y']);
+  });
+
+  test('ontwerp-overnemen/AC-10: een keten binnen de origin geeft het laatste antwoord', async () => {
+    const eind = { status: 200, headers: { 'content-type': 'text/css' } };
+    const { gehaald, haal } = keten({
+      'https://a.test/x': { status: 302, headers: { location: 'y' } },
+      'https://a.test/y': { status: 307, headers: { location: 'https://a.test/z' } },
+      'https://a.test/z': eind,
+    });
+
+    const uitkomst = await roep('volgRedirects', BRON, 'https://a.test/x', haal);
+
+    expect(veld(uitkomst, 'toegestaan')).toBe(true);
+    expect(veld(uitkomst, 'antwoord')).toBe(eind);
+    expect(veld(uitkomst, 'geblokkeerd')).toStrictEqual([]);
+    expect(gehaald).toStrictEqual(['https://a.test/x', 'https://a.test/y', 'https://a.test/z']);
+  });
+
+  test('ontwerp-overnemen/AC-10: een eindeloze redirectlus stopt na hoogstens 20 stappen', async () => {
+    const { gehaald, haal } = keten({
+      'https://a.test/x': { status: 302, headers: { location: '/y' } },
+      'https://a.test/y': { status: 302, headers: { location: '/x' } },
+    });
+
+    const uitkomst = await roep('volgRedirects', BRON, 'https://a.test/x', haal);
+
+    expect(veld(uitkomst, 'toegestaan')).toBe(false);
+    expect(gehaald.length).toBeGreaterThan(1);
+    expect(gehaald.length).toBeLessThanOrEqual(20);
   });
 });

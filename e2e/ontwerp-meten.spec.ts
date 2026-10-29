@@ -18,6 +18,16 @@ const EXTERN = 'https://ontwerp-voorbeeld.invalid/logo.png';
 const BUITEN = pathToFileURL(path.join(import.meta.dirname, 'buiten-de-map.png')).href;
 const ANDERE_HOST = 'file://ontwerp-host/elders.png';
 const ONDERRAND = [5, 150, 105] as const;
+const BREED = 'https://ontwerp-breed.invalid/achtergrond.png';
+// Kleuren van .verborgen (visibility: hidden) en .doorzichtig (opacity: 0): geen ervan mag in een kleurlijst staan.
+const ONZICHTBAAR = [
+  [123, 45, 67],
+  [201, 99, 47],
+  [77, 66, 155],
+  [61, 133, 7],
+  [250, 204, 21],
+  [14, 116, 144],
+] as const;
 const KAART = [29, 78, 216] as const;
 const SCRIPTKLEUR = [220, 38, 38] as const;
 
@@ -177,6 +187,36 @@ test.describe('ontwerp-meten op een lokale fixture', () => {
     expect(veld(json, 'geblokkeerd')).toContain(EXTERN);
     expect(veld(json, 'breedtes')).toStrictEqual([375, 1280]);
     expect(bevatKleur(veld(json, 'kleuren', 'vlak'), KAART)).toBe(true);
+  });
+
+  test('ontwerp-overnemen/AC-10: onzichtbare elementen tellen niet mee in de kleuren', async ({ browser }) => {
+    const { gemeten } = await meet(browser, false);
+    const kleuren = veld(gemeten, 'stijlen', 'kleuren');
+
+    expect(waarden(veld(kleuren, 'tekst')).length).toBeGreaterThan(0);
+    for (const soort of ['tekst', 'vlak', 'rand'])
+      for (const rgb of ONZICHTBAAR)
+        expect(bevatKleur(veld(kleuren, soort), rgb), `${soort} ${rgb.join(',')}`).toBe(false);
+  });
+
+  test('ontwerp-overnemen/AC-10: een verzoek dat alleen op 1280 px ontstaat, staat in stijlen.json onder geblokkeerd', async ({
+    playwright,
+  }, testInfo) => {
+    const uit = testInfo.outputPath('breed');
+    const meldingen: string[] = [];
+
+    const code = await (
+      await functie('voerUit')
+    )([FIXTURE, '--naam', 'breed', '--uit', uit], {
+      launcher: playwright.chromium,
+      isGenegeerd: () => true,
+      meld: (regel: string) => meldingen.push(regel),
+    });
+    const json: unknown = JSON.parse(readFileSync(path.join(uit, 'stijlen.json'), 'utf8'));
+
+    expect(code, meldingen.join('\n')).toBe(0);
+    expect(veld(json, 'geblokkeerd')).toContain(EXTERN);
+    expect(veld(json, 'geblokkeerd')).toContain(BREED);
   });
 
   test('ontwerp-overnemen/AC-10: de achtergrond uit het script komt alleen met --js voor', async ({ browser }) => {
