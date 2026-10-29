@@ -21,7 +21,7 @@ runnerregels en rapporteer precies welke lokale rol- en sandboxgrenzen ontbreken
 
 Stop als dit allemaal waar is, niet eerder:
 
-1. De machine draait Ubuntu 24.04 (native of WSL2) met systemd, Docker Engine, mise, gh, bubblewrap en socat.
+1. De machine draait Ubuntu 24.04 of 26.04 (native of WSL2) met systemd, Docker Engine, mise, gh, bubblewrap en socat.
 2. Er is een nieuwe GitHub-repo `<owner>/<slug>`, gemaakt met **Use this template**, gekloond naar `~/code/<slug>` — nooit op `/mnt/c`.
 3. `main` bevat een merge-commit die de geschiedenis van de template koppelt (`-s ours`), plus één commit die de app hernoemt.
    De eigenaar heeft die zelf gepusht.
@@ -69,7 +69,7 @@ commando's, paden, productnamen (Use this template, Settings → Rules → Rules
 | Owner van de nieuwe repo | het account van `gh api user --jq .login` |
 | Zichtbaarheid | `public` (voorlopig; private vraagt GitHub Pro of Team voor de ruleset en betaalde code scanning voor CodeQL, zie Fase 6) |
 | Map | `~/code/<slug>` |
-| Distro (WSL) | `Ubuntu-24.04`; bestaat alleen `Ubuntu` en is dat 24.04, gebruik die |
+| Distro (WSL) | `Ubuntu-24.04`; bestaat alleen `Ubuntu` of `Ubuntu-26.04` en is dat 24.04 of 26.04 (`/etc/os-release`), gebruik die. Een andere versie: stop en vraag de eigenaar |
 | Poorten | `54322` (Postgres), `54324` (Mailpit UI), `54325` (SMTP), `8787` (API), `5173` (web); bezet → +10 bij alle vijf tot ze vrij zijn |
 | Git-identiteit | bestaande `git config --global`; ontbreekt die: naam en `<id>+<login>@users.noreply.github.com` uit `gh api user` |
 
@@ -143,7 +143,7 @@ complete intake door met de preflight. Vraag nog geen hostingprovider, volledige
 
 Sla over bij native Ubuntu.
 
-1. **WSL en distro.** `wsl --status` en `wsl -l -v`. Geen WSL of geen Ubuntu 24.04: overdracht —
+1. **WSL en distro.** `wsl --status` en `wsl -l -v`. Geen WSL of geen Ubuntu 24.04 of 26.04: overdracht —
    PowerShell als Administrator: `wsl --install -d Ubuntu-24.04`, daarna gebruikersnaam en wachtwoord kiezen, daarna "verder".
    WSL-versie moet 2 zijn (`wsl --set-version <distro> 2`).
 2. **`.wslconfig`** in `%UserProfile%`. Voeg onder `[wsl2]` toe wat ontbreekt; bestaande regels laten staan:
@@ -175,7 +175,7 @@ export DEBIAN_FRONTEND=noninteractive
 
 apt-get update
 # git/curl/jq: basis; bubblewrap+socat: sandbox van Claude Code (failIfUnavailable in .claude/settings.json);
-# postgresql-client: alleen voor het bewijs in Fase 8.
+# postgresql-client: alleen voor het bewijs in Fase 8; een nieuwere psql (18 op 26.04) werkt ook tegen Postgres 17.
 apt-get install -y ca-certificates curl git jq unzip bubblewrap socat postgresql-client
 
 install -m 0755 -d /etc/apt/keyrings
@@ -526,7 +526,7 @@ onuitvoerbare controle expliciet open en schakel geen bestaande grens uit om hem
 
 Overdracht:
 
-> 1. In je Ubuntu-terminal: `code ~/code/<slug>` — VS Code opent met **WSL: Ubuntu-24.04** linksonder.
+> 1. In je Ubuntu-terminal: `code ~/code/<slug>` — VS Code opent met **WSL: <distro>** linksonder (bijvoorbeeld `Ubuntu-24.04`).
 >    (Eerste keer: VS Code installeert de VS Code Server; vraagt hij om de **WSL**-extensie, klik **Install**.)
 > 2. Open de terminal in VS Code (**Terminal → New Terminal**) en start `claude`.
 > 3. Start Claude Code niet, of zie je een sandbox-fout: plak de melding hier.

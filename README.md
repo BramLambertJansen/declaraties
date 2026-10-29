@@ -32,7 +32,7 @@ Begin bij de [leeswijzer](docs/README.md).
 
 ## Lokaal draaien
 
-Voor de ondersteunde ontwikkelomgeving heb je Ubuntu 24.04 of WSL2, Docker Engine, [mise](https://mise.jdx.dev), GitHub CLI, `bubblewrap` en `socat` nodig. De laatste twee gebruikt de Claude Code-sandbox. De toolversies staan in `mise.toml` en `package.json`.
+Voor de ondersteunde ontwikkelomgeving heb je Ubuntu 24.04 of 26.04 (native of in WSL2), Docker Engine, [mise](https://mise.jdx.dev), GitHub CLI, `bubblewrap` en `socat` nodig. De laatste twee gebruikt de Claude Code-sandbox. De toolversies staan in `mise.toml` en `package.json`.
 
 Voer na het clonen eenmalig de installatie uit:
 

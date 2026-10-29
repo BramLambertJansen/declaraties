@@ -57,6 +57,18 @@ expect_version() {
   fi
 }
 
+# Ondersteunde Ubuntu-versies (framework §11). Gelezen, niet uitgevoerd; DOCTOR_OS_RELEASE alleen voor test/scripts/doctor.test.ts.
+os_release="${DOCTOR_OS_RELEASE:-/etc/os-release}"
+os_field() { sed -nE "s/^$1=[\"']?([^\"']*)[\"']?$/\1/p" "$os_release" 2>/dev/null | head -1 || true; }
+os_id="$(os_field ID)"
+os_version="$(os_field VERSION_ID)"
+if [[ "$os_id" == ubuntu && ("$os_version" == 24.04 || "$os_version" == 26.04) ]]; then
+  ok "Ubuntu $os_version"
+else
+  fail "besturingssysteem '${os_id:-onbekend} ${os_version:-onbekend}' is niet ondersteund (Ubuntu 24.04 of 26.04)" \
+    "stop en vraag de eigenaar (docs/nieuwe-app.md, Standaardwaarden)"
+fi
+
 mise_version() { sed -nE "s/^$1 = \"([^\"]+)\"/\1/p" mise.toml; }
 expect_version node "v$(mise_version node)" mise exec -- node --version
 expect_version pnpm "$(sed -nE 's/.*"packageManager": "pnpm@([^"]+)".*/\1/p' package.json)" mise exec -- pnpm --version
