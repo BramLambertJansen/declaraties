@@ -466,10 +466,14 @@ describe('ontwerp-overnemen/AC-10: volgRedirects', () => {
 });
 
 // Lichte fix (framework §8): haalOp leverde het eindantwoord van een redirectketen onder de oorspronkelijke URL, waardoor
-// relatieve URL's na `/docs` → 301 `/docs/` tegen het verkeerde pad oplosten. Contract:
+// relatieve URL's na `/docs` → 301 `/docs/` tegen het verkeerde pad oplosten. Een gefulfilde 302 gaat niet opnieuw langs
+// de Playwright-route, dus laadBron lost de keten van een https-bron eerst zelf op en navigeert direct naar de eind-URL.
+// Contract:
 //   volgRedirects geeft bij toegestaan: true ook `url` (de URL die het eindantwoord gaf); op de limiet staat het niet meer
 //     opgehaalde doel in `geblokkeerd`.
-//   routeAntwoord(verzoekUrl, uitkomst) → { soort: 'afbreken' } | { soort: 'doorverwijzen', url } | { soort: 'leveren' }
+//   startUrl(bron: string, haal: (url) => Promise<{ status, headers }>) → Promise<string>; volgt de keten met
+//     volgRedirects vanaf bron en geeft de eind-URL (zonder redirect bron zelf); rejects met een Error
+//     'Bron verwijst buiten de origin: <url>' als de keten de origin verlaat of de limiet raakt, zonder die url op te halen.
 //   chromiumArgs(bron) bevat ook --force-webrtc-ip-handling-policy=disable_non_proxied_udp.
 describe('ontwerp-overnemen/AC-10: eind-URL van een redirectketen', () => {
   const BRON = 'https://a.test/';
@@ -519,35 +523,31 @@ describe('ontwerp-overnemen/AC-10: eind-URL van een redirectketen', () => {
     expect(veld(uitkomst, 'geblokkeerd')).toStrictEqual([volgende]);
   });
 
-  test('ontwerp-overnemen/AC-10: routeAntwoord breekt af, verwijst door naar de eind-URL of levert', async () => {
-    const antwoord = { status: 200, headers: {} };
+  test('ontwerp-overnemen/AC-10: startUrl geeft de eind-URL van de keten en weigert een stap buiten de origin', async () => {
+    const eind = { status: 200, headers: { 'content-type': 'text/html' } };
+    const metKeten = keten({
+      'https://a.test/a': { status: 302, headers: { location: '/b' } },
+      'https://a.test/b': eind,
+    });
+    const zonder = keten({ 'https://a.test/a': eind });
+    const buiten = keten({ 'https://a.test/a': { status: 302, headers: { location: 'https://b.test/c' } } });
+    const lus = keten({
+      'https://a.test/x': { status: 302, headers: { location: '/y' } },
+      'https://a.test/y': { status: 302, headers: { location: '/x' } },
+    });
 
-    expect(
-      await roep('routeAntwoord', 'https://a.test/x', { toegestaan: false, geblokkeerd: ['https://b.test/'] }),
-    ).toStrictEqual({
-      soort: 'afbreken',
-    });
-    expect(
-      await roep('routeAntwoord', 'https://a.test/x', { toegestaan: true, url: 'https://a.test/x', geblokkeerd: [] }),
-    ).toStrictEqual({
-      soort: 'afbreken',
-    });
-    expect(
-      await roep('routeAntwoord', 'https://a.test/docs', {
-        toegestaan: true,
-        antwoord,
-        url: 'https://a.test/docs/',
-        geblokkeerd: [],
-      }),
-    ).toStrictEqual({ soort: 'doorverwijzen', url: 'https://a.test/docs/' });
-    expect(
-      await roep('routeAntwoord', 'https://a.test/docs/', {
-        toegestaan: true,
-        antwoord,
-        url: 'https://a.test/docs/',
-        geblokkeerd: [],
-      }),
-    ).toStrictEqual({ soort: 'leveren' });
+    expect(await roep('startUrl', 'https://a.test/a', metKeten.haal)).toBe('https://a.test/b');
+    expect(await roep('startUrl', 'https://a.test/a', zonder.haal)).toBe('https://a.test/a');
+    await expect(roep('startUrl', 'https://a.test/a', buiten.haal)).rejects.toThrow(
+      /^Bron verwijst buiten de origin:\s*https:\/\/b\.test\/c/,
+    );
+    expect(buiten.gehaald).toStrictEqual(['https://a.test/a']);
+    const fout: unknown = await roep('startUrl', 'https://a.test/x', lus.haal).catch((reden: unknown) => reden);
+    const volgende = lus.gehaald.at(-1) === 'https://a.test/x' ? 'https://a.test/y' : 'https://a.test/x';
+    expect(fout).toBeInstanceOf(Error);
+    expect(fout instanceof Error ? fout.message : '').toMatch(/^Bron verwijst buiten de origin:/);
+    expect(fout instanceof Error ? fout.message.endsWith(volgende) : false).toBe(true);
+    expect(lus.gehaald.length).toBeLessThanOrEqual(20);
   });
 
   test('ontwerp-overnemen/AC-10: chromiumArgs schakelt WebRTC-UDP buiten de proxy uit, lokaal en bij https', async () => {
