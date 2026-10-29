@@ -526,7 +526,7 @@ onuitvoerbare controle expliciet open en schakel geen bestaande grens uit om hem
 
 Overdracht:
 
-> 1. In je Ubuntu-terminal: `code ~/code/<slug>` — VS Code opent met **WSL: Ubuntu-24.04** linksonder.
+> 1. In je Ubuntu-terminal: `code ~/code/<slug>` — VS Code opent met **WSL: <distro>** linksonder (bijvoorbeeld `Ubuntu-24.04`).
 >    (Eerste keer: VS Code installeert de VS Code Server; vraagt hij om de **WSL**-extensie, klik **Install**.)
 > 2. Open de terminal in VS Code (**Terminal → New Terminal**) en start `claude`.
 > 3. Start Claude Code niet, of zie je een sandbox-fout: plak de melding hier.

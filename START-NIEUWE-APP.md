@@ -91,7 +91,7 @@ Vooraf nodig: een GitHub-account, een Claude-abonnement met Claude Code, en op W
 
 1. Klik met de rechtermuisknop op **Start** → **Terminal (Admin)** (Windows 10: **Windows PowerShell (Admin)**) en typ `wsl --install -d Ubuntu-24.04`.
    Herstart de computer als daarom gevraagd wordt. Heb je al Ubuntu 26.04, dan is dat ook goed en sla je deze stap over.
-2. Open **Ubuntu 24.04** uit het Startmenu. Kies een gebruikersnaam en wachtwoord (dat wachtwoord heb je later nog nodig).
+2. Open **Ubuntu 24.04** (of je bestaande Ubuntu 26.04) uit het Startmenu. Kies een gebruikersnaam en wachtwoord (dat wachtwoord heb je later nog nodig).
 3. Typ in dat Ubuntu-venster `curl -fsSL https://claude.ai/install.sh | bash`, sluit het venster en open Ubuntu opnieuw.
 4. Typ `claude` en log in zoals het scherm aangeeft; sluit Claude daarna af met `/exit`.
 

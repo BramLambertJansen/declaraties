@@ -1,12 +1,12 @@
 import { spawnSync } from 'node:child_process';
-import { chmodSync, cpSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { chmodSync, cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, expect, test } from 'vitest';
 
 const ROOT = path.join(import.meta.dirname, '../..');
 const dirs: string[] = [];
-type Options = { stack?: boolean; fail?: string; hooks?: boolean; osRelease?: string };
+type Options = { stack?: boolean; fail?: string; hooks?: boolean; osRelease?: string | null };
 
 function stub(root: string, name: string, body: string) {
   const file = path.join(root, 'bin', name);
@@ -25,7 +25,8 @@ function fixture(options: Options) {
     chmodSync(path.join(root, '.git/hooks/pre-commit'), 0o755);
   }
   writeFileSync(path.join(root, 'log'), '');
-  writeFileSync(path.join(root, 'os-release'), options.osRelease ?? 'NAME="Ubuntu"\nID=ubuntu\nVERSION_ID="24.04"\n');
+  if (options.osRelease !== null)
+    writeFileSync(path.join(root, 'os-release'), options.osRelease ?? 'NAME="Ubuntu"\nID=ubuntu\nVERSION_ID="24.04"\n');
   stub(
     root,
     'mise',
@@ -140,4 +141,57 @@ test.each([
   const result = run('doctor.sh', ['--machine'], { osRelease });
   expect(result.status).toBe(1);
   expect(result.stdout).toContain(`✗ besturingssysteem ${label} is niet ondersteund (Ubuntu 24.04 of 26.04)`);
+});
+
+test.each([
+  { quoting: 'zonder aanhalingstekens', osRelease: 'ID=ubuntu\nVERSION_ID=26.04\n', version: '26.04' },
+  { quoting: 'met enkele aanhalingstekens', osRelease: "ID='ubuntu'\nVERSION_ID='24.04'\n", version: '24.04' },
+  { quoting: 'met dubbele aanhalingstekens', osRelease: 'ID="ubuntu"\nVERSION_ID="26.04"\n', version: '26.04' },
+])('machinecontrole leest os-release-waarden $quoting', ({ osRelease, version }) => {
+  const result = run('doctor.sh', ['--machine'], { osRelease });
+  expect(result.status, result.stdout).toBe(0);
+  expect(result.stdout).toContain(`✓ Ubuntu ${version}`);
+});
+
+test.each([
+  { osRelease: "ID='debian'\nVERSION_ID='12'\n", label: "'debian 12'" },
+  { osRelease: 'VERSION_ID="24.04"\n', label: "'onbekend 24.04'" },
+  { osRelease: 'ID=ubuntu\n', label: "'ubuntu onbekend'" },
+])('machinecontrole meldt ontbrekende of afwijkende velden als $label', ({ osRelease, label }) => {
+  const result = run('doctor.sh', ['--machine'], { osRelease });
+  expect(result.status).toBe(1);
+  expect(result.stdout).toContain(`✗ besturingssysteem ${label} is niet ondersteund (Ubuntu 24.04 of 26.04)`);
+});
+
+test('machinecontrole faalt als het os-release-bestand ontbreekt', () => {
+  const result = run('doctor.sh', ['--machine'], { osRelease: null });
+  expect(result.status).toBe(1);
+  expect(result.stdout).toContain(
+    "✗ besturingssysteem 'onbekend onbekend' is niet ondersteund (Ubuntu 24.04 of 26.04)",
+  );
+});
+
+test('machinecontrole voert os-release niet uit', () => {
+  const result = run('doctor.sh', ['--machine'], {
+    osRelease: 'ID=ubuntu\nVERSION_ID="24.04"\nX=$(printf x > uitgevoerd)\nprintf x > uitgevoerd\n',
+  });
+  const root = dirs.at(-1) ?? '';
+  expect(result.stdout).toContain('✓ Ubuntu 24.04');
+  expect(existsSync(path.join(root, 'uitgevoerd'))).toBe(false);
+});
+
+test('volledige doctor controleert ook het besturingssysteem', () => {
+  const supported = run('doctor.sh', [], { stack: true, osRelease: 'ID=ubuntu\nVERSION_ID="26.04"\n' });
+  expect(supported.status, supported.stdout).toBe(0);
+  expect(supported.stdout).toContain('✓ Ubuntu 26.04');
+  const unsupported = run('doctor.sh', [], { stack: true, osRelease: 'ID=fedora\nVERSION_ID="41"\n' });
+  expect(unsupported.status).toBe(1);
+  expect(unsupported.stdout).toContain("✗ besturingssysteem 'fedora 41' is niet ondersteund (Ubuntu 24.04 of 26.04)");
+});
+
+test('quick doet geen besturingssysteemcontrole', () => {
+  const result = run('doctor.sh', ['--quick'], { osRelease: 'ID=fedora\nVERSION_ID="41"\n' });
+  expect(result.status).toBe(0);
+  expect(result.stdout).not.toContain('besturingssysteem');
+  expect(result.stdout).not.toContain('Ubuntu');
 });

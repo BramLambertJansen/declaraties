@@ -59,7 +59,7 @@ expect_version() {
 
 # Ondersteunde Ubuntu-versies (framework §11). Gelezen, niet uitgevoerd; DOCTOR_OS_RELEASE alleen voor test/scripts/doctor.test.ts.
 os_release="${DOCTOR_OS_RELEASE:-/etc/os-release}"
-os_field() { sed -nE "s/^$1=\"?([^\"]*)\"?$/\1/p" "$os_release" 2>/dev/null | head -1; }
+os_field() { sed -nE "s/^$1=[\"']?([^\"']*)[\"']?$/\1/p" "$os_release" 2>/dev/null | head -1 || true; }
 os_id="$(os_field ID)"
 os_version="$(os_field VERSION_ID)"
 if [[ "$os_id" == ubuntu && ("$os_version" == 24.04 || "$os_version" == 26.04) ]]; then
