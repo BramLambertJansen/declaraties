@@ -134,6 +134,26 @@ describe('I3: awk -i inplace met een programmabestand', () => {
   });
 });
 
+describe('awk-programma via -e of --source', () => {
+  test.each([
+    `awk --source='BEGIN {print "x" > "${f}"}'`,
+    `awk --source 'BEGIN {print "x" > "${f}"}'`,
+    `awk -e'BEGIN {print "x" > "${f}"}'`,
+    `awk -e 'BEGIN {print "x" > "${f}"}'`,
+    `gawk -e 'BEGIN {}' -e 'BEGIN {print "x" >> "${f}"}'`,
+    `awk -i inplace -e '{}' ${f}`,
+  ])('developer en hoofdsessie: %s geeft dezelfde uitslag als een directe redirect', (command) => {
+    for (const rol of [undefined, 'developer']) {
+      expect(verdict(command, rol)).not.toBe('allow');
+      expect(verdict(command, rol)).toBe(verdict(SCHRIJF_REFERENTIE, rol));
+    }
+  });
+  test('regressie: awk -e met een leesprogramma blijft gelijk aan cat (allow)', () => {
+    for (const rol of [undefined, 'developer'])
+      expect(verdict(`awk -e '{print}' ${f}`, rol)).toBe(verdict(`cat ${f}`, rol));
+  });
+});
+
 describe('K4: varianten geven dezelfde uitslag als de directe referentie', () => {
   test.each(['find -H test -delete', 'find -D tree test -delete', 'find -O3 test -delete'])(
     'developer: %s is deny',

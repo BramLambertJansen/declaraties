@@ -328,17 +328,24 @@ function awkTargets(args) {
   let inplace = false;
   let programFile = false;
   /** @type {string[]} */
+  const sources = [];
+  /** @type {string[]} */
   const operands = [];
   for (let index = 0; index < args.length; index += 1) {
     const arg = args[index] ?? '';
     if (/^(?:-i|--include=?)inplace$/.test(arg) || (['-i', '--include'].includes(arg) && args[index + 1] === 'inplace'))
       inplace = true;
     if (/^-[fE]/.test(arg) || arg.startsWith('--file')) programFile = true;
-    if (AWK_VALUE_OPTIONS.has(arg) || arg === '-f' || arg === '-E' || arg === '--file') index += 1;
+    // Programmatekst via `-e`/`--source`, los of aangeplakt (`-e'…'`, `--source='…'`); dan is er geen positioneel programma.
+    if (arg === '-e' || arg === '--source') sources.push(args[index + 1] ?? '');
+    else if (/^-e./.test(arg)) sources.push(arg.slice(2));
+    else if (arg.startsWith('--source=')) sources.push(arg.slice('--source='.length));
+    if (AWK_VALUE_OPTIONS.has(arg) || ['-f', '-E', '--file', '-e', '--source'].includes(arg)) index += 1;
     else if (!arg.startsWith('-') || arg === '-') operands.push(arg);
   }
-  const [program = '', ...files] = programFile ? ['', ...operands] : operands;
-  const redirects = [...program.matchAll(/>>?\s*"([^"]+)"/g)].map((match) => match[1] ?? '');
+  const positioneel = !programFile && sources.length === 0;
+  const [program = '', ...files] = positioneel ? operands : ['', ...operands];
+  const redirects = [program, ...sources].flatMap((text) => [...text.matchAll(/>>?\s*"([^"]+)"/g)].map((match) => match[1] ?? ''));
   return [...redirects, ...(inplace ? files : [])];
 }
 
