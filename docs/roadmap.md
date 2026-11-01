@@ -192,7 +192,7 @@ Open werk dat niet geparkeerd is, grofweg in volgorde. Wat nog een spec of eigen
   aanleiding: `rails/hooks/lib/rolhek.mjs` (spec `agent-merge`, Bekende gaten)
 - [ ] **Schrijven via een programma buiten `fileTargets` omzeilt het rolhek.** `writeTargets` in `rails/hooks/lib/shell.mjs` kent alleen een
   vaste lijst (redirect, `tee`, `sed -i`, `cp`, `git checkout` …). Een script via `python3`, `node -e` of een heredoc naar zo'n interpreter
-  (`python3 - <<EOF`), en ook `awk`, `patch`, `git apply`, `curl -o`, `tar x` of `prettier --write`, schrijft beschermde paden zonder de
+  (`python3 - <<EOF`), en ook `patch`, `git apply`, `curl -o`, `tar x` of `prettier --write`, schrijft beschermde paden zonder de
   beslissing (ask, deny of melding) die een Edit op hetzelfde pad krijgt; een redirect (`cat > f <<EOF`) ziet het rolhek wel. Eerst kiezen
   tussen weigeren en melden; de diff-guard in CI blijft de grens.
   aanleiding: #260 (eigenaarbesluit: als item opnemen; de developer schreef `.claude/**`, `.github/**`, `scripts/**` en `rails/**` via een Python-script, de reviewer zag alleen ADR-nummerwijzigingen)
@@ -202,6 +202,14 @@ Open werk dat niet geparkeerd is, grofweg in volgorde. Wat nog een spec of eigen
   (`--arg-file F`, `-0a F`, `-rn 1`) de optiewaarde als commandowoord. Opties van omhulsels overslaan en die xargs-vormen lezen, met tests per vorm;
   `coreutils --coreutils-prog=env` hoort bij dezelfde klasse, net als een gh-vlag tussen `pr` en `review` (`gh pr -b x review 1 --comment`): `ghForbidden` leest groep en actie positioneel in plaats van via `ghCommandWords`.
   aanleiding: `rails/hooks/lib/rolhek.mjs` (delta-review ronde 2 van fix/rolhek-gh-allowlist)
+- [ ] **Bekende gaten in het rolhek (R-ROL-10: vangnet, geen grens).** Het rolhek ziet niet: scripts in de repo, `node -e` en andere
+  interpreters; voor de hoofdsessie `curl -K`, een kopie van `gh` onder een andere naam en `node_modules/.bin`; `find -exec`/`-execdir`/`-ok`;
+  globs in paden (`rm src/api/routes/*.test.ts`, `sed -i … docs/adr/archief/0*.md`); symlinks en hardlinks (`ln -s test t && rm -rf t/`, `cp -l`);
+  `git checkout <ref> <pad>` zonder `--`; `git -C <map>` en `cd x && …` binnen één commando (paden tellen vanaf de cwd van de payload); awk met `-f`, een variabel doel, `system()` of
+  `| "cmd"`, afgekorte lange gawk-opties (`--sour=`, `--fi=`, `--incl=`; één helper voor afkortingen van lange opties in `shell.mjs`) en
+  awk-uitvoer via opties (`-o`/`--pretty-print=f`, `-d`/`--dump-variables=f`); `git restore <map>` en `git checkout -- <map>` voor een
+  lokaal ontbrekende map (de map-regel kijkt naar `isDir`, niet naar getrackte bestanden eronder). Omhulsels met opties en xargs-optiewaarden staan in het item hierboven. Per gat kiezen tussen weigeren en melden, met tests.
+  aanleiding: `rails/hooks/lib/shell.mjs` (review van PR 6a `fix/rolhek-gaten`; eigenaarbesluit 2026-11-01: de lijst bekende gaten uit R-ROL-10 naar de roadmap)
 
 ## Geparkeerd
 

@@ -132,7 +132,9 @@ function feedback(payload, deps, herinneren) {
     ['lint', deps.run('pnpm', ['exec', 'eslint', '--max-warnings', '0', '--no-warn-ignored', ...code])],
     ['unit', deps.run('pnpm', ['exec', 'vitest', 'related', '--run', '--project', 'unit', '--project', 'web', ...code])],
   ].filter(([, result]) => typeof result === 'object' && result.code !== 0);
-  const drift = herinneren ? docsDrift(changed) : null;
+  // Alleen bij Stop (AC-13 compacte-kennisbasis-rails); een payload zonder event is de Stop-aanroep van de hook.
+  const event = get(payload, 'hook_event_name');
+  const drift = herinneren && (event === undefined || event === 'Stop') ? docsDrift(changed) : null;
   const herinnering = drift === null || !eersteKeer(payload, deps, 'docs-drift') ? [] : [`${drift}. Raakt de wijziging geen gedrag, API of conventies, dan mag je opnieuw stoppen.`];
   if (failures.length === 0) return herinnering.length === 0 ? {} : block(`Herinnering (framework §8): ${herinnering.join('')}`);
   // Elke rode controle krijgt een eigen deel van de 40 regels: een lange lint- of testuitvoer drukt de typefout er niet uit.
