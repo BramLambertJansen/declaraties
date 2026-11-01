@@ -212,12 +212,13 @@ export function splitCommand(words) {
   return { assignments, argv: words.slice(index), pathWrappers };
 }
 
-/** @typedef {{ writes: string[], deletes: string[], trees?: string[] }} Targets */
+/** @typedef {{ writes: string[], deletes: string[], trees?: string[], indexOnly?: boolean }} Targets */
 
 /**
  * Bestanden die een commando schrijft of verwijdert (redirect, tee, sed -i, perl -i, cp, mv, ln, rm, touch, truncate, dd,
  * find -delete/-fprint/-fls, awk-uitvoer en -i inplace, sort -o, git checkout/restore/rm/mv). Paden zoals geschreven; het
  * rolhek maakt ze relatief aan de repo. `trees`: schrijfdoelen waarvan een map met alles eronder telt (`cp -r x map`).
+ * `indexOnly`: de eigen doelen (niet de redirects) raken alleen de git-index (`git restore --staged`).
  * @param {Command} command
  * @returns {Targets}
  */
@@ -225,7 +226,12 @@ export function writeTargets(command) {
   const { argv } = splitCommand(command.words);
   const [word = '', ...args] = argv;
   const targets = fileTargets(programName(word), args);
-  return { writes: [...command.redirects, ...targets.writes], deletes: targets.deletes, trees: targets.trees ?? [] };
+  return {
+    writes: [...command.redirects, ...targets.writes],
+    deletes: targets.deletes,
+    trees: targets.trees ?? [],
+    ...(targets.indexOnly === true ? { indexOnly: true } : {}),
+  };
 }
 
 const DIRECTORY_WRITERS = new Set(['cp', 'mv', 'ln', 'install']);
@@ -345,7 +351,8 @@ function sortOutputs(args) {
     const option = arg.split('=')[0] ?? '';
     if (option.length > 2 && option.startsWith('--o') && '--output'.startsWith(option))
       return [arg.includes('=') ? arg.slice(option.length + 1) : (args[index + 1] ?? '')];
-    const short = /^-[a-zA-Z]*o(.*)$/.exec(arg);
+    // Lees de cluster tot de eerste `o`; `-k`, `-t`, `-S` en `-T` nemen de rest als waarde (`-to x` is een scheidingsteken).
+    const short = /^-(?:(?![ktSTo])[a-zA-Z])*o(.*)$/.exec(arg);
     return short === null || arg.startsWith('--') ? [] : [short[1] || (args[index + 1] ?? '')];
   });
 }
@@ -393,7 +400,7 @@ function gitTargets(args) {
       const opties = rest.includes('--') ? rest.slice(0, rest.indexOf('--')) : rest;
       const alleenIndex = opties.some((arg) => longOption(arg, '--staged', 4) || /^-[a-rt-zA-Z]*S/.test(arg)) &&
         !opties.some((arg) => longOption(arg, '--worktree', 3) || /^-[a-rt-zA-Z]*W/.test(arg));
-      return { writes, deletes: [], trees: alleenIndex ? [] : writes };
+      return { writes, deletes: [], trees: alleenIndex ? [] : writes, ...(alleenIndex ? { indexOnly: true } : {}) };
     }
     case 'rm':
       return { writes: [], deletes: operands };

@@ -507,7 +507,8 @@ function decideBash({ command, role }, ctx, decision) {
     const targets = writeTargets(parsed);
     for (const target of targets.writes) bashTarget({ file: target, kind: 'write', role }, ctx, decision);
     for (const target of targets.deletes) bashTarget({ file: target, kind: 'delete', role }, ctx, decision);
-    decision.deny.push(...archiefViaBash(argv, { writes: targets.writes, redirects: parsed.redirects.length }, ctx));
+    const eigenDoelen = targets.indexOnly === true ? parsed.redirects : targets.writes;
+    decision.deny.push(...archiefViaBash(argv, { writes: eigenDoelen, redirects: parsed.redirects.length }, ctx));
     for (const target of targets.trees ?? []) treeTarget({ file: target, kind: 'write', role }, ctx, decision);
     for (const target of targets.deletes) treeTarget({ file: target, kind: 'delete', role }, ctx, decision);
   }

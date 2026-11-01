@@ -218,6 +218,20 @@ describe('git restore --staged raakt de werkmap niet', () => {
   );
 });
 
+describe('sort -o: een aangeplakt pad met een extra o', () => {
+  test.each([`src/api/routes/a.test.ts`, 'docs/framework.md'])(
+    'developer en hoofdsessie: sort -o<pad> geeft dezelfde uitslag als sort -o <pad> (%s)',
+    (pad) => {
+      for (const rol of [undefined, 'developer'])
+        expect(verdict(`sort -o${pad} /dev/null`, rol)).toBe(verdict(`sort -o ${pad} /dev/null`, rol));
+    },
+  );
+  test('sort -to x /dev/null: -t neemt o als scheidingsteken, dus geen schrijfactie', () => {
+    for (const rol of [undefined, 'developer'])
+      expect(verdict('sort -to x /dev/null', rol)).toBe(verdict('sort /dev/null', rol));
+  });
+});
+
 describe('bewust geaccepteerd', () => {
   test('geaccepteerde valse positief (R-ROL-11): find . -name x.tmp -delete is deny voor de developer', () => {
     expect(verdict('find . -name x.tmp -delete', 'developer')).toBe('deny');

@@ -101,6 +101,19 @@ describe('B1: de uitzondering geldt alleen voor een doel dat nog niet bestaat en
   });
 });
 
+describe('git restore van een archiefbestand: alleen de index is geen schrijfactie', () => {
+  test(`hoofdsessie: git restore --staged ${ARCHIEF} is geen deny`, () => {
+    expect(verdict(`git restore --staged ${ARCHIEF}`)).not.toBe('deny');
+  });
+  test.each([
+    `git restore ${ARCHIEF}`,
+    `git restore --staged --worktree ${ARCHIEF}`,
+    `git restore --staged x 2>${ARCHIEF}`,
+  ])('hoofdsessie: %s is deny', (command) => {
+    expect(verdict(command)).toBe('deny');
+  });
+});
+
 describe('I2: checkout en restore van het archief', () => {
   test.each(['git checkout HEAD -- docs/adr/archief', 'git restore docs/adr/archief'])(
     'hoofdsessie: %s is deny',
