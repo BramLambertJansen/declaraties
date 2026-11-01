@@ -76,8 +76,8 @@ Geen accountbeheerpad uit `docs/gouden-pad.md` past (werkstraat, geen UI).
   aanvaltests blijven ongewijzigd groen. (Een vrijstelling voor leescommando's is geschrapt; agents lezen met Read, Grep en
   Glob, regel in `AGENTS.md` via PR 4.)
 
-- **compacte-kennisbasis-rails/AC-13** — `werkstraat.mjs` geeft de docs-drift-herinnering alleen bij Stop. Welke events
-  `meting.mjs` meet, beslist V2 met cijfers (eigenaarbesluit 2026-11-01: meten zoals nu).
+- **compacte-kennisbasis-rails/AC-13** — `werkstraat.mjs` geeft de docs-drift-herinnering alleen bij Stop; `meting.mjs` reageert
+  alleen op SessionStart, Stop en SubagentStop (anders exit 0, geen uitvoer). Registratie: de eigenaar.
 
 **PR 6b — mandaat en label weg**
 
