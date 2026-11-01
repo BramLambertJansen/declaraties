@@ -20,6 +20,8 @@ function git(root, args) {
     cwd: root,
     encoding: 'utf8',
     stdio: ['ignore', 'pipe', 'ignore'],
+    // `ls-files` over een grote app-repo past niet in de standaard 1 MiB.
+    maxBuffer: 64 * 1024 * 1024,
   }).trim();
 }
 
@@ -87,6 +89,11 @@ function context(root, cwd) {
     },
     committed: committedIn(root, basis?.sha ?? null),
     isDir: (/** @type {string} */ rel) => safe(() => statSync(path.join(root, rel)).isDirectory()),
+    // Een map als doel (rm -r, find -delete, cp -r): wat eronder staat, getrackt of nieuw en niet genegeerd (R-ROL-08).
+    files: (/** @type {string} */ rel) =>
+      git(root, ['ls-files', '-z', '--cached', '--others', '--exclude-standard', '--', rel === '' ? '.' : rel])
+        .split('\0')
+        .filter((file) => file !== ''),
     branch: gitBranch(root),
     authority,
     runnerTrusted: () => (trusted ??= trustedRunner(root, basis)),

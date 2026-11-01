@@ -18,7 +18,8 @@ import { staleBranchStart } from './verse-main.mjs';
  * @typedef {{ root: string, cwd: string, config: Config, read: (rel: string) => string | null,
  *   committed: (rel: string) => boolean | 'zonder-origin', isDir: (rel: string) => boolean, branch: string,
  *   authority?: import('./task-authority.mjs').Authority | null, runnerTrusted?: boolean | (() => boolean),
- *   onbekendeRol?: boolean, onderhoud?: boolean }} Ctx
+ *   onbekendeRol?: boolean, onderhoud?: boolean, files?: (rel: string) => string[] }} Ctx
+ * `files`: bestanden (getrackt en niet-genegeerd) onder een map, repo-relatief; `''` is de hele repo.
  * `onderhoud`: de onderhoudsmodus is actief (vertrouwde configuratie en origin is die repository, ADR 0045 punt 8–9).
  * `onbekendeRol`: een subagent zonder bekende rol; telt als developer, maar zonder de melding buiten voorReview.
  * `committed`: staat in de merge-base met het anker of met origin/main; 'zonder-origin' = beide onleesbaar en wel in HEAD (terugval).
@@ -506,6 +507,9 @@ function decideBash({ command, role }, ctx, decision) {
     const targets = writeTargets(parsed);
     for (const target of targets.writes) bashTarget({ file: target, kind: 'write', role }, ctx, decision);
     for (const target of targets.deletes) bashTarget({ file: target, kind: 'delete', role }, ctx, decision);
+    decision.deny.push(...archiefViaBash(argv, { writes: targets.writes, redirects: parsed.redirects.length }, ctx));
+    for (const target of targets.trees ?? []) treeTarget({ file: target, kind: 'write', role }, ctx, decision);
+    for (const target of targets.deletes) treeTarget({ file: target, kind: 'delete', role }, ctx, decision);
   }
 }
 
@@ -628,6 +632,86 @@ function bashTarget({ file, kind, role }, ctx, decision) {
   // Naar een bestaande map (cp x src/core/): beslis voor een nieuw bestand daarin.
   const target = kind === 'write' && ctx.isDir(rel) ? `${rel}/nieuw-bestand` : rel;
   decideFile({ rel: target, change: { kind, after: null }, role }, ctx, decision);
+}
+
+const ARCHIEF_MELDING = 'het ADR-archief is onwijzigbaar; via Bash alleen `git mv docs/adr/<naam> docs/adr/archief/` met dezelfde naam (framework §10, R-CI-06)';
+const VERPLAATSERS = new Set(['cp', 'mv', 'install', 'ln']);
+
+/**
+ * Een Bash-schrijfactie op een gearchiveerd ADR (ook een nieuw bestand of een map als doel) is voor elke rol verboden; de enige
+ * uitzondering is `git mv` van één ADR naar een nog niet bestaand `archief/`-pad met dezelfde naam (PR 5, ADR 0053), en
+ * alleen voor het doel van `git mv` zelf, nooit voor een redirect. Inhoud en status toetst CI.
+ * @param {readonly string[]} argv
+ * @param {{ writes: readonly string[], redirects: number }} targets `redirects`: zoveel eerste `writes` zijn redirect-doelen.
+ * @param {Ctx} ctx
+ */
+function archiefViaBash(argv, { writes, redirects }, ctx) {
+  const [word = '', ...args] = argv;
+  const program = programName(word);
+  const gitMv = program === 'git' && gitSubcommand(args).subcommand === 'mv';
+  const operands = (gitMv ? gitSubcommand(args).rest : VERPLAATSERS.has(program) ? args : []).filter((arg) => !arg.startsWith('-'));
+  return writes.flatMap((file, index) => {
+    const rel = relative(ctx, file);
+    if (rel === null) return [];
+    const eigen = index >= redirects;
+    const sources = operands.filter((operand) => operand !== file);
+    // Ook `cp -t map`/`--target-directory=map`: het doel staat dan niet tussen de operanden.
+    const isMap = eigen && sources.length > 0 && (file.endsWith('/') || ctx.isDir(rel));
+    const doelen = isMap ? sources.map((source) => `${rel}/${path.basename(source)}`) : [rel];
+    return doelen.filter(isArchief).flatMap((doel) => {
+      const verplaatsing = eigen && gitMv && sources.length === 1 && ctx.read(doel) === null &&
+        relative(ctx, sources[0] ?? '') === `docs/adr/${path.basename(doel)}`;
+      return verplaatsing ? [] : [`${doel}: ${ARCHIEF_MELDING}`];
+    });
+  });
+}
+
+/**
+ * Een map als verwijder- of recursief schrijfdoel (`rm -r test`, `find . -delete`, `mv test x`, `cp -r x test`) telt voor elk
+ * beschermd pad en document eronder (framework §8, R-ROL-08). Stopt bij de eerste weigering; meldingen alleen uniek.
+ * @param {{ file: string, kind: 'write' | 'delete', role: string }} target
+ * @param {Ctx} ctx
+ * @param {Decision} decision
+ */
+function treeTarget({ file, kind, role }, ctx, decision) {
+  if (ctx.files === undefined || inGitMap(file)) return;
+  const scoped = scopedContext(ctx, file);
+  const resolved = treeRoot(scoped, file);
+  if (resolved === null) return;
+  const { config } = scoped;
+  const globs = [...config.gates, ...config.testpaden, ...config.migraties, ...config.gegenereerd, ...Object.keys(config.jsonGates)];
+  const weigerGlobs = [...config.gegenereerd, ...config.migraties];
+  /** @type {Decision} */
+  const found = { deny: [], ask: [], context: [] };
+  for (const rel of ctx.files(resolved)) {
+    if (isArchief(rel)) found.deny.push(`${rel}: ${ARCHIEF_MELDING}`);
+    if (found.deny.length > 0) break;
+    if (!globs.some((glob) => globMatch(glob, rel)) && documentKind(rel) === null) continue;
+    // Na een vraag telt alleen nog wat altijd weigert (gegenereerd, gecommitte migratie): elk bestand lezen kost te veel tijd.
+    if (found.ask.length > 0 && !weigerGlobs.some((glob) => globMatch(glob, rel))) continue;
+    decideFile({ rel, change: { kind, after: null }, role }, scoped, found);
+  }
+  const meer = found.context.length - MAX_TREE_MELDINGEN;
+  if (meer > 0) found.context = [...found.context.slice(0, MAX_TREE_MELDINGEN), `… en ${String(meer)} meldingen meer onder ${file}`];
+  for (const key of /** @type {const} */ (['deny', 'ask', 'context'])) {
+    for (const message of found[key]) if (!decision[key].includes(message)) decision[key].push(message);
+  }
+}
+
+const MAX_TREE_MELDINGEN = 5;
+
+/**
+ * De map onder de repo die een doel dekt: `''` als het doel de repo zelf of een map erboven is (`rm -rf ..`, `find / -delete`),
+ * null als het geen map is of naast de repo ligt.
+ * @param {Ctx} ctx
+ * @param {string} file
+ */
+function treeRoot(ctx, file) {
+  const absolute = path.resolve(ctx.cwd, file);
+  const boven = path.relative(absolute, ctx.root);
+  if (!boven.startsWith('..') && !path.isAbsolute(boven)) return '';
+  const resolved = path.relative(ctx.root, absolute).split(path.sep).join('/');
+  return resolved.startsWith('..') || path.isAbsolute(resolved) || !ctx.isDir(resolved) ? null : resolved;
 }
 
 const REVIEWER_COMMANDS = [

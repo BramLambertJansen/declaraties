@@ -21,7 +21,7 @@ export function parseCommands(script) {
   const commands = [];
   /** @type {Command} */
   let current = { words: [], redirects: [], expanded: [] };
-  /** @type {'redirect' | 'skip' | null} */
+  /** @type {'redirect' | 'dup' | 'skip' | null} */
   let expect = null;
   for (const token of tokenize(script)) {
     if (token.kind === 'op' && SEPARATORS.has(token.value)) {
@@ -29,10 +29,11 @@ export function parseCommands(script) {
       current = { words: [], redirects: [], expanded: [] };
       expect = null;
     } else if (token.kind === 'op') {
-      // `<`, `<<<`, `<<` en kopieën van een descriptor (`>&2`, `2>&1`) schrijven geen bestand.
-      expect = token.value.startsWith('<') || token.value.endsWith('&') ? 'skip' : 'redirect';
+      // `<`, `<<<`, `<<` en kopieën van een descriptor (`>&2`, `2>&1`, `>&-`) schrijven geen bestand; `>&bestand` wel.
+      if (token.value === '>&') expect = 'dup';
+      else expect = token.value.startsWith('<') || token.value.endsWith('&') ? 'skip' : 'redirect';
     } else {
-      if (expect === 'redirect') current.redirects.push(token.value);
+      if (expect === 'redirect' || (expect === 'dup' && !/^(?:\d+|-)$/.test(token.value))) current.redirects.push(token.value);
       else if (expect === null) current.words.push(token.value);
       if (token.expands === true) current.expanded?.push(token.value);
       expect = null;
@@ -211,11 +212,12 @@ export function splitCommand(words) {
   return { assignments, argv: words.slice(index), pathWrappers };
 }
 
-/** @typedef {{ writes: string[], deletes: string[] }} Targets */
+/** @typedef {{ writes: string[], deletes: string[], trees?: string[] }} Targets */
 
 /**
  * Bestanden die een commando schrijft of verwijdert (redirect, tee, sed -i, perl -i, cp, mv, ln, rm, touch, truncate, dd,
- * git checkout/restore/rm/mv). Paden zoals geschreven; het rolhek maakt ze relatief aan de repo.
+ * find -delete/-fprint/-fls, awk-uitvoer en -i inplace, sort -o, git checkout/restore/rm/mv). Paden zoals geschreven; het
+ * rolhek maakt ze relatief aan de repo. `trees`: schrijfdoelen waarvan een map met alles eronder telt (`cp -r x map`).
  * @param {Command} command
  * @returns {Targets}
  */
@@ -223,7 +225,7 @@ export function writeTargets(command) {
   const { argv } = splitCommand(command.words);
   const [word = '', ...args] = argv;
   const targets = fileTargets(programName(word), args);
-  return { writes: [...command.redirects, ...targets.writes], deletes: targets.deletes };
+  return { writes: [...command.redirects, ...targets.writes], deletes: targets.deletes, trees: targets.trees ?? [] };
 }
 
 const DIRECTORY_WRITERS = new Set(['cp', 'mv', 'ln', 'install']);
@@ -246,8 +248,19 @@ function fileTargets(program, args) {
     case 'rmdir':
       return { writes: [], deletes: operands };
     case 'cp':
-    case 'install':
-      return { writes: directory === null ? operands.slice(-1) : [directory], deletes: [] };
+    case 'install': {
+      const writes = directory === null ? operands.slice(-1) : [directory];
+      return { writes, deletes: [], trees: args.some((arg) => RECURSIVE.test(arg)) ? writes : [] };
+    }
+    case 'find':
+      return findTargets(args);
+    case 'awk':
+    case 'gawk':
+    case 'mawk':
+    case 'nawk':
+      return { writes: awkTargets(args), deletes: [] };
+    case 'sort':
+      return { writes: sortOutputs(args), deletes: [] };
     case 'mv':
       return { writes: directory === null ? operands.slice(-1) : [directory], deletes: directory === null ? operands.slice(0, -1) : operands };
     case 'ln':
@@ -275,6 +288,66 @@ function targetDirectory(args) {
     if (short !== null) return short[1] || (args[index + 1] ?? null);
   }
   return null;
+}
+
+const RECURSIVE = /^(?:-[a-zA-Z]*[rRa][a-zA-Z]*|--recursive|--archive)$/;
+const FIND_PREFIX = new Set(['-H', '-L', '-P']);
+const FIND_OUTPUTS = new Set(['-fprint', '-fprint0', '-fprintf', '-fls']);
+
+/**
+ * `find`: `-fprint`/`-fprint0`/`-fprintf`/`-fls` schrijven het bestand erna; `-delete` verwijdert wat onder de startpaden
+ * valt (zonder startpad: `.`). Het rolhek beslist voor een startmap over alles eronder.
+ * @param {readonly string[]} args
+ * @returns {Targets}
+ */
+function findTargets(args) {
+  let index = 0;
+  while (FIND_PREFIX.has(args[index] ?? '') || /^-D$|^-O\d*$/.test(args[index] ?? ''))
+    index += args[index] === '-D' ? 2 : 1;
+  /** @type {string[]} */
+  const starts = [];
+  while (index < args.length && !/^[-(!,]/.test(args[index] ?? '')) starts.push(args[index++] ?? '');
+  const writes = args.flatMap((arg, at) => (FIND_OUTPUTS.has(arg) && at + 1 < args.length ? [args[at + 1] ?? ''] : []));
+  return { writes, deletes: args.includes('-delete') ? (starts.length > 0 ? starts : ['.']) : [] };
+}
+
+const AWK_VALUE_OPTIONS = new Set(['-v', '-F', '-i', '-l', '--include', '--load', '--assign', '--field-separator']);
+
+/**
+ * `awk`: bestanden waarnaar het programma schrijft (`print > "x"`, `>> "x"`) en bij `-i inplace` de invoerbestanden.
+ * Een programma uit een bestand (`-f`) of een niet-letterlijk doel ziet het rolhek niet (vangnet, framework §8).
+ * @param {readonly string[]} args
+ */
+function awkTargets(args) {
+  let inplace = false;
+  let programFile = false;
+  /** @type {string[]} */
+  const operands = [];
+  for (let index = 0; index < args.length; index += 1) {
+    const arg = args[index] ?? '';
+    if (/^(?:-i|--include=?)inplace$/.test(arg) || (['-i', '--include'].includes(arg) && args[index + 1] === 'inplace'))
+      inplace = true;
+    if (/^-[fE]/.test(arg) || arg.startsWith('--file')) programFile = true;
+    if (AWK_VALUE_OPTIONS.has(arg) || arg === '-f' || arg === '-E' || arg === '--file') index += 1;
+    else if (!arg.startsWith('-') || arg === '-') operands.push(arg);
+  }
+  const [program = '', ...files] = programFile ? ['', ...operands] : operands;
+  const redirects = [...program.matchAll(/>>?\s*"([^"]+)"/g)].map((match) => match[1] ?? '');
+  return [...redirects, ...(inplace ? files : [])];
+}
+
+/**
+ * `sort -o f`, `-of`, `--output=f`, `--output f` (ook afkortingen vanaf `--o`).
+ * @param {readonly string[]} args
+ */
+function sortOutputs(args) {
+  return args.flatMap((arg, index) => {
+    const option = arg.split('=')[0] ?? '';
+    if (option.length > 2 && option.startsWith('--o') && '--output'.startsWith(option))
+      return [arg.includes('=') ? arg.slice(option.length + 1) : (args[index + 1] ?? '')];
+    const short = /^-[a-zA-Z]*o(.*)$/.exec(arg);
+    return short === null || arg.startsWith('--') ? [] : [short[1] || (args[index + 1] ?? '')];
+  });
 }
 
 /**
@@ -306,12 +379,22 @@ function gitTargets(args) {
   const { subcommand, rest } = gitSubcommand(args);
   const operands = rest.filter((arg) => !arg.startsWith('-'));
   switch (subcommand) {
+    // checkout en restore met een map als pad overschrijven alles eronder: `trees`.
     case 'checkout': {
       const dashdash = rest.indexOf('--');
-      return { writes: dashdash === -1 ? [] : rest.slice(dashdash + 1), deletes: [] };
+      const writes = dashdash === -1 ? [] : rest.slice(dashdash + 1);
+      return { writes, deletes: [], trees: writes };
     }
-    case 'restore':
-      return { writes: withoutSource(rest), deletes: [] };
+    case 'restore': {
+      const writes = withoutSource(rest);
+      // `--staged`/`-S` zonder `--worktree`/`-W` raakt alleen de index, niet de werkmap. Een korte cluster telt tot de `s`
+      // (die neemt een ref als waarde: `-sStable`); lange opties ook als afkorting (`--stag`, `--work`). Twijfel = werkmap.
+      // Na `--` volgen alleen paden, ook als ze met `-` beginnen.
+      const opties = rest.includes('--') ? rest.slice(0, rest.indexOf('--')) : rest;
+      const alleenIndex = opties.some((arg) => longOption(arg, '--staged', 4) || /^-[a-rt-zA-Z]*S/.test(arg)) &&
+        !opties.some((arg) => longOption(arg, '--worktree', 3) || /^-[a-rt-zA-Z]*W/.test(arg));
+      return { writes, deletes: [], trees: alleenIndex ? [] : writes };
+    }
     case 'rm':
       return { writes: [], deletes: operands };
     case 'mv':
@@ -322,11 +405,22 @@ function gitTargets(args) {
 }
 
 /**
+ * Een lange optie of een afkorting ervan van minstens `min` tekens (git accepteert unieke afkortingen).
+ * @param {string} arg @param {string} option @param {number} min
+ */
+function longOption(arg, option, min) {
+  return arg.length >= min && option.startsWith(arg);
+}
+
+/**
  * `git restore -s <tree> a b` → `a`, `b`.
  * @param {string[]} rest
  */
 function withoutSource(rest) {
-  return rest.filter((arg, index) => !arg.startsWith('-') && rest[index - 1] !== '-s' && rest[index - 1] !== '--source');
+  const dashdash = rest.indexOf('--');
+  const opties = dashdash === -1 ? rest : rest.slice(0, dashdash);
+  const paden = dashdash === -1 ? [] : rest.slice(dashdash + 1);
+  return [...opties.filter((arg, index) => !arg.startsWith('-') && opties[index - 1] !== '-s' && opties[index - 1] !== '--source'), ...paden];
 }
 
 const GIT_OPTIONS_WITH_VALUE = new Set(['-C', '-c', '--git-dir', '--work-tree', '--namespace', '--exec-path']);
