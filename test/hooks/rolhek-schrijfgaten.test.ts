@@ -154,6 +154,19 @@ describe('awk-programma via -e of --source', () => {
   });
 });
 
+describe('awk: een letterlijk uitvoerdoel tussen haakjes', () => {
+  test.each([
+    `awk 'BEGIN {print "x" > ("${f}")}'`,
+    `awk 'BEGIN {print "x" >> ( "${f}" )}'`,
+    `awk --source='BEGIN {print "x" > ("${f}")}'`,
+  ])('developer en hoofdsessie: %s geeft dezelfde uitslag als een directe redirect', (command) => {
+    for (const rol of [undefined, 'developer']) {
+      expect(verdict(command, rol)).not.toBe('allow');
+      expect(verdict(command, rol)).toBe(verdict(SCHRIJF_REFERENTIE, rol));
+    }
+  });
+});
+
 describe('K4: varianten geven dezelfde uitslag als de directe referentie', () => {
   test.each(['find -H test -delete', 'find -D tree test -delete', 'find -O3 test -delete'])(
     'developer: %s is deny',

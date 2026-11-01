@@ -345,7 +345,7 @@ function awkTargets(args) {
   }
   const positioneel = !programFile && sources.length === 0;
   const [program = '', ...files] = positioneel ? operands : ['', ...operands];
-  const redirects = [program, ...sources].flatMap((text) => [...text.matchAll(/>>?\s*"([^"]+)"/g)].map((match) => match[1] ?? ''));
+  const redirects = [program, ...sources].flatMap((text) => [...text.matchAll(/>>?\s*(?:\(\s*)?"([^"]+)"/g)].map((match) => match[1] ?? ''));
   return [...redirects, ...(inplace ? files : [])];
 }
 
