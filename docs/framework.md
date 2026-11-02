@@ -70,7 +70,7 @@ Afgedwongen door: dependency-cruiser, lint, smoketest op provider-data-API.
 
 Afgedwongen door: ESLint (`--max-warnings 0`), dependency-cruiser, `tsc`, gate-register `scripts/kit/gates.mjs`, ratchet `.kit/baseline.json`, `check-migrations`.
 
-- **R-CODE-01** Checks op code via AST, op database via catalogus, nooit regex over bronbestanden; lintmeldingen noemen de juiste helper (0045)
+- **R-CODE-01** Checks op code via AST, op database via catalogus, nooit regex over bronbestanden; lintmeldingen noemen de juiste helper; wat guard of hooks laden, importeert alleen Node-builtins en eigen bestanden (een hook alleen uit `rails/hooks`), dus geen parser maar een lexer zoals `rails/hooks/lib/testteller.mjs` (`test/rails/guard-imports.test.ts`) (0045)
 - **R-CODE-02** Functie ≤ 60 regels (`.ts`) of 120 (`.tsx`), max 3 parameters, diepte 3, cognitive-complexity 15 (AGENTS)
 - **R-CODE-03** Parse op elke grens met zod via `defineRoute()` (`.strict()`); env-schema alleen in `src/core/api/env.ts` (fw)
 - **R-CODE-04** Geen `x as T` of `<T>x` (`as const` en `import { a as b }` mogen), `any`, `@ts-ignore`, `eslint-disable`; uitweg `unsafeCast(value, reden)`, CI zet het verschil in aantal op de PR (nog niet gebouwd); `assert()` actief in productie (melden aan de fouttracking: fase 2, nog niet gebouwd), de ErrorBoundary van R-WEB-01 vangt hem (AGENTS, dod)

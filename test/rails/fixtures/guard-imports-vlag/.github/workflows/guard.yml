@@ -1,0 +1,5 @@
+# Een node-aanroep met een optie voor het script: de check kent die vorm niet en moet dat melden.
+jobs:
+  vlag:
+    steps:
+      - run: node --no-warnings scripts/kit/nieuw.mjs
