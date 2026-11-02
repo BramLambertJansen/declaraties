@@ -115,9 +115,27 @@ function lees(dir) {
       .split('\n')
       .map((lijn) => parse(lijn, naam.slice(0, -'.jsonl'.length)))
       .filter((r) => r !== null);
-    for (const r of regels) perSessie.set(r.s, [...(perSessie.get(r.s) ?? []), r]);
+    for (const r of regels) voegToe(perSessie, r.s, r);
   }
   return perSessie;
+}
+
+/** Zet `r` achter de lijst van `k`, zonder de lijst te kopiëren (lineair bij veel events). @template T @param {Map<string, T[]>} map @param {string} k @param {T} r */
+function voegToe(map, k, r) {
+  const lijst = map.get(k);
+  if (lijst === undefined) map.set(k, [r]);
+  else lijst.push(r);
+}
+
+/** Kleinste en grootste tijd, zonder spreiding (de argumentlimiet van de runtime begrenst geen eventaantal); null zonder tijden. @param {readonly (number | undefined)[]} tijden */
+function bereik(tijden) {
+  /** @type {{ min: number, max: number } | null} */
+  let uit = null;
+  for (const t of tijden) {
+    if (t === undefined) continue;
+    uit = uit === null ? { min: t, max: t } : { min: Math.min(uit.min, t), max: Math.max(uit.max, t) };
+  }
+  return uit;
 }
 
 /** @returns {Telling} */
@@ -178,8 +196,8 @@ function markeerOpdracht(regels) {
 
 /** Eerste `t` tot laatste `t` + 60 minuten; zonder tijden null. @param {readonly Regel[]} regels @returns {Venster} */
 function venster(regels) {
-  const tijden = regels.map((r) => r.t).filter((t) => t !== undefined);
-  return tijden.length === 0 ? null : { van: Math.min(...tijden), tot: Math.max(...tijden) + UUR };
+  const b = bereik(regels.map((r) => r.t));
+  return b === null ? null : { van: b.min, tot: b.max + UUR };
 }
 
 /** @param {readonly Regel[]} alle @param {string | undefined} filterBranch @param {CiVoor} ciVoor */
@@ -192,7 +210,7 @@ function sessieTelling(alle, filterBranch, ciVoor) {
   const perBranch = new Map();
   for (const r of regels) {
     tel(totaal, r, geweigerd.has(r));
-    perBranch.set(r.b, [...(perBranch.get(r.b) ?? []), r]);
+    voegToe(perBranch, r.b, r);
   }
   /** @type {Map<string, Telling & { ciRondes: Ci }>} */
   const branches = new Map();
@@ -256,11 +274,11 @@ export function ghCi(env) {
   const opties = ghOpties(env);
   /** @type {Map<string, (number | undefined)[] | null>} */
   const cache = new Map();
-  return (branch, bereik) => {
+  return (branch, tijdvak) => {
     const tijden = cache.has(branch) ? (cache.get(branch) ?? null) : (runs(opties, branch)?.map((r) => r.t) ?? null);
     cache.set(branch, tijden);
-    if (tijden === null || bereik === null) return 'onbekend';
-    return tijden.filter((t) => t !== undefined && t >= bereik.van && t <= bereik.tot).length;
+    if (tijden === null || tijdvak === null) return 'onbekend';
+    return tijden.filter((t) => t !== undefined && t >= tijdvak.van && t <= tijdvak.tot).length;
   };
 }
 
@@ -358,15 +376,14 @@ function duur(seconden) {
  */
 export function prTabel(dir, branch, env) {
   const regels = [...lees(dir).values()].flat().filter((r) => r.b === branch);
-  const tijden = regels.map((r) => r.t).filter((t) => t !== undefined);
+  const tijden = bereik(regels.map((r) => r.t));
   const lijst = runs(ghOpties(env), branch, 'databaseId,createdAt,conclusion');
   const reviews = new Set(
     regels.filter((r) => r.e === 'PreToolUse' && subagent(r) && r.k === 'agent reviewer').map((r) => r.id ?? ''),
   );
   const sessies = [...overzicht(dir, { branch }, () => 'onbekend').values()];
   /** @type {number | 'onbekend'} */
-  const doorlooptijd =
-    tijden.length === 0 ? 'onbekend' : Math.round((Math.max(...tijden) - Math.min(...tijden)) / 1000);
+  const doorlooptijd = tijden === null ? 'onbekend' : Math.round((tijden.max - tijden.min) / 1000);
   return {
     leespad: 'zie pnpm leespad',
     doorlooptijd,
