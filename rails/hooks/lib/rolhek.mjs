@@ -1314,7 +1314,7 @@ export function gitPersistsProgram(args) {
   if (subcommand === 'config' && !configReadsOnly(rest)) found.push(CONFIG_WRITE);
   if (config.some((setting) => /^alias\./i.test(setting)))
     found.push('git -c alias.…: het rolhek ziet niet welk subcommando de alias start; roep het subcommando zelf aan');
-  const template = rest.some((arg) => /^--template(?:=|$)/.test(arg)) || config.some((setting) => /^init\.templatedir/i.test(setting));
+  const template = rest.some((arg) => abbreviates(arg, '--template', 3)) || config.some((setting) => /^init\.templatedir/i.test(setting));
   if (subcommand === 'init' && template) found.push('git init met een template zet hooks in .git/hooks; verboden zonder de eigenaar');
   return found;
 }

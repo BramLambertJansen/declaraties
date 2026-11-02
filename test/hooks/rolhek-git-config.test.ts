@@ -46,6 +46,9 @@ const SCHRIJVEN = [
   'git -c alias.st=status st',
   'git init --template=/tmp/t',
   'git init --template /tmp/t',
+  // Git accepteert elke unieke prefix van een lange optie.
+  'git init --templ=/tmp/t',
+  'git init --t /tmp/t',
   'git -c init.templateDir=/tmp/t init',
 ];
 
