@@ -8,7 +8,7 @@
 //    `oud → geschrapt: <reden>`). Zonder `origin/main` meldt hij niets. Deze overtreding komt nooit in de baseline.
 import { Buffer } from 'node:buffer';
 import { spawnSync } from 'node:child_process';
-import { existsSync, readFileSync, statSync } from 'node:fs';
+import { existsSync, statSync } from 'node:fs';
 import path from 'node:path';
 
 /** @typedef {{ key: string, message: string }} Violation */
@@ -158,6 +158,30 @@ function grootteIn(root, ref) {
 }
 
 /**
+ * De regels die `file` sinds `basis` toevoegt (`git diff -U0`), zonder het `+`-teken.
+ * @param {string} root @param {string} basis @param {string} file
+ */
+function toegevoegd(root, basis, file) {
+  const diff = git(root, ['diff', '-U0', '--no-color', basis, '--', file]) ?? '';
+  return diff
+    .split('\n')
+    .filter((regel) => regel.startsWith('+') && !regel.startsWith('+++'))
+    .map((regel) => regel.slice(1))
+    .join('\n');
+}
+
+/**
+ * Melding als de krimpcheck geen basis heeft (geen `origin/main`): dan toetst hij niets (leesbudget/AC-6).
+ * @param {string} root
+ */
+export function krimpZonderBasis(root) {
+  const basis = git(root, ['merge-base', 'origin/main', 'HEAD'])?.trim();
+  return basis === undefined || basis === ''
+    ? ['let op: geen origin/main; de krimpcheck (leesbudget/AC-6) toetst niets']
+    : [];
+}
+
+/**
  * Krimp tegenover `git merge-base origin/main HEAD`, met de werkmap als nieuwe stand; zonder `origin/main` niets.
  * @param {string} root @param {readonly string[]} rIds
  * @returns {Violation[]}
@@ -169,8 +193,9 @@ export function krimpUitGit(root, rIds) {
   const getrackt = (git(root, ['ls-files', '-z']) ?? '').split('\0').filter((f) => bindend(f) && bestaat(f));
   const nieuw = Object.fromEntries(getrackt.map((f) => [f, statSync(path.join(root, f)).size]));
   const gewijzigd = (git(root, ['diff', '--name-only', '-z', basis]) ?? '').split('\0');
+  // Alleen de toegevoegde regels tellen: een inventaris uit een eerdere PR dekt geen nieuwe krimp.
   const markdown = Object.fromEntries(
-    gewijzigd.filter((f) => f.endsWith('.md') && bestaat(f)).map((f) => [f, readFileSync(path.join(root, f), 'utf8')]),
+    gewijzigd.filter((f) => f.endsWith('.md') && bestaat(f)).map((f) => [f, toegevoegd(root, basis, f)]),
   );
   return krimpViolations({ oud: grootteIn(root, basis), nieuw, markdown, rIds });
 }

@@ -106,11 +106,11 @@ const SOORTEN = /** @type {const} */ ({
 
 /**
  * De eenheden van een soort. Hoofdstukken komen uit het regelboek: elke `## <n>.`-kop (ook §13 en §8a) is een eenheid.
- * @param {keyof typeof SOORTEN} soort @param {readonly string[]} paden @param {(pad: string) => string | Buffer | null} lees
+ * @param {{ eenheid: 'bytes' | 'regels', pad: RegExp | null }} soort @param {readonly string[]} paden
+ * @param {(pad: string) => string | Buffer | null} lees
  * @returns {Eenheid[]}
  */
-function eenheden(soort, paden, lees) {
-  const { eenheid, pad } = SOORTEN[soort];
+function eenheden({ eenheid, pad }, paden, lees) {
   if (pad === null) {
     const boek = paden.includes(REGELBOEK) ? lees(REGELBOEK) : null;
     if (boek === null) return [];
@@ -129,29 +129,19 @@ function eenheden(soort, paden, lees) {
 }
 
 /**
- * Boven de streefwaarde. Bytes vergelijken in hele KB (afgerond), zoals de uitvoer ze toont: een streefwaarde is een
- * richtgetal, geen grens op de byte.
- * @param {number} waarde @param {number} streefwaarde @param {'bytes' | 'regels'} eenheid
- */
-function erboven(waarde, streefwaarde, eenheid) {
-  return eenheid === 'bytes' ? Math.round(waarde / KB) > streefwaarde / KB : waarde > streefwaarde;
-}
-
-/**
  * Metingen per soort tegenover hun streefwaarde (leesbudget/AC-3): aantal, aantal erboven en de vijf grootste.
  * @param {readonly string[]} paden @param {(pad: string) => string | Buffer | null} lees
- * @returns {Record<keyof typeof SOORTEN, Meting>}
+ * @returns {Record<string, Meting>}
  */
 export function metingen(paden, lees) {
-  const uit = /** @type {Record<keyof typeof SOORTEN, Meting>} */ ({});
-  for (const soort of /** @type {(keyof typeof SOORTEN)[]} */ (Object.keys(SOORTEN))) {
-    const { streefwaarde, eenheid } = SOORTEN[soort];
-    const lijst = eenheden(soort, paden, lees).sort((a, b) => b.waarde - a.waarde);
-    const boven =
-      streefwaarde === null ? 0 : lijst.filter(({ waarde }) => erboven(waarde, streefwaarde, eenheid)).length;
-    uit[soort] = { streefwaarde, eenheid, aantal: lijst.length, boven, grootste: lijst.slice(0, 5) };
-  }
-  return uit;
+  return Object.fromEntries(
+    Object.entries(SOORTEN).map(([soort, definitie]) => {
+      const { streefwaarde, eenheid } = definitie;
+      const lijst = eenheden(definitie, paden, lees).sort((a, b) => b.waarde - a.waarde);
+      const boven = streefwaarde === null ? 0 : lijst.filter(({ waarde }) => waarde > streefwaarde).length;
+      return [soort, { streefwaarde, eenheid, aantal: lijst.length, boven, grootste: lijst.slice(0, 5) }];
+    }),
+  );
 }
 
 /** @param {number} waarde @param {'bytes' | 'regels'} eenheid */

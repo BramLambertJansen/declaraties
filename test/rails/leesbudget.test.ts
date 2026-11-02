@@ -297,7 +297,7 @@ function metingFixture(): Record<string, string> {
     [1, 2, 3, 4, 5, 6, 7].map((i) => [`docs/specs/s${String(i)}.md`, SPEC_KOP(`s${String(i)}`) + tekst((10 + i) * KB)]),
   );
   return {
-    'docs/framework.md': VOOR + H('8', tekst(12 * KB)) + H('13', tekst(20 * KB)) + tekst(30 * KB),
+    'docs/framework.md': VOOR + H('8', tekst(11 * KB)) + H('13', tekst(20 * KB)) + tekst(30 * KB),
     ...specs,
     'docs/specs/klein.md': SPEC_KOP('klein') + 'kort\n',
     'docs/specs/_template.md': tekst(90 * KB),
@@ -535,6 +535,26 @@ describe(
       expect(r.stderr).toBe('');
       expect(r.status).toBe(0);
     });
+
+    test('leesbudget/AC-6 ratchet: een inventaris uit een eerdere PR dekt geen nieuwe krimp', () => {
+      const dir = repo({ 'docs/framework.md': BOEK(10_000), 'docs/normeninventaris.md': INVENTARIS });
+      git(dir, 'commit', '-qm', 'basis met oude inventaris');
+      git(dir, 'update-ref', 'refs/remotes/origin/main', 'HEAD');
+      expect(node(dir, ['scripts/kit/ratchet.mjs', '--update']).status).toBe(0);
+      git(dir, 'commit', '-qam', 'baseline');
+      writeFileSync(path.join(dir, 'docs/framework.md'), BOEK(4000));
+      writeFileSync(path.join(dir, 'docs/normeninventaris.md'), `${INVENTARIS}\nKleine wijziging.\n`);
+      git(dir, 'commit', '-qam', 'krimp met triviale wijziging aan de oude inventaris');
+      expect(node(dir, ['scripts/kit/ratchet.mjs']).status).toBe(1);
+    });
+
+    test('leesbudget/AC-6 zonder origin/main: melding, geen overtreding', () => {
+      const dir = repo({ 'docs/framework.md': BOEK(10_000) });
+      git(dir, 'commit', '-qm', 'basis');
+      const r = node(dir, ['scripts/kit/ratchet.mjs']);
+      expect(r.status).toBe(0);
+      expect(r.stdout).toContain('geen origin/main');
+    });
   },
 );
 
@@ -608,7 +628,7 @@ describe("leesbudget/AC-7: meting --trend over twintig gemergde PR's", () => {
 
   test('leesbudget/AC-7 telCodex telt alleen reacties van CODEX_LOGIN', async () => {
     const login = (await laad('scripts/kit/meting-trend.mjs'))?.['CODEX_LOGIN'];
-    expect(typeof login === 'string' && login.length > 0, 'CODEX_LOGIN is een niet-lege tekst').toBe(true);
+    expect(login).toBe('chatgpt-codex-connector[bot]');
     const tel = await functie('scripts/kit/meting-trend.mjs', 'telCodex');
     const reacties = [login, 'iemand', login, 'github-actions[bot]'].map((l) => ({ user: { login: l } }));
     expect(tel(reacties)).toBe(2);

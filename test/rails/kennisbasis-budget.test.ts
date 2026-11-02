@@ -162,7 +162,7 @@ describe('compacte-kennisbasis-rails/AC-9: de ratchet is strikt in twee richting
   }
 
   test('compacte-kennisbasis-rails/AC-9 een bestaande overschrijding in de baseline, ongewijzigd: groen', () => {
-    const root = metBaseline();
+    const root = metBaseline('AGENTS.md', tekst(9 * KB + 1, 50));
     const uitslag = ratchet(root);
     expect(uitslag.stderr).toBe('');
     expect(uitslag.status).toBe(0);

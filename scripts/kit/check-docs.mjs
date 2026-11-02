@@ -23,7 +23,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { onderhoudVan } from '../../rails/hooks/lib/rolhek.mjs';
 import { adrNumber, duplicateAdrNumbers, invalidAdrNames } from './adr-numbers.mjs';
-import { grensMeldingen, grensViolations, krimpUitGit } from './leesbudget.mjs';
+import { grensMeldingen, grensViolations, krimpUitGit, krimpZonderBasis } from './leesbudget.mjs';
 
 export { krimpViolations } from './leesbudget.mjs';
 
@@ -69,9 +69,8 @@ export async function docsViolations(root = '.') {
  */
 export async function docsMeldingen(root = '.') {
   const files = trackedFiles(root);
-  return Promise.resolve(
-    grensMeldingen((file) => (files.includes(file) ? readFileSync(path.join(root, file), 'utf8') : null)),
-  );
+  const grens = grensMeldingen((file) => (files.includes(file) ? readFileSync(path.join(root, file), 'utf8') : null));
+  return Promise.resolve([...grens, ...krimpZonderBasis(root)]);
 }
 
 /**
