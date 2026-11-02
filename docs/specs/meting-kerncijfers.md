@@ -1,5 +1,5 @@
 ---
-status: voorstel
+status: gebouwd # #406
 namespace: meting-kerncijfers
 ---
 
