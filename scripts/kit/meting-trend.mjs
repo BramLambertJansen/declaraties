@@ -89,7 +89,8 @@ function codex(opties, nummer) {
 }
 
 /**
- * De nieuwste twintig gemergde PR's met hun maten; null als `gh pr list` faalt. Bij minder dan twintig volgen geen
+ * De nieuwste twintig gemergde PR's met hun maten; null als `gh pr list` faalt. `gh pr list` sorteert standaard op
+ * aanmaakdatum; `sort:updated-desc` benadert de mergevolgorde (een merge werkt `updated` bij), daarna sorteren op `mergedAt`. Bij minder dan twintig volgen geen
  * verdere gh-aanroepen.
  * @param {GhOpties} opties
  * @param {(branch: string) => Waarde} reviewrondes
@@ -97,7 +98,18 @@ function codex(opties, nummer) {
  */
 export function prsUitGh(opties, reviewrondes) {
   const velden = 'number,headRefName,mergedAt';
-  const lijst = gh(opties, ['pr', 'list', '--state', 'merged', '--limit', String(AANTAL), '--json', velden]);
+  const lijst = gh(opties, [
+    'pr',
+    'list',
+    '--state',
+    'merged',
+    '--search',
+    'sort:updated-desc',
+    '--limit',
+    String(AANTAL),
+    '--json',
+    velden,
+  ]);
   if (!Array.isArray(lijst)) return null;
   const prs = lijst
     .map((p) => ({

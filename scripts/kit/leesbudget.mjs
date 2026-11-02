@@ -8,7 +8,7 @@
 //    `oud → geschrapt: <reden>`). Zonder `origin/main` alleen een melding (`krimpZonderBasis`). Deze overtreding komt nooit in de baseline.
 import { Buffer } from 'node:buffer';
 import { spawnSync } from 'node:child_process';
-import { existsSync, statSync } from 'node:fs';
+import { existsSync, readFileSync, statSync } from 'node:fs';
 import path from 'node:path';
 
 /** @typedef {{ key: string, message: string }} Violation */
@@ -158,15 +158,25 @@ function grootteIn(root, ref) {
 }
 
 /**
- * De regels die `file` sinds `basis` toevoegt (`git diff -U0`), zonder het `+`-teken.
+ * Het huidige bestand met alle koppen (zodat sectiegrenzen blijven) maar van de overige regels alleen wat sinds `basis` is
+ * toegevoegd (`git diff -U0`): een inventaris uit een eerdere PR dekt zo geen nieuwe krimp.
  * @param {string} root @param {string} basis @param {string} file
  */
 function toegevoegd(root, basis, file) {
   const diff = git(root, ['diff', '-U0', '--no-color', basis, '--', file]) ?? '';
-  return diff
-    .split('\n')
-    .filter((regel) => regel.startsWith('+') && !regel.startsWith('+++'))
-    .map((regel) => regel.slice(1))
+  /** @type {Map<string, number>} */
+  const nieuw = new Map();
+  for (const regel of diff.split('\n'))
+    if (regel.startsWith('+') && !regel.startsWith('+++'))
+      nieuw.set(regel.slice(1), (nieuw.get(regel.slice(1)) ?? 0) + 1);
+  const huidig = readFileSync(path.join(root, file), 'utf8').split('\n');
+  return huidig
+    .filter((regel) => {
+      if (/^#{1,6}\s/.test(regel)) return true;
+      const over = nieuw.get(regel) ?? 0;
+      if (over > 0) nieuw.set(regel, over - 1);
+      return over > 0;
+    })
     .join('\n');
 }
 

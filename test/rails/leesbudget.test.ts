@@ -548,6 +548,20 @@ describe(
       expect(node(dir, ['scripts/kit/ratchet.mjs']).status).toBe(1);
     });
 
+    test('leesbudget/AC-6 ratchet: een toegevoegde regel onder een bestaande andere kop telt niet als inventaris', () => {
+      const oud = '# PR\n\n## Andere sectie\n\n- bestaande regel\n';
+      const dir = repo({ 'docs/framework.md': BOEK(10_000), 'docs/notities.md': oud });
+      git(dir, 'commit', '-qm', 'basis');
+      git(dir, 'update-ref', 'refs/remotes/origin/main', 'HEAD');
+      expect(node(dir, ['scripts/kit/ratchet.mjs', '--update']).status).toBe(0);
+      git(dir, 'commit', '-qam', 'baseline');
+      writeFileSync(path.join(dir, 'docs/framework.md'), BOEK(4000));
+      const nieuw = '# PR\n\n## Normeninventaris\n\n## Andere sectie\n\n- bestaande regel\n- regel over X → R-DOC-01\n';
+      writeFileSync(path.join(dir, 'docs/notities.md'), nieuw);
+      git(dir, 'commit', '-qam', 'krimp met lege inventaris');
+      expect(node(dir, ['scripts/kit/ratchet.mjs']).status).toBe(1);
+    });
+
     test('leesbudget/AC-6 zonder origin/main: melding, geen overtreding', () => {
       const dir = repo({ 'docs/framework.md': BOEK(10_000) });
       git(dir, 'commit', '-qm', 'basis');
@@ -683,6 +697,7 @@ describe('leesbudget/AC-7: pnpm meting --trend als proces', { timeout: 60_000 },
     expect(prList).toHaveLength(1);
     expect(prList[0]).toMatch(/--state[= ]merged/);
     expect(prList[0]).toMatch(/--limit[= ]20(\s|$)/);
+    expect(prList[0]).toContain('sort:updated-desc');
     const runList = r.aanroepen.filter((a) => a.startsWith('run list'));
     expect(runList.length).toBeGreaterThan(0);
     expect(runList.length).toBeLessThanOrEqual(20);
