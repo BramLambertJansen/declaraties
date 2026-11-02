@@ -227,6 +227,9 @@ describe('rolhek-lezen/AC-2: git diff|log|show --output en git grep -O voor elke
     'git whatchanged --output=out.txt',
     'git format-patch -o out HEAD~1',
     'git format-patch -oout HEAD~1',
+    'git format-patch -ko out -1',
+    'git reflog show --output=out.txt',
+    'git stash show -p --output=out.txt',
     'git format-patch --output-directory out HEAD~1',
     'git format-patch --output=x.patch HEAD~1',
   ];

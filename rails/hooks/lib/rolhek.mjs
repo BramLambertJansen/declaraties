@@ -1133,12 +1133,12 @@ function abbreviates(arg, full, min) {
 }
 
 // Git-subcommando's met de diff-optie `--output=<bestand>`.
-const DIFF_OUTPUT = new Set(['diff', 'log', 'show', 'diff-tree', 'diff-index', 'diff-files', 'range-diff', 'whatchanged']);
+const DIFF_OUTPUT = new Set(['diff', 'log', 'show', 'diff-tree', 'diff-index', 'diff-files', 'range-diff', 'whatchanged', 'reflog', 'stash']);
 
 /**
  * Opties waarmee een leescommando een bestand schrijft of een programma start, voor elke rol (spec rolhek-lezen/AC-2):
  * `--output` bij de diff-familie (git staat daar geen afkorting toe; de afkortingen weigeren we defensief),
- * `git format-patch -o/--output-directory/--output` en `git grep -O`/`--open-files-in-pager`, ook in een cluster (`-nOvim`).
+ * `git format-patch -o` (ook in een cluster, `-ko`)/`--output-directory`/`--output` en `git grep -O`/`--open-files-in-pager`, ook in een cluster (`-nOvim`).
  * Bekend vals-positief: `--output` als waarde van een andere optie (`git log -S --output`).
  * @param {string} subcommand
  * @param {readonly string[]} rest
@@ -1146,7 +1146,7 @@ const DIFF_OUTPUT = new Set(['diff', 'log', 'show', 'diff-tree', 'diff-index', '
 function gitWriteOptions(subcommand, rest) {
   if (DIFF_OUTPUT.has(subcommand) && rest.some((arg) => abbreviates(arg, '--output', 3)))
     return [`git ${subcommand} --output schrijft een bestand buiten het rolhek om; verboden, voor elke rol`];
-  if (subcommand === 'format-patch' && rest.some((arg) => arg.startsWith('-o') || abbreviates(arg, '--output-directory', 3)))
+  if (subcommand === 'format-patch' && rest.some((arg) => /^-[^-]*o/.test(arg) || abbreviates(arg, '--output-directory', 3)))
     return ['git format-patch -o/--output schrijft bestanden buiten het rolhek om; verboden, voor elke rol'];
   if (subcommand === 'grep' && grepOpensFiles(rest))
     return ['git grep -O/--open-files-in-pager start een programma; verboden, voor elke rol'];
