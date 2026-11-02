@@ -76,8 +76,8 @@ Geen accountbeheerpad uit `docs/gouden-pad.md` past (werkstraat, geen UI).
   aanvaltests blijven ongewijzigd groen. (Een vrijstelling voor leescommando's is geschrapt; agents lezen met Read, Grep en
   Glob, regel in `AGENTS.md` via PR 4.)
 
-- **compacte-kennisbasis-rails/AC-13** — `werkstraat.mjs` geeft de docs-drift-herinnering alleen bij Stop; `meting.mjs` reageert
-  alleen op SessionStart, Stop en SubagentStop (anders exit 0, geen uitvoer). Registratie: de eigenaar.
+- **compacte-kennisbasis-rails/AC-13** — `werkstraat.mjs` geeft de docs-drift-herinnering alleen bij Stop; `EVENTS` in
+  `rails/hooks/lib/meting.mjs` verandert niet in PR 6a en 6b (eigenaarbesluit 2026-11-01).
 
 **PR 6b — mandaat en label weg**
 
@@ -118,7 +118,7 @@ Geen accountbeheerpad uit `docs/gouden-pad.md` past (werkstraat, geen UI).
 
 - PR 2: `check-document-status.mjs`, `document-state.mjs`, `check-docs.mjs`, `feiten.mjs`, `check-roadmap.mjs`,
   `mandate-follow-up-docs.test.ts`, framework §10.
-- PR 6a: `rails/hooks/lib/shell.mjs`, `rolhek.mjs`, `werkstraat.mjs`, `rails/hooks/meting.mjs`, `test/hooks/`, framework §8.
+- PR 6a: `rails/hooks/lib/shell.mjs`, `rolhek.mjs`, `werkstraat.mjs`, `test/hooks/`, framework §8.
 - PR 6b: `document-decision.mjs`, `pr-gate-label.mjs`, `diff-guard.mjs`, `ratchet.mjs`, `document-status.mjs`, mandaattakken in
   `check-document-status.mjs`, `check-roadmap.mjs`, `task-authority.mjs` en `authority-context.mjs` (de modules, het
   niet-recorddeel van `canRecordStatus`, de A4-basis en de eigenaarstatusweigering blijven), `KRITIEK` in `lane.mjs`,
