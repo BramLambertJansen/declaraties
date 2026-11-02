@@ -70,6 +70,7 @@ describe('rolhek-lezen/AC-1: de leeslijst van de reviewer', () => {
     'pnpm meting',
     'pnpm meting --json',
     'pnpm meting --pr-tabel',
+    'pnpm meting --trend',
     'pnpm meting --help',
     'pnpm meting --branch feat/x',
     'pnpm meting --sessie abc-123',
@@ -124,7 +125,7 @@ describe('rolhek-lezen/AC-1: de leeslijst van de reviewer', () => {
     { name: 'leespad --ref=…', command: 'pnpm leespad --ref=main', basis: 'pnpm leespad --ref main' },
     { name: 'leespad onbekende vlag', command: 'pnpm leespad --write', basis: 'pnpm leespad' },
     { name: 'meting --branch=…', command: 'pnpm meting --branch=x', basis: 'pnpm meting --branch x' },
-    { name: 'meting --trend (niet in de lijst)', command: 'pnpm meting --trend', basis: 'pnpm meting' },
+    { name: 'meting onbekende vlag', command: 'pnpm meting --write', basis: 'pnpm meting' },
     { name: 'meting cluster', command: 'pnpm meting -jh', basis: 'pnpm meting --json' },
     { name: 'pnpm-optie vóór het script', command: 'pnpm -s meting --json', basis: 'pnpm meting --json' },
     { name: 'pnpm run meting', command: 'pnpm run meting --json', basis: 'pnpm meting --json' },
@@ -268,7 +269,7 @@ describe('rolhek-lezen/AC-3: weigermelding en ongewijzigde leescommando’s', ()
     { command: 'gh run view 1 --web', opties: ['--log', '--log-failed', '--json', '--jq', '--job'] },
     { command: 'gh run list --web', opties: ['--branch', '--workflow', '--limit', '--json', '--jq'] },
     { command: 'pnpm leespad --write', opties: ['--json', '--ref'] },
-    { command: 'pnpm meting --trend', opties: ['--json', '--pr-tabel', '--help', '--branch', '--sessie'] },
+    { command: 'pnpm meting --write', opties: ['--json', '--pr-tabel', '--trend', '--help', '--branch', '--sessie'] },
   ])('$command: de weigering noemt de toegestane opties', ({ command, opties }) => {
     const melding = run(command, REVIEWER).deny.join('\n');
     for (const optie of opties) expect(melding).toContain(optie);

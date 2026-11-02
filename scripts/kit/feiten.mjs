@@ -1,5 +1,7 @@
 // Live feiten (framework §8, ADR 0045): elke rol begint hiermee, niet met wat in proza staat.
 // Gebruik: node scripts/kit/feiten.mjs [gates|adr|specs|migraties|routes|permissies|foutcodes|componenten|tokens|fase] [--alle] [--json]
+//          node scripts/kit/feiten.mjs hoofdstuk <n>: de tekst vóór de eerste `## `-kop van docs/framework.md plus
+//          hoofdstuk <n> (bij 8 ook 8a, 8b…; zoals `pnpm leespad` telt); onbekend: foutmelding en exit 1 (ADR 0065).
 // Zonder sectie alles; elke rol vraagt in stap 1 van zijn agentbestand alleen wat hij nodig heeft (.claude/agents/*.md).
 // `--alle` toont bij `adr` ook de vervangen en vervallen ADR's; weergave en filters staan in feiten-tekst.mjs.
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
@@ -12,6 +14,24 @@ if (probleem !== null) {
   console.error(probleem);
   process.exit(1);
 }
+
+/** Drukt een hoofdstuk van het regelboek af (leesbudget/AC-4) en stopt. @param {string | undefined} n */
+async function hoofdstuk(n) {
+  const { hoofdstukTekst } = await import('./leespad.mjs');
+  const boek = existsSync('docs/framework.md') ? readFileSync('docs/framework.md', 'utf8') : null;
+  const tekst = boek === null || n === undefined ? null : hoofdstukTekst(boek, n);
+  if (tekst === null) {
+    console.error(
+      `Onbekend hoofdstuk: ${n ?? '(geen)'}. Gebruik: node scripts/kit/feiten.mjs hoofdstuk <n>, met <n> een \`## <n>.\`-kop van docs/framework.md`,
+    );
+    process.exit(1);
+  }
+  await new Promise((klaar) => process.stdout.write(tekst, klaar));
+  process.exit(0);
+}
+
+if (process.argv[2] === 'hoofdstuk') await hoofdstuk(process.argv[3]);
+
 const { gates } = await import('./gates.mjs');
 const { adrOverzicht, componentenTekst, faseOverzicht, toText, tokenOverzicht, tokensTekst } =
   await import('./feiten-tekst.mjs');

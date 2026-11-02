@@ -1,4 +1,5 @@
-// Overzicht van de meethook (ADR 0046 punt 36): `pnpm meting [--json] [--sessie <id>] [--branch <naam>] [--help]`.
+// Overzicht van de meethook (ADR 0046 punt 36): `pnpm meting [--json] [--sessie <id>] [--branch <naam>] [--trend] [--help]`.
+// `--trend` (ADR 0065 punt 4): de kwaliteitstrend over twintig gemergde PR's, zie scripts/kit/meting-trend.mjs.
 // Leest `<opslagmap>/*.jsonl` (rails/hooks/lib/meting.mjs: METING_DIR of `<git common dir>/agent-meting`) en telt per
 // sessie en per branch: prompts (permissievragen; zo heten ze ook in de tekstuitvoer) per pad of commandoprefix en per modus (`m`, ontbrekend → onbekend), weigeringen, beurten, eigenaarberichten na de
 // opdracht (een bovengrens), pushes (geslaagde `git push`) en CI-rondes via `gh run list` (METING_GH, METING_GH_TIMEOUT_MS):
@@ -10,6 +11,7 @@ import { execFileSync } from 'node:child_process';
 import { readdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { opslagmap } from '../../rails/hooks/lib/meting.mjs';
+import { prsUitGh, trend, trendTekst } from './meting-trend.mjs';
 
 /** @typedef {{ e: string, s: string, b: string, k: string, tool: string, m: string, id: string | undefined, t: number | undefined, opdracht?: boolean }} Regel */
 /** @typedef {{ prompts: number, promptsPerSleutel: Map<string, number>, promptsPerModus: Map<string, number>, weigeringen: number, weigeringenPerSleutel: Map<string, number>, beurten: number, eigenaarberichten: number, pushes: number }} Telling */
@@ -21,13 +23,16 @@ const UUR = 60 * 60 * 1000;
 /** Een subagent-aanroep: alleen de tool Agent of Task, niet een commando of pad dat `agent` heet. @param {Regel} r */
 const subagent = (r) => r.tool === 'Agent' || r.tool === 'Task';
 
-const HELP = `Gebruik: pnpm meting [--json] [--sessie <id>] [--branch <naam>] [--pr-tabel] [--help]
+const HELP = `Gebruik: pnpm meting [--json] [--sessie <id>] [--branch <naam>] [--pr-tabel] [--trend] [--help]
 
   --json           Dezelfde tellingen als JSON.
   --sessie <id>    Alleen deze sessie.
   --branch <naam>  Alleen deze branch binnen elke sessie.
   --pr-tabel       Kerncijfers van één branch (--branch) als markdowntabel voor de PR-beschrijving: leespad (zie pnpm leespad),
                    doorlooptijd, reviewrondes, CI-rood, weigeringen (bovengrens) en Codex-bevindingen (handmatig).
+  --trend          Kwaliteitstrend over de laatste twintig gemergde PR's (gh pr list --state merged --limit 20): "let op:
+                   <maat> steeg" als CI-rood, Codex-bevindingen of reviewrondes (lokale meetdata; zonder data onbekend)
+                   gemiddeld hoger liggen over de laatste tien dan over de tien daarvoor. Minder dan twintig: te weinig data.
   --help           Deze uitleg, zonder meetbestanden te lezen of gh aan te roepen.
 
 Teldefinities (alleen ontvangen en opgeslagen Claude Code-events):
@@ -368,6 +373,28 @@ function duur(seconden) {
   return uren === 0 ? `${String(m)}:${s}` : `${String(uren)}:${String(m).padStart(2, '0')}:${s}`;
 }
 
+/** Aanroepen van `agent reviewer`, ontdubbeld op ID. @param {readonly Regel[]} regels */
+function reviewIds(regels) {
+  return new Set(
+    regels.filter((r) => r.e === 'PreToolUse' && subagent(r) && r.k === 'agent reviewer').map((r) => r.id ?? ''),
+  );
+}
+
+/**
+ * Reviewrondes per branch uit de lokale meetdata; een branch zonder events is "onbekend", nooit 0.
+ * @param {string | null} dir
+ * @returns {(branch: string) => number | 'onbekend'}
+ */
+function reviewrondesPerBranch(dir) {
+  /** @type {Map<string, Regel[]>} */
+  const perBranch = new Map();
+  for (const r of [...lees(dir).values()].flat()) voegToe(perBranch, r.b, r);
+  return (branch) => {
+    const regels = perBranch.get(branch);
+    return regels === undefined ? 'onbekend' : reviewIds(regels).size;
+  };
+}
+
 /**
  * De kerncijfers van een branch over alle sessies: doorlooptijd (s), reviewrondes, CI-rood, weigeringen (bovengrens).
  * @param {string | null} dir
@@ -378,9 +405,7 @@ export function prTabel(dir, branch, env) {
   const regels = [...lees(dir).values()].flat().filter((r) => r.b === branch);
   const tijden = bereik(regels.map((r) => r.t));
   const lijst = runs(ghOpties(env), branch, 'databaseId,createdAt,conclusion');
-  const reviews = new Set(
-    regels.filter((r) => r.e === 'PreToolUse' && subagent(r) && r.k === 'agent reviewer').map((r) => r.id ?? ''),
-  );
+  const reviews = reviewIds(regels);
   const sessies = [...overzicht(dir, { branch }, () => 'onbekend').values()];
   /** @type {number | 'onbekend'} */
   const doorlooptijd = tijden === null ? 'onbekend' : Math.round((tijden.max - tijden.min) / 1000);
@@ -432,6 +457,12 @@ function main(argv) {
   }
   const args = opties(argv);
   const dir = opslagmap(process.cwd(), process.env);
+  if (argv.includes('--trend')) {
+    const prs = prsUitGh(ghOpties(process.env), reviewrondesPerBranch(dir));
+    const t = prs === null ? null : trend(prs);
+    process.stdout.write(args.json ? `${JSON.stringify({ trend: t }, null, 2)}\n` : trendTekst(t));
+    return;
+  }
   if (args.prTabel) {
     if (args.branch === undefined || args.branch === '' || args.branch.startsWith('-')) {
       process.stderr.write('meting: --pr-tabel vraagt --branch <naam>\n');
