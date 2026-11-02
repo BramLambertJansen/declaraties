@@ -232,13 +232,13 @@ describe('subagent-stop', () => {
   });
 });
 
-test('session-start: branch, wijzigingen, specs, laatste uitslag en de stack als context', () => {
+test('session-start: branch, wijzigingen en de verwijzing naar de feiten als context (slank: geen e2e-regel zonder uitslag)', () => {
   const { deps } = fakeDeps({ changed: ['src/a.ts'] });
   const text = sessionStart(deps).stdout ?? '';
 
   expect(text).toContain('Branch: feat/x');
   expect(text).toContain('Gewijzigde bestanden: src/a.ts');
-  expect(text).toContain('geen e2e-uitslag');
+  expect(text).not.toContain('geen e2e-uitslag');
   expect(text).toContain('node scripts/kit/feiten.mjs');
 });
 

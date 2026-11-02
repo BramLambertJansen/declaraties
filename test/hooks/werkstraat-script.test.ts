@@ -35,13 +35,14 @@ test('stop met kapotte invoer: blokkeert met de fout van de hook zelf', () => {
   expect(JSON.parse(result.stdout)).toMatchObject({ decision: 'block' });
 });
 
+// sessionstart-slank AC-1: de specslijst staat niet meer in de context (een agent vraagt `feiten.mjs specs` zelf).
 test('session-start: de feiten als tekst', () => {
   const result = run('session-start', '{}');
 
   expect([result.status, result.stdout.includes('Branch: '), result.stdout.includes('## specs')]).toStrictEqual([
     0,
     true,
-    true,
+    false,
   ]);
 });
 

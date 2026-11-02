@@ -327,24 +327,40 @@ function prRegel(deps, branch) {
 }
 
 /**
- * SessionStart: de feiten als context (framework §8): branch, open PR, open wijzigingen, specs, laatste checkuitslag en de lokale stack.
+ * De doctor in één regel als elke ✗ "niet bereikbaar" is (stack uit): de ✗-regels en hun `→`-vervolg worden
+ * `stack uit: <namen> — …`; waarschuwingen blijven staan. Een mix met een andere fout blijft ongewijzigd.
+ * @param {string} uitvoer
+ */
+export function doctorKort(uitvoer) {
+  const regels = uitvoer.split('\n');
+  const fouten = regels.filter((regel) => regel.startsWith('✗'));
+  const namen = fouten.map((regel) => /^✗ (.+) niet bereikbaar/.exec(regel)?.[1]);
+  if (namen.some((naam) => naam === undefined)) return uitvoer;
+  // ✓ (alles werkt) is geen waarschuwing; een → valt alleen weg als hij direct op een weggelaten ✗ volgt.
+  const rest = regels.filter((regel, i) => !regel.startsWith('✓') && !regel.startsWith('✗') && !(/^\s*→/.test(regel) && regels[i - 1]?.startsWith('✗') === true));
+  const uit = fouten.length === 0 ? [] : [`stack uit: ${namen.join(', ')} — de eigenaar start hem met pnpm dev`];
+  return [...rest, ...uit].filter((regel) => regel !== '').join('\n');
+}
+
+/**
+ * SessionStart: de feiten als context (framework §8): branch, achterstand op main, open PR, open wijzigingen, een mislukte
+ * e2e-uitslag en de doctor (stack uit in één regel); geen specslijst (die vraagt een agent met `feiten.mjs specs`).
  * @param {Deps} deps
  * @returns {HookResult}
  */
 export function sessionStart(deps) {
   const branch = deps.run('git', ['rev-parse', '--abbrev-ref', 'HEAD']).output.trim();
   const changed = deps.changed();
-  const specs = deps.run('node', ['scripts/kit/feiten.mjs', 'specs']).output.trim();
   const lastRun = deps.read('.runner-output/test-results/.last-run.json');
-  const status = lastRun === null ? 'geen e2e-uitslag' : `laatste e2e: ${/"status":\s*"(\w+)"/.exec(lastRun)?.[1] ?? 'onbekend'}`;
-  const doctor = deps.run('scripts/doctor.sh', ['--quick']).output.trim();
+  const e2e = lastRun === null ? undefined : (/"status":\s*"(\w+)"/.exec(lastRun)?.[1] ?? 'onbekend');
+  const status = e2e === undefined || e2e === 'passed' ? '' : `laatste e2e: ${e2e}`;
+  const doctor = doctorKort(deps.run('scripts/doctor.sh', ['--quick']).output.trim());
   return {
     stdout: [
       `Branch: ${branch}${branch === 'main' ? ' (begin nieuw werk met `git fetch origin main && git switch -c <naam> origin/main`)' : ''}`,
       mainLag(deps),
       prRegel(deps, branch),
       `Gewijzigde bestanden: ${changed.length === 0 ? 'geen' : changed.slice(0, 20).join(', ')}`,
-      specs,
       status,
       doctor,
       'Vraag alleen taakrelevante feiten: node scripts/kit/feiten.mjs gates specs fase; componenten alleen bij UI (framework §8).',
