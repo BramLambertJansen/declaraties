@@ -711,18 +711,31 @@ function treeRoot(ctx, file) {
   return resolved.startsWith('..') || path.isAbsolute(resolved) || !ctx.isDir(resolved) ? null : resolved;
 }
 
+const ALL = Number.POSITIVE_INFINITY;
+const GIT_DIFF_FLAGS = ['--stat', '--shortstat', '--numstat', '--name-only', '--name-status', '--no-color', '-w', '--ignore-all-space'];
+/**
+ * Commando's van de reviewer met een vaste optielijst, op patroon van de kop (git, gh pr, pnpm-scripts, feiten); zelfde
+ * vorm als REVIEWER_READS. Positionele woorden zijn refs, paden, PR-nummers of feitensecties; elke onbekende optie
+ * (`--outputFile`, `-u`, `--config`, `--web`, `-R`) wordt geweigerd.
+ * @type {{ pattern: RegExp, read: { flags: string[], values: string[], positional: number, paths?: boolean, count?: boolean } }[]}
+ */
 const REVIEWER_COMMANDS = [
-  /^pnpm (?:check:\S+|test\S*|gate:\S+)$/,
-  /^git (?:diff|log|show|status)$/,
-  /^gh pr (?:view|diff|checks)$/,
-  // De feiten voor stap 1 van .claude/agents/reviewer.md (gates, specs, fase); scripts/kit/feiten.mjs schrijft niets.
-  /^node scripts\/kit\/feiten\.mjs$/,
+  { pattern: /^pnpm (?:check:[a-z-]+|test(?::(?:unit|db|e2e))?|gate:(?:fast|slow))$/, read: { flags: [], values: [], positional: ALL, paths: true } },
+  { pattern: /^git diff$/, read: { flags: [...GIT_DIFF_FLAGS, '--cached', '--staged', '--merge-base'], values: [], positional: ALL, paths: true } },
+  { pattern: /^git log$/, read: { flags: [...GIT_DIFF_FLAGS, '--oneline', '-p', '--patch', '--no-merges', '--merges', '--first-parent', '--reverse', '--graph', '--decorate', '--follow'], values: ['-n', '--max-count', '--since', '--until', '--author', '--grep'], positional: ALL, paths: true, count: true } },
+  { pattern: /^git show$/, read: { flags: [...GIT_DIFF_FLAGS, '--oneline', '--no-patch', '-s'], values: [], positional: ALL, paths: true } },
+  { pattern: /^git status$/, read: { flags: ['--short', '-s', '--porcelain', '-b', '--branch'], values: [], positional: ALL, paths: true } },
+  { pattern: /^gh pr view$/, read: { flags: ['--comments'], values: ['--json', '--jq'], positional: 1 } },
+  { pattern: /^gh pr diff$/, read: { flags: ['--name-only', '--patch'], values: [], positional: 1 } },
+  { pattern: /^gh pr checks$/, read: { flags: ['--required'], values: ['--json', '--jq'], positional: 1 } },
+  // De feiten voor stap 1 van .claude/agents/reviewer.md (gates, specs, fase, hoofdstuk <n>); feiten.mjs schrijft niets.
+  { pattern: /^node scripts\/kit\/feiten\.mjs$/, read: { flags: ['--alle', '--json'], values: [], positional: ALL } },
 ];
 
 /**
  * Leescommando's van de reviewer met een vaste optielijst (spec rolhek-lezen/AC-1). `values`: opties die altijd het volgende
  * woord als waarde nemen (pflag), ook als dat met `-` begint; `positional`: hoeveel losse woorden; `paths`: paden na `--`.
- * @type {Record<string, { flags: string[], values: string[], positional: number, paths?: boolean }>}
+ * @type {Record<string, { flags: string[], values: string[], positional: number, paths?: boolean, count?: boolean }>}
  */
 const REVIEWER_READS = {
   'git ls-files': { flags: [], values: [], positional: 0, paths: true },
@@ -735,6 +748,17 @@ const REVIEWER_READS = {
 };
 // Geen `$`, backtick, `;`, spatie of aanhalingsteken: de shell van pnpm voert niets uit een waarde uit.
 const SAFE_VALUE = /^[A-Za-z0-9_./,:-]+$/;
+// Een positioneel woord mag ook een ref met `~` of `^` zijn (`HEAD~1`, `HEAD^:pad`).
+const SAFE_REF = /^[A-Za-z0-9_./,:~^-]+$/;
+
+/**
+ * Een los woord of pad van de reviewer blijft binnen de repository (reviewer-opties/AC-3): niet `/` of `~` vooraan en geen
+ * segment `..`, ook niet na `<ref>:`, en geen URL (`gh pr view <url>` leest een andere repo). Anders toont `git diff /dev/null .env` (impliciet --no-index) een bestand buiten de leesregels.
+ * @param {string} word
+ */
+function insideRepo(word) {
+  return SAFE_REF.test(word) && !/^[/~]/.test(word) && !word.includes('://') && !word.split(/[/:]/).includes('..');
+}
 // `--jq` alleen met paden (`.title`, `.a.b,.c`): geen jq-functies zoals `env`, die tokens uit de omgeving tonen.
 const JQ_PATHS = /^\.[A-Za-z0-9_.]*(?:,\.[A-Za-z0-9_.]*)*$/;
 
@@ -747,8 +771,7 @@ function reviewerRefusal(argv, redirects) {
   const head = argv[0] === 'gh' ? argv.slice(0, 3).join(' ') : argv.slice(0, 2).join(' ');
   const generic = `reviewer: alleen lezen (\`${argv.slice(0, 3).join(' ')}\` mag niet; framework §8); zoeken en tellen: gebruik de Grep-tool`;
   if (redirects.length > 0) return generic;
-  if (REVIEWER_COMMANDS.some((pattern) => pattern.test(head))) return null;
-  const read = REVIEWER_READS[head];
+  const read = REVIEWER_READS[head] ?? REVIEWER_COMMANDS.find(({ pattern }) => pattern.test(head))?.read;
   if (read === undefined) return generic;
   if (readArgsAllowed(argv.slice(head.split(' ').length), read)) return null;
   const opties = [...read.flags, ...read.values.map((value) => `${value} <waarde>`)];
@@ -772,19 +795,21 @@ function reviewerBash({ assignments, argv, pathWrappers }, redirects, decision) 
 
 /**
  * @param {readonly string[]} args
- * @param {{ flags: string[], values: string[], positional: number, paths?: boolean }} read
+ * @param {{ flags: string[], values: string[], positional: number, paths?: boolean, count?: boolean }} read
  */
 function readArgsAllowed(args, read) {
   let positional = 0;
   for (let index = 0; index < args.length; index += 1) {
     const arg = args[index] ?? '';
-    if (arg === '--' && read.paths === true) return args.slice(index + 1).every((path) => SAFE_VALUE.test(path));
+    // Na `--` alleen paden: een woord met `-` vooraan geeft pnpm aan het script door, en dat kan het als optie lezen.
+    if (arg === '--' && read.paths === true) return args.slice(index + 1).every((path) => insideRepo(path) && !path.startsWith('-'));
     if (read.values.includes(arg)) {
       index += 1;
       if (!SAFE_VALUE.test(args[index] ?? '') || (arg === '--jq' && !JQ_PATHS.test(args[index] ?? ''))) return false;
     } else if (arg.startsWith('-')) {
-      if (!read.flags.includes(arg)) return false;
-    } else if (positional >= read.positional || !SAFE_VALUE.test(arg)) return false;
+      // `-<n>` (git log -5) is een aantal, geen optie.
+      if (!read.flags.includes(arg) && !(read.count === true && /^-\d+$/.test(arg))) return false;
+    } else if (positional >= read.positional || !insideRepo(arg)) return false;
     else positional += 1;
   }
   return true;
