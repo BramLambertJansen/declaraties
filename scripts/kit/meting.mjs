@@ -11,19 +11,23 @@ import { readdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { opslagmap } from '../../rails/hooks/lib/meting.mjs';
 
-/** @typedef {{ e: string, s: string, b: string, k: string, m: string, id: string | undefined, t: number | undefined, opdracht?: boolean }} Regel */
+/** @typedef {{ e: string, s: string, b: string, k: string, tool: string, m: string, id: string | undefined, t: number | undefined, opdracht?: boolean }} Regel */
 /** @typedef {{ prompts: number, promptsPerSleutel: Map<string, number>, promptsPerModus: Map<string, number>, weigeringen: number, weigeringenPerSleutel: Map<string, number>, beurten: number, eigenaarberichten: number, pushes: number }} Telling */
 /** @typedef {number | 'onbekend'} Ci */
 /** @typedef {{ van: number, tot: number } | null} Venster */
 /** @typedef {(branch: string, venster: Venster) => Ci} CiVoor */
 
 const UUR = 60 * 60 * 1000;
+/** Een subagent-aanroep: alleen de tool Agent of Task, niet een commando of pad dat `agent` heet. @param {Regel} r */
+const subagent = (r) => r.tool === 'Agent' || r.tool === 'Task';
 
-const HELP = `Gebruik: pnpm meting [--json] [--sessie <id>] [--branch <naam>] [--help]
+const HELP = `Gebruik: pnpm meting [--json] [--sessie <id>] [--branch <naam>] [--pr-tabel] [--help]
 
   --json           Dezelfde tellingen als JSON.
   --sessie <id>    Alleen deze sessie.
   --branch <naam>  Alleen deze branch binnen elke sessie.
+  --pr-tabel       Kerncijfers van één branch (--branch) als markdowntabel voor de PR-beschrijving: leespad (zie pnpm leespad),
+                   doorlooptijd, reviewrondes, CI-rood, weigeringen (bovengrens) en Codex-bevindingen (handmatig).
   --help           Deze uitleg, zonder meetbestanden te lezen of gh aan te roepen.
 
 Teldefinities (alleen ontvangen en opgeslagen Claude Code-events):
@@ -34,6 +38,8 @@ Teldefinities (alleen ontvangen en opgeslagen Claude Code-events):
   eigenaarberichten: UserPromptSubmit na het eerste bericht van de sessie (de opdracht).
   weigeringen: PermissionDenied of PreToolUse met ID zonder PostToolUse/PostToolUseFailure.
   PreToolUse en PermissionDenied met dezelfde ID tellen samen eenmaal.
+  Een PreToolUse van een subagent (sleutel 'agent <type>') telt niet als weigering: die loopt tot hij klaar is.
+  reviewrondes (--pr-tabel): PreToolUse-aanroepen van 'agent reviewer', ontdubbeld op ID. CI-rood: gh-runs met conclusion failure.
   Dit is een bovengrens: ook lopende, afgebroken of onvolledig geregistreerde aanroepen tellen mee.
   Tijdens pnpm meting kan de meetaanroep zelf meetellen; na afronding kan de teller dalen.
   Vergelijk dezelfde sessie/branch op hetzelfde afgeronde meetmoment; bewaar tijdstip en momentopname.
@@ -77,6 +83,7 @@ function parse(lijn, sessie) {
       s: tekst(r.get('s'), sessie),
       b: tekst(r.get('b'), 'onbekend'),
       k: tekst(r.get('k'), ''),
+      tool: tekst(r.get('tool'), ''),
       m: typeof m === 'string' && /^[a-zA-Z]+$/.test(m) ? m : 'onbekend',
       id: typeof id === 'string' ? id : undefined,
       t: tijd(r.get('t')),
@@ -142,7 +149,7 @@ function weigeringen(regels) {
   const geweigerd = regels.filter((r) => r.e === 'PermissionDenied');
   const ids = new Set(geweigerd.map((r) => r.id).filter((id) => id !== undefined));
   const zonderPost = regels.filter(
-    (r) => r.e === 'PreToolUse' && r.id !== undefined && !afgerond.has(r.id) && !ids.has(r.id),
+    (r) => r.e === 'PreToolUse' && r.id !== undefined && !afgerond.has(r.id) && !ids.has(r.id) && !subagent(r),
   );
   return new Set([...geweigerd, ...zonderPost]);
 }
@@ -208,25 +215,36 @@ function som(waarden) {
 }
 
 /**
- * Aanmaaktijden van de CI-runs van een branch via `<gh> run list` (zonder shell, met timeout); null bij een fout.
- * @param {string} gh
+ * De CI-runs van een branch via `<gh> run list` (zonder shell, met timeout) als `{ t, conclusie }`; null bij een fout.
+ * @param {{ gh: string, timeout: number }} opties
  * @param {string} branch
- * @param {number} timeout
+ * @param {string} [json] de op te vragen velden
+ * @returns {{ t: number | undefined, conclusie: unknown }[] | null}
  */
-function runTijden(gh, branch, timeout) {
+function runs({ gh, timeout }, branch, json = 'databaseId,createdAt') {
   if (branch === 'onbekend' || branch === 'detached' || branch.startsWith('-')) return null;
   try {
-    const args = ['run', 'list', `--branch=${branch}`, '--json', 'databaseId,createdAt', '--limit', '200'];
+    const args = ['run', 'list', `--branch=${branch}`, '--json', json, '--limit', '200'];
     const uit = execFileSync(gh, args, { encoding: 'utf8', timeout, stdio: ['ignore', 'pipe', 'ignore'] });
     /** @type {unknown} */
-    const runs = JSON.parse(uit);
-    if (!Array.isArray(runs)) return null;
-    return runs.map((run) =>
-      typeof run === 'object' && run !== null ? tijd(new Map(Object.entries(run)).get('createdAt')) : undefined,
-    );
+    const lijst = JSON.parse(uit);
+    if (!Array.isArray(lijst)) return null;
+    return lijst.map((run) => {
+      const velden = typeof run === 'object' && run !== null ? new Map(Object.entries(run)) : new Map();
+      return { t: tijd(velden.get('createdAt')), conclusie: velden.get('conclusion') };
+    });
   } catch {
     return null;
   }
+}
+
+/** @param {Record<string, string | undefined>} env */
+function ghOpties(env) {
+  const ms = Number(env['METING_GH_TIMEOUT_MS']);
+  return {
+    gh: env['METING_GH'] === undefined || env['METING_GH'] === '' ? 'gh' : env['METING_GH'],
+    timeout: Number.isFinite(ms) && ms > 0 ? ms : 10_000,
+  };
 }
 
 /**
@@ -235,13 +253,11 @@ function runTijden(gh, branch, timeout) {
  * @returns {CiVoor}
  */
 export function ghCi(env) {
-  const gh = env['METING_GH'] === undefined || env['METING_GH'] === '' ? 'gh' : env['METING_GH'];
-  const ms = Number(env['METING_GH_TIMEOUT_MS']);
-  const timeout = Number.isFinite(ms) && ms > 0 ? ms : 10_000;
+  const opties = ghOpties(env);
   /** @type {Map<string, (number | undefined)[] | null>} */
   const cache = new Map();
   return (branch, bereik) => {
-    const tijden = cache.has(branch) ? (cache.get(branch) ?? null) : runTijden(gh, branch, timeout);
+    const tijden = cache.has(branch) ? (cache.get(branch) ?? null) : (runs(opties, branch)?.map((r) => r.t) ?? null);
     cache.set(branch, tijden);
     if (tijden === null || bereik === null) return 'onbekend';
     return tijden.filter((t) => t !== undefined && t >= bereik.van && t <= bereik.tot).length;
@@ -326,6 +342,56 @@ export function alsTekst(sessies, dir) {
   return `${regels.join('\n')}\n`;
 }
 
+/** @param {number} seconden */
+function duur(seconden) {
+  const uren = Math.floor(seconden / 3600);
+  const m = Math.floor((seconden % 3600) / 60);
+  const s = String(seconden % 60).padStart(2, '0');
+  return uren === 0 ? `${String(m)}:${s}` : `${String(uren)}:${String(m).padStart(2, '0')}:${s}`;
+}
+
+/**
+ * De kerncijfers van een branch over alle sessies: doorlooptijd (s), reviewrondes, CI-rood, weigeringen (bovengrens).
+ * @param {string | null} dir
+ * @param {string} branch
+ * @param {Record<string, string | undefined>} env
+ */
+export function prTabel(dir, branch, env) {
+  const regels = [...lees(dir).values()].flat().filter((r) => r.b === branch);
+  const tijden = regels.map((r) => r.t).filter((t) => t !== undefined);
+  const lijst = runs(ghOpties(env), branch, 'databaseId,createdAt,conclusion');
+  const reviews = new Set(
+    regels.filter((r) => r.e === 'PreToolUse' && subagent(r) && r.k === 'agent reviewer').map((r) => r.id ?? ''),
+  );
+  const sessies = [...overzicht(dir, { branch }, () => 'onbekend').values()];
+  /** @type {number | 'onbekend'} */
+  const doorlooptijd =
+    tijden.length === 0 ? 'onbekend' : Math.round((Math.max(...tijden) - Math.min(...tijden)) / 1000);
+  return {
+    leespad: 'zie pnpm leespad',
+    doorlooptijd,
+    reviewrondes: reviews.size,
+    ciRood: lijst === null ? 'onbekend' : lijst.filter((r) => r.conclusie === 'failure').length,
+    weigeringen: sessies.reduce((n, t) => n + t.weigeringen, 0),
+    codexBevindingen: 'handmatig: gh api repos/{owner}/{repo}/pulls/<nr>/comments',
+  };
+}
+
+/** @param {ReturnType<typeof prTabel>} t */
+function prTabelTekst(t) {
+  const doorloop = t.doorlooptijd === 'onbekend' ? 'onbekend' : duur(t.doorlooptijd);
+  const rijen = [
+    ['Leespad (bytes)', t.leespad],
+    ['Doorlooptijd', doorloop],
+    ['Reviewrondes', String(t.reviewrondes)],
+    ['CI-rood', String(t.ciRood)],
+    ['Weigeringen (bovengrens)', String(t.weigeringen)],
+    ['Codex-bevindingen', t.codexBevindingen],
+  ];
+  const lijnen = ['| Kerncijfer | Waarde |', '|---|---|', ...rijen.map(([naam, waarde]) => `| ${naam} | ${waarde} |`)];
+  return `${lijnen.join('\n')}\n`;
+}
+
 /** @param {readonly string[]} args */
 function opties(args) {
   /** @type {(naam: string) => string | undefined} */
@@ -333,7 +399,12 @@ function opties(args) {
     const i = args.indexOf(naam);
     return i === -1 ? undefined : args[i + 1];
   };
-  return { json: args.includes('--json'), sessie: waarde('--sessie'), branch: waarde('--branch') };
+  return {
+    json: args.includes('--json'),
+    prTabel: args.includes('--pr-tabel'),
+    sessie: waarde('--sessie'),
+    branch: waarde('--branch'),
+  };
 }
 
 /** @param {readonly string[]} argv */
@@ -344,6 +415,16 @@ function main(argv) {
   }
   const args = opties(argv);
   const dir = opslagmap(process.cwd(), process.env);
+  if (args.prTabel) {
+    if (args.branch === undefined || args.branch === '' || args.branch.startsWith('-')) {
+      process.stderr.write('meting: --pr-tabel vraagt --branch <naam>\n');
+      process.exitCode = 1;
+      return;
+    }
+    const tabel = prTabel(dir, args.branch, process.env);
+    process.stdout.write(args.json ? `${JSON.stringify({ prTabel: tabel }, null, 2)}\n` : prTabelTekst(tabel));
+    return;
+  }
   const filter = {
     ...(args.sessie === undefined ? {} : { sessie: args.sessie }),
     ...(args.branch === undefined ? {} : { branch: args.branch }),

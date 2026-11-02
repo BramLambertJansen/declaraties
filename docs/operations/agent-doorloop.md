@@ -43,10 +43,16 @@ berichten van de eigenaar.
 modus `onbekend`. Nul prompts en een lege modusverdeling bewijzen geen permissiemodus en ook niet dat er geen
 eigenaarberichten waren. Een classifierbeslissing in auto mode is geen bewijs van een klik van de eigenaar.
 
+Kerncijfers per PR: `pnpm meting --pr-tabel --branch <naam>` geeft een markdowntabel voor de PR-beschrijving (doorlooptijd,
+reviewrondes, CI-rood, weigeringen als bovengrens, Codex-bevindingen handmatig via `gh api`); `pnpm leespad [--ref <ref>]` telt
+de bytes van het verplichte leespad per scenario (meting-kerncijfers/AC-1 t/m AC-4).
+
 `weigeringen` is een bovengrens: een ontvangen `PermissionDenied` telt, evenals een `PreToolUse` met ID waarvoor nog
 geen `PostToolUse` of `PostToolUseFailure` met hetzelfde ID geregistreerd is. Beide voor dezelfde ID tellen samen één
 keer. Een lopende, afgebroken of niet volledig geregistreerde aanroep kan daardoor als weigering meetellen. Tijdens een
 meetopdracht kan bijvoorbeeld de nog lopende `pnpm meting` meetellen; na de geregistreerde afronding daalt de teller.
+Een `PreToolUse` van de tool `Agent` of `Task` zonder `PostToolUse` (een subagent die nog loopt) telt niet; een geweigerde
+subagent-aanroep telt daardoor alleen via een `PermissionDenied`, dus voor subagents is dit geen bovengrens.
 Vergelijk daarom dezelfde sessie en branch op hetzelfde afgeronde meetmoment en bewaar de momentopname met tijdstip;
 vergelijkingen tijdens en na een aanroep zijn geen gelijke waarnemingen.
 
