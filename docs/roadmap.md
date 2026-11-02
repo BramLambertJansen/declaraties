@@ -205,7 +205,7 @@ Open werk dat niet geparkeerd is, grofweg in volgorde. Wat nog een spec of eigen
 - [ ] **Bekende gaten in het rolhek (R-ROL-10: vangnet, geen grens).** Het rolhek ziet niet: scripts in de repo, `node -e` en andere
   interpreters; voor de hoofdsessie `curl -K`, een kopie van `gh` onder een andere naam en `node_modules/.bin`; `find -exec`/`-execdir`/`-ok`;
   globs in paden (`rm src/api/routes/*.test.ts`, `sed -i … docs/adr/archief/0*.md`); symlinks en hardlinks (`ln -s test t && rm -rf t/`, `cp -l`);
-  `git checkout <ref> <pad>` zonder `--`; `git -C <map>` en `cd x && …` binnen één commando (paden tellen vanaf de cwd van de payload); awk met `-f`, een variabel doel, `system()` of
+  `git checkout <ref> <pad>` zonder `--`; `git -c core.pager=<cmd>` en andere `-c`-instellingen die een programma starten; `git -C <map>` en `cd x && …` binnen één commando (paden tellen vanaf de cwd van de payload); awk met `-f`, een variabel doel, `system()` of
   `| "cmd"`, afgekorte lange gawk-opties (`--sour=`, `--fi=`, `--incl=`; één helper voor afkortingen van lange opties in `shell.mjs`) en
   awk-uitvoer via opties (`-o`/`--pretty-print=f`, `-d`/`--dump-variables=f`); `git restore <map>` en `git checkout -- <map>` voor een
   lokaal ontbrekende map (de map-regel kijkt naar `isDir`, niet naar getrackte bestanden eronder). Omhulsels met opties en xargs-optiewaarden staan in het item hierboven. Per gat kiezen tussen weigeren en melden, met tests.
