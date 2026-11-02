@@ -26,7 +26,7 @@ function alleenStatus(root, commits, pad) {
   return before !== null && after !== null && before.digest === after.digest;
 }
 
-/** Specs die in from..to naar gebouwd gaan, ongeacht een mandaat (spec taakmandaat-vervolg, AC-7). */
+/** Specs die in from..to naar gebouwd gaan (spec taakmandaat-vervolg, AC-7). */
 /** @param {string} root @param {{ from: string, to: string }} commits @param {string[]} paden */
 function specsNaarGebouwd(root, commits, paden) {
   return paden.filter((pad) => {

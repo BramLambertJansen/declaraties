@@ -22,9 +22,11 @@ import {
 // SHA de broncommit; het vinkje staat in de broncommit (`bronRoadmap`) of in de administratiecommit (`adminRoadmap`).
 afterEach(opruimen);
 
-const BUITEN = 'buiten het taakmandaat';
-const GEEN_EENDUIDIG = 'geen eenduidig open item';
-const ZONDER_BEWIJS = 'vinkje zonder bewijs';
+// GEWIJZIGD (compacte-kennisbasis-rails/AC-14 en AC-15, PR 6b): een record in `.claude/decisions.json` geeft niets meer en
+// `check-document-status` kent geen taakscope of roadmapcontrole per mandaat. De fixtures schrijven nog records (tolerant
+// gelezen) om te bewijzen dat ze genegeerd worden: elke wijziging die het mandaat weigerde, slaagt nu. Het succesmerk is:
+// exitcode 0, lege stderr, `document-status:` op stdout en nergens "mandat" of "taakscope".
+const NIET_NEUTRAAL = /manda+te?|taakscope/i;
 
 function repo(roadmap: string[], mandaat: string[] = [S1], specs: string[] = [S1, S2]): Fixture {
   return maakRepo({ specs, mandaat, roadmap });
@@ -35,14 +37,8 @@ function slaagt(fixture: Fixture, stappen: Stappen): void {
   const uitvoer = draaiChecker(fixture, head);
   expect(uitvoer.stderr).toBe('');
   expect(uitvoer.status).toBe(0);
-  expect(uitvoer.stdout).toContain('taakscope gecontroleerd vanuit main');
-}
-
-function faalt(fixture: Fixture, stappen: Stappen, melding: string): void {
-  const { head } = bouw(fixture, stappen);
-  const uitvoer = draaiChecker(fixture, head);
-  expect(uitvoer.status).toBe(1);
-  expect(uitvoer.stderr).toContain(melding);
+  expect(uitvoer.stdout).toContain('document-status:');
+  expect(uitvoer.stdout).not.toMatch(NIET_NEUTRAAL);
 }
 
 function metTick(regels: string[], spec: string, bewijs = ' (#130)'): string[] {
@@ -64,7 +60,7 @@ describe('AC-1: het vinkje van de taak naast de statusovergang', () => {
   });
 });
 
-describe('AC-2: andere roadmapwijzigingen vallen buiten het taakmandaat', () => {
+describe('AC-2 (AC-14: geen mandaatscope meer): roadmapwijzigingen buiten het item van de taak', () => {
   const tickS1 = metTick(basisRoadmap(), S1);
   const zonderToelichting = tickS1.slice(0, -2);
   const gevallen: [string, string[]][] = [
@@ -91,74 +87,63 @@ describe('AC-2: andere roadmapwijzigingen vallen buiten het taakmandaat', () => 
     ],
   ];
 
-  test.each(gevallen)('faalt met "buiten het taakmandaat": %s', (_naam, roadmap) => {
-    faalt(repo(basisRoadmap()), { gebouwd: [S1], bronRoadmap: roadmap }, BUITEN);
+  test.each(gevallen)('slaagt zonder mandaatscope: %s', (_naam, roadmap) => {
+    slaagt(repo(basisRoadmap()), { gebouwd: [S1], bronRoadmap: roadmap });
   });
 
-  test('faalt: het bestand wordt hernoemd', () => {
-    faalt(
-      repo(basisRoadmap()),
-      {
-        gebouwd: [S1],
-        bron: (root) => git(root, ['mv', ROADMAP, 'docs/roadmap-oud.md']),
-      },
-      BUITEN,
-    );
+  test('slaagt zonder mandaatscope: het bestand wordt hernoemd', () => {
+    slaagt(repo(basisRoadmap()), {
+      gebouwd: [S1],
+      bron: (root) => git(root, ['mv', ROADMAP, 'docs/roadmap-oud.md']),
+    });
   });
 
-  test('faalt: het bestand wordt verwijderd', () => {
-    faalt(repo(basisRoadmap()), { gebouwd: [S1], bron: (root) => git(root, ['rm', '-q', ROADMAP]) }, BUITEN);
+  test('slaagt zonder mandaatscope: het bestand wordt verwijderd', () => {
+    slaagt(repo(basisRoadmap()), { gebouwd: [S1], bron: (root) => git(root, ['rm', '-q', ROADMAP]) });
   });
 });
 
-describe('AC-3: eenduidigheid van het item van de taak', () => {
-  test('twee open items die S noemen: "geen eenduidig open item"', () => {
+describe('AC-3 (AC-14: geen mandaatscope meer): eenduidigheid van het item van de taak wordt niet meer gecontroleerd', () => {
+  test('twee open items die S noemen: slaagt', () => {
     const basis = [openItem(S1), openItem(S1, 'Tweede taak voor'), 'Toelichting.'];
-    faalt(repo(basis), { gebouwd: [S1], bronRoadmap: [doneItem(S1), ...basis.slice(1)] }, GEEN_EENDUIDIG);
+    slaagt(repo(basis), { gebouwd: [S1], bronRoadmap: [doneItem(S1), ...basis.slice(1)] });
   });
 
-  test('een open item plus een afgevinkt item dat S noemt: "geen eenduidig open item"', () => {
+  test('een open item plus een afgevinkt item dat S noemt: slaagt', () => {
     const basis = [openItem(S1), doneItem(S1, ' (#5)', 'Eerder werk voor'), 'Toelichting.'];
-    faalt(repo(basis), { gebouwd: [S1], bronRoadmap: [doneItem(S1), ...basis.slice(1)] }, GEEN_EENDUIDIG);
+    slaagt(repo(basis), { gebouwd: [S1], bronRoadmap: [doneItem(S1), ...basis.slice(1)] });
   });
 
-  test('noemt in de merge-base geen item S (ook niet als de PR het pad toevoegt): "buiten het taakmandaat"', () => {
+  test('noemt in de merge-base geen item S (ook niet als de PR het pad toevoegt): slaagt', () => {
     const basis = ['- [ ] Taak zonder pad', 'Toelichting.'];
     const head = [`- [x] Taak zonder pad \`${S1}\` (#130)`, 'Toelichting.'];
-    faalt(repo(basis), { gebouwd: [S1], bronRoadmap: head }, BUITEN);
+    slaagt(repo(basis), { gebouwd: [S1], bronRoadmap: head });
   });
 });
 
-describe('AC-4: vinkje zonder bewijs en de volgorde van meldingen', () => {
-  test('het afgevinkte item zonder bewijs: "vinkje zonder bewijs" met regelnummer, en check:roadmap meldt roadmap:bewijs', async () => {
+describe('AC-4 (AC-14: geen mandaatscope meer): vinkje zonder bewijs is alleen nog een zaak van check:roadmap', () => {
+  test('het afgevinkte item zonder bewijs: check-document-status slaagt, check:roadmap meldt roadmap:bewijs', async () => {
     const fixture = repo(basisRoadmap());
     const { head } = bouw(fixture, { gebouwd: [S1], bronRoadmap: metTick(basisRoadmap(), S1, '') });
     const uitvoer = draaiChecker(fixture, head);
-    expect(uitvoer.status).toBe(1);
-    expect(uitvoer.stderr).toContain(`docs/roadmap.md:5: ${ZONDER_BEWIJS}`);
+    expect(uitvoer.status).toBe(0);
+    expect(uitvoer.stderr).toBe('');
+    expect(uitvoer.stdout).not.toMatch(NIET_NEUTRAAL);
     expect(await roadmapSleutels(fixture.root)).toContain('roadmap:bewijs:5');
   });
 
-  test('zonder bewijs én een andere regel gewijzigd: alleen "buiten het taakmandaat" (volgorde 3 vóór 4)', () => {
-    const fixture = repo(basisRoadmap());
+  test('zonder bewijs én een andere regel gewijzigd: slaagt, geen mandaatmelding', () => {
     const roadmap = metTick(basisRoadmap(), S1, '').map((regel) => (regel === 'Toelichting.' ? 'Anders.' : regel));
-    const { head } = bouw(fixture, { gebouwd: [S1], bronRoadmap: roadmap });
-    const uitvoer = draaiChecker(fixture, head);
-    expect(uitvoer.stderr).toContain(BUITEN);
-    expect(uitvoer.stderr).not.toContain(ZONDER_BEWIJS);
+    slaagt(repo(basisRoadmap()), { gebouwd: [S1], bronRoadmap: roadmap });
   });
 
-  test('zonder bewijs én twee open items: alleen "geen eenduidig open item" (volgorde 2 vóór 4)', () => {
+  test('zonder bewijs én twee open items: slaagt, geen mandaatmelding', () => {
     const basis = [openItem(S1), openItem(S1, 'Tweede taak voor')];
-    const fixture = repo(basis);
-    const { head } = bouw(fixture, { gebouwd: [S1], bronRoadmap: [doneItem(S1, ''), basis[1] ?? ''] });
-    const uitvoer = draaiChecker(fixture, head);
-    expect(uitvoer.stderr).toContain(GEEN_EENDUIDIG);
-    expect(uitvoer.stderr).not.toContain(ZONDER_BEWIJS);
+    slaagt(repo(basis), { gebouwd: [S1], bronRoadmap: [doneItem(S1, ''), basis[1] ?? ''] });
   });
 });
 
-describe('AC-5: twee mandaten op één branch', () => {
+describe('AC-5 (AC-14: geen mandaatscope meer): twee records op één branch', () => {
   const basis = [openItem(S1), openItem(S2), '- [ ] Derde taak', 'Toelichting.'];
   const beide = [doneItem(S1), doneItem(S2), ...basis.slice(2)];
 
@@ -166,9 +151,9 @@ describe('AC-5: twee mandaten op één branch', () => {
     slaagt(repo(basis, [S1, S2]), { gebouwd: [S1, S2], bronRoadmap: beide });
   });
 
-  test('daarnaast een derde item afgevinkt: faalt', () => {
+  test('daarnaast een derde item afgevinkt: slaagt (geen mandaatscope meer)', () => {
     const derde = [...beide.slice(0, 2), '- [x] Derde taak (#9)', 'Toelichting.'];
-    faalt(repo(basis, [S1, S2]), { gebouwd: [S1, S2], bronRoadmap: derde }, BUITEN);
+    slaagt(repo(basis, [S1, S2]), { gebouwd: [S1, S2], bronRoadmap: derde });
   });
 });
 
@@ -186,16 +171,14 @@ describe('AC-21: één item voor twee specs met mandaat', () => {
     slaagt(repo([gedeeld, 'Toelichting.'], [S1, S2]), { gebouwd: [S1, S2], bronRoadmap: [klaar, 'Toelichting.'] });
   });
 
-  test('een tweede open item dat ook S2 noemt: "geen eenduidig open item" voor S2', () => {
+  test('een tweede open item dat ook S2 noemt: slaagt (geen eenduidigheidscontrole meer)', () => {
     const gedeeld = `- [ ] Gedeelde taak \`${S1}\` en \`${S2}\``;
     const klaar = `- [x] Gedeelde taak \`${S1}\` en \`${S2}\` (#130)`;
     const tweede = openItem(S2, 'Tweede taak voor');
-    const fixture = repo([gedeeld, tweede, 'Toelichting.'], [S1, S2]);
-    const { head } = bouw(fixture, { gebouwd: [S1, S2], bronRoadmap: [klaar, tweede, 'Toelichting.'] });
-    const uitvoer = draaiChecker(fixture, head);
-    expect(uitvoer.status).toBe(1);
-    expect(uitvoer.stderr).toContain(GEEN_EENDUIDIG);
-    expect(uitvoer.stderr).toContain(S2);
+    slaagt(repo([gedeeld, tweede, 'Toelichting.'], [S1, S2]), {
+      gebouwd: [S1, S2],
+      bronRoadmap: [klaar, tweede, 'Toelichting.'],
+    });
   });
 });
 
@@ -216,18 +199,18 @@ describe('AC-22: bewijs op een nieuwe, ingesprongen vervolgregel', () => {
   });
 });
 
-describe('AC-25 (OV-9): het vinkje alleen samen met de statusovergang', () => {
-  test('vinkje terwijl S goedgekeurd blijft: "buiten het taakmandaat"', () => {
-    faalt(repo(basisRoadmap()), { gebouwd: [], bronRoadmap: metTick(basisRoadmap(), S1) }, BUITEN);
+describe('AC-25 (OV-9, AC-14: geen mandaatscope meer): het vinkje is niet meer aan de statusovergang gebonden', () => {
+  test('vinkje terwijl S goedgekeurd blijft: slaagt (geen mandaatscope meer)', () => {
+    slaagt(repo(basisRoadmap()), { gebouwd: [], bronRoadmap: metTick(basisRoadmap(), S1) });
   });
 
   test('vinkje in een eerdere commit, status in een latere commit van dezelfde PR: slaagt', () => {
     slaagt(repo(basisRoadmap()), { gebouwd: [S1], bronRoadmap: metTick(basisRoadmap(), S1) });
   });
 
-  test('mandaten voor S1 en S2, alleen S1 gaat naar gebouwd, beide items afgevinkt: faalt', () => {
+  test('records voor S1 en S2, alleen S1 gaat naar gebouwd, beide items afgevinkt: slaagt (geen mandaatscope meer)', () => {
     const beide = metTick(metTick(basisRoadmap(), S1), S2);
-    faalt(repo(basisRoadmap(), [S1, S2]), { gebouwd: [S1], bronRoadmap: beide }, BUITEN);
+    slaagt(repo(basisRoadmap(), [S1, S2]), { gebouwd: [S1], bronRoadmap: beide });
   });
 });
 

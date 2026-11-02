@@ -32,9 +32,9 @@ Feiten nu:
    Alleen voor een spec waarvan de implementatie al op main staat: eerst groen op HEAD, dan `pnpm docs:status <spec> gebouwd --pr <nr> --roadmap`
    (zonder `--roadmap` als geen roadmap-item de spec noemt) als laatste commit (het vinkje hoort in die commit, niet in de
    implementatie), en pas na groen op die commit mag de eigenaar mergen of auto-merge aanzetten. Staat auto-merge al aan,
-   vraag de eigenaar hem uit te zetten. Is er een taakmandaat en noemt het roadmap-item het specpad niet tussen
-   backticks (dan kan `--roadmap` het niet afvinken), of is er geen `gh`-auth: stop en meld het. Zonder mandaat komt de
-   roadmapwijziging in de implementatie, niet in de statuscommit; een commit na de statuscommit maakt `document-status`
+   vraag de eigenaar hem uit te zetten. Zonder `gh`-auth: stop en meld het. Noemt het roadmap-item het specpad niet
+   tussen backticks (dan kan `--roadmap` het niet afvinken), dan komt de roadmapwijziging in de implementatie, niet in de
+   statuscommit; een commit na de statuscommit maakt `document-status`
    rood (leerpunt #314; `docs/operations/agent-doorloop.md`, "PR en statussen afronden").
 
 ## Mergen

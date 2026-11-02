@@ -90,7 +90,7 @@ ADR-nummers worden samen gecontroleerd voor de actieve map en het archief. Verwi
 de Git-geschiedenis van de vertrouwde basis. Heeft main een nummer inmiddels gebruikt, werk de branch dan eerst bij.
 Alleen het bestaande paar 0039-bestanden blijft een ratchet-afwijking; nieuwe dubbelen worden geweigerd.
 Een vervangingsverwijzing eindigt bij een bestaand ADR, zonder zelfverwijzing of cyclus. De besluit-lane accepteert
-uitsluitend records die ook door de bestaande registervalidator komen.
+geen `.claude/decisions.json` (ADR 0063).
 
 De ADR-sectie van `feiten.mjs` gebruikt dezelfde nummerherkenning en reserveert nummers uit het werkmaparchief en de
 bekende Git-geschiedenis van HEAD en origin/main. Die nummerreservering voegt geen fictieve documenten toe aan de lijst.
@@ -104,27 +104,7 @@ Git-geschiedenis. CI haalt hiervoor de volledige geschiedenis op; er wordt niets
 Begin met de taakrelevante secties van `node scripts/kit/feiten.mjs`, bijvoorbeeld `gates specs fase`.
 De hoofdsessie kiest de route: licht alleen voor beperkte fixes binnen bestaand gedrag; anders volledig — framework §8.
 Spec (in de volledige straat door de architect) of ADR krijgt direct de bedoelde status; de eigenaar merget
-(besluit) of sluit de PR (afwijzen). Alleen voor een broncodemandaat (`--path`) bereidt de hoofdsessie een besluitrecord voor:
-
-```sh
-pnpm docs:decision docs/specs/voorbeeld.md goedgekeurd --branch feat/voorbeeld --path src/api/app.ts
-```
-
-Herhaal `--path` voor exacte bronbestanden. Het record bindt de inhoudsdigest aan repository en bouwbranch; wijzigt de
-spec daarna van inhoud, dan vervalt het mandaat en is een nieuw record nodig (ADR 0046 punt 7).
-De agent legt document en record in één reviewbare PR voor. Het register in de werkbranch geeft nog geen rechten.
-
-Na eigenaarreview en merge haalt de hoofdsessie `origin/main` op. De bouwbranch neemt het document ongewijzigd over
-en registreert de status:
-
-```sh
-pnpm docs:status docs/specs/voorbeeld.md goedgekeurd
-```
-
-Werkmap en HEAD moeten overeenkomen. Commit de status voordat je een volgende registreert. De eigenaar hoeft geen
-YAML-regel te typen. Intrekking van een mandaat: eigenaar
-verwijdert of vervangt het record op main; lokaal verversen, CI gebruikt de actuele basis. Een verouderde lokale
-basis kan nog oud akkoord zien.
+(besluit) of sluit de PR (afwijzen). `pnpm docs:status` zet geen eigenaarstatus, alleen `gebouwd` (ADR 0063).
 
 ### Gerichte feedback en één volledige lokale eindgate
 
@@ -152,13 +132,13 @@ nu gerichte controles uitvoert; de controle op de git-root uit de payload blijft
 ### Feature-lane en mini-spec (ADR 0046)
 
 Een besluit kost één PR: de merge is het besluit. Architect of hoofdsessie zet de statusregel in het voorstel; commitvolgorde,
-inhoud na de status en committer doen er niet toe (ADR 0046 punt 7). Zonder record herkent `check-document-status` twee gevallen
+inhoud na de status en committer doen er niet toe (ADR 0046 punt 7). `check-document-status` herkent twee gevallen
 (`scripts/kit/lane.mjs`); de samenvatting noemt elk document dat een eigenaarstatus krijgt. Een PR met een eigenaarstatus merget altijd de eigenaar.
 
 **Functionele UI in de template (ADR 0056/0058):** een lichte fix volgt framework §8, zonder mini-spec.
 Voor overige functionele UI gebruik je de mini-spec met aanvullend `scope: functionele-ui` in de frontmatter.
-Beschrijf het gevraagde gedrag en de acceptatiecriteria en bouw in dezelfde PR; een vooraf gemergde spec en een record met
-bronpaden zijn hiervoor niet nodig. De scope omvat bestaande componenten in `src/core/web/ui`, vaste teksten in
+Beschrijf het gevraagde gedrag en de acceptatiecriteria en bouw in dezelfde PR; een vooraf gemergde spec is hiervoor niet
+nodig. De scope omvat bestaande componenten in `src/core/web/ui`, vaste teksten in
 `src/core/web/copy`, aansluitende app-UI, UI-tests en gebruiksdocs. Gewijzigde bestaande UI-tests krijgen per bestand een
 reden en vervangend bewijs in de PR. Auth, API/contracten, queries, andere core, dependencies, agentinstructies, gedeelde
 fixtures en testsetup blijven erbuiten; een gemengde PR volgt de strengste route. De guard meldt de gebruikte uitzondering,
@@ -182,8 +162,8 @@ broncommit, repository en geopende PR gebonden. Een gewijzigde implementatie na 
   NO FORCE → één rij voor de nieuwe tabel → FORCE; losse of herhaalde toggles worden geweigerd. De mini-spec heeft de kop
   "Datawijzigingen (met grants)". Een geneste `CLAUDE.md` of `AGENTS.md` valt eruit. Een onbekend pad buiten `gates` en buiten `src/`, `docs/` en `db/` (zoals `.vscode/` of `.mcp.json`) valt eruit. Diff-guard en
   CODEOWNERS blijven gelden voor elk gate-pad in de PR. Het bereik volgt ADR 0062.
-- **Besluit-PR (framework-lane):** een of meer ADR's en specs die een eigenaarstatus krijgen (ook `vervangen door NNNN` of `vervallen`, of nieuwe inhoud van een goedgekeurde spec), met hooguit hun eigen records in `.claude/decisions.json` (andere records of `requiredChecks` wijzigen telt niet), zonder code of andere bestanden: alleen documenten in `docs/adr/` en `docs/specs/` die zelf een besluit krijgen, ook geen index of ander document. Wijzigt de inhoud van een spec met een `--path`-mandaat, dan vervalt dat mandaat; code eronder vraagt een nieuw record. Bouwen volgt in een volgende PR. Dit is de route voor kritiek werk (ADR 0062 punt 2) en voor wie een besluit los wil voorleggen.
-- Past de PR in geen van beide, dan geldt de strenge route: de status heeft een record op main nodig (ADR 0046, hierboven).
+- **Besluit-PR (framework-lane):** een of meer ADR's en specs die een eigenaarstatus krijgen (ook `vervangen door NNNN` of `vervallen`, of nieuwe inhoud van een goedgekeurde spec), zonder `.claude/decisions.json`, code of andere bestanden: alleen documenten in `docs/adr/` en `docs/specs/` die zelf een besluit krijgen, ook geen index of ander document. Bouwen volgt in een volgende PR. Dit is de route voor kritiek werk (ADR 0062 punt 2) en voor wie een besluit los wil voorleggen.
+- Past de PR in geen van beide, dan weigert `document-status` de status; een besluitrecord bestaat niet meer (ADR 0063).
 
 ## Ontwikkelen en runnerchecks
 
@@ -246,7 +226,8 @@ formattering. De padcontrole volgt bij cp/mv/ln/install ook `-t` en `--target-di
 Dit sluit bekende omwegen; scripts in de repo en interpreters (`node -e`) blijven open, voor de hoofdsessie ook `curl -K <bestand>`, net als een kopie of link van gh onder een andere naam, of een zelfgeschreven uitvoerbaar bestand (bijvoorbeeld `cp /usr/bin/gh ./x; ./x …`); deze klasse komt samen met `node_modules/.bin` in een aparte rail-PR. Ook open voor de hoofdsessie: (a) een omhulsel met opties vóór gh (label, `@file`/`--input`, `gh alias`), (b) xargs met een long option of een cluster met waarde (`--arg-file F`, `-0a F`, `-rn 1`), waarvan de optiewaarde als commandowoord wordt gelezen, en (c) `coreutils --coreutils-prog=env`; (a) en (b) staan in `docs/roadmap.md`. De harde grens is GitHub zelf
 (ruleset en eigenaarmerge); sandbox en CI blijven nodig voor niet-geclassificeerde programma's.
 
-Een geldig broncodemandaat geeft alleen de bekende developer toegang tot genoemde beschermde bronbestanden.
+Een `voorReview`-pad schrijft de developer niet (in onderhoudsmodus buiten `altijdVragen` wel, met melding); een ander
+gate-pad wel, met melding "noem het in de PR" (R-WERK-10).
 Core kan uitsluitend in de template zelf worden ontwikkeld. App-uitbreidingen blijven via registratie en app-code
 lopen. Tests en bewaking houden hun bestaande bescherming.
 
@@ -392,7 +373,7 @@ implementatiebewijs hoort bij hun gekoppelde spec.
 
 Volgorde voor die vorm (leerpunt #314, anders kost het extra CI-rondes of merget de PR zonder `gebouwd`):
 
-1. `check:roadmap` eist een roadmapwijziging in dezelfde PR zodra de spectekst `ST-<n>` of "roadmap stuk <n>" noemt (bijvoorbeeld ST-09). Gebruik daarvoor `--roadmap`: het vinkje landt dan in de statuscommit. Zet het niet in de implementatie: onder een taakmandaat keurt `document-status` een vinkje vóór de statuscommit af (`BUITEN`), en `--roadmap` faalt als het item al is afgevinkt. Noemt het item het specpad niet tussen backticks, dan kan `--roadmap` het niet afvinken: stop en vraag de eigenaar (met mandaat); zonder mandaat komt de roadmapwijziging in de implementatie.
+1. `check:roadmap` eist een roadmapwijziging in dezelfde PR zodra de spectekst `ST-<n>` of "roadmap stuk <n>" noemt (bijvoorbeeld ST-09). Gebruik daarvoor `--roadmap`: het vinkje landt dan in de statuscommit. Zet het niet ook in de implementatie: `--roadmap` faalt als het item al is afgevinkt. Noemt het item het specpad niet tussen backticks, dan kan `--roadmap` het niet afvinken; dan komt de roadmapwijziging in de implementatie.
 2. Wacht op groen op HEAD (`pnpm pr:verify <n> --watch`).
 3. Draai `pnpm docs:status … gebouwd --pr <n> --roadmap`, commit en push dat als laatste commit. Noemt de spectekst geen `ST-<n>` of "roadmap stuk <n>", dan laat je `--roadmap` weg. Daarna mag alleen nog de statusregel (en het vinkje) wijzigen; elke andere commit erna maakt `document-status` rood, ook `git merge origin/main`.
 4. Pas na groen op die statuscommit mag de eigenaar de PR mergen of auto-merge aanzetten. Is de PR toch zonder `gebouwd` gemerged, gebruik dan de route "Implementatie al gemerged" hierboven.
@@ -404,8 +385,8 @@ Zonder `gh`-authenticatie kan `docs:status … --pr` het bouwbewijs niet ophalen
 
 ## Invoering en runtime
 
-Zonder record op main geeft het register geen taakmandaat. De invoering is gebeurd (#130, #144): de guard staat op main en
-helpers en taakrechten worden vanuit main actief; werkbranchconfig activeert geen automatische runner.
+De invoering is gebeurd (#130, #144): de guard staat op main en
+helpers worden vanuit main actief; werkbranchconfig activeert geen automatische runner.
 Een wijziging aan die guard zelf vraagt, zolang hij nog niet op main staat, eigenaarreview vóór merge.
 
 Claude Code gebruikt de geteste hooks. Codex en andere runtimes draaien ze niet automatisch: volg dezelfde procedure

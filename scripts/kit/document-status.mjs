@@ -4,7 +4,6 @@ import { readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { readAuthority, gitText } from '../../rails/hooks/lib/authority-context.mjs';
 import { changeStatus, documentInfo, documentKind } from '../../rails/hooks/lib/document-state.mjs';
-import { canRecordStatus } from '../../rails/hooks/lib/task-authority.mjs';
 import { builtRefusal, canRecordBuilt } from '../../rails/hooks/lib/built-evidence.mjs';
 import { loadConfig } from '../../rails/hooks/lib/rolhek.mjs';
 import { pullRequest, checkRuns } from './github-evidence.mjs';
@@ -55,12 +54,10 @@ function nextRoadmap(target, authority) {
 
 /** @param {{ file: string, status: string, pr: number }} target @param {{ root: string, authority: import('../../rails/hooks/lib/task-authority.mjs').Authority, before: string }} context */
 function nextStatus(target, context) {
-  if (target.status !== 'gebouwd') {
-    const after = changeStatus(target.file, context.before, { status: target.status });
-    if (!canRecordStatus({ file: target.file, text: after }, context.authority))
-      throw new Error('Geen overeenkomend eigenaarbesluit uit main; de status geeft zichzelf geen goedkeuring');
-    return after;
-  }
+  if (target.status !== 'gebouwd')
+    throw new Error(
+      `${target.status}: een eigenaarstatus zet de architect of hoofdsessie in een besluit-PR; de merge door de eigenaar beslist (ADR 0063)`,
+    );
   const sha = gitText(context.root, ['rev-parse', 'HEAD'])?.trim();
   if (sha === undefined) throw new Error('HEAD is niet leesbaar');
   const pr = pullRequest(context.authority.repository, target.pr);

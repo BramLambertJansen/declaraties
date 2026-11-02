@@ -1,4 +1,5 @@
-// De caller leest de beslissingen uit main. Een status in de werkmap is geen toestemming (ADR 0046).
+// De caller leest het register uit main. Een status in de werkmap is geen toestemming (ADR 0046). Records in `decisions`
+// geven sinds ADR 0063 punt 5 niets meer; readRegistry leest ze nog, omdat oudere commits van main ze bevatten.
 import { documentInfo, documentKind, validStatus } from './document-state.mjs';
 
 export const TEMPLATE_REPOSITORY = 'BramLambertJansen/template';
@@ -74,37 +75,11 @@ export function readRegistry(text) {
   return { version: 1, requiredChecks, decisions };
 }
 
-/** @param {OwnerDecision} decision @param {Authority} authority */
-function currentDecision(decision, authority) {
-  if (decision.repository !== authority.repository || decision.branch !== authority.branch || !authority.safe(decision.file)) return false;
-  const trusted = documentInfo(decision.file, authority.trusted(decision.file) ?? '');
-  const working = documentInfo(decision.file, authority.working(decision.file) ?? '');
-  return trusted !== null && working !== null && trusted.digest === decision.digest && working.digest === decision.digest;
-}
-
 /** @param {{ file: string, text: string }} target @param {Authority} authority */
 export function canRecordStatus(target, authority) {
   const info = documentInfo(target.file, target.text);
   if (info === null || info.status === 'gebouwd' || !authority.safe(target.file)) return false;
   const trusted = documentInfo(target.file, authority.trusted(target.file) ?? '');
-  if (trusted !== null && !['voorstel', 'voorgesteld'].includes(trusted.status) && trusted.digest === info.digest && trusted.status === info.status) return true;
-  return authority.registry.decisions.some((decision) => decision.file === target.file && decision.status === info.status &&
-    decision.digest === info.digest && currentDecision(decision, authority));
-}
-
-/** @param {string} file @param {string} repository */
-function protectedSource(file, repository) {
-  if (!canonicalPath(file) || /\.(?:test|spec|test-helper|gen)\.|\/testing\.ts$/.test(file)) return false;
-  if (/^src\/core\/(?:api|web|shared)\/.+\.(?:ts|tsx|css)$/.test(file)) return repository === TEMPLATE_REPOSITORY;
-  return /^src\/api\/(?:app|kit|server|env)\.ts$/.test(file) || file === 'src/shared/permissions.ts';
-}
-
-/** @param {{ file: string, role: string }} target @param {Authority} authority */
-export function canWriteProtected(target, authority) {
-  if (target.role !== 'developer' || !authority.safe(target.file) || !protectedSource(target.file, authority.repository)) return false;
-  return authority.registry.decisions.some((decision) => {
-    if (documentKind(decision.file) !== 'spec' || decision.status !== 'goedgekeurd' || !decision.paths.includes(target.file)) return false;
-    const working = documentInfo(decision.file, authority.working(decision.file) ?? '');
-    return currentDecision(decision, authority) && (working?.status === 'goedgekeurd' || working?.status === 'gebouwd');
-  });
+  return trusted !== null && !['voorstel', 'voorgesteld'].includes(trusted.status) && trusted.digest === info.digest &&
+    trusted.status === info.status;
 }

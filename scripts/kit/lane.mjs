@@ -6,7 +6,6 @@
 
 import { globMatch } from '../../rails/hooks/lib/rolhek.mjs';
 import { functionalUiReason } from '../../rails/hooks/lib/functional-ui.mjs';
-import { readRegistry } from '../../rails/hooks/lib/task-authority.mjs';
 
 /** @typedef {{ status: string, pad: string, van?: string }} Wijziging */
 /** @typedef {{ lane: 'feature' | 'framework' | null, reden: string }} Uitslag */
@@ -34,11 +33,9 @@ const KRITIEK = [
     'check-roadmap',
     'roadmap-item',
     'document-status',
-    'document-decision',
     'gates',
   ].map((naam) => `scripts/kit/${naam}.mjs`),
 ];
-const RECORD = '.claude/decisions.json';
 
 /** @param {readonly string[]} globs @param {string} pad */
 const inLijst = (globs, pad) => globs.some((glob) => globMatch(glob, pad));
@@ -92,8 +89,8 @@ export function laneVan({ changes, besluiten, config, repository, functioneleUi 
   const [besluit] = besluiten;
   if (besluit === undefined) return { lane: null, reden: 'geen document krijgt een eigenaarstatus in deze PR' };
   const overige = paden(changes).filter(({ pad }) => !besluiten.includes(pad));
-  const vreemd = overige.find(({ pad }) => pad !== RECORD);
-  if (vreemd === undefined) return { lane: 'framework', reden: 'besluit-PR: alleen besluitdocumenten en hun record' };
+  const [vreemd] = overige;
+  if (vreemd === undefined) return { lane: 'framework', reden: 'besluit-PR: alleen besluitdocumenten' };
   const adr = besluiten.find((pad) => pad.startsWith('docs/adr/'));
   if (adr !== undefined)
     return {
@@ -292,21 +289,4 @@ export function migratieOvertreding(tekst) {
   const fout = gevuld.find((deel) => !toegestaan(deel, tabel));
   if (fout !== undefined) return `migratie valt buiten het owner-tabelpatroon: "${fout.slice(0, 60)}"`;
   return eigenaarIsolatie(gevuld, tabel) ?? retentionVolgorde(gevuld);
-}
-
-/**
- * Wijzigt het register alleen de records van `file` (of van elk bestand in de lijst)? (ADR 0046 punt 15 en 5).
- * @param {{ basis: string | null, head: string | null, file: string | readonly string[] }} invoer
- */
-export function recordAlleenBesluit({ basis, head, file }) {
-  const bestanden = typeof file === 'string' ? [file] : file;
-  try {
-    const oud = readRegistry(basis ?? '');
-    const nieuw = readRegistry(head ?? '');
-    const rest = (/** @type {{ decisions: { file: string }[] }} */ register) =>
-      JSON.stringify({ ...register, decisions: register.decisions.filter((entry) => !bestanden.includes(entry.file)) });
-    return rest(oud) === rest(nieuw);
-  } catch {
-    return false;
-  }
 }
