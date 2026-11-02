@@ -813,6 +813,10 @@ function forbidden({ assignments, argv, expanded }, { role, ctx }, decision) {
   if ([...assignments, ...(program === 'export' ? args : [])].some((word) => /^CI=/.test(word)))
     decision.deny.push('De agent zet CI niet lokaal; dit kan de hostcontrole van de runner omzeilen');
   if (program === 'git') decision.deny.push(...gitForbidden(args, { role, branch: ctx.branch }));
+  if (program === 'git' && role === 'hoofdsessie') {
+    const { subcommand, rest } = gitSubcommand(args);
+    if (subcommand === 'config' && !configReadsOnly(rest)) decision.ask.push(CONFIG_WRITE);
+  }
   // Voor elk programma (ook pnpm test:db of bash scripts/runner.sh), en ook `export NAAM` of `declare -x NAAM=…`.
   const gitEnv = [...assignments, ...(ENV_EXPORTERS.has(program) ? args : [])].find((word) => GIT_ENV.test(word));
   if (gitEnv !== undefined)
@@ -1117,6 +1121,7 @@ export function gitForbidden(args, { role, branch }) {
     found.push(`subagent: git ${subcommand} doet de hoofdsessie`);
   if (subcommand === 'reset' && rest.includes('--hard')) found.push('subagent: git reset --hard is verboden');
   if (subcommand.startsWith('credential')) found.push('subagent: git credential geeft tokens vrij; verboden');
+  if (subcommand === 'config' && !configReadsOnly(rest)) found.push(CONFIG_WRITE);
   return found;
 }
 
@@ -1285,6 +1290,40 @@ function movesTrustedBase(subcommand, rest) {
     default:
       return false;
   }
+}
+
+// `git config` dat alleen leest (allowlist): een leesactie, of de oude vorm met precies één sleutel. Elke andere optie of
+// vorm telt als schrijven; een sleutel als core.fsmonitor of diff.external laat git later een programma starten, ook in
+// de git-aanroepen van de hooks, die buiten de sandbox draaien.
+const CONFIG_READ_ACTIONS = new Set(['--get', '--get-all', '--get-regexp', '--get-urlmatch', '--get-color', '--get-colorbool', '--list', '-l']);
+const CONFIG_READ_SUBCOMMANDS = new Set(['get', 'list']);
+const CONFIG_READ_FLAGS = new Set(['--show-origin', '--show-scope', '--null', '-z', '--name-only', '--bool', '--int', '--bool-or-int', '--path', '--expiry-date', '--no-type', '--global', '--system', '--local', '--worktree', '--includes', '--no-includes', '--fixed-value', '--all', '--regexp']);
+const CONFIG_READ_VALUE_FLAGS = new Set(['--type', '--default', '--file', '-f', '--blob', '--url']);
+
+const CONFIG_WRITE =
+  'git config schrijft de git-configuratie; een sleutel als core.fsmonitor start later een programma buiten de sandbox. Subagent: alleen lezen (--get, --list, get, list); hoofdsessie: de eigenaar beslist (ADR 0045)';
+
+/**
+ * Of `git config <rest>` alleen leest; onbekende opties en vormen tellen als schrijven (fail closed).
+ * @param {readonly string[]} rest
+ */
+export function configReadsOnly(rest) {
+  /** @type {string[]} */
+  const operands = [];
+  let action = false;
+  for (let index = 0; index < rest.length; index += 1) {
+    const arg = rest[index] ?? '';
+    const name = arg.split('=')[0] ?? '';
+    if (CONFIG_READ_ACTIONS.has(arg)) action = true;
+    else if (CONFIG_READ_VALUE_FLAGS.has(name)) index += arg.includes('=') ? 0 : 1;
+    else if (arg.startsWith('-') && !CONFIG_READ_FLAGS.has(arg)) return false;
+    else if (!arg.startsWith('-')) operands.push(arg);
+  }
+  if (action) return true;
+  const [first = ''] = operands;
+  if (CONFIG_READ_SUBCOMMANDS.has(first)) return true;
+  // De oude vorm leest met precies één sleutel; een sleutel heeft altijd een punt, de subcommando's (set, edit, …) niet.
+  return operands.length === 1 && first.includes('.');
 }
 
 /** @param {readonly string[]} rest */
