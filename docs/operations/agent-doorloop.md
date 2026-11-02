@@ -52,7 +52,12 @@ eigenaarberichten waren. Een classifierbeslissing in auto mode is geen bewijs va
 
 Kerncijfers per PR: `pnpm meting --pr-tabel --branch <naam>` geeft een markdowntabel voor de PR-beschrijving (doorlooptijd,
 reviewrondes, CI-rood, weigeringen als bovengrens, Codex-bevindingen handmatig via `gh api`); `pnpm leespad [--ref <ref>]` telt
-de bytes van het verplichte leespad per scenario (meting-kerncijfers/AC-1 t/m AC-4).
+de bytes van het verplichte leespad per scenario (meting-kerncijfers/AC-1 t/m AC-4), van `docs/framework.md` alleen de tekst vóór de
+eerste kop plus §8 met 8a, 8b (`node scripts/kit/feiten.mjs hoofdstuk 8`), met streefdoel en waarschuwingsdrempel per scenario, de
+"let op"-meldingen vanaf 85 % van de grens van `AGENTS.md` en `CLAUDE.md`, en de metingen van hoofdstukken, regelboek, specs, ADR's,
+rules, skills en operations-docs tegenover hun streefwaarde (ADR 0065; nooit rood). `pnpm meting --trend` vergelijkt CI-rood,
+Codex-bevindingen en reviewrondes over de laatste tien gemergde PR's met de tien daarvoor en meldt "let op: <maat> steeg"
+(`scripts/kit/meting-trend.mjs`; leesbudget/AC-7).
 
 `weigeringen` is een bovengrens: een ontvangen `PermissionDenied` telt, evenals een `PreToolUse` met ID waarvoor nog
 geen `PostToolUse` of `PostToolUseFailure` met hetzelfde ID geregistreerd is. Beide voor dezelfde ID tellen samen één

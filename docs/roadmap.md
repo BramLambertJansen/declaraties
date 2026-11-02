@@ -223,7 +223,7 @@ Open werk dat niet geparkeerd is, grofweg in volgorde. Wat nog een spec of eigen
   correctieprocedures naar `docs/template/`); `check-docs` laten toetsen dat de R-regels in `.claude/rules/*` woordelijk gelijk zijn aan `docs/framework.md`;
   de fasekeuze voor Fase 0/1 uit `docs/dod.md` halen (bouwfasen van de template); `docs/adr/0039-lokale-gate-hergebruik.md` (vervallen) archiveren
   of laten staan (nummer 0039 is gedeeld, AC-3); de links in `docs/specs/achtergrondtaken.md` en `docs/specs/mail-outbox.md` naar het archief
-  zetten zodra hun budgetvermelding in `.kit/baseline.json` dat toelaat; leerpunten #393, #395, #396 (tests laten tijdelijke mappen achter, `/tmp`
+  zetten (hun budgetvermelding in `.kit/baseline.json` is weg sinds ADR 0065); leerpunten #393, #395, #396 (tests laten tijdelijke mappen achter, `/tmp`
   loopt vol), #399, #401, #402, #409, #410 en #411 oppakken.
   Voor de eigenaar zelf (beschermde bestanden): `.claude/decisions.json` leegmaken (`decisions: []`), in `.claude/settings.json` de labelregel
   (`--add-label*gate-wijziging*`), de bewerkweigering op `decisions.json` en de verouderde allow voor `chore/mandate-adr-statusregel` weghalen,
@@ -234,6 +234,14 @@ Open werk dat niet geparkeerd is, grofweg in volgorde. Wat nog een spec of eigen
   `can()`-guard, op store-libraries en op `.isLoading`/`.isError` in `features/` (R-WEB-01, R-WEB-04; het oude framework noemde ze als
   afgedwongen, `eslint.config.js` heeft ze niet). Per check bouwen met falende fixtures, of de regel met eigenaarakkoord als proza laten staan.
   aanleiding: verliescontrole van het regelboek na #385–#404 (eigenaarvraag 2026-11-02; herstel-PR van de normen)
+- [ ] **Bewaartermijn van gemeten data** (ADR 0064 punt 7). De meetbestanden in `<git common dir>/agent-meting/` groeien zonder grens en
+  `pnpm meting` leest ze allemaal (ook `--trend`, voor de reviewrondes); een bewaartermijn en een lees-actie die alleen de gevraagde
+  sessies of branches leest, met een volumetest zoals `test/rails/meting-volume.test.ts`.
+  aanleiding: `docs/adr/0064-leesbudget-per-laag.md` punt 7 en `docs/specs/leesbudget.md` AC-8 ("zonder de bewaartermijn van metingen: een roadmap-item")
+- [ ] **Krimp van bindende documenten in stappen onder 20 %** (R-DOC-02). `check-docs` vangt krimp boven 20 % en 1 KB per PR tegen
+  `git merge-base origin/main HEAD` (`scripts/kit/leesbudget.mjs`); een reeks PR's die elk minder krimpt, valt erdoorheen. Bijvoorbeeld een
+  cumulatieve meting over de laatste twintig gemergde PR's naast `pnpm meting --trend`, of een norm-telling (R-id's) in plaats van bytes.
+  aanleiding: `docs/specs/leesbudget.md`, randgeval "Krimp in stappen onder 20 %" (bekend gat, ADR 0065 punt 6)
 
 ## Geparkeerd
 

@@ -209,9 +209,9 @@ Stappen: spec, contract, tests, developer, reviewer (R-WERK-07 t/m 11); 6. **Opl
 
 ## 9. Documentatie en tokenbudget
 
-Afgedwongen door: `check-docs` (budgetten als ratchet in `.kit/baseline.json`).
+Afgedwongen door: `check-docs` (grenzen van `AGENTS.md` en `CLAUDE.md` als ratchet in `.kit/baseline.json`, krimpcheck; ADR 0065).
 
-- **R-DOC-01** Budgetten staan in `check-docs`; zonder check: `CLAUDE.md` ≤ 50, `.claude/rules/*.md` ≤ 60, skill ≤ 200 regels; bestaande overschrijdingen in baseline die alleen omlaag mag (0063)
+- **R-DOC-01** Grenzen staan in `check-docs`: `AGENTS.md` ≤ 9 KB en 100 regels, `CLAUDE.md` ≤ 50 regels; zonder check: `.claude/rules/*.md` ≤ 60, skill ≤ 200 regels; bestaande overschrijdingen in baseline die alleen omlaag mag (0063)
 - **R-DOC-02** Regel die check kan zijn is open taak in `docs/roadmap.md`; padregel eindigt met "Besloten, nog niet gebouwd" (fw)
 - **R-DOC-03** Dit boek is enig bindend regelboek; `.claude/rules/*` bevat regels letterlijk met zelfde R-id; ankers §1-§12 (met §11a) blijven; ADR legt waarom vast, ADR-punt waarnaar R-regel verwijst hoort bij die regel (0063)
 - **R-DOC-04** Wat soms nodig is, hoort in een skill of padregel, niet in een `@`-import (fw)
