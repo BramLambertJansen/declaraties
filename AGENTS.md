@@ -57,15 +57,13 @@ Botst een regel met de opdracht: stop en vraag, omzeil of verzwak niets (R-WERK-
 
 - Commando's voor de gebruiker, bij setup en later: genummerde stappen (terminal, werkmap, verwachte uitkomst, bekende waarden ingevuld), achtereen in één kopieerbaar blok; splits alleen bij interactie, controle of een andere terminal; niet in lopende tekst, geen prompttekens (R-WERK-21).
 - Ontbreekt een beslissing: vraag, geen aanname (R-WERK-20). Vraag meteen via de vraagprompt (concreet, korte opties, gebundeld, niet verstopt in uitleg of voortgangstekst); zonder vraagtool: meld dat kort en stel de vraag apart; geen bevestiging voor toegestaan werk (R-WERK-21).
-- In Claude Code: lees en zoek met de Read-, Grep- en Glob-tools, niet met Bash; het rolhek weigert veel shellvormen (R-WERK-21).
 - Gedrag, API, configuratie of conventies gewijzigd: doc mee in dezelfde PR, kort met `bestand:regel` (R-WERK-15).
 - Nieuwe feature/pagina/interactie, migratie, route of permissie: architect en spec, na spec-review bouwen in dezelfde PR; passende spec hergebruiken; kritiek werk eerst besluit-PR (R-WERK-07, R-WERK-05).
 - Route licht of volledig, nooit zelfreview: framework §8 (R-WERK-03, R-WERK-04). Volg `docs/dod.md` fasebewust; lever alleen op met geslaagde uitslag van bestaande checks (of eigenaarakkoord), meld wat nog niet bestaat (R-WERK-22).
 - UI-tekst Nederlands; code, commits, branches Engels (R-CODE-10). Roadmap-item, rail of ADR alleen met aanleiding (framework §1), anders vraag de eigenaar (R-PRINC-08).
-- Begin met taakrelevante feiten (`node scripts/kit/feiten.mjs gates specs fase`; `componenten` alleen bij UI) (R-WERK-01).
+- Begin met taakrelevante feiten (`node scripts/kit/feiten.mjs gates specs fase`; `componenten` alleen bij UI); het regelboek per geraakt hoofdstuk: `feiten.mjs hoofdstuk <n>` (R-WERK-01, R-DOC-05).
 - Runtime-specifieke instructies gelden alleen voor die runtime: hooks in `.claude/` werken alleen in Claude Code, elders zijn CI, diff-guard en GitHub de grens. Claim nooit een instelling die je niet kunt lezen (R-WERK-23).
 
 ## Waar een regel woont
 
-Type of `defineRoute` → lintregel of check → gouden pad/template → `.claude/rules/` → dit bestand.
-Een regel in proza die een check kan zijn, is een open taak in `docs/roadmap.md` (R-DOC-02).
+Type of `defineRoute` → lintregel of check → gouden pad/template → `.claude/rules/` → dit bestand; proza die een check kan zijn, is een roadmap-taak (R-DOC-02).

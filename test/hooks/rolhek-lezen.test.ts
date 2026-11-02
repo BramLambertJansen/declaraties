@@ -66,7 +66,7 @@ describe('rolhek-lezen/AC-1: de leeslijst van de reviewer', () => {
     'pnpm leespad --json',
     'pnpm leespad --ref origin/main',
     'pnpm leespad --json --ref origin/main',
-    // pnpm meting: vlaggen --json --pr-tabel --help, met waarde --branch --sessie
+    // pnpm meting: vlaggen --json --pr-tabel --trend --help, met waarde --branch --sessie
     'pnpm meting',
     'pnpm meting --json',
     'pnpm meting --pr-tabel',
@@ -287,6 +287,8 @@ describe('rolhek-lezen/AC-3: weigermelding en ongewijzigde leescommando’s', ()
     'gh pr diff 1',
     'gh pr checks 1',
     'node scripts/kit/feiten.mjs gates specs fase',
+    // leesbudget/AC-9: reviewer.md schrijft `feiten.mjs hoofdstuk` voor, ADR 0064 punt 2.
+    'node scripts/kit/feiten.mjs hoofdstuk 9',
   ])('blijft toegestaan voor de reviewer: %s', (command) => {
     expect(verdict(command, REVIEWER)).toBe('allow');
   });
