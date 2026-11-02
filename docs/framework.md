@@ -12,7 +12,7 @@ Elke norm is één regel `R-<domein>-<nr>` met herkomst (ADR-nummer of bron).
 - **R-PRINC-04** Rail-fix begint met test die op oude code faalt; elke check heeft falende fixtures, ook voor omzeilingen (0045)
 - **R-PRINC-05** Provider-neutraal: geen hostingprovider of database-as-a-service in template; alleen via adapter (0039)
 - **R-PRINC-06** Eén ronde per besluit (R-WERK-05, R-WERK-07, R-WERK-08); prompts alleen voor wat vóór review werkt (0046, 0062)
-- **R-PRINC-07** Meet vóór en na elke werkstraatwijziging (`pnpm meting`; per besluit telt `gh pr list --state merged` PR's en doorlooptijd); nulmeting is `pnpm new:resource demo --dry-run` plus droge walk-through van het gouden pad; regel blijft alleen als hij aantoonbaar helpt (0046)
+- **R-PRINC-07** Meet vóór en na elke werkstraatwijziging met `pnpm meting --pr-tabel` en `pnpm leespad` (nulmeting `pnpm leespad --ref <sha>`); een regel blijft alleen als hij aantoonbaar helpt (0046, 0064)
 - **R-PRINC-08** Geen roadmap-item, rail of ADR zonder aanleiding (app-behoefte, doorgeglipte fout, gemeten wrijving); anders vraag eigenaar (0046)
 - **R-PRINC-09** Zwak nooit check, test, hook, RLS-regel of type af; zou fix dat doen: stop en vraag; strengere check is geen ADR (0046)
 - **R-PRINC-10** Tokenwinst alleen met cijfers; controles, negatieve securitygevallen, onafhankelijke review nemen niet af (0057)
@@ -211,7 +211,7 @@ Stappen: spec, contract, tests, developer, reviewer (R-WERK-07 t/m 11); 6. **Opl
 
 Afgedwongen door: `check-docs` (budgetten als ratchet in `.kit/baseline.json`).
 
-- **R-DOC-01** Budgetten staan in `check-docs`; zonder check: `CLAUDE.md` ≤ 50, `.claude/rules/*.md` ≤ 60, skill ≤ 200 regels, `docs/operations/*` 1–2 pagina's; bestaande overschrijdingen in baseline die alleen omlaag mag (0063)
+- **R-DOC-01** Budgetten staan in `check-docs`; zonder check: `CLAUDE.md` ≤ 50, `.claude/rules/*.md` ≤ 60, skill ≤ 200 regels; bestaande overschrijdingen in baseline die alleen omlaag mag (0063)
 - **R-DOC-02** Regel die check kan zijn is open taak in `docs/roadmap.md`; padregel eindigt met "Besloten, nog niet gebouwd" (fw)
 - **R-DOC-03** Dit boek is enig bindend regelboek; `.claude/rules/*` bevat regels letterlijk met zelfde R-id; ankers §1-§12 (met §11a) blijven; ADR legt waarom vast, ADR-punt waarnaar R-regel verwijst hoort bij die regel (0063)
 - **R-DOC-04** Wat soms nodig is, hoort in een skill of padregel, niet in een `@`-import (fw)
