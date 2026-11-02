@@ -38,7 +38,7 @@ n.v.t. — geen UI. De weigermelding noemt de regel en de toegestane opties.
   - `gh issue list`: met waarde `--label --state --limit --json --jq`;
   - `gh run view <id>`: vlaggen `--log --log-failed`, met waarde `--json --jq --job`;
   - `gh run list`: met waarde `--branch --workflow --limit --json --jq`;
-  - `pnpm leespad`: vlag `--json`, met waarde `--ref`; `pnpm meting`: vlaggen `--json --pr-tabel --help`, met waarde `--branch --sessie`.
+  - `pnpm leespad`: vlag `--json`, met waarde `--ref`; `pnpm meting`: vlaggen `--json --pr-tabel --trend --help` (`--trend` sinds ADR 0065, spec leesbudget AC-7), met waarde `--branch --sessie`.
 
   `gh ... --web`, `-R`/`--repo` en `gh api` blijven geweigerd. Zoeken en tellen doet de Grep-tool; `git grep`, `git blame`, `wc` en pipes komen er niet bij. Tabeltests bevatten `--comments --web` en `--log --web`.
 - **rolhek-lezen/AC-2** — Voor elke rol wordt geweigerd: `--output`, `--output=…` en elke afkorting ervan bij `git diff|log|show`, en `-O`, `-O<commando>`, `--open-files-in-pager` en elke afkorting of cluster ervan (`--open-files`, `-iO`, `-nOvim`) bij `git grep` (nieuwe weigering; ze stonden niet in de schrijfdoelen). Daarmee is leerpunt #409 gesloten.
