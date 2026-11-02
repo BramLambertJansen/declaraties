@@ -21,7 +21,7 @@ import { staleBranchStart } from './verse-main.mjs';
  *   onbekendeRol?: boolean, onderhoud?: boolean, files?: (rel: string) => string[] }} Ctx
  * `files`: bestanden (getrackt en niet-genegeerd) onder een map, repo-relatief; `''` is de hele repo.
  * `onderhoud`: de onderhoudsmodus is actief (vertrouwde configuratie en origin is die repository, ADR 0045 punt 8–9).
- * `onbekendeRol`: een subagent zonder bekende rol; telt als developer, maar zonder de melding buiten voorReview.
+ * `onbekendeRol`: een subagent zonder bekende rol; telt als reviewer (alleen lezen).
  * `committed`: staat in de merge-base met het anker of met origin/main; 'zonder-origin' = beide onleesbaar en wel in HEAD (terugval).
  * @typedef {{ deny: string[], ask: string[], context: string[], allow?: boolean }} Decision
  * @typedef {{ kind: 'write' | 'delete', after: string | null }} Change
@@ -87,7 +87,7 @@ export function decide(payload, ctx) {
   const tool = field(payload, 'tool_name');
   const input = objectField(payload, 'tool_input');
   const role = roleOf(field(payload, 'agent_type'));
-  // Een onbekende subagent houdt de bestaande developerbeperkingen en leest geen statusbesluit uit main.
+  // Een onbekende subagent leest geen statusbesluit uit main.
   const namedRole = field(payload, 'agent_type');
   const context = ['', 'developer', 'architect'].includes(namedRole)
     ? ctx
@@ -118,12 +118,13 @@ function runnerIsTrusted(ctx) {
 }
 
 /**
- * Hoofdsessie zonder agent_type; een onbekende subagent telt als developer (strengste schrijfrol buiten de reviewer).
+ * Hoofdsessie zonder agent_type; een onbekende subagent krijgt de strengste rol, de reviewer (R-ROL-02): alleen lezen.
+ * Schrijfwerk gaat via een benoemde rol uit .claude/agents.
  * @param {string} agentType
  */
 export function roleOf(agentType) {
   if (agentType === '') return 'hoofdsessie';
-  return SUBAGENT_ROLES.has(agentType) ? agentType : 'developer';
+  return SUBAGENT_ROLES.has(agentType) ? agentType : 'reviewer';
 }
 
 /**

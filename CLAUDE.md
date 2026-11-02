@@ -26,5 +26,5 @@ Ook wanneer je een bestaande test mag wijzigen: framework §8.
 - Externe diensten via hun CLI (`gh`); MCP alleen read-only. Geen `docker`.
 
 Subagents (`.claude/agents/`), skills en hooks staan er (R-WERK-17, R-ROL-01): gebruik voor vereiste rollen de bijbehorende
-agents, of een ad-hoc subagent met dezelfde schone, afgebakende context. Wanneer die als onafhankelijk telt en wanneer
+agents, of een ad-hoc subagent met dezelfde schone, afgebakende context (die mag alleen lezen, R-ROL-02). Wanneer die als onafhankelijk telt en wanneer
 de eigenaar reviewt, staat in framework §8 (eisen aan de rollen); je reviewt nooit je eigen werk.
