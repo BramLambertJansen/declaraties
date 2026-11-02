@@ -375,6 +375,7 @@ function verifyTestwijzigingen(changes, context) {
     const risk = testChangeRisk(
       gitText(context.root, ['show', `${context.split}:${pad}`]) ?? '',
       gitText(context.root, ['show', `${context.sha}:${pad}`]) ?? '',
+      pad,
     );
     if (risk !== null)
       throw new Error(

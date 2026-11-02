@@ -19,7 +19,7 @@ export function verifyFunctionalUiChanges(snapshot, changes) {
     if (!isUiTest(pad)) continue;
     const before = gitText(snapshot.root, ['show', `${split}:${pad}`]) ?? '';
     const after = gitText(snapshot.root, ['show', `${snapshot.sha}:${pad}`]) ?? '';
-    const risk = testChangeRisk(before, after);
+    const risk = testChangeRisk(before, after, pad);
     if (risk !== null)
       throw new Error(
         `${pad}: ${risk === 'skip' ? 'tests skippen' : 'testgevallen weghalen'} vraagt afzonderlijk eigenaarakkoord`,

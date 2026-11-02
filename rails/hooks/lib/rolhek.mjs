@@ -344,7 +344,7 @@ const LOCKED_HELPERS = ['test/rails/fixtures/**', 'test/setup/**'];
  */
 function existingTest({ rel, change, role }, ctx, decision) {
   const before = ctx.read(rel) ?? '';
-  const risk = change.after === null ? null : testChangeRisk(before, change.after);
+  const risk = change.after === null ? null : testChangeRisk(before, change.after, rel);
   const helper = !TEST_FILES.some((glob) => globMatch(glob, rel));
   // Vóór de indeling als testbestand: ook een fixture die `*.test.*` heet, blijft vergrendeld (WS-02 follow-up).
   if (LOCKED_HELPERS.some((glob) => globMatch(glob, rel))) {

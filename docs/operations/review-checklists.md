@@ -18,7 +18,7 @@ De reviewer bepaalt de klasse(n) van de diff en loopt alleen die lijsten af. Elk
 ## Tests
 
 - Een negatieve test bewijst alleen iets als de basis eerst waar is; draai hem tegen de oude code (#401).
-- `skipIf`, `runIf` en voorwaardelijke suites vallen buiten `testChangeRisk` (#410): zie ze als skip.
+- `testChangeRisk` telt via een lexer (`rails/hooks/lib/testteller.mjs`, #424): `skipIf`, `runIf`, `only` en `fails` tellen als skip; een `if` rond een test of een `test.extend`-alias valt erbuiten (#410): zie die als skip.
 - Tests ruimen hun tmp-mappen op (#396); geen absolute milliseconden, wel een verhouding of ruime marge.
 
 ## Tekstchecks

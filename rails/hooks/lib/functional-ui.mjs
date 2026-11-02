@@ -1,5 +1,6 @@
 // ADR 0056: één begrensde UI-uitzondering. Een marker beschrijft de bedoeling; de paden en eigenaarreview bepalen de scope.
 import { canonicalPath, TEMPLATE_REPOSITORY } from './task-authority.mjs';
+import { telTests } from './testteller.mjs';
 
 /** @typedef {{ status: string, pad: string, van?: string }} UiChange */
 
@@ -52,13 +53,23 @@ export function functionalUiReason({ changes, repository, spec }) {
   return paths.some(({ pad }) => isUiSource(pad) && !isUiTest(pad)) ? null : 'functionele UI vraagt een bijbehorende bronwijziging';
 }
 
-// Dezelfde bestaande heuristiek als het rolhek; inhoudelijke testkwaliteit blijft onderdeel van eigenaarreview.
-const SKIP = /\.(?:skip|todo|fixme)\s*\(|\b(?:xit|xtest|xdescribe)\s*\(|\bskip\s*\(/g;
-const CASES = /\b(?:test|it)(?:\.each\b[^(]*\([^)]*\))?\s*\(/g;
+// Testgevallen en skips tellen (leerpunt #424): scriptbestanden via de lexer in `testteller.mjs`, zodat commentaar,
+// strings en haakjes in een test.each-tabel nooit meetellen. Inhoudelijke testkwaliteit blijft eigenaarreview.
+const SCRIPT = /\.(?:[cm]?[jt]s|[jt]sx)$/;
+/** Pgtap en andere niet-scriptbestanden: ongewijzigd de bestaande heuristiek (lane.mjs houdt ze toch dicht). */
+const SQL_SKIP = /\.(?:skip|todo|fixme)\s*\(|\b(?:xit|xtest|xdescribe)\s*\(|\bskip\s*\(/g;
+const SQL_CASES = /\b(?:test|it)(?:\.each\b[^(]*\([^)]*\))?\s*\(/g;
 
-/** @param {string} before @param {string} after */
-export function testChangeRisk(before, after) {
-  const count = (/** @type {string} */ text, /** @type {RegExp} */ pattern) => (text.match(pattern) ?? []).length;
-  if (count(after, SKIP) > count(before, SKIP)) return 'skip';
-  return count(after, CASES) < count(before, CASES) ? 'removed' : null;
+/** @param {string} text @param {string} file @returns {{ cases: number, skips: number }} */
+function count(text, file) {
+  if (SCRIPT.test(file)) return telTests(text, file);
+  return { cases: (text.match(SQL_CASES) ?? []).length, skips: (text.match(SQL_SKIP) ?? []).length };
+}
+
+/** @param {string} before @param {string} after @param {string} file repo-pad; de extensie kiest de teller */
+export function testChangeRisk(before, after, file) {
+  const voor = count(before, file);
+  const na = count(after, file);
+  if (na.skips > voor.skips) return 'skip';
+  return na.cases < voor.cases ? 'removed' : null;
 }
