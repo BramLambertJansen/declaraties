@@ -12,16 +12,20 @@
 //     of de namespace (sleutel `docs:ac:<spec>:<AC-n>`).
 //  7. Spec-discipline: geen lijstitem met `⚠ open` in "Open vragen" bij goedgekeurd of gebouwd (`:open-vraag`); elk pad in
 //     "Kopieer de vorm van" bestaat bij voorstel of goedgekeurd (`:vorm`).
-//  8. `framework §N` buiten §1–§12 en §11a (niet in docs/adr/); 9. backtick-paden in het regelboek; 10. R-id's in
-//     .claude/rules/* en het regelboek; 11. budgetten (framework §9), sleutels `docs:<bestand>:budget:<bytes>`,
-//     `docs:adr:NNNN:budget:<bytes>` (op nummer, ook in archief/) en `docs:AGENTS.md:regels:<n>`, zodat de ratchet groei
-//     en krimp allebei ziet.
-import { Buffer } from 'node:buffer';
+//  8. `framework §N` buiten §1–§12, §11a en de `## <n>.`-koppen van het regelboek (niet in docs/adr/); 9. backtick-paden in
+//     het regelboek; 10. R-id's in .claude/rules/* en het regelboek; 11. harde grenzen alleen op `AGENTS.md` (9 KB, 100
+//     regels) en `CLAUDE.md` (50 regels), sleutels `docs:AGENTS.md:budget:<bytes>` en `docs:<bestand>:regels:<n>`, zodat
+//     de ratchet groei en krimp ziet (ADR 0065, scripts/kit/leesbudget.mjs). Hoofdstuk, regelboek, spec en ADR zijn een
+//     meting in `pnpm leespad`, nooit een overtreding. `docsMeldingen` geeft "let op" vanaf 85 % van een grens;
+//     `docsKrimp` de krimpcheck (AC-6), die de ratchet buiten de baseline houdt.
 import { execFileSync, spawnSync } from 'node:child_process';
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { onderhoudVan } from '../../rails/hooks/lib/rolhek.mjs';
 import { adrNumber, duplicateAdrNumbers, invalidAdrNames } from './adr-numbers.mjs';
+import { grensMeldingen, grensViolations, krimpUitGit } from './leesbudget.mjs';
+
+export { krimpViolations } from './leesbudget.mjs';
 
 /** @typedef {{ key: string, message: string }} Violation */
 
@@ -54,8 +58,31 @@ export async function docsViolations(root = '.') {
     ...paragraafViolations(files, read),
     ...(files.includes(REGELBOEK) ? regelboekPadViolations(root, read(REGELBOEK), files) : []),
     ...rIdViolations(files, read),
-    ...budgetViolations(files, read),
+    ...grensViolations((file) => (files.includes(file) ? read(file) : null)),
   ]);
+}
+
+/**
+ * Meldingen vanaf 85 % van een harde grens (leesbudget/AC-2); nooit een overtreding.
+ * @param {string} root
+ * @returns {Promise<string[]>}
+ */
+export async function docsMeldingen(root = '.') {
+  const files = trackedFiles(root);
+  return Promise.resolve(
+    grensMeldingen((file) => (files.includes(file) ? readFileSync(path.join(root, file), 'utf8') : null)),
+  );
+}
+
+/**
+ * Krimp van bindende documenten tegenover `git merge-base origin/main HEAD` (leesbudget/AC-6); nooit in de baseline.
+ * @param {string} root
+ * @returns {Promise<Violation[]>}
+ */
+export async function docsKrimp(root = '.') {
+  const boek = path.join(root, REGELBOEK);
+  const rIds = existsSync(boek) ? [...readFileSync(boek, 'utf8').matchAll(R_ID)].map(([id]) => id) : [];
+  return Promise.resolve(krimpUitGit(root, rIds));
 }
 
 const REGELBOEK = 'docs/framework.md';
@@ -70,12 +97,17 @@ function regelVan(text, index) {
 }
 
 /**
- * Regel 8: `framework §N` of `framework.md §N` wijst naar een bestaande paragraaf (§1–§12 en §11a). ADR's (ook het archief)
- * vallen erbuiten: ze wijzigen niet, hun ankers blijven.
+ * Regel 8: `framework §N` of `framework.md §N` wijst naar een bestaande paragraaf: de ankers §1–§12 en §11a, of een
+ * `## <n>.`-kop van het regelboek (§13, §8a; ADR 0065 punt 3). ADR's (ook het archief) vallen erbuiten: ze wijzigen
+ * niet, hun ankers blijven.
  * @param {readonly string[]} files @param {(file: string) => string} read @returns {Violation[]}
  */
 function paragraafViolations(files, read) {
-  const geldig = (/** @type {string} */ n) => n === '11a' || (/^\d+$/.test(n) && Number(n) >= 1 && Number(n) <= 12);
+  const koppen = new Set(
+    files.includes(REGELBOEK) ? [...read(REGELBOEK).matchAll(/^## (\d+[a-z]?)\./gm)].map(([, n = '']) => n) : [],
+  );
+  const anker = (/** @type {string} */ n) => n === '11a' || (/^\d+$/.test(n) && Number(n) >= 1 && Number(n) <= 12);
+  const geldig = (/** @type {string} */ n) => anker(n) || koppen.has(n);
   return files
     .filter((file) => file.endsWith('.md') && !file.startsWith(ADR_MAP))
     .flatMap((file) => {
@@ -83,7 +115,7 @@ function paragraafViolations(files, read) {
       const fout = [...text.matchAll(/\bframework(?:\.md)?`?\s?§(\d+[a-z]?)/g)].filter(([, n = '']) => !geldig(n));
       return fout.map((match) => ({
         key: `docs:${file}:paragraaf:§${match[1] ?? ''}`,
-        message: `${file}:${String(regelVan(text, match.index))}: framework §${match[1] ?? ''} bestaat niet; het regelboek kent §1–§12 en §11a (framework §9)`,
+        message: `${file}:${String(regelVan(text, match.index))}: framework §${match[1] ?? ''} bestaat niet; het regelboek kent §1–§12, §11a en zijn eigen \`## <n>.\`-koppen (framework §9)`,
       }));
     });
 }
@@ -190,47 +222,6 @@ function rIdViolations(files, read) {
       message: `${REGELBOEK}: ${id} staat er meer dan één keer`,
     })),
   ];
-}
-
-const KB = 1024;
-
-/**
- * Regel 11 (framework §9): budgetten in bytes, als ratchet. De sleutel draagt de waarde, zodat groei, krimp en een te ruime
- * baseline elk een nieuwe of opgeloste sleutel geven.
- * @param {readonly string[]} files @param {(file: string) => string} read @returns {Violation[]}
- */
-function budgetViolations(files, read) {
-  // Een ADR krijgt een sleutel op nummer (ook in het archief): een byte-gelijke verhuizing houdt dezelfde sleutel.
-  const budgetten = files.flatMap((file) => {
-    if (file === 'AGENTS.md') return [{ file, sleutel: file, budget: 9 * KB }];
-    if (file === REGELBOEK) return [{ file, sleutel: file, budget: 40 * KB }];
-    if (/^docs\/specs\/[^_/][^/]*\.md$/.test(file)) return [{ file, sleutel: file, budget: 10 * KB }];
-    const nummer = /^docs\/adr\/(?:archief\/)?(\d{4})-[^/]+\.md$/.exec(file)?.[1];
-    return nummer === undefined ? [] : [{ file, sleutel: `adr:${nummer}`, budget: 6 * KB }];
-  });
-  const bytes = budgetten.flatMap(({ file, sleutel, budget }) => {
-    const grootte = Buffer.byteLength(read(file));
-    return grootte <= budget
-      ? []
-      : [
-          {
-            key: `docs:${sleutel}:budget:${String(grootte)}`,
-            message: `${file}: ${String(grootte)} bytes, budget ${String(budget)} (framework §9)`,
-          },
-        ];
-  });
-  if (!files.includes('AGENTS.md')) return bytes;
-  const tekst = read('AGENTS.md');
-  const regels = tekst.split('\n').length - (tekst.endsWith('\n') ? 1 : 0);
-  return regels <= 100
-    ? bytes
-    : [
-        ...bytes,
-        {
-          key: `docs:AGENTS.md:regels:${String(regels)}`,
-          message: `AGENTS.md: ${String(regels)} regels, budget 100 (framework §9)`,
-        },
-      ];
 }
 
 /**

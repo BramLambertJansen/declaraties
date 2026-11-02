@@ -1,10 +1,11 @@
 // Ratchet (framework §4, ADR 0045): bestaande overtredingen staan in .kit/baseline.json. Een nieuwe overtreding faalt;
 // een opgeloste die nog in de baseline staat ook, tot `pnpm ratchet:update` hem weghaalt. Zo daalt schuld alleen.
 // De baseline laten groeien is een gate-wijziging (.kit/ is beschermd). ESLint heeft een eigen ratchet:
-// eslint-suppressions.json met `pnpm lint:prune`.
+// eslint-suppressions.json met `pnpm lint:prune`. Twee kanalen naast de baseline (ADR 0065): `meldingen` ("let op",
+// stdout, nooit een andere exitcode) en `strikt` (altijd rood, komt nooit in de baseline, ook niet met --update).
 import { readFileSync, writeFileSync } from 'node:fs';
 import { format, resolveConfig } from 'prettier';
-import { docsViolations } from './check-docs.mjs';
+import { docsKrimp, docsMeldingen, docsViolations } from './check-docs.mjs';
 import { dependencyViolations } from './depcruise.mjs';
 
 const BASELINE = '.kit/baseline.json';
@@ -15,6 +16,16 @@ const BASELINE = '.kit/baseline.json';
 const checks = {
   'dependency-cruiser': () => dependencyViolations(process.cwd()),
   'check-docs': () => docsViolations(process.cwd()),
+};
+
+/** Overtredingen die nooit in de baseline komen (leesbudget/AC-6). @type {Record<string, () => Promise<Violation[]>>} */
+const strikt = {
+  'check-docs (krimp)': () => docsKrimp(process.cwd()),
+};
+
+/** Meldingen zonder overtreding (leesbudget/AC-2). @type {Record<string, () => Promise<string[]>>} */
+const meldingen = {
+  'check-docs': () => docsMeldingen(process.cwd()),
 };
 
 /**
@@ -56,9 +67,27 @@ async function update() {
   console.info(`${BASELINE} bijgewerkt. Groeit hij, dan is dit een gate-wijziging (akkoord eigenaar).`);
 }
 
+/** Drukt de meldingen af op stdout; de exitcode blijft. */
+async function meld() {
+  for (const [name, run] of Object.entries(meldingen))
+    for (const melding of await run()) console.info(`${name}: ${melding}`);
+}
+
+/** Strikte overtredingen; true als er één is. */
+async function striktRood() {
+  let rood = false;
+  for (const [name, run] of Object.entries(strikt))
+    for (const violation of await run()) {
+      console.error(`✗ ${name}: ${violation.key}\n  ${violation.message}\n  Komt nooit in ${BASELINE}.`);
+      rood = true;
+    }
+  return rood;
+}
+
 async function check() {
   const baseline = readBaseline();
-  let failed = false;
+  await meld();
+  let failed = await striktRood();
   for (const [name, run] of Object.entries(checks)) {
     const { nieuw, opgelost } = compare(baseline[name] ?? [], await run());
     for (const violation of nieuw) console.error(`✗ ${name}: ${violation.key}\n  ${violation.message}`);
