@@ -56,7 +56,8 @@ Geen accountbeheerpad uit `docs/gouden-pad.md` past (werkstraat, geen UI).
 - **compacte-kennisbasis-rails/AC-8** — Rood: een R-id in `.claude/rules/*` die niet letterlijk in het regelboek staat, en een
   dubbele R-id in het regelboek. Zonder R-id's groen.
 - **compacte-kennisbasis-rails/AC-9** — Rood (1 KB = 1024 B; baseline met de huidige overschrijdingen): `AGENTS.md` > 100 regels of 9 KB,
-  een hoofdstuk van `framework.md` > 12 KB (leesbudget/AC-1, ADR 0064), nieuwe spec > 10 KB, nieuw ADR > 6 KB, groei van of te ruime waarde in de baseline.
+  `CLAUDE.md` > 50 regels, groei van of te ruime waarde in de baseline. Hoofdstuk, regelboek, spec en ADR zijn een meting
+  (leesbudget/AC-1 en AC-3, ADR 0065).
 - **compacte-kennisbasis-rails/AC-10** — `heeftAdr` en `mandate-follow-up-docs.test.ts` (terugvalpad, reden in de PR;
   eigenaarbesluit 2026-10-30) vinden een ADR ook in `archief/`.
 
