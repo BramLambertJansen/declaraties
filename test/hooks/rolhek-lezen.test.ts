@@ -287,7 +287,7 @@ describe('rolhek-lezen/AC-3: weigermelding en ongewijzigde leescommando’s', ()
     'gh pr diff 1',
     'gh pr checks 1',
     'node scripts/kit/feiten.mjs gates specs fase',
-    // leesbudget/AC-9: reviewer.md schrijft `feiten.mjs hoofdstuk` voor (ADR 0064 punt 2).
+    // leesbudget/AC-9: reviewer.md schrijft `feiten.mjs hoofdstuk` voor, ADR 0064 punt 2.
     'node scripts/kit/feiten.mjs hoofdstuk 9',
   ])('blijft toegestaan voor de reviewer: %s', (command) => {
     expect(verdict(command, REVIEWER)).toBe('allow');
