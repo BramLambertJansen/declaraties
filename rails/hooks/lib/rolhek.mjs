@@ -813,10 +813,7 @@ function forbidden({ assignments, argv, expanded }, { role, ctx }, decision) {
   if ([...assignments, ...(program === 'export' ? args : [])].some((word) => /^CI=/.test(word)))
     decision.deny.push('De agent zet CI niet lokaal; dit kan de hostcontrole van de runner omzeilen');
   if (program === 'git') decision.deny.push(...gitForbidden(args, { role, branch: ctx.branch }));
-  if (program === 'git' && role === 'hoofdsessie') {
-    const { subcommand, rest } = gitSubcommand(args);
-    if (subcommand === 'config' && !configReadsOnly(rest)) decision.ask.push(CONFIG_WRITE);
-  }
+  if (program === 'git' && role === 'hoofdsessie') decision.ask.push(...gitPersistsProgram(args));
   // Voor elk programma (ook pnpm test:db of bash scripts/runner.sh), en ook `export NAAM` of `declare -x NAAM=…`.
   const gitEnv = [...assignments, ...(ENV_EXPORTERS.has(program) ? args : [])].find((word) => GIT_ENV.test(word));
   if (gitEnv !== undefined)
@@ -1121,7 +1118,7 @@ export function gitForbidden(args, { role, branch }) {
     found.push(`subagent: git ${subcommand} doet de hoofdsessie`);
   if (subcommand === 'reset' && rest.includes('--hard')) found.push('subagent: git reset --hard is verboden');
   if (subcommand.startsWith('credential')) found.push('subagent: git credential geeft tokens vrij; verboden');
-  if (subcommand === 'config' && !configReadsOnly(rest)) found.push(CONFIG_WRITE);
+  found.push(...gitPersistsProgram(args));
   return found;
 }
 
@@ -1254,7 +1251,7 @@ const TRUSTED_CONFIG = /^(?:remote\.origin\.|url\.|include\.|includeif\.)/i;
 const TRUSTED_NAME = /^(?:refs\/(?:heads|tags)\/)?origin\/(?:main|HEAD)$/;
 const TRUSTED_DESTINATION = /:\+?(?:refs\/remotes\/)?origin\/(?:main|HEAD|\*)$/;
 // Omgevingsvariabelen die git een andere config, repository of werkmap geven (`GIT_CONFIG_COUNT`, `GIT_DIR`, ...).
-const GIT_ENV = /^GIT_(?:CONFIG\w*|DIR|WORK_TREE)(?:=|$)/;
+const GIT_ENV = /^GIT_(?:CONFIG\w*|DIR|WORK_TREE|TEMPLATE_DIR)(?:=|$)/;
 const ENV_EXPORTERS = new Set(['export', 'declare', 'typeset', 'readonly', 'local']);
 const READ_ONLY_CONFIG = ['--get', '--get-all', '--get-regexp', '--list', '-l', '--show-origin'];
 const BRANCH_READ_FLAGS = /^(?:--set-upstream-to|-u|--contains|--no-contains|--merged|--no-merged|--points-at|--list|-l)(?:=|$)/;
@@ -1297,28 +1294,52 @@ function movesTrustedBase(subcommand, rest) {
 // de git-aanroepen van de hooks, die buiten de sandbox draaien.
 const CONFIG_READ_ACTIONS = new Set(['--get', '--get-all', '--get-regexp', '--get-urlmatch', '--get-color', '--get-colorbool', '--list', '-l']);
 const CONFIG_READ_SUBCOMMANDS = new Set(['get', 'list']);
-const CONFIG_READ_FLAGS = new Set(['--show-origin', '--show-scope', '--null', '-z', '--name-only', '--bool', '--int', '--bool-or-int', '--path', '--expiry-date', '--no-type', '--global', '--system', '--local', '--worktree', '--includes', '--no-includes', '--fixed-value', '--all', '--regexp']);
-const CONFIG_READ_VALUE_FLAGS = new Set(['--type', '--default', '--file', '-f', '--blob', '--url']);
+const CONFIG_READ_FLAGS = new Set(['--show-origin', '--show-scope', '--null', '-z', '--name-only', '--bool', '--int', '--bool-or-int', '--bool-or-str', '--path', '--expiry-date', '--no-type', '--global', '--system', '--local', '--worktree', '--includes', '--no-includes', '--fixed-value', '--all', '--regexp']);
+const CONFIG_READ_VALUE_FLAGS = new Set(['--type', '-t', '--default', '--file', '-f', '--blob', '--url']);
 
 const CONFIG_WRITE =
   'git config schrijft de git-configuratie; een sleutel als core.fsmonitor start later een programma buiten de sandbox. Subagent: alleen lezen (--get, --list, get, list); hoofdsessie: de eigenaar beslist (ADR 0045)';
+
+/**
+ * Git-aanroepen die blijvend een programma in de repository kunnen zetten dat de hooks later buiten de sandbox starten:
+ * `git config` dat schrijft, een alias via `-c` (het rolhek ziet dan niet welk subcommando draait) en `git init` met een
+ * template (zet hooks in .git/hooks). Subagent: weigeren; hoofdsessie: vragen.
+ * @param {readonly string[]} args
+ * @returns {string[]}
+ */
+export function gitPersistsProgram(args) {
+  const { subcommand, rest, config } = gitSubcommand(args);
+  /** @type {string[]} */
+  const found = [];
+  if (subcommand === 'config' && !configReadsOnly(rest)) found.push(CONFIG_WRITE);
+  if (config.some((setting) => /^alias\./i.test(setting)))
+    found.push('git -c alias.…: het rolhek ziet niet welk subcommando de alias start; roep het subcommando zelf aan');
+  const template = rest.some((arg) => /^--template(?:=|$)/.test(arg)) || config.some((setting) => /^init\.templatedir/i.test(setting));
+  if (subcommand === 'init' && template) found.push('git init met een template zet hooks in .git/hooks; verboden zonder de eigenaar');
+  return found;
+}
 
 /**
  * Of `git config <rest>` alleen leest; onbekende opties en vormen tellen als schrijven (fail closed).
  * @param {readonly string[]} rest
  */
 export function configReadsOnly(rest) {
-  /** @type {string[]} */
-  const operands = [];
   let action = false;
-  for (let index = 0; index < rest.length; index += 1) {
+  let index = 0;
+  // Git leest opties alleen vóór de eerste operand; alles erna is operand (`git config k v -l` zet k).
+  for (; index < rest.length; index += 1) {
     const arg = rest[index] ?? '';
     const name = arg.split('=')[0] ?? '';
+    if (arg === '--') {
+      index += 1;
+      break;
+    }
+    if (!arg.startsWith('-')) break;
     if (CONFIG_READ_ACTIONS.has(arg)) action = true;
     else if (CONFIG_READ_VALUE_FLAGS.has(name)) index += arg.includes('=') ? 0 : 1;
-    else if (arg.startsWith('-') && !CONFIG_READ_FLAGS.has(arg)) return false;
-    else if (!arg.startsWith('-')) operands.push(arg);
+    else if (!CONFIG_READ_FLAGS.has(arg)) return false;
   }
+  const operands = rest.slice(index);
   if (action) return true;
   const [first = ''] = operands;
   if (CONFIG_READ_SUBCOMMANDS.has(first)) return true;

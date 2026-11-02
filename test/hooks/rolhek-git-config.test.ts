@@ -28,7 +28,6 @@ const SCHRIJVEN = [
   'git config --add core.fsmonitor x',
   'git config --replace-all core.fsmonitor x',
   'git config --unset core.fsmonitor',
-  'git config --get core.fsmonitor --unset',
   'git config --local core.fsmonitor x',
   'git config -f x.cfg core.fsmonitor x',
   'git config --file=x.cfg core.fsmonitor x',
@@ -38,6 +37,16 @@ const SCHRIJVEN = [
   'git config edit',
   'git -C . config core.fsmonitor x',
   'git config --onbekend core.fsmonitor',
+  // Opties na de sleutel zijn voor git een value-pattern: dit zet de sleutel.
+  "git config core.fsmonitor 'touch x' --get",
+  "git config core.fsmonitor 'touch x' -l",
+  "git config --file .git/config core.fsmonitor 'touch x' --get",
+  // Een alias via -c verbergt het subcommando; init met een template zet hooks in .git/hooks.
+  "git -c alias.cf=config cf core.fsmonitor 'touch x'",
+  'git -c alias.st=status st',
+  'git init --template=/tmp/t',
+  'git init --template /tmp/t',
+  'git -c init.templateDir=/tmp/t init',
 ];
 
 const LEZEN = [
@@ -53,9 +62,14 @@ const LEZEN = [
   'git config --type=bool core.bare',
   'git config --type bool --get core.bare',
   'git config -f .gitmodules --list',
+  'git config -t bool core.bare',
+  'git config --bool-or-str core.bare',
+  'git config -- core.bare',
+  // Na de sleutel is --unset voor git een value-pattern: dit leest (nagespeeld met git 2.43).
+  'git config --get core.fsmonitor --unset',
 ];
 
-describe('git config: schrijven', () => {
+describe('git: blijvend programma (config, alias, init-template)', () => {
   test.each(SCHRIJVEN)('subagent geweigerd: %s', (command) => {
     expect(SUBAGENTS.map((rol) => verdict(command, rol))).toStrictEqual(SUBAGENTS.map(() => 'deny'));
   });
@@ -66,6 +80,17 @@ describe('git config: schrijven', () => {
 });
 
 describe('git config: lezen', () => {
+  test('GIT_TEMPLATE_DIR is voor elke rol verboden', () => {
+    const rollen = [undefined, ...SUBAGENTS];
+    expect(rollen.map((rol) => verdict('GIT_TEMPLATE_DIR=/tmp/t git init', rol))).toStrictEqual(
+      rollen.map(() => 'deny'),
+    );
+  });
+
+  test.each(['git init', 'git init /tmp/claude-0/nieuw'])('git init zonder template blijft mogen: %s', (command) => {
+    expect([verdict(command), verdict(command, 'developer')]).toStrictEqual(['allow', 'allow']);
+  });
+
   test.each(LEZEN)('telt als lezen: %s', (command) => {
     const rest = command
       .replace(/^git config ?/, '')
