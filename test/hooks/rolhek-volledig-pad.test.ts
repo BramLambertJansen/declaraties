@@ -68,11 +68,19 @@ describe('V-13: een volledig pad naar het programma ontloopt de weigering niet',
     expect(verdict(command)).toBe('deny');
   });
 
+  test.each([{ name: '/usr/bin/node new-resource', command: '/usr/bin/node scripts/kit/new-resource.mjs notes' }])(
+    'developer: $name → deny (alleen de hoofdsessie)',
+    ({ command }) => {
+      expect(verdict(command, 'developer')).toBe('deny');
+    },
+  );
+
+  // AC-17: de labelhelper is weg; de hoofdsessie labelt niet meer, ook niet met een volledig pad naar gh
   test.each([
-    { name: '/usr/bin/pnpm pr:label-gate', command: '/usr/bin/pnpm pr:label-gate 1' },
-    { name: '/usr/bin/node new-resource', command: '/usr/bin/node scripts/kit/new-resource.mjs notes' },
-  ])('developer: $name → deny (alleen de hoofdsessie)', ({ command }) => {
-    expect(verdict(command, 'developer')).toBe('deny');
+    { name: '/usr/bin/gh pr edit --add-label', command: '/usr/bin/gh pr edit 1 --add-label bug' },
+    { name: '/usr/bin/gh pr create --label', command: '/usr/bin/gh pr create --title t --body b --label bug' },
+  ])('compacte-kennisbasis-rails/AC-17 hoofdsessie: $name → deny', ({ command }) => {
+    expect(verdict(command)).toBe('deny');
   });
 
   test.each(['gh pr view 1', 'env git status'])('reviewer: %s (zonder pad) blijft toegestaan', (command) => {

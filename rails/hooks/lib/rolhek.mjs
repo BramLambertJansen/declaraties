@@ -777,10 +777,6 @@ function forbidden({ assignments, argv, expanded }, { role, ctx }, decision) {
   }
   if (role !== 'hoofdsessie' && isNewResource(program, args))
     decision.deny.push('pnpm new:resource: alleen de hoofdsessie (ADR 0047 punt 6); wat hij schrijft, ziet het rolhek niet');
-  if (role !== 'hoofdsessie' &&
-    ((program === 'pnpm' && args.includes('pr:label-gate')) ||
-      (program === 'node' && args.some((arg) => /(?:^|\/)scripts\/kit\/pr-gate-label\.mjs$/.test(arg)))))
-    decision.deny.push('Het administratieve gate-label zet alleen de hoofdsessie via pr:label-gate');
 }
 
 // Shell-sleutelwoorden die geen programma zijn; `{` en `[` staan daarom niet onder de glob-regel.
@@ -1124,7 +1120,7 @@ function clusterFlags(cluster) {
   return { hooks: false, takesNext: false };
 }
 
-// De hooks lezen besluiten, autoRunner en gateMarker uit de lokale ref origin/main (ADR 0046). Een eigen commit of een andere
+// De hooks lezen besluiten en autoRunner uit de lokale ref origin/main (ADR 0046). Een eigen commit of een andere
 // remote onder die naam zou bevoegdheid geven die nooit is toegekend; de CI-guard leest main bij GitHub en blijft de grens.
 const TRUSTED_CONFIG = /^(?:remote\.origin\.|url\.|include\.|includeif\.)/i;
 const TRUSTED_NAME = /^(?:refs\/(?:heads|tags)\/)?origin\/(?:main|HEAD)$/;
@@ -1371,7 +1367,7 @@ function withoutRepo(args) {
 }
 
 /**
- * Voor elke rol, ook de hoofdsessie: zelfreview, het gate-label, mergen (WS-04), aliassen en onleesbare API-invoer.
+ * Voor elke rol, ook de hoofdsessie: zelfreview, PR-labels, mergen (WS-04), aliassen en onleesbare API-invoer.
  * @param {readonly string[]} rawArgs
  * @param {readonly string[]} [expanded] woorden met shell-expansie (`Command.expanded` uit shell.mjs)
  * @returns {string[]}
@@ -1385,13 +1381,29 @@ export function ghForbidden(rawArgs, expanded = []) {
   if (group !== '' && !GH_GROUPS.has(group)) found.push(`gh ${group}: onbekende opdracht (mogelijk een alias), voor elke rol geweigerd`);
   if (group === 'alias' && (action === 'set' || action === 'import')) found.push('gh alias set/import: een alias omzeilt het rolhek');
   if (group === 'pr' && action === 'review') found.push('gh pr review: de agent keurt nooit zelf goed (AGENTS.md)');
-  if (args.some((arg, index) => arg.includes('gate-wijziging') && /label/.test(`${args[index - 1] ?? ''}${arg}`)))
-    found.push('het label gate-wijziging zet alleen de eigenaar (AGENTS.md)');
+  if (zetLabel(args)) found.push('een PR-label zet alleen de eigenaar, voor elke rol (R-ROL-08)');
   if (api !== null) found.push(...apiUnreadable(api, expanded));
   if (api !== null && apiWritesSelfReview(api)) found.push('gh api: labels, reviews en statussen zet alleen de eigenaar');
   if ((group === 'pr' && action === 'merge') || (api !== null && apiMerges(api)))
     found.push('mergen (ook auto-merge) doet alleen de eigenaar, voor elke rol (WS-04)');
   return found;
+}
+
+// `-l`, ook in een cluster (`-dl`, `-lbug`), en `--label`, `--add-label`, `--remove-label` (pflag kent geen afkortingen).
+const PR_LABEL = /^(?:-[a-zA-Z]*l|--(?:label|add-label|remove-label)(?:=|$))/;
+// `gh issue edit` labelt ook een PR (zelfde nummers); `gh issue create --label leerpunt` valt eronder niet (ADR 0059).
+const ISSUE_LABEL = /^--(?:add-label|remove-label)(?:=|$)/;
+
+/**
+ * Zet of haalt het commando een label op een PR: `gh pr create|new|edit` of `gh issue edit` met een label-optie, waar die
+ * ook staat (ook vóór de actie, `gh pr -l x create`). De actie komt uit `ghCommandWords`, zoals cobra hem vindt; een
+ * optiewaarde die als woord meetelt (`-dl x`), maakt de toets alleen strenger.
+ * @param {readonly string[]} args
+ */
+function zetLabel(args) {
+  const [group = '', ...rest] = ghCommandWords(args);
+  if (group === 'pr' && rest.some((word) => ['create', 'new', 'edit'].includes(word))) return args.some((arg) => PR_LABEL.test(arg));
+  return group === 'issue' && rest.includes('edit') && args.some((arg) => ISSUE_LABEL.test(arg));
 }
 
 const MERGE_API = /\/(?:auto-)?merges?\/?(?:[?#]|$)/;

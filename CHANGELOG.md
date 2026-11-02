@@ -242,6 +242,11 @@ Hier staan wijzigingen die van belang zijn bij het gebruiken of bijwerken van de
 
 ### Gewijzigd
 
+- Het gate-label `gate-wijziging` vervalt (ADR 0063 punt 6, spec `docs/specs/compacte-kennisbasis-rails.md` AC-16/17):
+  de diff-guard vraagt alleen een goedkeuring van een niet-auteur op de head-SHA (of geeft `overgang`), `pnpm pr:label-gate`
+  en `scripts/kit/pr-gate-label.mjs` zijn weg, guard draait niet meer bij `labeled`/`unlabeled` (na een goedkeuring: Re-run),
+  en het rolhek weigert voor elke rol elk label op `gh pr create`/`new`/`edit` en `gh issue edit`, ook met de optie vóór de actie (R-ROL-08). Leesfilters als
+  `gh pr list --label x` en de leerpuntvorm van `gh issue create` blijven.
 - Nieuw werk begint vanaf een verse main: het rolhek weigert voor elke rol een nieuwe branch (`git switch -c`,
   `checkout -b`, `git branch <naam>`, `worktree add -b`) tenzij het commando de vorm
   `git fetch origin main && git switch -c <naam> origin/main` heeft (`rails/hooks/lib/verse-main.mjs`,
@@ -421,6 +426,8 @@ loginhistorie: de lijst toont "Onbekend" tot de volgende volledig geslaagde logi
 
 De template heeft nog geen releaseversies. Controleer bij een update de gewijzigde migraties, architectuurbesluiten en instellingen. Een volledige upgradecontrole staat op de roadmap.
 
+- **Gate-label weg.** `gateMarker` in `.claude/gates.json` en de labelregel in `.claude/settings.json` worden niet meer
+  gelezen; de eigenaar haalt ze weg. Zet geen `gate-wijziging`-label meer; de diff-guard kijkt er niet naar.
 - **Compose-testservices zonder runner falen dicht.** De invoermounts in `compose.yaml` zijn lange bind-mounts met `create_host_path: false`; zonder `scripts/runner.sh` wijst de bron naar het niet-bestaande `./.runner-output/geen-invoer-start-via-runner` in plaats van de oude `./.runner-output/empty-input`. Wat verandert voor een app: een testservice (bv. `test-pgtap`) direct starten faalt op de ontbrekende invoermap; gebruik `pnpm test:db`, `pnpm ui:check` of `pnpm db:generate`. De dev-stack (`pnpm dev`, postgres en mailpit) werkt ongewijzigd. `test-pgtap` faalt nu bij een lege `db/tests`. De runner vergelijkt met `main` bij de remote: draai vóór een lokale run `git fetch origin main` als de remote verder is. Alleen een `insteadOf` of extra `remote.origin.url` die de origin-url zelf omlegt, laat de runner lokaal stoppen. Wat de eigenaar moet doen: niets. Conflicten: alleen als de app `compose.yaml` of `scripts/runner.sh` zelf aanpaste.
 - **Sandbox: `*secret*`-weigering per map, `.env.example` leesbaar.** `.claude/settings.json`: `Read(./**/*secret*)` wordt `Read(./*secret*)` plus één regel per getrackte map (`Read(./src/**/*secret*)` enz.), zodat de sandbox bestanden in `node_modules` (better-auth `secret-utils.mjs`, jose `generate_secret.js`) niet meer maskeert; daardoor faalden typed lint, één unit-test en de pre-push-hook alleen in de sandbox. `sandbox.filesystem.allowRead` heropent alleen `./.env.example` (git faalde erop). `test/rails/sandbox-settings.test.ts` faalt als een getrackte map niet gedekt is. Wat verandert voor een app: niets aan de bescherming van getrackte bestanden; een nieuwe map in de repo vraagt een eigen regel (de test meldt het). Wat de eigenaar moet doen: na de merge een nieuwe sessie starten. Conflicten: alleen als de app `permissions.deny` of `sandbox` in `.claude/settings.json` zelf aanpaste.
 - **SessionStart haalt `origin/main` op en meldt een achterstand.** `.claude/hooks/lib/werkstraat.mjs` (`mainLag`): `git fetch origin +refs/heads/main:refs/remotes/origin/main` met een harde timeout van 5 s en `GIT_TERMINAL_PROMPT=0` (het SSH-commando van de gebruiker blijft ongemoeid); daarna meldt de hook hoeveel commits de branch achterloopt. Een mislukte fetch wordt gemeld en blokkeert niets; zonder bekende `origin/main` blijft de melding weg. Wat verandert voor een app: elke sessiestart doet één korte netwerkaanroep naar `origin`. Wat de eigenaar moet doen: niets. Conflicten: alleen als de app `.claude/hooks/` zelf aanpaste.

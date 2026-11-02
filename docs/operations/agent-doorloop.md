@@ -234,7 +234,7 @@ en `pr review … --approve` (ook `-a` vooraan een cluster: `-ab`, `-aF`) en een
 `-u NAAM`/`-C MAP`/`--unset`/`--chdir` en met escapes als `-S'\_gh'`; dicht falen, dus ook `-uS`), een git-alias met `!` (`-c alias.x=!…`,
 `git config alias.x '!…'`) of via `--config-env`, en xargs of find `-exec` met `gh`, `git`, een shell, `eval` of een omhulsel als `env`, `command`, `nice` of `timeout`
 als commandowoord (ook zonder zichtbare `gh` erna; bewust vals positief: `xargs nice prettier` en
-`git ls-files -z | xargs -0 git add`). Label, `@file`/`--input` en `gh alias` weigert `ghForbidden` alleen waar
+`git ls-files -z | xargs -0 git add`). PR-labels, `@file`/`--input` en `gh alias` weigert `ghForbidden` alleen waar
 `splitCommand` (`rails/hooks/lib/shell.mjs:198`) `gh` als commandowoord ziet; achter een omhulsel met opties
 (`env -i gh …`, `nice -n 1 gh …`, `timeout 9 gh …`, `stdbuf`, `setsid`) geldt dat voor de hoofdsessie niet.
 Lege woorden vóór of tussen groep en actie (`gh "" api …`, `gh '' pr review 1`) slaat het rolhek over zoals gh/cobra
@@ -357,15 +357,8 @@ herkomst vóór committen of herstellen. Alleen de bestaande uitzonderingen uit 
 gelden. Na een afgebroken branchwissel volg je "Branchwissels in een sandbox" hierboven (leerpunt #338); voeg geen
 onbekende paden aan de uitzonderingen toe om de weigering op te heffen (leerpunt #329).
 
-De hoofdsessie kan een documentatie-PR markeren:
-
-```sh
-pnpm pr:label-gate 123
-```
-
-Dit is administratie. `gateMarker: docs` op main beperkt het tot documentatie; `all` kan uitsluitend na een nieuw
-eigenaarbesluit worden ingesteld. De helper zet geen review of check-status. Directe labelschrijfacties blijven
-verboden. Diff-guard behoudt label én eigenaarreview op de uiteindelijke head-SHA, met de overgang uit ADR 0045 punt 17.
+Een agent zet geen PR-label (R-ROL-08). Diff-guard vraagt alleen een eigenaarreview op de uiteindelijke head-SHA, met de
+overgang uit ADR 0045 punt 17; een label telt niet (R-CI-07).
 
 **Standaard: `gebouwd` in dezelfde PR** (ADR 0062). Bevat de PR de implementatie van de spec, dan zet de agent de
 statusregel daar zelf op `status: gebouwd # #<n>`, met n het nummer van deze PR (open de PR dus eerst; daarna een commit
@@ -412,7 +405,7 @@ Zonder `gh`-authenticatie kan `docs:status … --pr` het bouwbewijs niet ophalen
 ## Invoering en runtime
 
 Zonder record op main geeft het register geen taakmandaat. De invoering is gebeurd (#130, #144): de guard staat op main en
-helpers en taakrechten worden vanuit main actief; werkbranchconfig activeert geen automatische runner of ruimere labelscope.
+helpers en taakrechten worden vanuit main actief; werkbranchconfig activeert geen automatische runner.
 Een wijziging aan die guard zelf vraagt, zolang hij nog niet op main staat, eigenaarreview vóór merge.
 
 Claude Code gebruikt de geteste hooks. Codex en andere runtimes draaien ze niet automatisch: volg dezelfde procedure
@@ -440,7 +433,7 @@ Is de auteur van een PR zelf goedkeurder, dan geeft `diff-guard` de uitslag `ove
 
 1. Lees de samenvatting van `diff-guard` (de geraakte gate-paden, bewaakte sleutels, gewijzigde tests en het Risico-overzicht: nieuwe, gewijzigde of hernoemde migraties, permissiesleutels, elke tekstwijziging in een contractbestand onder `src/shared/contracts/**` (elk bestandstype, ook alleen commentaar of witruimte; `permission:` oud → nieuw waar eenduidig, anders "controleer permissie met de hand"; buiten het overzicht vallen verwijderde bestanden, hernoeming uit `contracts/` (een hernoeming naar `contracts/` telt als nieuw), `*.spec.*`-bestanden en permissiewaarden uit een bestand buiten `src/shared/contracts/**`), nieuwe dependencies en nieuwe routes (op method en path of contract)) en de uitslag van
    `document-status` (een eigen job in `.github/workflows/guard.yml`, ADR 0045 punt 20; een fout staat als `::error title=document-status::`).
-2. Een label `gate-wijziging` of een review is niet nodig; een review is ook niet mogelijk, want GitHub laat de auteur zijn
+2. Een review is niet nodig; een review is ook niet mogelijk, want GitHub laat de auteur zijn
    eigen PR niet goedkeuren. De eigenaar merget zelf.
 3. Is `document-status` rood, merge dan niet: laat de oorzaak herstellen.
 

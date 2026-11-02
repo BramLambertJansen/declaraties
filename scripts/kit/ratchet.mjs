@@ -53,9 +53,7 @@ async function update() {
   // Via Prettier: anders keurt format:check de baseline af zodra hij een lange lijst bevat.
   const options = (await resolveConfig(BASELINE)) ?? {};
   writeFileSync(BASELINE, await format(JSON.stringify(baseline), { ...options, filepath: BASELINE }));
-  console.info(
-    `${BASELINE} bijgewerkt. Groeit hij, dan is dit een gate-wijziging (label gate-wijziging + akkoord eigenaar).`,
-  );
+  console.info(`${BASELINE} bijgewerkt. Groeit hij, dan is dit een gate-wijziging (akkoord eigenaar).`);
 }
 
 async function check() {

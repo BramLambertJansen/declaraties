@@ -97,7 +97,8 @@ describe('oordeel', () => {
       reden: /geen gate-pad/,
     },
     { naam: 'label en goedkeuring op de head', p: pr([core], goedgekeurd), uitslag: 'groen', reden: null },
-    { naam: 'zonder label en review', p: pr([core]), uitslag: 'rood', reden: /label gate-wijziging ontbreekt/ },
+    // AC-16: label telt niet meer
+    { naam: 'zonder label en review', p: pr([core]), uitslag: 'rood', reden: /geen goedkeuring/ },
     {
       naam: 'label zonder review',
       p: pr([core], { labels: ['gate-wijziging'] }),
@@ -105,10 +106,11 @@ describe('oordeel', () => {
       reden: /geen goedkeuring/,
     },
     {
+      // AC-16: label telt niet meer
       naam: 'review zonder label',
       p: pr([core], { reviews: [review('APPROVED', 1)] }),
-      uitslag: 'rood',
-      reden: /label gate-wijziging ontbreekt/,
+      uitslag: 'groen',
+      reden: null,
     },
     {
       naam: 'goedkeuring op een oude SHA',
@@ -175,8 +177,8 @@ describe('oordeel', () => {
   });
 
   test('de samenvatting bij overgang bevat de uitleg uit ADR 0045 punt 17; bij groen en rood niet', () => {
-    const zin =
-      'Overgang (ADR 0045 punt 17): de auteur is zelf goedkeurder. Label `gate-wijziging` en review worden in deze fase niet gevraagd en niet gecontroleerd. Lees de geraakte paden hieronder; de eigenaar merget zelf.';
+    // AC-16: label telt niet meer
+    const zin = 'Overgang (ADR 0045 punt 17): de auteur is zelf goedkeurder.';
     const overgang = beoordeel(pr([core], { auteur: EIGENAAR }), config);
     const groen = beoordeel(pr([{ status: 'M', pad: 'README.md' }]), config);
     const rood = beoordeel(pr([core]), config);
@@ -185,6 +187,54 @@ describe('oordeel', () => {
     expect(samenvatting(overgang)).toContain(zin);
     expect(samenvatting(groen)).not.toContain(zin);
     expect(samenvatting(rood)).not.toContain(zin);
+  });
+
+  test('compacte-kennisbasis-rails/AC-16 de overgangsuitleg noemt geen label', () => {
+    const tekst = samenvatting(beoordeel(pr([core], { auteur: EIGENAAR }), config));
+
+    expect(tekst).toContain('Overgang (ADR 0045 punt 17)');
+    expect(tekst).not.toMatch(/label|gate-wijziging/i);
+  });
+});
+
+describe('compacte-kennisbasis-rails/AC-16: de uitslag hangt niet van een label af', () => {
+  const labelsets = [[], ['gate-wijziging'], ['bug'], ['gate-wijziging', 'bug']].map((labels) => ({ labels }));
+
+  test.each(labelsets)(
+    'compacte-kennisbasis-rails/AC-16 niet-auteur APPROVED op de head met $labels: groen',
+    ({ labels }) => {
+      const oordeel = beoordeel(pr([core], { labels, reviews: [review('APPROVED', 1)] }), config);
+
+      expect(oordeel.uitslag).toBe('groen');
+      expect(oordeel.redenen).toStrictEqual([]);
+    },
+  );
+
+  test.each(labelsets)(
+    'compacte-kennisbasis-rails/AC-16 zonder goedkeuring met $labels: rood zonder labelreden',
+    ({ labels }) => {
+      const oordeel = beoordeel(pr([core], { labels }), config);
+
+      expect(oordeel.uitslag).toBe('rood');
+      expect(oordeel.redenen.join('\n')).toMatch(/geen goedkeuring/);
+      expect(oordeel.redenen.join('\n')).not.toMatch(/label/i);
+    },
+  );
+
+  test.each(labelsets)(
+    'compacte-kennisbasis-rails/AC-16 auteur is goedkeurder met $labels: overgang zonder labelreden',
+    ({ labels }) => {
+      const oordeel = beoordeel(pr([core], { labels, auteur: EIGENAAR }), config);
+
+      expect(oordeel.uitslag).toBe('overgang');
+      expect(oordeel.redenen.join('\n')).not.toMatch(/label/i);
+    },
+  );
+
+  test('compacte-kennisbasis-rails/AC-16 een oude of ontbrekende goedkeuring blijft rood, label of niet', () => {
+    const oud = pr([core], { labels: ['gate-wijziging'], reviews: [review('APPROVED', 1, { commitId: OUD })] });
+
+    expect(beoordeel(oud, config).uitslag).toBe('rood');
   });
 });
 
