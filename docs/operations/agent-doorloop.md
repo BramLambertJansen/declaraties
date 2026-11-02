@@ -89,6 +89,9 @@ De diff-guard beoordeelt ook verwijderen en weg-hernoemen; CODEOWNERS volgt deze
 ADR-nummers worden samen gecontroleerd voor de actieve map en het archief. Verwijderde nummers blijven gereserveerd via
 de Git-geschiedenis van de vertrouwde basis. Heeft main een nummer inmiddels gebruikt, werk de branch dan eerst bij.
 Alleen het bestaande paar 0039-bestanden blijft een ratchet-afwijking; nieuwe dubbelen worden geweigerd.
+Een link naar `docs/adr/NNNN-*.md` vanuit een ADR of een spec lost ook op naar `docs/adr/archief/`, voor elke spec (reden: specs met
+een eigenaarstatus wijzigen niet; een `voorstel`-spec werk je bij de verhuizing zelf bij); vanuit andere documenten gaat de link mee naar het nieuwe pad
+(`linkDoelen` in `scripts/kit/check-docs.mjs`, ADR 0053 punt 4).
 Een vervangingsverwijzing eindigt bij een bestaand ADR, zonder zelfverwijzing of cyclus. De besluit-lane accepteert
 geen `.claude/decisions.json` (ADR 0063).
 

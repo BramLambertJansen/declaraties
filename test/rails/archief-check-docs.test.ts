@@ -103,13 +103,15 @@ describe('compacte-kennisbasis-rails/AC-4: links lossen op naar archief/', () =>
     expect(nieuw).toStrictEqual([]);
   });
 
-  // Eigenaarbesluit (ADR 0053): links buiten docs/adr/ blijven streng, geen terugval; ze gaan in dezelfde PR naar het nieuwe pad.
-  test('compacte-kennisbasis-rails/AC-4 een link buiten docs/adr/ naar docs/adr/NNNN-*.md dat in archief/ staat: rood', async () => {
+  // gewijzigd: spec-uitzondering (PR archief-links-specs)
+  // ADR 0053 punt 4, met de spec-uitzondering uit deze PR: links buiten docs/adr/ en docs/specs/ blijven streng, geen terugval; ze gaan in dezelfde PR naar het nieuwe pad.
+  // Specs met een eigenaarstatus mogen niet wijzigen, dus hun ADR-links lossen ook op naar archief/.
+  test('compacte-kennisbasis-rails/AC-4 een link buiten docs/adr/ en docs/specs/ naar docs/adr/NNNN-*.md dat in archief/ staat: rood', async () => {
     const nieuw = await toegevoegd(
       { 'docs/adr/archief/0060-doel.md': DOEL },
-      { 'docs/specs/demo.md': `${spec}\nZie [0060](../adr/0060-doel.md).\n` },
+      { 'docs/operations/demo.md': '# Demo\n\nZie [0060](../adr/0060-doel.md).\n' },
     );
-    expect(nieuw.some(({ message }) => message.includes('docs/specs/demo.md'))).toBe(true);
+    expect(nieuw.some(({ message }) => message.includes('docs/operations/demo.md'))).toBe(true);
   });
 
   test('compacte-kennisbasis-rails/AC-4 een link buiten docs/adr/ rechtstreeks naar het archiefpad: groen', async () => {
