@@ -2,6 +2,8 @@
 
 Status: geaccepteerd
 
+Herzien: 2026-11-02 (#418): punt 1 en 3 volgen [0065](0065-grenzen-als-meting.md)
+
 Herziet [0063](0063-compacte-kennisbasis-en-lichtere-werkstraat.md) punt 3 en 7. Uitwerking: specs
 [leesbudget](../specs/leesbudget.md) en [rolhek-lezen](../specs/rolhek-lezen.md).
 

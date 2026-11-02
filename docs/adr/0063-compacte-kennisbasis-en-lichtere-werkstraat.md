@@ -3,6 +3,7 @@
 Status: geaccepteerd
 
 Herzien: 2026-11-02 (#416): punt 3 en 7 volgen [0064](0064-leesbudget-per-laag.md)
+Herzien: 2026-11-02 (#418): punt 3 volgt [0065](0065-grenzen-als-meting.md)
 
 Herziet in dezelfde PR [0045](0045-railwerk.md), [0046](0046-werkstraat-en-beslisroute.md),
 [0052](0052-accountstatus-en-laatste-login.md), [0053](0053-adr-archief.md), [0056](0056-functionele-ui-in-een-pr.md),
