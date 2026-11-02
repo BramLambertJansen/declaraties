@@ -72,6 +72,11 @@ export function bashSleutel(command) {
   return SUBCOMMANDO.has(eerste) && /^[a-z][a-z0-9:_-]*$/.test(tweede) ? `${eerste} ${tweede}` : eerste;
 }
 
+/** Subagent: alleen het type (vaste kleine letters), nooit prompt of beschrijving. @param {unknown} type */
+function agentSleutel(type) {
+  return typeof type === 'string' && /^[a-z][a-z0-9-]{0,63}$/.test(type) ? `agent ${type}` : 'agent';
+}
+
 /** Pad relatief aan de repo-root (zonder repo: aan cwd); daarbuiten `buiten-repo`. @param {unknown} pad @param {string} cwd */
 function padSleutel(pad, cwd) {
   if (typeof pad !== 'string' || pad === '') return '';
@@ -84,6 +89,7 @@ function padSleutel(pad, cwd) {
 export function sleutel(tool, input, cwd) {
   if (tool.startsWith('mcp__')) return tool;
   if (tool === 'Bash') return bashSleutel(text(input['command']) ?? '');
+  if (tool === 'Agent' || tool === 'Task') return agentSleutel(input['subagent_type']);
   const veld = PAD_VELD.get(tool);
   return veld === undefined ? '' : padSleutel(input[veld], cwd);
 }
