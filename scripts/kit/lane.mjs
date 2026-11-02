@@ -30,7 +30,6 @@ const KRITIEK = [
     'status-git',
     'github-evidence',
     'diff-guard',
-    'pr-gate-label',
     'pr-verify',
     'check-roadmap',
     'roadmap-item',

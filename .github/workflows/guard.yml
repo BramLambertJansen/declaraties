@@ -3,12 +3,12 @@
 # Jobs `diff-guard` en `document-status` (ADR 0045 punt 20) en `check-core` (ADR 0040), elk met een eigen naam in de checklijst.
 # `diff-guard` is nog geen verplichte check (ADR 0045 punt 17): dat wordt hij bij de overstap op de GitHub App;
 # `check-core` en `document-status` wel (`scripts/github-ruleset.sh`, ADR 0062). Na een goedkeuring draait hij
-# opnieuw bij het zetten van het label (OV-3), of via Re-run.
+# opnieuw via Re-run.
 name: guard
 
 on:
   pull_request_target:
-    types: [opened, reopened, synchronize, labeled, unlabeled, ready_for_review]
+    types: [opened, reopened, synchronize, ready_for_review]
 
 permissions:
   contents: read

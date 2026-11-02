@@ -1,6 +1,6 @@
 // Diff-guard (framework §10, ADR 0045 punt 15–19): raakt een PR een gate-pad, een bewaakte sleutel in een JSON-bestand
-// (`package.json` → `scripts`) of een bestaande test, dan is hij alleen groen met het label `gate-wijziging` én als de laatste
-// beslissende review van een goedkeurder (niet de auteur) APPROVED is op exact de head-SHA. Is de auteur zelf goedkeurder, dan
+// (`package.json` → `scripts`) of een bestaande test, dan is hij alleen groen als de laatste beslissende review
+// van een goedkeurder (niet de auteur) APPROVED is op exact de head-SHA. Is de auteur zelf goedkeurder, dan
 // kan geen onafhankelijke goedkeuring bestaan: uitslag `overgang`, groen met waarschuwing (OV-2), tot de agent als App pusht.
 // Draait in .github/workflows/guard.yml vanuit main; de PR is alleen git-data (geen checkout, niets uitvoeren).
 // De samenvatting eindigt met een Risico-overzicht (nieuwe of gewijzigde migraties, permissiesleutels in
@@ -15,7 +15,6 @@ import { appendFileSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { globMatch } from '../../rails/hooks/lib/rolhek.mjs';
 
-const LABEL = 'gate-wijziging';
 // Een review die de stand bepaalt; COMMENTED en PENDING laten de vorige beslissing staan.
 const BESLISSEND = new Set(['APPROVED', 'CHANGES_REQUESTED', 'DISMISSED']);
 // Een bestaande test is gewijzigd bij deze statussen (OV-4); toevoegen (A) en kopiëren (C) zijn vrij.
@@ -25,7 +24,7 @@ const TEST_GEWIJZIGD = new Set(['M', 'D', 'R', 'T']);
  * @typedef {{ status: string, pad: string, van?: string }} Wijziging  status is de letter (R100 → R); `van` bij R en C
  * @typedef {{ gates: string[], testpaden: string[], jsonGates: Record<string, string[]>, goedkeurders: string[] }} GuardConfig
  * @typedef {{ user: string, state: string, commitId: string, submittedAt: string }} Review
- * @typedef {{ wijzigingen: Wijziging[], json: Record<string, { voor: string | null, na: string | null }>, labels: string[],
+ * @typedef {{ wijzigingen: Wijziging[], json: Record<string, { voor: string | null, na: string | null }>,
  *   reviews: Review[], auteur: string, headSha: string }} Pr
  * @typedef {{ gates: string[], tests: string[], json: string[] }} Geraakt
  * @typedef {{ migraties: string[], permissies: string[], dependencies: string[], routes: string[] }} Risico
@@ -173,7 +172,6 @@ function uitslagVan(pr, config) {
     };
   /** @type {string[]} */
   const redenen = [];
-  if (!pr.labels.includes(LABEL)) redenen.push(`het label ${LABEL} ontbreekt`);
   const beslissing = laatsteBeslissing(pr, goedkeurders);
   if (beslissing === undefined) redenen.push('geen goedkeuring van een goedkeurder die niet de auteur is');
   else if (beslissing.state !== 'APPROVED')
@@ -433,7 +431,7 @@ function risicoTekst(risico) {
 }
 
 const OVERGANG_UITLEG =
-  'Overgang (ADR 0045 punt 17): de auteur is zelf goedkeurder. Label `gate-wijziging` en review worden in deze fase niet gevraagd en niet gecontroleerd. Lees de geraakte paden hieronder; de eigenaar merget zelf.';
+  'Overgang (ADR 0045 punt 17): de auteur is zelf goedkeurder. Een review wordt in deze fase niet gevraagd en niet gecontroleerd. Lees de geraakte paden hieronder; de eigenaar merget zelf.';
 
 /** @param {Oordeel} oordeel */
 export function samenvatting(oordeel) {
@@ -555,14 +553,13 @@ async function leesPr(config) {
   );
   const pr = `https://api.github.com/repos/${env('REPO')}`;
   const nummer = env('PR_NUMBER');
-  const labels = (await api(`${pr}/issues/${nummer}/labels`)).map((label) => tekst(veld(label, 'name')));
   const reviews = (await api(`${pr}/pulls/${nummer}/reviews`)).map((review) => ({
     user: tekst(veld(veld(review, 'user'), 'login')),
     state: tekst(veld(review, 'state')),
     commitId: tekst(veld(review, 'commit_id')),
     submittedAt: tekst(veld(review, 'submitted_at')),
   }));
-  return { wijzigingen, json, labels, reviews, auteur: env('AUTHOR'), headSha: head };
+  return { wijzigingen, json, reviews, auteur: env('AUTHOR'), headSha: head };
 }
 
 async function main() {

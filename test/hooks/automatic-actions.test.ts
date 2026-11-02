@@ -39,16 +39,16 @@ test.each([
   expect(action(command, 'developer').deny).not.toHaveLength(0);
 });
 
-test.each(['developer', 'architect', 'tester', 'docs', 'reviewer', 'Explore'])(
-  'rol %s zet geen label via helper',
+// AC-17: de labelhelper bestaat niet meer; geen enkele rol zet een label, ook de hoofdsessie niet via gh
+test.each(['', 'developer', 'architect', 'tester', 'docs', 'reviewer', 'Explore'])(
+  'compacte-kennisbasis-rails/AC-17 rol %j zet geen label bij gh pr edit of gh pr create',
   (role) => {
-    expect(action('pnpm pr:label-gate 123', role).deny).not.toHaveLength(0);
-    expect(action('node scripts/kit/pr-gate-label.mjs 123', role).deny).not.toHaveLength(0);
+    expect(action('gh pr edit 123 --add-label bug', role).deny).not.toHaveLength(0);
+    expect(action('gh pr create --title t --body b --label bug', role).deny).not.toHaveLength(0);
   },
 );
 
-test('hoofdsessie gebruikt labelhelper; directe zelfgoedkeuring blijft verboden', () => {
-  expect(action('pnpm pr:label-gate 123').deny).toHaveLength(0);
+test('compacte-kennisbasis-rails/AC-17 hoofdsessie: het oude label en zelfgoedkeuring blijven verboden', () => {
   expect(action('gh pr edit 123 --add-label gate-wijziging').deny).not.toHaveLength(0);
   expect(action('gh pr review 123 --approve').deny).not.toHaveLength(0);
 });

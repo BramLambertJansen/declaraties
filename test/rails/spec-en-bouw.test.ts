@@ -157,7 +157,6 @@ const KRITIEK = [
   'scripts/kit/status-git.mjs',
   'scripts/kit/github-evidence.mjs',
   'scripts/kit/diff-guard.mjs',
-  'scripts/kit/pr-gate-label.mjs',
   'scripts/kit/pr-verify.mjs',
   'scripts/kit/check-roadmap.mjs',
   'scripts/kit/roadmap-item.mjs',

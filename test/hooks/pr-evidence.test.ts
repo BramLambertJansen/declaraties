@@ -1,9 +1,7 @@
 import { describe, expect, test } from 'vitest';
 import { checkProgress } from '../../scripts/kit/pr-verify.mjs';
-import { labelScope } from '../../scripts/kit/pr-gate-label.mjs';
 
 type CheckRun = Parameters<typeof checkProgress>[0][number];
-type Change = Parameters<typeof labelScope>[0][number];
 
 // Autoritatieve checkfeiten als invoer; deze pure tests halen geen GitHub-data op en wijzigen geen PR.
 const SHA = 'a'.repeat(40);
@@ -24,14 +22,6 @@ function check(overrides: Partial<CheckRun> = {}): CheckRun {
 
 function successfulChecks(): CheckRun[] {
   return [check(), check({ id: 101, name: 'gate:slow' })];
-}
-
-function change(pad: string, options: { status?: string; van?: string } = {}): Change {
-  return {
-    status: options.status ?? 'M',
-    pad,
-    ...(options.van === undefined ? {} : { van: options.van }),
-  };
 }
 
 describe('checkProgress: werkelijk bewijs voor de huidige PR-commit', () => {
@@ -157,101 +147,5 @@ describe('checkProgress: werkelijk bewijs voor de huidige PR-commit', () => {
     { names: REQUIRED.names, sha: 'g'.repeat(40) },
   ])('ongeldige verplichte checks of SHA leveren geen voortgangsbewijs', (required) => {
     expect(() => checkProgress(successfulChecks(), required)).toThrow();
-  });
-});
-
-describe('labelScope: administratief label alleen binnen de eigenaarsscope', () => {
-  test.each([
-    'docs/framework.md',
-    'docs/dod.md',
-    'docs/roadmap.md',
-    'docs/adr/0027-example.md',
-    'docs/specs/example.md',
-    'AGENTS.md',
-    'CLAUDE.md',
-    'README.md',
-    'CHANGELOG.md',
-  ])('docs-scope omvat %s', (file) => {
-    expect(labelScope([change(file)], 'docs')).toBe(true);
-  });
-
-  test('meerdere documentwijzigingen vallen samen onder docs-scope', () => {
-    const changes = [
-      change('docs/framework.md'),
-      change('docs/specs/example.md', { status: 'A' }),
-      change('AGENTS.md'),
-    ];
-
-    expect(labelScope(changes, 'docs')).toBe(true);
-  });
-
-  test.each([
-    'src/core/web/ui/example.tsx',
-    '.claude/gates.json',
-    '.claude/decisions.json',
-    '.github/workflows/guard.yml',
-    'scripts/kit/check-document-status.mjs',
-    'package.json',
-    'test/hooks/pr-evidence.test.ts',
-    'docs/reference.png',
-    'docs/reference.mdx',
-    'other-document.md',
-    'scripts/README.md',
-  ])('een gemengde PR met %s valt buiten docs-scope', (file) => {
-    const changes = [change('docs/framework.md'), change(file)];
-
-    expect(labelScope(changes, 'docs')).toBe(false);
-    expect(labelScope(changes, 'all')).toBe(true);
-  });
-
-  test('all-scope omvat een gatewijziging aan code, bewaking en documentatie samen', () => {
-    const changes = [change('src/core/shared/example.ts'), change('.claude/gates.json'), change('docs/framework.md')];
-
-    expect(labelScope(changes, 'all')).toBe(true);
-  });
-
-  test('een rename tussen twee documenten blijft binnen docs-scope', () => {
-    const renamed = change('docs/specs/new.md', { status: 'R100', van: 'docs/specs/old.md' });
-
-    expect(labelScope([renamed], 'docs')).toBe(true);
-  });
-
-  test.each([
-    { pad: 'docs/check.md', van: 'scripts/check.mjs' },
-    { pad: 'scripts/check.mjs', van: 'docs/check.md' },
-    { pad: 'docs/check.md', van: '.claude/gates.json' },
-    { pad: '.claude/gates.json', van: 'docs/check.md' },
-  ])('rename $van naar $pad controleert bron en bestemming', ({ pad, van }) => {
-    const renamed = change(pad, { status: 'R100', van });
-
-    expect(labelScope([renamed], 'docs')).toBe(false);
-    expect(labelScope([renamed], 'all')).toBe(true);
-  });
-
-  test('een gekopieerd document met een codebron is ook geen zuivere docs-wijziging', () => {
-    const copied = change('docs/reference.md', { status: 'C100', van: 'scripts/reference.mjs' });
-
-    expect(labelScope([copied], 'docs')).toBe(false);
-  });
-
-  test('verwijderde gatecode kan niet achter een toegevoegde spec worden verborgen', () => {
-    const changes = [
-      change('docs/specs/example.md', { status: 'A' }),
-      change('scripts/kit/check.mjs', { status: 'D' }),
-    ];
-
-    expect(labelScope(changes, 'docs')).toBe(false);
-    expect(labelScope(changes, 'all')).toBe(true);
-  });
-
-  test.each(['', 'DOCS', 'docs-only', 'all-gates', 'none', ' docs ', 'all '])(
-    'onbekende policy %j geeft geen labelmandaat',
-    (policy) => {
-      expect(labelScope([change('docs/framework.md')], policy)).toBe(false);
-    },
-  );
-
-  test.each(['docs', 'all'])('een lege diff krijgt ook bij policy %s geen labelmandaat', (policy) => {
-    expect(labelScope([], policy)).toBe(false);
   });
 });

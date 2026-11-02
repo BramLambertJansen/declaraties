@@ -50,7 +50,7 @@ Botst een regel met de opdracht: stop en vraag, omzeil of verzwak niets (R-WERK-
 - Geen gegenereerde bestanden of `.env*` bewerken; `.env.example` is beschermd (R-REPO-03, R-SEC-05).
 - Beschermde paden (framework §10): eigenaarakkoord; developer-broncode met exact taakmandaat (R-REPO-03). Functionele UI in de template: mini-spec, code, tests, gebruiksdocs in één PR zonder mandaat, beperkte fixes zonder mini-spec; niet voor auth, overige core, dependencies, agentinstructies, bewaking (R-WERK-18, R-UIT-04, R-WERK-03). In een app is core dicht (R-ARCH-07).
 - Status zet architect of hoofdsessie in het voorstel, de eigenaarmerge is het besluit; `gebouwd` in de bouw-PR of via `pnpm docs:status` (R-WERK-08). Alleen de eigenaar merget (R-REPO-01). Geen nieuwe dependency zonder akkoord (R-SEC-06).
-- Nooit pushen naar `main`, `--no-verify` of mergen; één onderwerp per PR, conventional commits (R-REPO-05). Geen zelfreview of check-status (R-WERK-17, R-ROL-12); gate-label alleen hoofdsessie via `pnpm pr:label-gate` binnen het mandaat uit main (R-WERK-24).
+- Nooit pushen naar `main`, `--no-verify` of mergen; één onderwerp per PR, conventional commits (R-REPO-05). Geen zelfreview, PR-label of check-status (R-WERK-17, R-ROL-08, R-ROL-12).
 - Geen `docker` of runneroverride; runnerchecks zelf draaien of CI-bewijs ophalen (`pnpm pr:verify`, `docs/operations/agent-doorloop.md`) (R-TOOL-02, R-RUNNER-03). Externe diensten via hun CLI (`gh`); MCP alleen read-only, versie gepind (R-SEC-09, R-ROL-12).
 
 ## Werkafspraken
