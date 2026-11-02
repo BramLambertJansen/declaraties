@@ -229,6 +229,11 @@ Open werk dat niet geparkeerd is, grofweg in volgorde. Wat nog een spec of eigen
   (`--add-label*gate-wijziging*`), de bewerkweigering op `decisions.json` en de verouderde allow voor `chore/mandate-adr-statusregel` weghalen,
   `gateMarker` uit `.claude/gates.json`, en de release-reset bij v1.0 (#384).
   aanleiding: #404 (laatste PR van het traject; plan en eigenaarbesluiten staan in #385, #394 en #400)
+- [ ] **Geclaimde checks die niet bestaan** (R-DOC-02). Het regelboek eist ze, maar geen check dwingt ze af: het verschil in aantal
+  `unsafeCast` op de PR (R-CODE-04; nu alleen een vinkje in `.github/pull_request_template.md`), en de lintregels op een route zonder
+  `can()`-guard, op store-libraries en op `.isLoading`/`.isError` in `features/` (R-WEB-01, R-WEB-04; het oude framework noemde ze als
+  afgedwongen, `eslint.config.js` heeft ze niet). Per check bouwen met falende fixtures, of de regel met eigenaarakkoord als proza laten staan.
+  aanleiding: verliescontrole van het regelboek na #385–#404 (eigenaarvraag 2026-11-02; herstel-PR van de normen)
 
 ## Geparkeerd
 
