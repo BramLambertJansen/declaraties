@@ -7,6 +7,8 @@ import { catalogusIndex } from './scripts/kit/catalogus-index.ts';
 const runnerCache = process.env['RUNNER_CACHE_DIR'];
 // Repo-variabelen van een git-hook weg vóór elke test (test/setup/git-env.ts).
 const gitEnv = './test/setup/git-env.ts';
+// Eén tijdelijke hoofdmap per testrun, na afloop weg (test/setup/tmp-root.ts, leerpunt #396).
+const tmpRoot = './test/setup/tmp-root.ts';
 
 export default defineConfig({
   plugins: [catalogusIndex(import.meta.dirname)],
@@ -14,6 +16,8 @@ export default defineConfig({
   test: {
     // Begrens de gezamenlijke unit-/DOM-belasting, ook op hosts met veel CPU's.
     maxWorkers: Math.min(4, availableParallelism()),
+    // Eén keer per run, voor alle projecten samen: test/setup/tmp-root.ts.
+    globalSetup: [tmpRoot],
     projects: [
       {
         test: {

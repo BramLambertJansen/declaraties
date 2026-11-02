@@ -1,13 +1,23 @@
 # Begrensde testparallelisatie
 
-`vitest.config.ts:16` begrenst het aantal workers voor de hele run op het kleinste van vier en de beschikbare
-CPU-paralleliteit. Unitbestanden draaien parallel (`vitest.config.ts:27`); Vitest behoudt zijn bestaande isolatie.
-De databasegroep `int` houdt `fileParallelism: false` (`vitest.config.ts:46`): die tests delen een database.
+`vitest.config.ts:18` begrenst het aantal workers voor de hele run op het kleinste van vier en de beschikbare
+CPU-paralleliteit. Unitbestanden draaien parallel (`vitest.config.ts:31`); Vitest behoudt zijn bestaande isolatie.
+De databasegroep `int` houdt `fileParallelism: false` (`vitest.config.ts:50`): die tests delen een database.
 Selectie, asserties, retries en timeouts zijn niet aangepast.
 
 De eerdere seriële unitgroep verwees in zijn commentaar naar database-isolatie, terwijl integratietests al in
 het aparte `int`-project staan en uit `unit` worden uitgesloten. Unitfixtures maken eigen tijdelijke mappen;
 de lintfixtures werken in het geheugen en de bundeltest schrijft geen bundel naar de projectmap.
+
+## Tijdelijke mappen per run
+
+Elke Vitest-run krijgt één eigen hoofdmap `vitest-run-*` onder de tmpdir van de aanroeper (`vitest.config.ts:20`,
+`test/setup/tmp-root.ts`). De globalSetup zet `TMPDIR` daarop vóór de workers starten, dus `mkdtempSync(path.join(tmpdir(), …))`
+in een test of kindproces landt daaronder. Na de run verwijdert de teardown alleen die hoofdmap, ook als tests falen of een test
+zijn eigen map niet opruimt; de rest van `/tmp` blijft onaangeroerd (leerpunt #396). Ruim in een test toch zelf op wanneer
+de map binnen de run groot wordt of vaak terugkomt: de hoofdmap groeit tot het einde van de run (in watch-modus tot het
+afsluiten). Wordt Vitest hard gestopt (SIGKILL), dan blijft die ene `vitest-run-*`-map staan. Op native Windows leest
+`os.tmpdir()` `TEMP`/`TMP` in plaats van `TMPDIR`; daar werkt dit niet, maar dat platform valt buiten het ondersteunde pad (WSL2 wel).
 
 ## Lokale meting (21 oktober 2026)
 

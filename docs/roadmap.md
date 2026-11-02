@@ -223,8 +223,7 @@ Open werk dat niet geparkeerd is, grofweg in volgorde. Wat nog een spec of eigen
   correctieprocedures naar `docs/template/`); `check-docs` laten toetsen dat de R-regels in `.claude/rules/*` woordelijk gelijk zijn aan `docs/framework.md`;
   de fasekeuze voor Fase 0/1 uit `docs/dod.md` halen (bouwfasen van de template); `docs/adr/0039-lokale-gate-hergebruik.md` (vervallen) archiveren
   of laten staan (nummer 0039 is gedeeld, AC-3); de links in `docs/specs/achtergrondtaken.md` en `docs/specs/mail-outbox.md` naar het archief
-  zetten (hun budgetvermelding in `.kit/baseline.json` is weg sinds ADR 0065); leerpunten #393, #395, #396 (tests laten tijdelijke mappen achter, `/tmp`
-  loopt vol), #399, #401, #402, #409, #410 en #411 oppakken.
+  zetten (hun budgetvermelding in `.kit/baseline.json` is weg sinds ADR 0065); leerpunten #393, #395, #399, #401, #402, #409, #410 en #411 oppakken.
   Voor de eigenaar zelf (beschermde bestanden): `.claude/decisions.json` leegmaken (`decisions: []`), in `.claude/settings.json` de labelregel
   (`--add-label*gate-wijziging*`), de bewerkweigering op `decisions.json` en de verouderde allow voor `chore/mandate-adr-statusregel` weghalen,
   `gateMarker` uit `.claude/gates.json`, en de release-reset bij v1.0 (#384).

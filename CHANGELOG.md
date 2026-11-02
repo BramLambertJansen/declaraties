@@ -242,6 +242,10 @@ Hier staan wijzigingen die van belang zijn bij het gebruiken of bijwerken van de
 
 ### Gewijzigd
 
+- Tijdelijke testmappen (leerpunt #396): elke Vitest-run krijgt één hoofdmap `vitest-run-*` onder de tmpdir van de
+  aanroeper (`test/setup/tmp-root.ts`); `os.tmpdir()` in tests en kindprocessen wijst daarheen en de map gaat na de run
+  weg. Een test die zijn eigen map vergeet op te ruimen laat `/tmp` niet meer vollopen.
+
 - Het taakmandaat vervalt (ADR 0063 punt 5, spec `docs/specs/compacte-kennisbasis-rails.md` AC-14/15/18): een record in
   `.claude/decisions.json` geeft geen schrijfrecht en geen status meer. `pnpm docs:decision` en
   `scripts/kit/document-decision.mjs` zijn weg; `pnpm docs:status` zet alleen nog `gebouwd`; een eigenaarstatus komt via
