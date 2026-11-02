@@ -212,21 +212,19 @@ Open werk dat niet geparkeerd is, grofweg in volgorde. Wat nog een spec of eigen
   aanleiding: `rails/hooks/lib/shell.mjs` (review van PR 6a `fix/rolhek-gaten`; eigenaarbesluit 2026-11-01: de lijst bekende gaten uit R-ROL-10 naar de roadmap)
 - [ ] **Vervolg compacte kennisbasis (V1–V5 en restpunten).** Het regelboek, de instructies, het rolhek, de afschaffing van taakmandaat en
   gate-label en het ADR-archief zijn gebouwd (#385–#404); wat resteert, elk als eigen kleine PR met eigenaarreview:
-  (V1) pnpm in de sandbox: uitzoeken welke paden `pnpm install`/`list`/`why` nodig hebben (alleen de store-index faalt; `allowWrite` voor
-  `~/.local/share/pnpm/store`); de sandboxinstelling past alleen de eigenaar aan.
-  (V2) Meten: per PR vijf kerncijfers uit `.git/agent-meting` in een tabel in de PR-beschrijving (bytes van het verplichte leespad, doorlooptijd,
-  reviewrondes, aantal keren CI rood, valse weigeringen van het rolhek) en een nulmeting tegenover nu (nieuwe feature: ~60 KB leespad, doel ≤ 25 KB);
-  hierbij hoort de keuze welke events `EVENTS` in `rails/hooks/lib/meting.mjs` meet (spec `docs/specs/compacte-kennisbasis-rails.md` AC-13 laat dat open).
-  (V3) Slankere review: één volledige review, daarna alleen het verschil sinds die ronde, met een checklist per risicoklasse waarin de gevonden
-  aanvalspatronen vast in `.claude/agents/reviewer.md` staan. (V4) SessionStart toont alleen branch, achterstand op main en waarschuwingen; de specslijst
-  eruit. (V5) Specsjabloon van één pagina: doel, acceptatiecriteria als tabel, randgevallen, hergebruik.
+  (V1) Vervalt bewust: pnpm `run`/`exec` werken in de sandbox; alleen commando's die de store-index openen (`install`, `list`, `why`) falen, en een schrijfbare globale store is verboden (ADR 0061 punt 4, bewaakt door `test/rails/claude-sandbox-werkstraat.test.ts`: de store hardlinkt naar alle projecten). De eigenaar draait een zeldzame `pnpm install` buiten de sandbox.
+  (V2–V4) Gebouwd: kerncijfers per PR met `pnpm meting --pr-tabel` en de bytes van het leespad met `pnpm leespad` (#406, #414), SessionStart zonder specslijst (#413) en de
+  checklists per risicoklasse met de werkwijze één volledige review plus verschil in `docs/operations/review-checklists.md`. (V5) Niet uitgevoerd (besluit na onderzoek):
+  het specsjabloon is ~2 KB en tests pinnen het (regel 2, de koppen van het skelet van `pnpm new:resource`), dus een herschrijving levert te weinig op. Het doel voor het
+  leespad van een nieuwe feature blijft ≤ 25 KB; nu is het 74 KB met het hele `docs/framework.md` (40 KB), effectief ~46 KB als een agent alleen §8 (~11 KB) leest.
+  Verder omlaag kan met `docs/gouden-pad.md` (11 KB) en `docs/dod.md` (7 KB) per onderdeel laden.
   Restpunten: een hint "werk de branch bij" bij `trusted`/`working` in `rails/hooks/lib/werkstraat.mjs`; de RegExp buiten de lus in
   `scripts/kit/check-roadmap.mjs` (rond regel 105); `docs/operations/agent-doorloop.md` inkorten (nu ~40 KB, doel ≤ 12 KB, overgangs- en
   correctieprocedures naar `docs/template/`); `check-docs` laten toetsen dat de R-regels in `.claude/rules/*` woordelijk gelijk zijn aan `docs/framework.md`;
   de fasekeuze voor Fase 0/1 uit `docs/dod.md` halen (bouwfasen van de template); `docs/adr/0039-lokale-gate-hergebruik.md` (vervallen) archiveren
   of laten staan (nummer 0039 is gedeeld, AC-3); de links in `docs/specs/achtergrondtaken.md` en `docs/specs/mail-outbox.md` naar het archief
   zetten zodra hun budgetvermelding in `.kit/baseline.json` dat toelaat; leerpunten #393, #395, #396 (tests laten tijdelijke mappen achter, `/tmp`
-  loopt vol), #399, #401 en #402 oppakken.
+  loopt vol), #399, #401, #402, #409, #410 en #411 oppakken.
   Voor de eigenaar zelf (beschermde bestanden): `.claude/decisions.json` leegmaken (`decisions: []`), in `.claude/settings.json` de labelregel
   (`--add-label*gate-wijziging*`), de bewerkweigering op `decisions.json` en de verouderde allow voor `chore/mandate-adr-statusregel` weghalen,
   `gateMarker` uit `.claude/gates.json`, en de release-reset bij v1.0 (#384).
