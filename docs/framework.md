@@ -12,7 +12,7 @@ Elke norm is één regel `R-<domein>-<nr>` met herkomst (ADR-nummer of bron).
 - **R-PRINC-04** Rail-fix begint met test die op oude code faalt; elke check heeft falende fixtures, ook voor omzeilingen (0045)
 - **R-PRINC-05** Provider-neutraal: geen hostingprovider of database-as-a-service in template; alleen via adapter (0039)
 - **R-PRINC-06** Eén ronde per besluit (R-WERK-05, R-WERK-07, R-WERK-08); prompts alleen voor wat vóór review werkt (0046, 0062)
-- **R-PRINC-07** Meet vóór en na elke werkstraatwijziging (`pnpm meting`); regel blijft alleen als hij helpt (0046)
+- **R-PRINC-07** Meet vóór en na elke werkstraatwijziging (`pnpm meting`; per besluit telt `gh pr list --state merged` PR's en doorlooptijd); nulmeting is `pnpm new:resource demo --dry-run` plus droge walk-through van het gouden pad; regel blijft alleen als hij aantoonbaar helpt (0046)
 - **R-PRINC-08** Geen roadmap-item, rail of ADR zonder aanleiding (app-behoefte, doorgeglipte fout, gemeten wrijving); anders vraag eigenaar (0046)
 - **R-PRINC-09** Zwak nooit check, test, hook, RLS-regel of type af; zou fix dat doen: stop en vraag; strengere check is geen ADR (0046)
 - **R-PRINC-10** Tokenwinst alleen met cijfers; controles, negatieve securitygevallen, onafhankelijke review nemen niet af (0057)
@@ -35,15 +35,15 @@ Afgedwongen door: dependency-cruiser (ook cycles), ESLint, `check-core`.
 - **R-ARCH-03** Nieuwe rol: `ROLES` in `src/core/shared/can.ts`, migratie voor CHECK op `public.user_roles.role`, seed-account in `src/core/api/dev/seed-accounts.ts`, naam in `roleLabels` (rules)
 - **R-ARCH-04** App-config binnen harde core-grens (`createApp` weigert limiet boven core-grens) (0040)
 - **R-ARCH-05** Browser praat alleen met API, same-origin via `/api`; geen server-rendering; per host één adapter in `deploy/<host>/`, zonder logica (fw)
-- **R-ARCH-06** API en database in één regio; geen opeenvolgende queries per request; routes lazy (fw)
+- **R-ARCH-06** API en database in één regio; kleine pool op moduleniveau; geen opeenvolgende queries per request; databasetijd per request in log; routes lazy; bundelbudget per scherm in `src/web/bundle-budget.ts`, getoetst door `test/ui/bundle-budget.test.ts` in `gate:fast` (fw)
 - **R-ARCH-07** `check-core` laat wijziging van `src/core/` in app falen behalve vertrouwde template-merge; verplicht in app-ruleset. Bekend gat: merge met oudere template-commit kan core terugzetten of wissen (0040)
-- **R-ARCH-08** Mapindeling staat in `docs/gouden-pad.md`; nieuwe topmap of laag vraagt regel (fw)
+- **R-ARCH-08** Mapindeling staat in §11a (R-ARCH-10); nieuwe topmap of laag vraagt regel (fw)
 
 ## 3. Poorten en adapters
 
 Afgedwongen door: dependency-cruiser, lint, smoketest op provider-data-API.
 
-- **R-PROV-01** Template levert Postgres 17 + pgTAP, dbmate, `db/init/`, Mailpit; hosting, beheerde Postgres, SMTP, fouttracking kiest eigenaar per app-ADR 0100+ (hosting-ADR bij eerste release); Supabase en Vercel zijn voorkeur van eigenaar, niet template (0039, 0040)
+- **R-PROV-01** Template levert Postgres 17 + pgTAP, dbmate, `db/init/`, Mailpit; hosting, beheerde Postgres, SMTP, fouttracking kiest eigenaar per app-ADR 0100+ (hosting-ADR bij eerste release); fouttracking standaard in eigen tabel via `reportClientError()` (fase 2, nog niet gebouwd), externe dienst optioneel; Supabase en Vercel zijn voorkeur van eigenaar, niet template (0039, 0040)
 - **R-PROV-02** Geen provider-functies of -schema's (`auth.uid()`, Data API, `storage.*`, `realtime.*`); provider-data-API voor browser uit, smoketest bewijst dat (0039)
 - **R-PROV-03** Geen provider-SDK in `src/web`; in `src/api` alleen in `deploy/<host>/` of door ADR toegestane adapter (0039)
 - **R-PROV-04** Major van Node, pnpm of TypeScript vraagt ADR; geen Corepack; `package.json` enige bron pnpm-versie; Renovate blokkeert TypeScript 7; Postgres 18 pas als alle beoogde providers het bieden (0039, 0042, 0061)
@@ -60,7 +60,7 @@ Afgedwongen door: dependency-cruiser, lint, smoketest op provider-data-API.
 ### Uitzonderingen (limitatief)
 
 - **R-UIT-01** Alleen `src/core/api/db` raakt `pg`; uitzondering `src/core/api/auth` (0041)
-- **R-UIT-02** Route via `defineRoute` en met login; uitzondering `/api/auth/*` en clientfouten-route (fase 2, nog niet gebouwd; rate limit, begrensd); zonder login ook `GET /api/health`, `GET /api/ready` (alleen `{ ok }`) (0041, 0049)
+- **R-UIT-02** Route via `defineRoute` en met login; uitzondering `/api/auth/*` en clientfouten-route (fase 2, nog niet gebouwd; enige data-route zonder login: maximale grootte per melding, limiet per IP per minuut, geen onnodige vrije tekst); zonder login ook `GET /api/health`, `GET /api/ready` (alleen `{ ok }`) (0041, 0049)
 - **R-UIT-03** Schermroute heeft `can()`-guard; uitzondering `/login`, `/uitnodiging`; spec vóór route: uitzondering `GET /api/health`, `GET /api/ready` (0049)
 - **R-UIT-04** Geen voorafgaand besluit voor functionele UI in core: `src/core/web/ui` en `src/core/web/copy` volgens R-WERK-18 (0056, 0058)
 - **R-UIT-05** `POST /api/dev/login-as` alleen `APP_ENV=local` (elders 404), CSRF-controle, alleen `{ rol: 'user' | 'admin' }`, echt inloggen als seed-account (0043)
@@ -73,7 +73,7 @@ Afgedwongen door: ESLint (`--max-warnings 0`), dependency-cruiser, `tsc`, gate-r
 - **R-CODE-01** Checks op code via AST, op database via catalogus, nooit regex over bronbestanden; lintmeldingen noemen de juiste helper (0045)
 - **R-CODE-02** Functie ≤ 60 regels (`.ts`) of 120 (`.tsx`), max 3 parameters, diepte 3, cognitive-complexity 15 (AGENTS)
 - **R-CODE-03** Parse op elke grens met zod via `defineRoute()` (`.strict()`); env-schema alleen in `src/core/api/env.ts` (fw)
-- **R-CODE-04** Geen `x as T`, `any`, `@ts-ignore`, `eslint-disable`; uitweg `unsafeCast(value, reden)`; `assert()` actief in productie (AGENTS, dod)
+- **R-CODE-04** Geen `x as T` of `<T>x` (`as const` en `import { a as b }` mogen), `any`, `@ts-ignore`, `eslint-disable`; uitweg `unsafeCast(value, reden)`, CI zet het verschil in aantal op de PR (nog niet gebouwd); `assert()` actief in productie (melden aan de fouttracking: fase 2, nog niet gebouwd), ErrorBoundary per route vangt hem (AGENTS, dod)
 - **R-CODE-05** Branded IDs via zod `.brand()`; kolom `id` of `*_id` krijgt brand via FK of `db/ids.json` (of `null` met reden); types per resource apart geëxporteerd (fw)
 - **R-CODE-06** TypeScript streng (`strict`, `noUncheckedIndexedAccess`, `exactOptionalPropertyTypes`); `strictTypeChecked` plus `switch-exhaustiveness-check` (fw)
 - **R-CODE-07** Bedragen in gehele centen (`Cents`); tijd `timestamptz`/ISO-string; formatteren alleen via `lib/format.ts`; grenzen alleen uit `limits.ts` (CHECK met zelfde waarde krijgt gelijkheidstest) (0040)
@@ -83,7 +83,7 @@ Afgedwongen door: ESLint (`--max-warnings 0`), dependency-cruiser, `tsc`, gate-r
 - **R-CODE-11** Mutaties met geld of voorraad idempotent: request-UUID, bonnetabel met payload-hash (`REQUEST_ID_CONFLICT`), `pg_advisory_xact_lock`, tombstone (0045)
 - **R-CI-02** Ratchet: nieuwe overtreding faalt, opgeloste in baseline ook tot `pnpm ratchet:update`; baseline laten groeien is gate-wijziging (0045)
 - **R-CI-03** Developer-stop draait geen volledige `gate:fast`; lokale feedback is geen bewijs van groene gate (0057)
-- **R-TEST-01** Unit `*.test.ts(x)` naast code, integratie `*.int.test.ts` via `pnpm test:db`, pgTAP `db/tests/`, e2e `e2e/`; integratie en e2e tegen echte lokale stack, nooit gemockt, e2e met CSP aan; per feature één echt-committende test; property-based tests voor reken- en parselogica (fw)
+- **R-TEST-01** Unit `*.test.ts(x)` naast code, integratie `*.int.test.ts` via `pnpm test:db`, pgTAP `db/tests/`, e2e `e2e/`; integratie en e2e tegen echte lokale stack, nooit gemockt, e2e met CSP aan, inloggen per rol, één kernflow per feature; per feature één echt-committende test; property-based tests voor reken- en parselogica (fw)
 - **R-TEST-02** Voeg tests toe; elk AC voor gewijzigd gedrag inhoudelijke test; bestaande test wijzigen alleen als spec of opdracht gedrag verandert, met reden in PR; verwijderen, skippen, verzwakken alleen met akkoord eigenaar; lijkt test fout: leg eigenaar voor, daarna past tester hem aan, niet hoofdsessie (fw)
 - **R-TEST-03** Per permissie en policy negatieve test (een per verboden rol, `FORBIDDEN`), test voor ongeldige input, racetest met twee gelijktijdige requests bij uniekheid of geld (fw)
 - **R-TEST-04** Securitysuite (`test/security/`, `db/tests/security.sql`) draait in `pnpm test:db`; nieuwe resource staat in `test/security/resources.ts` met ingevulde samples (dod, AGENTS)
@@ -96,8 +96,8 @@ Afgedwongen door: TypeScript, lint (`no-restricted-syntax`, rail `klassen`), `pn
 - **R-WEB-01** Elke route heeft ErrorBoundary en `beforeLoad`-guard met `can()`; UI-state (filters, tabs, paginering) in URL; geen globale store, `matchMedia`, `userAgent`, `isMobile` (fw)
 - **R-WEB-02** `useQuery`/`useMutation` alleen in `features/<resource>/queries.ts`; mutatie invalideert eigen resource plus "raakt ook"; optimistisch alleen als spec het vraagt (rules)
 - **R-WEB-03** `fetch(` alleen in API-client; inloggen alleen via `src/core/web/lib/auth.ts`; elk niet-GET-request stuurt `Content-Type` (0040, 0041)
-- **R-WEB-04** Formulieren via `<Form>`/`<FormField>` met gedeeld zod-schema, verzendknop uit tijdens verzenden, serverfouten via `setError`; laden, leeg, fout via `<AsyncView>` (fw)
-- **R-WEB-05** Alle zichtbare tekst in `src/web/copy`, Nederlands volgens woordenlijst; per-formaatverschil via één gedeelde hook (fw)
+- **R-WEB-04** Formulieren via `<Form>`/`<FormField>` met gedeeld zod-schema, valideren bij verlaten en daarna bij typen, verzendknop uit tijdens verzenden, serverfouten via `setError`; laden, leeg, fout via `<AsyncView>` (fw)
+- **R-WEB-05** Alle zichtbare tekst in `src/web/copy`, Nederlands volgens woordenlijst, ook zod-meldingen; `src/web/copy/errors.ts` is `Record<ErrorCode, string>` (basisteksten uit `src/core/web/copy`, app-codes erbij); per-formaatverschil via één gedeelde hook (fw)
 - **R-WEB-06** `can()` in UI is dezelfde functie als in API; sessierol is alleen UI-hint (fw)
 - **R-WEB-07** Schermwerk klaar na `pnpm ui:check` (375 en 1280 px, axe); feature volgt `docs/gouden-pad.md` (dod)
 - **R-WEB-08** `/design-system` achter `guard('design-system:read')`, lazy, alleen voorbeelddata (echte data vraagt ADR); `/design`, dev-rolwisselaar alleen dev (0048)
@@ -136,9 +136,9 @@ Afgedwongen door: `check-secdef`, `check-policies`, pgTAP-invarianten en functie
 - **R-SEC-01** CSRF: eigen middleware vóór alle routes, geen `cors()`; request behalve GET, HEAD, OPTIONS eist `application/json` en `Sec-Fetch-Site` of `Origin`; elke aanwezige header moet `same-origin` resp. `APP_ORIGIN` zijn, dubbele header geweigerd, anders 403 `CSRF_REJECTED`; GET wijzigt geen state (0041)
 - **R-SEC-02** Fouten naar buiten alleen `{ code, requestId }`; `logUnexpectedError()` logt nooit message, stack, query, cause; niet gedekt: foutlog Better Auth, stopmelding `src/core/api/env.ts`, standaardfout `src/core/api/http/web.ts` (fw)
 - **R-SEC-03** Rate limit op elke `defineRoute`-route (`lezen`, `schrijven`, `duur` via `rateLimit`; mail of duur rekenwerk: `rateLimit: 'duur'`, nooit eigen getal per route) en op inloggen/reset, opslag in database, IP alleen uit `CLIENT_IP_HEADER`; `bodyLimit` en paginagrootte uit `limits.ts`; health en ready zonder limiet (0041, 0049)
-- **R-SEC-04** Headers (CSP, HSTS, nosniff, Referrer-Policy) uit `src/core/api/http/security-headers.ts`; CSP `default-src 'self'`, geen inline stijl (uitzondering per ADR); service worker cachet nooit `/api/*` (0049)
-- **R-SEC-05** Env-schema bij opstart; `APP_ENV` verplicht; buiten `local`/`test` weigert het demo-geheimen, `http` in `APP_ORIGIN`/`AUTH_BASE_URL`, `AUTH_BASE_URL` ≠ `APP_ORIGIN`; geen productiegeheimen in werkmap; `.env.example` beschermd (fw)
-- **R-SEC-06** Secret scanning met push protection en Betterleaks; scanner-uitzondering met reden en `ignoreUntil`; pnpm `minimumReleaseAge: 10080`, `strictDepBuilds`, `trustPolicy: no-downgrade`; Actions op SHA met `permissions: read-all`; deploy-secrets alleen in beschermde environments; geen nieuwe dependency zonder akkoord (0045)
+- **R-SEC-04** Headers (CSP, HSTS, nosniff, Referrer-Policy) uit `src/core/api/http/security-headers.ts`, lokaal ook via Vite zodat e2e met CSP draait; CSP `default-src 'self'`, `script-src 'self'`, `connect-src 'self'`, `style-src 'self'` (geen inline stijl, uitzondering per ADR), `img-src 'self' data:`, `frame-ancestors 'none'`, `base-uri 'self'`, `form-action 'self'`, `object-src 'none'`; met CAPTCHA (nog niet gebouwd) krijgen `script-src` en `frame-src` het CAPTCHA-domein; service worker cachet nooit `/api/*` (0049)
+- **R-SEC-05** Env-schema bij opstart; `APP_ENV` (`local`, `test`, `staging`, `production`) verplicht; buiten `local`/`test` weigert het `AUTH_SECRET` korter dan 32 bytes of met demo-waarde, database-URL met demo-wachtwoord (lijst in `src/core/api/env.ts`, test per regel), `http` in `APP_ORIGIN`/`AUTH_BASE_URL`, `AUTH_BASE_URL` ≠ `APP_ORIGIN`; geen productiegeheimen in werkmap; `.env.example` beschermd (fw)
+- **R-SEC-06** Secret scanning met push protection en Betterleaks (gepind in `mise.toml`, pre-commit en CI-job `secrets`); scanner-uitzondering met reden en `ignoreUntil`; pnpm `minimumReleaseAge: 10080`, `strictDepBuilds`, `trustPolicy: no-downgrade`; Renovate gegroepeerd; Actions op SHA met `permissions: read-all`, runner `ubuntu-24.04`; CodeQL en osv-scanner op elke PR en wekelijks op `main`; deploy-secrets alleen in beschermde environments; geen nieuwe dependency zonder akkoord (0045)
 - **R-SEC-08** Log per request `requestId`, gebruiker-ID, duur, databasetijd, zonder PII, via `src/core/api/obs`; clientfouten allowlist-velden, geen PII of vrije tekst, 5 min ontdubbeld (0045, 0051)
 - **R-SEC-09** Agent via GitHub App zonder `workflows`-recht; tot dan grens: ruleset en eigenaarreview; MCP read-only, versie gepind; .mcp.json en .claude/commands beslist de app (0039, 0045)
 - **R-PRIV-01** Inzage `GET /api/me/export` (permissie `app.use`, alleen eigen data, andere actor gemaskeerd, geen sessietoken); app registreert exporters via `createApp({ privacy })` die expliciet op eigenaar filteren (0051, nog niet gebouwd)
@@ -156,6 +156,7 @@ Afgedwongen door: lint (`klassen`, rauwe elementen, axe), `check:catalogus`, `te
 - **R-UI-05** Geen rauwe `<button> <input> <select> <textarea> <dialog> <a>` buiten `src/core/web/ui` en `src/web/ui`; geen hex-kleuren buiten tokens; `outline-none` alleen met `focus-visible:ring-*`; één `scanAxe(page)` zonder uitzonderingen (fw)
 - **R-UI-06** WCAG 2.2 AA, responsive met breakpoints en container queries, `prefers-reduced-motion`, één focusring en aanraakdoel 44 px (nooit uitschakelen), contrasttest per receptvariant (fw)
 - **R-UI-07** Elk component en elke eindige stringvariant heeft voorbeeld op `/design-system`; publieke componenten in `src/web/ui/index.ts`; geen uitzonderingenlijst (0048)
+- **R-UI-08** `@theme` reset kleur, radius, schaduw, lettertype, tekstmaat, gewicht en easing van Tailwind (`bg-red-500`, `text-xs`, `font-bold` bestaan niet); dark mode via `[data-theme=dark]` met `@custom-variant dark`; browserslist in `package.json`, Vite `build.target` gelijk daaraan (fw)
 
 ## 8. Werkstraat
 
@@ -164,7 +165,7 @@ Afgedwongen door: rolhek en hooks (`.claude/gates.json`), diff-guard, `check-doc
 - **R-WERK-01** Elke rol begint met `node scripts/kit/feiten.mjs`, alleen taakrelevante secties (`componenten` alleen bij UI, `adr --alle` alleen voor historie) (0045, 0057)
 - **R-WERK-02** Twee routes: hoofdsessie kiest en noemt waarom, reviewer toetst keuze; "bug" of kleine diff is geen bewijs; bij twijfel volledig; route geeft geen extra schrijfrechten of vrijstelling (0058)
 - **R-WERK-03** Licht: alleen afgebakende bugfix of kleine aanpassing binnen bestaande functionaliteit; nooit nieuwe feature, pagina, interactie, publiek contract, component-API, route, permissie, migratie, dependency; geen ADR of spec; resultaat, scope, bewijs in opdracht of PR; bij gedragswijziging eerst tester (0058)
-- **R-WERK-04** Volledig: nieuwe feature, pagina of interactie, A2/A3/A4, auth, gegevensisolatie, RLS-/rollenmodel, moeilijk herstel: architect en spec, aparte tester vóór implementatie, onafhankelijke review, volledige CI, eigenaarmerge (0057, 0058)
+- **R-WERK-04** Volledig: nieuwe feature, pagina of interactie, A2/A3/A4, auth, gegevensisolatie, RLS-/rollenmodel, vertrouwensgrenzen, moeilijk herstel, ook als klein of omkeerbaar; ook elk werk buiten de lichte grens: architect en spec, aparte tester vóór implementatie, onafhankelijke review, volledige CI, eigenaarmerge (0057, 0058)
 - **R-WERK-05** Kritiek werk (eerst besluit-PR): elk ADR, auth en gegevensisolatie (`src/core/api/auth/`, `src/core/api/db/`, `db/init/`), de bewaking zelf (`altijdVragen`); bij twijfel kritiek (0062)
 - **R-WERK-06** ADR bij A1 (contract tussen zones), A2 (migratie bestaande rijen, rollen/RLS, auth, provider, dependency), A3 (rechten verruimen of check afzwakken), A4 (geaccepteerd ADR wijzigen); template-ADR's `0001`-`0099`, app-ADR's vanaf `0100` (0046, 0040)
 
@@ -177,7 +178,7 @@ Stappen: spec, contract, tests, developer, reviewer (R-WERK-07 t/m 11); 6. **Opl
 - **R-WERK-11** Reviewer-agent toetst routekeuze en `docs/dod.md` met `bestand:regel` per bevinding, op `git diff origin/main...HEAD` vóór push; na latere wijziging opnieuw (`git diff <reviewer-sha>..HEAD`); bevindingen verwerkt vóór oplevering (0046)
 - **R-WERK-12** Opleveren alleen hoofdsessie na review, skill `opleveren`: CI-lus `pnpm pr:verify <nr> --watch` tot groen, conflicten via `git merge origin/main` (nooit rebase); stop en vraag bij afgezwakte regel, zelfde fout drie keer, oorzaak buiten code, gate-pad; opruimen na merge met `--ff-only`, nooit `reset --hard` of `--force` (0046, 0061)
 - **R-WERK-13** Leerlus: alleen hoofdsessie maakt issue in template-repo met precies één label `leerpunt`, generieke reproductie zonder appcode, appdata, geheimen; eigenaar triageert; geen telemetrie naar buiten (0059)
-- **R-WERK-14** Overdracht: doel, spec, paden, open keuzes, exacte checkuitslagen (0057)
+- **R-WERK-14** Overdracht: doel, spec, paden, open keuzes, exacte checkuitslagen; alleen benodigde broncontext; ruwe logs en afgeronde gesprekken gaan niet standaard mee (0057)
 - **R-WERK-15** Docs in dezelfde PR als wijziging die gedrag, API, configuratie, conventies raakt; geen docs-stap na merge (fw)
 - **R-WERK-16** Roadmap: bewijs beschikbaar, dan vinkt dezelfde PR het item af (testpad, checknaam of PR-nummer) met akkoord van de eigenaar, nooit zonder bewijs; heropenen om een check te omzeilen telt niet. `pnpm docs:status --roadmap` wijzigt alleen het vinkje van het item van de eigen spec; de precieze regel staat in `docs/dod.md` (0046)
 - **R-WERK-17** Rollen: architect, developer, tester, reviewer, docs (optioneel; stelt statussen voor); reviewt nooit eigen werk (0045)
@@ -189,15 +190,16 @@ Stappen: spec, contract, tests, developer, reviewer (R-WERK-07 t/m 11); 6. **Opl
 - **R-WERK-23** Runtime-specifieke instructies gelden alleen voor die runtime (hooks, permissies, sandbox in `.claude/`: Claude Code); elders zijn CI, diff-guard, GitHub de grens; claim nooit dat een instelling klopt die je niet kunt lezen (0045)
 - **R-WERK-24** `.claude/decisions.json` bindt alleen `requiredChecks`; een besluitrecord geeft geen rechten, een eigenaarstatus komt via besluit-PR of feature-lane (0046, 0063)
 - **R-WERK-25** Setup app (`docs/nieuwe-app.md`): nooit op `/mnt/c`; geen destructieve commando's; agent installeert geen toolchain; één overdracht tegelijk; na klaar-melding stopt setupsessie; `.env.local` alleen poorten (nieuwe-app)
+- **R-WERK-26** Spec terug naar `voorstel` (vanaf elke status) is geen eigenaarstatus en mag altijd, ook in een PR met code (0062)
 - **R-ROL-01** Schrijfrecht per rol staat in `.claude/gates.json`: architect specs en ADR's, tester testpaden, reviewer niets, docs alleen zijn docs-paden daar, geen gates; developer en hoofdsessie alles behalve gates en bestaande tests (0045)
 - **R-ROL-02** `voorReview`-paden vragen hoofdsessie, weigeren developer; onbekende subagent krijgt strengste rol; onderhoudsmodus alleen via `onderhoud.repository` uit main én gelijke `origin`, nooit voor `altijdVragen`, versoepelt niets aan verboden acties; in app uit (0045)
-- **R-ROL-03** Schrijven in `.git`-map is voor elke rol deny; rolhek blokkeert gegenereerde bestanden, gecommitte migraties, verwijderen of skippen van bestaande tests, wijzigen van fixtures en setup (0045)
+- **R-ROL-03** Schrijven in `.git`-map is voor elke rol deny; rolhek blokkeert gegenereerde bestanden, gecommitte migraties, verwijderen of skippen van bestaande tests, wijzigen van fixtures en setup (ook `*.test.*` onder `test/rails/fixtures/` of `test/setup/`); bestaand hulpbestand in testpad (geen `*.test.*`, `*.spec.*` of `db/tests/`) wijzigen meldt het, verwijderen is gate (0045)
 - **R-ROL-04** Reviewer en tester starten met schone context; reviewer schrijft niets; in Modus UX leest reviewer UX-screenshots uit tests met Read en toetst aan `docs/ontwerp/<bron>.md`, zonder screenshots meldt hij letterlijk dat hij alleen code toetst (0058)
 - **R-ROL-05** Licht werk: reviewagent volstaat zonder technische isolatie (claim geen afgedwongen onafhankelijkheid); ontbreekt hij: eigenaar reviewt; volledig werk zonder afgedwongen isolatie: benoem ontbrekende stap, eigenaar voert hem uit vóór merge; rolnaam is geen reviewbewijs (0057)
 - **R-ROL-06** `pnpm new:resource` draait alleen hoofdsessie; generator drukt gate-wijzigingen af, maakt geen tests, foutcodes, security definer-functies, componenten; zonder goedgekeurde spec alleen skelet (0047)
 - **R-ROL-07** Rolhek staat `gh issue create` van hoofdsessie alleen toe met `--repo`/`-R` gelijk aan `onderhoud.repository` (in app: `TEMPLATE_REPOSITORY`) en precies één `--label leerpunt`, anders ask; subagent: geen issue, geen schrijvende gh issue (0059)
 - **R-ROL-08** Rolhek weigert elke rol: `gh pr review`, elk label op `gh pr create`/`new`/`edit` en `gh issue edit`, `gh api` naar labels, reviews, statuses, check-runs, push naar `main`, force-push, mergen, `--no-verify`, `LEFTHOOK=0`, `core.hooksPath`, `gh alias set/import`, niet-letterlijke commandowoorden, schrijven op beschermd pad (elk redirect-token, `sed -i`, `tee`, `cp`, `mv`, `rm`, programma-opties; map dekt pad eronder), archief via Bash (alleen `git mv` zelfde naam); nieuwe branch alleen vanaf verse `origin/main` (0045, 0063)
-- **R-ROL-09** Hooks: rolhek en werkstraat falen dicht bij ontbrekend anker; hook-timeout en exit 1 laten door (fail-open); meethook slaat nooit inhoud op; hookwijziging werkt na merge en volgende sessie; rolhek leest lijsten uit anker, geen netwerk (0045)
+- **R-ROL-09** Hooks: rolhek en werkstraat falen dicht bij ontbrekend anker; hook-timeout en exit 1 laten door (fail-open); meethook slaat nooit inhoud op; hookwijziging werkt na merge en volgende sessie; anker = SHA van `main` op de remote (`git ls-remote`, ververst door `werkstraat session-start`), nooit lokale `origin/main`; anker en cache in `.claude/hooks/.cache/`, lader controleert commit, trees en blobs zelf op hun hash; rolhek leest lijsten uit anker, geen netwerk (0045)
 - **R-ROL-10** Rolhek is vangnet, geen grens; bekende gaten (interpreters, scripts, omhulsels, globs, links, `find -exec`) staan als open items in `docs/roadmap.md`; harde grens is GitHub, CI, diff-guard (0045, 0057)
 - **R-ROL-11** Geaccepteerde valse positieven rolhek: subagent `grep gh x`, `cat x | grep api.github.com`; hoofdsessie `git merge … && gh pr view`, woord `merge` in PR-titel of -body, commitbericht met `merge` naast `gh`, `pr merge` of `grep 'pr review' gh` in argument, `xargs nice prettier`, `git ls-files -z | xargs -0 git add`, `time ls *.md`, `echo {a,b}`/`{1..3}`, `--jq`- of JS-object met komma, `echo $HOME run`; elke rol: `find … -delete`, `cp -r`, `git checkout -- <map>`, `git restore <map>` met beschermd pad eronder, een korte-optiecluster met `l` op `gh pr create`/`edit` (`-Bdevelop`) (0045, 0063)
 - **R-ROL-12** MCP-tools alleen uit `mcpLezen`; permissieregels in `.claude/settings.json` zijn gemak, geen grens (sandbox en GitHub wel); subagents geen push- of PR-recht; geen check-status; externe diensten alleen via hun CLI (`gh`) (0045, 0061)
@@ -209,15 +211,17 @@ Stappen: spec, contract, tests, developer, reviewer (R-WERK-07 t/m 11); 6. **Opl
 
 Afgedwongen door: `check-docs` (budgetten als ratchet in `.kit/baseline.json`).
 
-- **R-DOC-01** Budgetten staan in `check-docs`; zonder check: `CLAUDE.md` ≤ 50, `.claude/rules/*.md` ≤ 60, skill ≤ 200 regels; bestaande overschrijdingen in baseline die alleen omlaag mag (0063)
+- **R-DOC-01** Budgetten staan in `check-docs`; zonder check: `CLAUDE.md` ≤ 50, `.claude/rules/*.md` ≤ 60, skill ≤ 200 regels, `docs/operations/*` 1–2 pagina's; bestaande overschrijdingen in baseline die alleen omlaag mag (0063)
 - **R-DOC-02** Regel die check kan zijn is open taak in `docs/roadmap.md`; padregel eindigt met "Besloten, nog niet gebouwd" (fw)
 - **R-DOC-03** Dit boek is enig bindend regelboek; `.claude/rules/*` bevat regels letterlijk met zelfde R-id; ankers §1-§12 (met §11a) blijven; ADR legt waarom vast, ADR-punt waarnaar R-regel verwijst hoort bij die regel (0063)
+- **R-DOC-04** Wat soms nodig is, hoort in een skill of padregel, niet in een `@`-import (fw)
 
 ## 10. Versiebeheer, CI en release
 
 Afgedwongen door: ruleset op `main`, `guard.yml` (diff-guard, `document-status`, `check-core`), `check-docs`.
 
-- **R-CI-01** Vereiste checks: `gate:fast`, `gate:slow` (precies volgens gate-register), CodeQL, osv-scanner (fw, 0048)
+- **R-CI-01** Vereiste checks: `gate:fast`, `gate:slow` (precies volgens gate-register), CodeQL, osv-scanner (fw, 0048); CI: runner `ubuntu-24.04`, toolchain via `jdx/mise-action` (geen Corepack), `.github/workflows/ci.yml` op elke push naar `main` en elke PR, `gate:fast` en `gate:slow` naast elkaar, concurrency annuleert oude runs (fw)
+- **R-CI-04** Feedbacklus: na elke bewerking ESLint en Prettier op dat bestand (PostToolUse); pre-commit format-controle, ESLint op staged, Betterleaks; commit-msg conventional commit; einde beurt `tsc -b`, ESLint en `vitest related` op geraakte bestanden (Stop-hook); pre-push `gate:fast` met waarschuwing bij achterstand op `origin/main`; `pnpm test:db` voor integratie en pgTAP; CI `gate:fast` en `gate:slow`; bron `lefthook.yml` en `.claude/settings.json` (fw)
 - **R-REPO-01** GitHub App op huidige repo, zonder `workflows`-, admin-, instellingsrecht, niet in `goedkeurders`; eigenaar installeert en pusht workflowwijzigingen; alleen eigenaar merget (0039, 0057)
 - **R-REPO-02** Ruleset `main` (eigenaar, `scripts/github-ruleset.sh`): alleen via PR, geen force push, delete of bypass, alle `requiredChecks` uit `.claude/decisions.json` van Actions, code scanning, goedkeuring vervalt bij push, opgeloste gesprekken, alleen merge en squash; onleesbaar = rood; code-owner-review en 1 goedkeuring pas met App; Actions-token read, geen PR's maken of goedkeuren, actions op volledige SHA; `.github/settings/main-protection.json` (nog niet gebouwd), `scripts/check-github.mjs` (nog niet gebouwd) volgen (0040, 0045, 0057)
 - **R-REPO-03** Beschermde paden in `.claude/gates.json`, eigenaarakkoord; developer: `voorReview`-pad volgens R-WERK-10; `src/api/app.ts` en `src/shared/permissions.ts` geen gate; geen gegenereerde bestanden of `.env*` bewerken (0046)
@@ -228,7 +232,7 @@ Afgedwongen door: ruleset op `main`, `guard.yml` (diff-guard, `document-status`,
 - **R-CI-07** Diff-guard (`pull_request_target`, scripts van `main`; PR-code alleen als git-data, nooit installeren of uitvoeren; `persist-credentials: false`): PR met gate-pad, `scripts` in `package.json` of bestaande test faalt zonder APPROVED van goedkeurder (niet auteur) op head-SHA; een label telt niet (0045, 0063)
 - **R-CI-08** Volledige CI op elke PR, geen oude uitslag of cache; na fix opnieuw; bouwbewijs = merge met alle verplichte checks groen op head-SHA (0054, 0057, 0062)
 - **R-REL-01** Database vóór code, eerst staging; productie alleen via release-tag en goedkeuring eigenaar (nooit agent); geen automatische Git-deploys; geen preview tegen productie, tegen staging alleen met migraties van die PR (fw)
-- **R-REL-02** `check-release-ci` (nog niet gebouwd): commit is kop van `main` met groene CI, productie ook staging; `check-deployment-schema` (nog niet gebouwd): productieschema dekt code; beide falen dicht; eigen build per omgeving; smoketest na deploy; rollback via host en nieuwe migratie; na release uur fouten en logs volgen; runbook per host in `docs/operations/` (0045)
+- **R-REL-02** `check-release-ci` (nog niet gebouwd), vóór én na de build: commit is kop van `main` met groene CI, productie ook staging; `check-deployment-schema` (nog niet gebouwd): productieschema dekt code; beide falen dicht; eigen build per omgeving; smoketest na elke deploy (staging en productie): inloggen met testaccount, één leesactie, bewijs dat provider-data-API voor browser dicht is; lokaal bewijst een test dat `api_user` zonder `withUser()` niets ziet; rollback: code via host, database vooruit met nieuwe migratie, in nood uit back-up; na release uur fouten en logs volgen; runbook per host in `docs/operations/` (0045)
 - **R-REL-03** Release: toon bewijs voor staging, schema-compatibiliteit, smoketest, vereiste CI-checks; volg runbook van de host (dod)
 - **R-DEPLOY-01** `GET /api/health` liveness, `GET /api/ready` (alleen met `createApp({ ready })`) readiness: 200 of 503 `{ ok }`, `pingDatabase()` binnen 900 ms, uitkomst 1 s bewaard, plus ping als `app_jobs` tenzij OV-C4 anders (nog niet gebouwd); host gebruikt beide (0049)
 - **R-DEPLOY-02** Met `WEB_DIR` serveert `src/api/server.ts` ook SPA (`/assets/*` onbeperkt cachen, rest no-cache; geen verborgen bestanden behalve `/.well-known/`, geen symlink buiten `WEB_DIR`); CDN-host zet dezelfde headers uit `security-headers.ts` (0049)
@@ -249,7 +253,9 @@ Afgedwongen door: `scripts/doctor.sh`, `test/rails/excluded-commands.test.ts`.
 ## 11a. Repo-structuur
 
 - **R-ARCH-09** `pnpm new:resource <naam>` genereert contract, 501-routes, permissies, migratie, `queries.ts`, scherm, route volgens gouden pad; schrijft niets als doel bestaat (0047)
+- **R-ARCH-10** Mapindeling: `src/core/` template (`api/` route, db, auth, http, obs, dev, mail, env; `web/` ui, styles, lib, copy; `shared/` can, errors, limits, ids, assert, unsafeCast, Cents, cursor); `src/web/` routes, features, ui, styles, lib, copy, dev; `src/api/` app, kit, server, routes, domain, mail, db (gegenereerd); `src/shared/` contracts, schemas, permissions, errors, limits, audit; `deploy/<host>/` adapter per app; `db/` docker, init, migrations, tests, snapshot, ids; `e2e/` Playwright; `test/` tests buiten de broncode; `rails/hooks/` hookbron (`.claude/hooks/` zijn stubs); `scripts/` met `scripts/kit/` (gate-register, feiten, ratchet, checks); `.kit/` ratchet-baseline; `designs/` optioneel; `docs/`; `.claude/`; `.github/` (0040, 0045)
 
 ## 12. Fasering
 
 - **R-FASE-01** Fase 0 en 1 in template; fase 2 (eerste features) en fase 3 (eerste release, providerkeuze per ADR) per app; wat in app doorglipt wordt eerst template-check; uitbreidingen alleen op aanleiding (fw)
+- **R-FASE-02** Uitbreiding op aanleiding: bestanden (signed URL's) of realtime als de app ze nodig heeft, met eigen ADR; screenshot-regressie en axe in CI na doorgeglipte visuele of toegankelijkheidsfout; jscpd, knip, ast-grep als review herhaaldelijk kopieën, dode code of fout patroon vindt; mutation testing bij kritieke reken- of geldlogica; Renovate automatisch mergen en OpenTelemetry als de basis stabiel draait; devcontainer of agent-sandbox in Docker als iemand meewerkt of agents zonder toestemmingsprompts draaien (fw)

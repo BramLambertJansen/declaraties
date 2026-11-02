@@ -415,7 +415,9 @@ onafhankelijke reviewer; wat dan per route volstaat, staat in framework §8. De 
   De hostbestanden in `rails/hooks/lib/runner-authority.mjs` en `scripts/runner.sh` zijn de enige controle vooraf: scripts,
   packagebestanden, compose en de configs van vite, vitest en playwright. De testbestanden zelf horen daar niet bij; die vraagt
   de agent juist te mogen toevoegen en draaien.
-- De hooks lezen de vertrouwde basis uit de lokale ref `origin/main` en doen geen netwerkwerk. Het rolhek weigert elke andere
+- De hooks lezen de vertrouwde basis uit het anker van de stub-lader (R-ROL-09, `.claude/hooks/laden.mjs`) en doen geen
+  netwerkwerk; alleen buiten de lader (zonder `RAILS_ANKER`) valt een script terug op de lokale ref `origin/main`
+  (`trustedBase` in `rails/hooks/lib/authority-context.mjs`). Het rolhek weigert elke andere
   manier om die ref of de remote `origin` te veranderen dan `git fetch origin` (`movesTrustedBase` in `rails/hooks/lib/rolhek.mjs`),
 ook een fetch van `origin` met als bestemming `refs/remotes/origin/main`, `git replace` (behalve `--list`), config op
 `include.*`/`includeIf.*` en, voor elke rol en elk programma, `GIT_CONFIG_*`, `GIT_DIR` of `GIT_WORK_TREE` als
