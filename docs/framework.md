@@ -12,7 +12,7 @@ Elke norm is één regel `R-<domein>-<nr>` met herkomst (ADR-nummer of bron).
 - **R-PRINC-04** Rail-fix begint met test die op oude code faalt; elke check heeft falende fixtures, ook voor omzeilingen (0045)
 - **R-PRINC-05** Provider-neutraal: geen hostingprovider of database-as-a-service in template; alleen via adapter (0039)
 - **R-PRINC-06** Eén ronde per besluit (R-WERK-05, R-WERK-07, R-WERK-08); prompts alleen voor wat vóór review werkt (0046, 0062)
-- **R-PRINC-07** Meet vóór en na elke werkstraatwijziging met `pnpm meting --pr-tabel` en `pnpm leespad` (nulmeting `pnpm leespad --ref <sha>`); een regel blijft alleen als hij aantoonbaar helpt (0046, 0064)
+- **R-PRINC-07** Meet vóór en na elke werkstraatwijziging met `pnpm meting --pr-tabel --branch <naam>` en `pnpm leespad` (nulmeting `--ref <sha>`); regel blijft alleen als hij aantoonbaar helpt (0046, 0064)
 - **R-PRINC-08** Geen roadmap-item, rail of ADR zonder aanleiding (app-behoefte, doorgeglipte fout, gemeten wrijving); anders vraag eigenaar (0046)
 - **R-PRINC-09** Zwak nooit check, test, hook, RLS-regel of type af; zou fix dat doen: stop en vraag; strengere check is geen ADR (0046)
 - **R-PRINC-10** Tokenwinst alleen met cijfers; controles, negatieve securitygevallen, onafhankelijke review nemen niet af (0057)
