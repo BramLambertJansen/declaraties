@@ -83,7 +83,11 @@ describe('rolhek-lezen/AC-1: de leeslijst van de reviewer', () => {
     // --web, -R/--repo en gh api blijven dicht
     { name: 'issue view --web', command: 'gh issue view 5 --web', basis: 'gh issue view 5' },
     { name: 'issue view -w', command: 'gh issue view 5 -w', basis: 'gh issue view 5' },
-    { name: '--comments heeft geen waarde', command: 'gh issue view 5 --comments --web', basis: 'gh issue view 5 --comments' },
+    {
+      name: '--comments heeft geen waarde',
+      command: 'gh issue view 5 --comments --web',
+      basis: 'gh issue view 5 --comments',
+    },
     { name: '--log heeft geen waarde', command: 'gh run view 1 --log --web', basis: 'gh run view 1 --log' },
     { name: 'run view --web', command: 'gh run view 1 --web', basis: 'gh run view 1' },
     { name: 'issue list --web', command: 'gh issue list --web', basis: 'gh issue list' },
@@ -134,7 +138,11 @@ describe('rolhek-lezen/AC-1: de leeslijst van de reviewer', () => {
     { name: 'waarde met backtick', command: "pnpm meting --sessie '`id`'", basis: 'pnpm meting --sessie x' },
     { name: 'waarde met ;', command: "pnpm meting --branch 'a;touch x'", basis: 'pnpm meting --branch x' },
     { name: 'waarde met spatie', command: "pnpm leespad --ref 'a b'", basis: 'pnpm leespad --ref x' },
-    { name: 'waarde met enkel aanhalingsteken', command: `pnpm meting --sessie "a'b"`, basis: 'pnpm meting --sessie x' },
+    {
+      name: 'waarde met enkel aanhalingsteken',
+      command: `pnpm meting --sessie "a'b"`,
+      basis: 'pnpm meting --sessie x',
+    },
     { name: 'waarde met dubbel aanhalingsteken', command: `pnpm leespad --ref 'a"b'`, basis: 'pnpm leespad --ref x' },
     { name: 'gh-waarde met spatie', command: "gh issue list --label 'a b'", basis: 'gh issue list --label x' },
     { name: 'gh-waarde met $', command: "gh run view 1 --jq '$x'", basis: 'gh run view 1 --jq x' },
@@ -171,7 +179,14 @@ describe('rolhek-lezen/AC-1: de leeslijst van de reviewer', () => {
   });
 });
 
-const ALLE_ROLLEN: readonly (string | undefined)[] = [undefined, 'developer', 'tester', 'architect', 'docs', 'reviewer'];
+const ALLE_ROLLEN: readonly (string | undefined)[] = [
+  undefined,
+  'developer',
+  'tester',
+  'architect',
+  'docs',
+  'reviewer',
+];
 const rolNaam = (role: string | undefined) => role ?? 'hoofdsessie';
 
 describe('rolhek-lezen/AC-2: git diff|log|show --output en git grep -O voor elke rol', () => {
@@ -293,9 +308,12 @@ describe('rolhek-lezen/AC-5: hoofdsessie, developer en tester ongewijzigd buiten
     'gh run list --repo o/r',
     'gh issue view 5 --web',
   ];
-  describe.each([undefined, 'developer', 'tester'].map((role) => ({ role, naam: rolNaam(role) })))('$naam', ({ role }) => {
-    test.each(LEZEN)('%s → allow zoals nu', (command) => {
-      expect(verdict(command, role)).toBe('allow');
-    });
-  });
+  describe.each([undefined, 'developer', 'tester'].map((role) => ({ role, naam: rolNaam(role) })))(
+    '$naam',
+    ({ role }) => {
+      test.each(LEZEN)('%s → allow zoals nu', (command) => {
+        expect(verdict(command, role)).toBe('allow');
+      });
+    },
+  );
 });

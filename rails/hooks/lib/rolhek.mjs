@@ -498,8 +498,7 @@ function decideBash({ command, role }, ctx, decision) {
       decision.deny.push('env -S/--split-string maakt van tekst een nieuw commando dat het rolhek niet ziet; verboden, voor elke rol');
     forbidden({ assignments, argv, expanded: parsed.expanded ?? [] }, { role, ctx }, decision);
     ghIssue(argv, { role, ctx, setsGhEnv }, decision);
-    if (role === 'reviewer' && (pathWrappers.length > 0 || !reviewerMay(argv, parsed.redirects)))
-      decision.deny.push(`reviewer: alleen lezen (\`${argv.slice(0, 3).join(' ')}\` mag niet; framework §8)`);
+    if (role === 'reviewer') reviewerBash({ assignments, argv, pathWrappers }, parsed.redirects, decision);
     const targets = writeTargets(parsed);
     for (const target of targets.writes) bashTarget({ file: target, kind: 'write', role }, ctx, decision);
     for (const target of targets.deletes) bashTarget({ file: target, kind: 'delete', role }, ctx, decision);
@@ -720,13 +719,72 @@ const REVIEWER_COMMANDS = [
 ];
 
 /**
+ * Leescommando's van de reviewer met een vaste optielijst (spec rolhek-lezen/AC-1). `values`: opties die altijd het volgende
+ * woord als waarde nemen (pflag), ook als dat met `-` begint; `positional`: hoeveel losse woorden; `paths`: paden na `--`.
+ * @type {Record<string, { flags: string[], values: string[], positional: number, paths?: boolean }>}
+ */
+const REVIEWER_READS = {
+  'git ls-files': { flags: [], values: [], positional: 0, paths: true },
+  'gh issue view': { flags: ['--comments'], values: ['--json', '--jq'], positional: 1 },
+  'gh issue list': { flags: [], values: ['--label', '--state', '--limit', '--json', '--jq'], positional: 0 },
+  'gh run view': { flags: ['--log', '--log-failed'], values: ['--json', '--jq', '--job'], positional: 1 },
+  'gh run list': { flags: [], values: ['--branch', '--workflow', '--limit', '--json', '--jq'], positional: 0 },
+  'pnpm leespad': { flags: ['--json'], values: ['--ref'], positional: 0 },
+  'pnpm meting': { flags: ['--json', '--pr-tabel', '--help'], values: ['--branch', '--sessie'], positional: 0 },
+};
+// Geen `$`, backtick, `;`, spatie of aanhalingsteken: de shell van pnpm voert niets uit een waarde uit.
+const SAFE_VALUE = /^[A-Za-z0-9_./,:-]+$/;
+
+/**
+ * Waarom de reviewer dit commando niet mag, of null als het mag (framework §8, spec rolhek-lezen).
  * @param {readonly string[]} argv
  * @param {readonly string[]} redirects
  */
-function reviewerMay(argv, redirects) {
-  if (redirects.length > 0) return false;
+function reviewerRefusal(argv, redirects) {
   const head = argv[0] === 'gh' ? argv.slice(0, 3).join(' ') : argv.slice(0, 2).join(' ');
-  return REVIEWER_COMMANDS.some((pattern) => pattern.test(head));
+  const generic = `reviewer: alleen lezen (\`${argv.slice(0, 3).join(' ')}\` mag niet; framework §8); zoeken en tellen: gebruik de Grep-tool`;
+  if (redirects.length > 0) return generic;
+  if (REVIEWER_COMMANDS.some((pattern) => pattern.test(head))) return null;
+  const read = REVIEWER_READS[head];
+  if (read === undefined) return generic;
+  if (readArgsAllowed(argv.slice(head.split(' ').length), read)) return null;
+  const opties = [...read.flags, ...read.values.map((value) => `${value} <waarde>`)];
+  const lijst = opties.length > 0 ? opties.join(', ') : 'geen opties; paden na --';
+  return `reviewer: \`${head}\` alleen met: ${lijst}; waarden alleen [A-Za-z0-9_./,:-] (spec rolhek-lezen; framework §8)`;
+}
+
+/**
+ * Pad-wrapper, variabele vóór het commando (`X=… cmd`, `env X=… cmd`) of een commando buiten de leeslijst (rolhek-lezen/AC-4).
+ * @param {{ assignments: readonly string[], argv: readonly string[], pathWrappers: readonly string[] }} command
+ * @param {readonly string[]} redirects
+ * @param {Decision} decision
+ */
+function reviewerBash({ assignments, argv, pathWrappers }, redirects, decision) {
+  if (pathWrappers.length > 0) decision.deny.push(`reviewer: een pad-wrapper (\`${pathWrappers[0] ?? ''}\`) is verboden; framework §8`);
+  if (assignments.length > 0)
+    decision.deny.push(`reviewer: geen variabele vóór het commando (\`${(assignments[0] ?? '').split('=')[0] ?? ''}\`); framework §8`);
+  const refusal = reviewerRefusal(argv, redirects);
+  if (refusal !== null) decision.deny.push(refusal);
+}
+
+/**
+ * @param {readonly string[]} args
+ * @param {{ flags: string[], values: string[], positional: number, paths?: boolean }} read
+ */
+function readArgsAllowed(args, read) {
+  let positional = 0;
+  for (let index = 0; index < args.length; index += 1) {
+    const arg = args[index] ?? '';
+    if (arg === '--' && read.paths === true) return args.slice(index + 1).every((path) => SAFE_VALUE.test(path));
+    if (read.values.includes(arg)) {
+      index += 1;
+      if (!SAFE_VALUE.test(args[index] ?? '')) return false;
+    } else if (arg.startsWith('-')) {
+      if (!read.flags.includes(arg)) return false;
+    } else if (positional >= read.positional || !SAFE_VALUE.test(arg)) return false;
+    else positional += 1;
+  }
+  return true;
 }
 
 /**
@@ -1051,12 +1109,39 @@ export function gitForbidden(args, { role, branch }) {
   if (subcommand === 'branch' && deletesMain(rest)) found.push('git branch -d/-D/--delete van main is verboden (ADR 0046 punt 26)');
   if (shellAlias(args, { subcommand, rest, config }))
     found.push('een git-alias met `!` (shellcommando) of via --config-env is verboden, voor elke rol: het rolhek ziet niet wat er draait');
+  found.push(...gitWriteOptions(subcommand, rest));
   if (role === 'hoofdsessie') return found;
   if (subcommand === 'push' || subcommand === 'merge' || subcommand === 'rebase')
     found.push(`subagent: git ${subcommand} doet de hoofdsessie`);
   if (subcommand === 'reset' && rest.includes('--hard')) found.push('subagent: git reset --hard is verboden');
   if (subcommand.startsWith('credential')) found.push('subagent: git credential geeft tokens vrij; verboden');
   return found;
+}
+
+// `--output` en elke afkorting ervan (git accepteert een unieke prefix); `--op…` tot `--open-files-in-pager` bij git grep.
+/**
+ * `arg` is `full` of een afkorting ervan vanaf `min` tekens (git accepteert een unieke prefix), met of zonder `=waarde`.
+ * @param {string} arg
+ * @param {string} full
+ * @param {number} min
+ */
+function abbreviates(arg, full, min) {
+  const name = arg.split('=')[0] ?? '';
+  return name.length >= min && full.startsWith(name);
+}
+
+/**
+ * Opties waarmee een leescommando een bestand schrijft of een programma start, voor elke rol (spec rolhek-lezen/AC-2):
+ * `git diff|log|show --output`, `git grep -O`/`--open-files-in-pager`, ook in een cluster (`-nOvim`).
+ * @param {string} subcommand
+ * @param {readonly string[]} rest
+ */
+function gitWriteOptions(subcommand, rest) {
+  if (['diff', 'log', 'show'].includes(subcommand) && rest.some((arg) => abbreviates(arg, '--output', 3)))
+    return [`git ${subcommand} --output schrijft een bestand buiten het rolhek om; verboden, voor elke rol`];
+  if (subcommand === 'grep' && rest.some((arg) => abbreviates(arg, '--open-files-in-pager', 4) || /^-[^-]*O/.test(arg)))
+    return ['git grep -O/--open-files-in-pager start een programma; verboden, voor elke rol'];
+  return [];
 }
 
 /**
