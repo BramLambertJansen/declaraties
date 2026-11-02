@@ -303,3 +303,34 @@ describe('testteller: herreview-gaten', () => {
     expect(testChangeRisk(lines(geval, LOS_B), lines(LOS_B), FILE)).toBe('removed');
   });
 });
+
+describe('testteller: codex-bevindingen', () => {
+  test('testteller: generieke arrow-functies met lange typeparameter in .tsx storen niet', () => {
+    const file = 'src/core/web/ui/generiek.test.tsx';
+    const generiek = [
+      'const identity = <Value,>(value: Value) => value;',
+      'const id2 = <Value extends unknown>(v: Value) => v;',
+    ];
+    expect(testChangeRisk(lines(...generiek, LOS_A, LOS_B), lines(...generiek, LOS_A), file)).toBe('removed');
+    const metSkip = lines(...generiek, LOS_A, LOS_B, "test.skip('c', () => {});");
+    expect(testChangeRisk(lines(...generiek, LOS_A, LOS_B), metSkip, file)).toBe('skip');
+  });
+
+  test('testteller: skip op een geawaite expressie-ontvanger is een skip', () => {
+    const before = lines("test('a', async (ctx) => { await Promise.resolve(ctx); });");
+    const after = lines("test('a', async (ctx) => { (await Promise.resolve(ctx)).skip(); });");
+    expect(testChangeRisk(before, after, FILE)).toBe('skip');
+  });
+
+  test.each(['getCtx().skip();', 'arr[0].skip();'])('testteller: %s erbij is een skip', (aanroep) => {
+    const before = lines("test('a', () => { expect(1).toBe(1); });");
+    const after = lines(`test('a', () => { ${aanroep} expect(1).toBe(1); });`);
+    expect(testChangeRisk(before, after, FILE)).toBe('skip');
+  });
+
+  test('testteller: ctx.skip() voor en na telt niet dubbel', () => {
+    const before = lines("test('a', (ctx) => { ctx.skip(); expect(1).toBe(1); });");
+    const after = lines("test('a', (ctx) => { ctx.skip(); expect(2).toBe(2); });");
+    expect(testChangeRisk(before, after, FILE)).toBeNull();
+  });
+});

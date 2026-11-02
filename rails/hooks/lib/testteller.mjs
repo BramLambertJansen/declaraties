@@ -165,10 +165,10 @@ class Lexer {
 
   /** Een JSX-element of -fragment vanaf `<`; false (en niets verbruikt) als het geen element is (`<T,>() =>`). */
   element() {
-    const naam = /^<\s*(?:>|([\p{ID_Start}$_][\p{ID_Continue}$.:-]*)(?!\s*(?:,|extends\b)))/u.exec(
-      this.bron.slice(this.i, this.i + 200),
-    );
-    if (naam === null) return false;
+    const rest = this.bron.slice(this.i, this.i + 200);
+    const naam = /^<\s*(?:>|([\p{ID_Start}$_][\p{ID_Continue}$.:-]*))/u.exec(rest);
+    // Een generieke arrow-functie (`<Value,>(v) =>`, `<T extends U>`) is geen element; toets na de héle naam.
+    if (naam === null || /^\s*(?:,|extends\b)/.test(rest.slice(naam[0].length))) return false;
     this.i += naam[0].length;
     if (naam[1] === undefined || !this.attributen()) this.kinderen();
     return true;
@@ -299,14 +299,26 @@ function gevallen(wortel, schakels) {
   return aantal;
 }
 
-/** 1 als de keten een skip aanroept. @param {string} wortel @param {Schakel[]} schakels */
+/** 1 als de keten vanaf de wortel een skip aanroept (`xit(`, `test.skipIf(c)(`). @param {string} wortel @param {Schakel[]} schakels */
 function skips(wortel, schakels) {
   if (SKIP_FUNCTIES.has(wortel) && schakels[0]?.soort === 'aanroep') return 1;
+  if (!SUITE_NAMEN.has(wortel)) return 0;
   const aanroep = schakels.findLastIndex((schakel) => schakel.soort === 'aanroep');
   const uit = schakels
     .slice(0, aanroep === -1 ? 0 : aanroep)
-    .some((s) => s.soort === 'eigenschap' && (SKIP_OVERAL.has(s.naam) || (SKIP_SUITE.has(s.naam) && SUITE_NAMEN.has(wortel))));
+    .some((s) => s.soort === 'eigenschap' && SKIP_SUITE.has(s.naam));
   return uit ? 1 : 0;
+}
+
+/**
+ * `.skip`/`.todo`/`.fixme` met een aanroep verderop in de keten, op elke ontvanger: ook `(await p).skip()` en
+ * `getCtx().skip()`, waar de keten niet bij een naam begint. @param {Token[]} tokens @param {number} index @param {Map<number, number>} paren
+ */
+function eigenschapSkip(tokens, index, paren) {
+  const token = tokens[index];
+  const vorige = tokens[index - 1];
+  if (token === undefined || !SKIP_OVERAL.has(token.tekst) || vorige?.tekst !== '.' || vorige.soort !== 'teken') return 0;
+  return keten(tokens, index, paren).some((schakel) => schakel.soort === 'aanroep') ? 1 : 0;
 }
 
 /** @param {string} bron @param {string} pad repo-pad; `.jsx`/`.tsx` zet JSX aan @returns {{ cases: number, skips: number }} */
@@ -329,6 +341,7 @@ function telLijst(tokens) {
   tokens.forEach((token, index) => {
     if (token.soort !== 'naam') return;
     const vorige = tokens[index - 1];
+    totaal.skips += eigenschapSkip(tokens, index, paren);
     if (vorige?.soort === 'teken' && vorige.tekst === '.') return;
     const schakels = keten(tokens, index, paren);
     totaal.cases += gevallen(token.tekst, schakels);
