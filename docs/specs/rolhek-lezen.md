@@ -1,5 +1,5 @@
 ---
-status: gebouwd # #420; gevalideerd: 15cd13c443acd0669d0d7338bebd7c2686b4f802
+status: gebouwd # #423
 namespace: rolhek-lezen
 ---
 
