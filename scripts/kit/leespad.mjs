@@ -31,8 +31,8 @@ export const SCENARIOS = {
 /** Waarschuwingsdrempel en streefdoel per scenario, in bytes (ADR 0064 punt 1). @type {Record<string, { drempel: number, streefdoel?: number }>} */
 export const DOELEN = {
   'nieuwe-feature': { drempel: 56 * KB, streefdoel: 25 * KB },
-  'lichte-fix': { drempel: 28 * KB },
-  review: { drempel: 16 * KB },
+  'lichte-fix': { drempel: 16 * KB },
+  review: { drempel: 28 * KB },
 };
 
 /** De tekst vóór de eerste `## `-kop en de stukken van elke `## `-kop tot de volgende. @param {string} tekst */

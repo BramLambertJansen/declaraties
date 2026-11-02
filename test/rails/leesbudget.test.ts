@@ -276,8 +276,8 @@ describe('leesbudget/AC-3: leespad telt §8 en toont metingen', { timeout: 60_00
     const data: unknown = JSON.parse(r.stdout);
     expect(veld(data, 'scenarios', 'nieuwe-feature', 'streefdoel')).toBe(25 * KB);
     expect(veld(data, 'scenarios', 'nieuwe-feature', 'drempel')).toBe(56 * KB);
-    expect(veld(data, 'scenarios', 'lichte-fix', 'drempel')).toBe(28 * KB);
-    expect(veld(data, 'scenarios', 'review', 'drempel')).toBe(16 * KB);
+    expect(veld(data, 'scenarios', 'lichte-fix', 'drempel')).toBe(16 * KB);
+    expect(veld(data, 'scenarios', 'review', 'drempel')).toBe(28 * KB);
     expect(veld(data, 'scenarios', 'review', 'bytes')).toBe(Buffer.byteLength(VERWACHT_8));
   });
 
@@ -393,7 +393,7 @@ describe('leesbudget/AC-4: feiten.mjs hoofdstuk <n>', { timeout: 60_000 }, () =>
 describe('leesbudget/AC-5: groeiproef', { timeout: 60_000 }, () => {
   /** Hoofdstuk van 20 KB, regelboek van 60 KB met een nieuw §13, spec van 50 KB en ADR van 9 KB. */
   const GROEI = {
-    'docs/framework.md': VOOR + H('8', tekst(20 * KB)) + H('13', 'DERTIEN') + tekst(40 * KB),
+    'docs/framework.md': VOOR + H('8', tekst(20 * KB)) + H('13', 'DERTIEN' + tekst(11 * KB)) + H('14', tekst(11 * KB)),
     'docs/specs/groot.md': SPEC_KOP('groot') + tekst(50 * KB),
     'docs/adr/0070-groot.md': ADR_KOP('0070') + tekst(9 * KB),
     'docs/x.md': 'Zie framework §13.\n',
