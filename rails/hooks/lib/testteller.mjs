@@ -168,7 +168,8 @@ class Lexer {
     const rest = this.bron.slice(this.i, this.i + 200);
     const naam = /^<\s*(?:>|([\p{ID_Start}$_][\p{ID_Continue}$.:-]*))/u.exec(rest);
     // Een generieke arrow-functie (`<Value,>(v) =>`, `<T extends U>`) is geen element; toets na de héle naam.
-    if (naam === null || /^\s*(?:,|extends\b)/.test(rest.slice(naam[0].length))) return false;
+    if (naam === null) return false;
+    if (naam[1] !== undefined && /^\s*(?:,|extends\b)/.test(rest.slice(naam[0].length))) return false;
     this.i += naam[0].length;
     if (naam[1] === undefined || !this.attributen()) this.kinderen();
     return true;
@@ -307,7 +308,9 @@ function skips(wortel, schakels) {
   const uit = schakels
     .slice(0, aanroep === -1 ? 0 : aanroep)
     .some((s) => s.soort === 'eigenschap' && SKIP_SUITE.has(s.naam));
-  return uit ? 1 : 0;
+  // Een `.skip`/`.todo`/`.fixme` in dezelfde keten telt eigenschapSkip al: één skip per keten (`test.fails.skip(`).
+  const alGeteld = schakels.some((s) => s.soort === 'eigenschap' && SKIP_OVERAL.has(s.naam));
+  return uit && !alGeteld ? 1 : 0;
 }
 
 /**
@@ -318,6 +321,9 @@ function eigenschapSkip(tokens, index, paren) {
   const token = tokens[index];
   const vorige = tokens[index - 1];
   if (token === undefined || !SKIP_OVERAL.has(token.tekst) || vorige?.tekst !== '.' || vorige.soort !== 'teken') return 0;
+  // Alleen de eerste in `test.skip.todo(`: één skip per keten.
+  const ervoor = tokens[index - 2];
+  if (ervoor?.soort === 'naam' && SKIP_OVERAL.has(ervoor.tekst) && tokens[index - 3]?.tekst === '.') return 0;
   return keten(tokens, index, paren).some((schakel) => schakel.soort === 'aanroep') ? 1 : 0;
 }
 

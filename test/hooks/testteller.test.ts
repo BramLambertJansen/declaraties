@@ -333,4 +333,34 @@ describe('testteller: codex-bevindingen', () => {
     const after = lines("test('a', (ctx) => { ctx.skip(); expect(2).toBe(2); });");
     expect(testChangeRisk(before, after, FILE)).toBeNull();
   });
+
+  test('testteller: suite-modifier met .skip in één keten telt één skip', () => {
+    const before = lines("test.fails.skip('a', () => {});", "test('b', (ctx) => { expect(1).toBe(1); });");
+    const after = lines("test.skip('a', () => {});", "test('b', (ctx) => { ctx.skip(); expect(1).toBe(1); });");
+    expect(testChangeRisk(before, after, FILE)).toBe('skip');
+  });
+
+  test('testteller: test.skipIf(true).skip erbij is een skip, ongewijzigd niet', () => {
+    const keten = "test.skipIf(true).skip('a', () => { expect(1).toBe(1); });";
+    expect(testChangeRisk(lines(LOS_B), lines(keten, LOS_B), FILE)).toBe('skip');
+    expect(testChangeRisk(lines(keten, LOS_B), lines(keten, LOS_B), FILE)).toBeNull();
+  });
+
+  test('testteller: test.skip.todo telt als één skip binnen de keten', () => {
+    const before = lines("test.skip('a', () => {});", LOS_B);
+    expect(testChangeRisk(before, lines("test.skip.todo('a');", LOS_B, "xit('c', () => {});"), FILE)).toBe('skip');
+    expect(testChangeRisk(before, lines("test.skip.todo('a');", LOS_B), FILE)).toBeNull();
+  });
+
+  test.each(['<>, test(a)</>', '<>extends test(x)</>'])(
+    'testteller: fragmenttekst %s in .tsx telt niet als geval',
+    (fragment) => {
+      const file = 'src/core/web/ui/fragment.test.tsx';
+      const losC = "test('c', () => { expect(3).toBe(3); });";
+      const view = `const view = ${fragment};`;
+      const before = lines(LOS_A, LOS_B, losC);
+      expect(testChangeRisk(before, lines(view, losC), file)).toBe('removed');
+      expect(testChangeRisk(before, lines(view, LOS_B, losC), file)).toBe('removed');
+    },
+  );
 });
