@@ -50,7 +50,7 @@ describe('rolhek-lezen/AC-1: de leeslijst van de reviewer', () => {
     'gh issue list --json number,title --jq .title',
     // een optie met waarde neemt altijd het volgende woord als waarde, ook als dat met `-` begint (pflag)
     'gh issue list --label --web',
-    'gh issue view 5 --jq -x',
+    'gh issue view 5 --json -x',
     // gh run view <id>: vlaggen --log --log-failed, met waarde --json --jq --job
     'gh run view 123',
     'gh run view 123 --log',
@@ -106,6 +106,10 @@ describe('rolhek-lezen/AC-1: de leeslijst van de reviewer', () => {
     { name: 'run rerun', command: 'gh run rerun 1', basis: 'gh run view 1' },
     { name: 'run download', command: 'gh run download 1', basis: 'gh run view 1' },
     { name: 'run watch', command: 'gh run watch 1', basis: 'gh run view 1' },
+    // --jq alleen met paden: geen jq-functies zoals env (tokens uit de omgeving)
+    { name: '--jq env', command: 'gh issue view 5 --jq env', basis: 'gh issue view 5 --jq .title' },
+    { name: '--jq .x,env', command: 'gh run view 1 --jq .x,env', basis: 'gh run view 1 --jq .x,.y' },
+    { name: '--jq zonder punt', command: 'gh issue list --jq length', basis: 'gh issue list --jq .title' },
     // vastgeplakte waarden en clusters staan niet in de lijst
     { name: '--json=…', command: 'gh issue view 5 --json=title', basis: 'gh issue view 5 --json title' },
     { name: '--limit=…', command: 'gh issue list --limit=5', basis: 'gh issue list --limit 5' },
@@ -145,7 +149,7 @@ describe('rolhek-lezen/AC-1: de leeslijst van de reviewer', () => {
     },
     { name: 'waarde met dubbel aanhalingsteken', command: `pnpm leespad --ref 'a"b'`, basis: 'pnpm leespad --ref x' },
     { name: 'gh-waarde met spatie', command: "gh issue list --label 'a b'", basis: 'gh issue list --label x' },
-    { name: 'gh-waarde met $', command: "gh run view 1 --jq '$x'", basis: 'gh run view 1 --jq x' },
+    { name: 'gh-waarde met $', command: "gh run view 1 --jq '$x'", basis: 'gh run view 1 --jq .x' },
     // een tweede commando of een omleiding
     { name: 'tweede commando', command: 'gh issue view 5; touch a', basis: 'gh issue view 5' },
     { name: 'omleiding', command: 'gh run view 1 --log > log.txt', basis: 'gh run view 1 --log' },
@@ -214,8 +218,35 @@ describe('rolhek-lezen/AC-2: git diff|log|show --output en git grep -O voor elke
     'git grep --open-files-in-pager=vim foo',
     'git grep --open foo',
   ];
+  // Dezelfde familie schrijft met --output; format-patch met -o/--output-directory/--output.
+  const FAMILIE = [
+    'git diff-tree --output=out.txt HEAD',
+    'git diff-index --output=out.txt HEAD',
+    'git diff-files --output=out.txt',
+    'git range-diff --output=out.txt a...b',
+    'git whatchanged --output=out.txt',
+    'git format-patch -o out HEAD~1',
+    'git format-patch -oout HEAD~1',
+    'git format-patch --output-directory out HEAD~1',
+    'git format-patch --output=x.patch HEAD~1',
+  ];
+  // Vals-positieven: deze mogen niet geweigerd worden door AC-2.
+  const GEEN_SCHRIJFOPTIE = [
+    'git log --oneline',
+    'git diff --output-indicator-new=x',
+    'git grep -e FOO',
+    'git grep -eFOO',
+    'git grep -e -O',
+  ];
 
   describe.each(ALLE_ROLLEN.map((role) => ({ role, naam: rolNaam(role) })))('$naam', ({ role }) => {
+    test.each(FAMILIE)('%s → deny', (command) => {
+      expect(verdict(command, role)).toBe('deny');
+    });
+    if (role !== REVIEWER)
+      test.each(GEEN_SCHRIJFOPTIE)('%s → niet geweigerd', (command) => {
+        expect(verdict(command, role)).not.toBe('deny');
+      });
     test.each(OUTPUT)('$command → deny', ({ command, basis }) => {
       expect(verdict(basis, role)).not.toBe('deny');
       expect(verdict(command, role)).toBe('deny');

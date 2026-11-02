@@ -734,6 +734,8 @@ const REVIEWER_READS = {
 };
 // Geen `$`, backtick, `;`, spatie of aanhalingsteken: de shell van pnpm voert niets uit een waarde uit.
 const SAFE_VALUE = /^[A-Za-z0-9_./,:-]+$/;
+// `--jq` alleen met paden (`.title`, `.a.b,.c`): geen jq-functies zoals `env`, die tokens uit de omgeving tonen.
+const JQ_PATHS = /^\.[A-Za-z0-9_.]*(?:,\.[A-Za-z0-9_.]*)*$/;
 
 /**
  * Waarom de reviewer dit commando niet mag, of null als het mag (framework §8, spec rolhek-lezen).
@@ -778,7 +780,7 @@ function readArgsAllowed(args, read) {
     if (arg === '--' && read.paths === true) return args.slice(index + 1).every((path) => SAFE_VALUE.test(path));
     if (read.values.includes(arg)) {
       index += 1;
-      if (!SAFE_VALUE.test(args[index] ?? '')) return false;
+      if (!SAFE_VALUE.test(args[index] ?? '') || (arg === '--jq' && !JQ_PATHS.test(args[index] ?? ''))) return false;
     } else if (arg.startsWith('-')) {
       if (!read.flags.includes(arg)) return false;
     } else if (positional >= read.positional || !SAFE_VALUE.test(arg)) return false;
@@ -1130,18 +1132,58 @@ function abbreviates(arg, full, min) {
   return name.length >= min && full.startsWith(name);
 }
 
+// Git-subcommando's met de diff-optie `--output=<bestand>`.
+const DIFF_OUTPUT = new Set(['diff', 'log', 'show', 'diff-tree', 'diff-index', 'diff-files', 'range-diff', 'whatchanged']);
+
 /**
  * Opties waarmee een leescommando een bestand schrijft of een programma start, voor elke rol (spec rolhek-lezen/AC-2):
- * `git diff|log|show --output`, `git grep -O`/`--open-files-in-pager`, ook in een cluster (`-nOvim`).
+ * `--output` bij de diff-familie (git staat daar geen afkorting toe; de afkortingen weigeren we defensief),
+ * `git format-patch -o/--output-directory/--output` en `git grep -O`/`--open-files-in-pager`, ook in een cluster (`-nOvim`).
+ * Bekend vals-positief: `--output` als waarde van een andere optie (`git log -S --output`).
  * @param {string} subcommand
  * @param {readonly string[]} rest
  */
 function gitWriteOptions(subcommand, rest) {
-  if (['diff', 'log', 'show'].includes(subcommand) && rest.some((arg) => abbreviates(arg, '--output', 3)))
+  if (DIFF_OUTPUT.has(subcommand) && rest.some((arg) => abbreviates(arg, '--output', 3)))
     return [`git ${subcommand} --output schrijft een bestand buiten het rolhek om; verboden, voor elke rol`];
-  if (subcommand === 'grep' && rest.some((arg) => abbreviates(arg, '--open-files-in-pager', 4) || /^-[^-]*O/.test(arg)))
+  if (subcommand === 'format-patch' && rest.some((arg) => arg.startsWith('-o') || abbreviates(arg, '--output-directory', 3)))
+    return ['git format-patch -o/--output schrijft bestanden buiten het rolhek om; verboden, voor elke rol'];
+  if (subcommand === 'grep' && grepOpensFiles(rest))
     return ['git grep -O/--open-files-in-pager start een programma; verboden, voor elke rol'];
   return [];
+}
+
+// Korte opties van git grep die een waarde nemen: de rest van het cluster of het volgende woord is die waarde.
+const GREP_VALUE_FLAGS = 'efABCm';
+
+/**
+ * `-O` in een cluster (`-O`, `-nOvim`, `-iO`) of `--op…` tot `--open-files-in-pager`; `-eFOO` en `-e -O` zijn een patroon.
+ * @param {readonly string[]} rest
+ */
+function grepOpensFiles(rest) {
+  for (let index = 0; index < rest.length; index += 1) {
+    const arg = rest[index] ?? '';
+    if (arg === '--') return false;
+    if (abbreviates(arg, '--open-files-in-pager', 4)) return true;
+    const cluster = /^-[^-]/.test(arg) ? grepCluster(arg.slice(1)) : 'geen';
+    if (cluster === 'open') return true;
+    if (cluster === 'waarde-volgt') index += 1;
+  }
+  return false;
+}
+
+/**
+ * Leest een cluster korte opties van git grep tot de eerste optie die een waarde neemt.
+ * @param {string} cluster
+ * @returns {'open' | 'waarde-volgt' | 'geen'}
+ */
+function grepCluster(cluster) {
+  for (let at = 0; at < cluster.length; at += 1) {
+    const flag = cluster[at] ?? '';
+    if (flag === 'O') return 'open';
+    if (GREP_VALUE_FLAGS.includes(flag)) return at === cluster.length - 1 ? 'waarde-volgt' : 'geen';
+  }
+  return 'geen';
 }
 
 /**
