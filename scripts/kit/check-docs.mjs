@@ -328,12 +328,15 @@ function linkViolations(root, files, read) {
 
 /**
  * Waar een relatieve link mag landen. Binnen `docs/adr/` en `archief/` (framework §10) leest een link uit het archief alsof
- * het bestand nog in `docs/adr/` stond, en een ADR-doel in `docs/adr/` lost ook op naar `archief/`. Buiten `docs/adr/`
- * geldt alleen het letterlijke pad: die links gaan mee naar het nieuwe pad.
+ * het bestand nog in `docs/adr/` stond, en een ADR-doel in `docs/adr/` lost ook op naar `archief/`. Een spec met een
+ * eigenaarstatus mag niet van inhoud wijzigen, dus ook vanuit een spec lost een ADR-doel op naar `archief/`. Elders geldt
+ * alleen het letterlijke pad: die links gaan mee naar het nieuwe pad (ADR 0053 punt 4).
  * @param {string} file @param {string} doel
  */
 function linkDoelen(file, doel) {
   const letterlijk = path.posix.join(path.posix.dirname(file), doel);
+  if (SPEC_BESTAND.test(file) && /^docs\/adr\/\d{4}-[^/]+\.md$/.test(letterlijk))
+    return [letterlijk, letterlijk.replace(ADR_MAP, ARCHIEF)];
   if (path.posix.dirname(file) !== 'docs/adr' && path.posix.dirname(file) !== 'docs/adr/archief') return [letterlijk];
   const alsActief = path.posix.join(ADR_MAP, doel);
   return [
