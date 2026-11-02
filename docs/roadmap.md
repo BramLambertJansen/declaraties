@@ -303,6 +303,14 @@ Bewust nog niet, tot de genoemde aanleiding er is (P1). Niets verdwijnt: elk ite
   terug als: een app het nodig heeft
 - [ ] **sonarjs, better-tailwindcss en squawk** (stuk 4): de eerste twee vragen een nieuwe dependency, squawk een nieuwe tool (voor `gate:slow`).
   terug als: een fout die deze tool had gevangen doorglipt, of de proef-app toont dat ze nodig zijn
+- [ ] **Uitbreidingen op aanleiding** (voorheen R-FASE-02; R-FASE-01), elk met zijn aanleiding:
+  - bestanden (signed URL's) of realtime, met eigen ADR; terug als: de app ze nodig heeft
+  - screenshot-regressie en axe in CI; terug als: een visuele of toegankelijkheidsfout doorglipt
+  - jscpd, knip, ast-grep; terug als: review herhaaldelijk kopieën, dode code of een fout patroon vindt
+  - mutation testing; terug als: er kritieke reken- of geldlogica is
+  - Renovate automatisch mergen en OpenTelemetry; terug als: de basis stabiel draait
+  - devcontainer of agent-sandbox in Docker; terug als: iemand meewerkt of agents zonder toestemmingsprompts draaien
+  aanleiding: `docs/framework.md` §12 (R-FASE-01; één plek per norm, R-DOC-06)
 - [ ] **ADR 0030 PR 2: algemene agent-merge** (voor de framework-lane; de feature-lane volgt ADR 0046 punt 30). Zie `.claude/skills/opleveren/SKILL.md`
   en `docs/operations/agent-doorloop.md`.
   terug als: er ≥ 10 feature-PR's zijn zonder gevolgfout, de AC→test-check en het risico-overzicht actief zijn en ST-01 is besloten

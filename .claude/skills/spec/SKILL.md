@@ -12,7 +12,7 @@ krijgt geen spec. Hergebruik een passende bestaande feature-spec; een ADR is all
 Spec en bouw gaan in één PR (feature-lane, ADR 0062): na de spec-review (stap 7) schrijft de tester de tests en bouwt de
 developer verder op dezelfde branch; de eigenaarmerge is het besluit (ADR 0046). Alleen kritiek werk (ADR 0062 punt 2) bouwt
 pas als de spec met status `goedgekeurd` op main staat. De hoofdsessie coördineert de architect; de route verandert niets aan
-spec-review of eigenaarbesluit. Bindende specs inhoudelijk wijzigen volgt de bestaande besluitroute.
+spec-review of eigenaarbesluit. Bindende specs inhoudelijk wijzigen volgt de bestaande besluitroute. Van het regelboek lees je alleen de geraakte hoofdstukken (`node scripts/kit/feiten.mjs hoofdstuk <n>`).
 
 Feiten nu:
 

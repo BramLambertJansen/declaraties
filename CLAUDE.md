@@ -19,8 +19,9 @@ Ook wanneer je een bestaande test mag wijzigen: framework §8.
 
 ## Zuinig met context
 
-- Vraag alleen taakrelevante secties van `feiten.mjs`; `componenten` alleen bij UI-werk, `adr --alle` alleen voor historie.
-- Besteed onderzoek uit als dat zelfstandig nuttig werk oplevert; geef alleen de benodigde broncontext mee en vraag een compacte conclusie.
+- Vraag alleen taakrelevante secties van `feiten.mjs`; `componenten` alleen bij UI-werk, `adr --alle` alleen voor historie; van het regelboek alleen de geraakte hoofdstukken (`feiten.mjs hoofdstuk <n>`, R-DOC-05).
+- Lees en zoek met de Read-, Grep- en Glob-tools, niet met Bash; het rolhek weigert veel shellvormen (R-WERK-21).
+- Besteed onderzoek uit als dat zelfstandig nuttig werk oplevert; overdracht volgens R-WERK-14, vraag een compacte conclusie.
 - Lees `db/schema.snapshot.sql` in plaats van alle migraties.
 - Externe diensten via hun CLI (`gh`); MCP alleen read-only. Geen `docker`.
 
