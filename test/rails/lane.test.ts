@@ -3,7 +3,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { describe, expect, test } from 'vitest';
 import { loadConfig } from '../../rails/hooks/lib/rolhek.mjs';
-import { laneVan, migratieOvertreding, recordAlleenBesluit } from '../../scripts/kit/lane.mjs';
+import { laneVan, migratieOvertreding } from '../../scripts/kit/lane.mjs';
 import { plan } from '../../scripts/kit/new-resource.mjs';
 
 // ADR 0046 punt 15: lane-herkenning. `laneVan({ changes, besluiten, mini, config })` is puur.
@@ -158,8 +158,12 @@ describe('framework-lane', () => {
     expect(lane([A(ADR)], { besluiten: [ADR], mini: false }).lane).toBe('framework');
   });
 
-  test('een ADR met zijn record slaagt', () => {
-    expect(lane([A(ADR), M('.claude/decisions.json')], { besluiten: [ADR], mini: false }).lane).toBe('framework');
+  // GEWIJZIGD (compacte-kennisbasis-rails/AC-14, PR 6b): na 6b bestaan er geen records; `.claude/decisions.json` is in een
+  // besluit-PR een gewoon ander pad en dus geen eigen record meer.
+  test('een ADR met .claude/decisions.json: geen lane (het register is geen eigen record meer)', () => {
+    const uitslag = lane([A(ADR), M('.claude/decisions.json')], { besluiten: [ADR], mini: false });
+    expect(uitslag.lane).toBeNull();
+    expect(uitslag.reden).toContain('.claude/decisions.json');
   });
 
   test('10 een in-PR-status én code geeft geen lane', () => {
@@ -182,10 +186,11 @@ describe('framework-lane', () => {
     ).toBe('framework');
   });
 
-  test('meerdere besluitdocumenten met hun record, zonder code: framework', () => {
-    expect(lane([A(ADR), A(SPEC), M('.claude/decisions.json')], { besluiten: [ADR, SPEC], mini: false }).lane).toBe(
-      'framework',
-    );
+  // GEWIJZIGD (compacte-kennisbasis-rails/AC-14, PR 6b): zie hierboven; het register hoort niet meer in een besluit-PR.
+  test('meerdere besluitdocumenten met .claude/decisions.json: geen lane', () => {
+    const uitslag = lane([A(ADR), A(SPEC), M('.claude/decisions.json')], { besluiten: [ADR, SPEC], mini: false });
+    expect(uitslag.lane).toBeNull();
+    expect(uitslag.reden).toContain('.claude/decisions.json');
   });
 
   test.each([
@@ -513,45 +518,5 @@ describe('migratieOvertreding: dbmate-marker en template', () => {
 
   test('een tekst met puntkomma en -- in een kolomdefault blijft één statement', () => {
     expect(migratieOvertreding(ownerTabel('public.n', "body text default 'x; -- y'"))).toBeNull();
-  });
-});
-
-describe('recordAlleenBesluit', () => {
-  const record = (file: string, digest = 'a') => ({
-    file,
-    digest: digest.repeat(64),
-    repository: 'r/r',
-    branch: 'b/c',
-    status: 'goedgekeurd',
-    paths: [],
-  });
-  const register = (decisions: unknown[], requiredChecks = ['gate:fast']) =>
-    JSON.stringify({ version: 1, requiredChecks, decisions });
-
-  test('alleen het eigen record wijzigt of komt erbij: ok', () => {
-    const basis = register([record('docs/specs/a.md')]);
-    expect(
-      recordAlleenBesluit({
-        basis,
-        head: register([record('docs/specs/a.md'), record('docs/specs/b.md')]),
-        file: 'docs/specs/b.md',
-      }),
-    ).toBe(true);
-  });
-
-  test('een record van een ander document wijzigt: niet ok', () => {
-    const basis = register([record('docs/specs/a.md')]);
-    expect(
-      recordAlleenBesluit({ basis, head: register([record('docs/specs/a.md', 'b')]), file: 'docs/specs/b.md' }),
-    ).toBe(false);
-  });
-
-  test('requiredChecks wijzigt: niet ok', () => {
-    const basis = register([]);
-    expect(recordAlleenBesluit({ basis, head: register([], ['gate:fast', 'x']), file: 'docs/specs/b.md' })).toBe(false);
-  });
-
-  test('onleesbaar register: niet ok', () => {
-    expect(recordAlleenBesluit({ basis: null, head: '{', file: 'docs/specs/b.md' })).toBe(false);
   });
 });

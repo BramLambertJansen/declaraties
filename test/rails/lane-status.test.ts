@@ -468,14 +468,20 @@ describe('framework-lane: het record', () => {
     return { fixture, head: commitAls(fixture.root, 'docs: status', 'web-flow') };
   }
 
-  test('het eigen record erbij: slaagt', () => {
+  // GEWIJZIGD (compacte-kennisbasis-rails/AC-14, PR 6b): na 6b bestaan er geen records; `.claude/decisions.json` is in een
+  // besluit-PR een gewoon ander pad en dus ook het "eigen record" geen toegestane toevoeging meer.
+  test('het eigen record erbij: faalt, het register hoort niet in een besluit-PR', () => {
     const { fixture, head } = metRecord(true);
-    expect(draaiChecker(fixture, head).stderr).toBe('');
+    const uitvoer = draaiChecker(fixture, head);
+    expect(uitvoer.status).toBe(1);
+    expect(uitvoer.stderr).toContain('.claude/decisions.json');
   });
 
   test('het record van een ander document erbij: faalt', () => {
     const { fixture, head } = metRecord(false);
-    expect(draaiChecker(fixture, head).stderr).toContain('wijzigt meer dan het record');
+    const uitvoer = draaiChecker(fixture, head);
+    expect(uitvoer.status).toBe(1);
+    expect(uitvoer.stderr).toContain('.claude/decisions.json');
   });
 });
 

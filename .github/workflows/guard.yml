@@ -109,7 +109,7 @@ jobs:
         with:
           version: 2026.9.18
           install_args: node
-      - name: Documentstatus en taakmandaat
+      - name: Documentstatus
         env:
           GH_TOKEN: ${{ github.token }}
           REPO: ${{ github.repository }}

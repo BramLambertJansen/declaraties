@@ -1,5 +1,5 @@
-// B1 van spec taakmandaat-vervolg: binnen een taakmandaat mag in docs/roadmap.md alleen het vinkje van het item van de taak
-// wijzigen. Eén gedeelde controle voor check-document-status (CI), statusOnlyDiff en `pnpm docs:status --roadmap`.
+// Met `pnpm docs:status --roadmap` mag in docs/roadmap.md alleen het vinkje van het item van de eigen spec wijzigen
+// (B1 van spec taakmandaat-vervolg). Eén gedeelde controle voor check-document-status (CI), statusOnlyDiff en `pnpm docs:status --roadmap`.
 // Pure functies: geen git, geen fs; de aanroeper levert tekst en kader.
 import { packageScripts } from './check-docs.mjs';
 import { heeftBewijs, leesItems } from './check-roadmap.mjs';
@@ -11,8 +11,7 @@ export const ROADMAP = 'docs/roadmap.md';
 /** @typedef {{ scripts: Readonly<Record<string, unknown>>, testpaden: readonly string[], bestanden: readonly string[], register: ReadonlySet<string> }} Kader */
 /** @typedef {{ regel: number, aangevinkt: boolean, tekst: string, regels: string[] }} Blok */
 
-export const BUITEN =
-  'docs/roadmap.md: buiten het taakmandaat; alleen het vinkje van het item van een spec met mandaat mag wijzigen';
+export const BUITEN = 'docs/roadmap.md: alleen het vinkje van het item van de eigen spec mag wijzigen';
 /** @param {string} spec */
 export const geenEenduidig = (spec) => `docs/roadmap.md: geen eenduidig open item dat ${spec} noemt; vraag de eigenaar`;
 /** @param {number} regel */

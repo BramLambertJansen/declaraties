@@ -161,7 +161,7 @@ const KRITIEK = [
   'scripts/kit/check-roadmap.mjs',
   'scripts/kit/roadmap-item.mjs',
   'scripts/kit/document-status.mjs',
-  'scripts/kit/document-decision.mjs',
+  // GEWIJZIGD (compacte-kennisbasis-rails/AC-14, PR 6b): document-decision.mjs bestaat niet meer en staat niet meer in KRITIEK.
   'scripts/kit/gates.mjs',
   ...altijdVragen(),
 ];

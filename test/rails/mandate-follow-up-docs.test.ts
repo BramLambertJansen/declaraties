@@ -29,9 +29,10 @@ function samen(tekst: string): string {
   return tekst.replace(/\s+/g, ' ').trim();
 }
 
-// GEWIJZIGD (spec-en-bouw/AC-8, ADR 0062): `gebouwd` heeft nu ook de vorm `# #<deze PR>` zonder SHA.
+// GEWIJZIGD (compacte-kennisbasis-rails/AC-14, PR 6b): de zin over het taakmandaat in docs/dod.md (regel 10) en in framework
+// R-WERK-16 is vervallen met het mandaat; de pin op de volledige tekst is een afwezigheidstest op die zin geworden.
 const DOD =
-  'Is het bewijs voor een roadmap-item beschikbaar (checkuitslag of test, eventueel met PR-nummer), dan vinkt dezelfde PR dat item af, met een verwijzing achter het vinkje (testpad, checknaam of PR-nummer; de uitslag staat in de PR) en met akkoord van de eigenaar. Een spec naar `gebouwd` heeft twee vormen: in de PR met de implementatie `status: gebouwd # #<deze PR>` (ADR 0062), of later via `pnpm docs:status`: `status: gebouwd # #<PR>; gevalideerd: <sha>`; een afgevinkt roadmap-item vervangt die niet. Binnen een taakmandaat wijzigt in `docs/roadmap.md` alleen het vinkje van het item dat de spec van het mandaat tussen backticks noemt (precies één open item per spec); `pnpm docs:status <spec> gebouwd --pr <nummer> --roadmap` zet status en vinkje samen (ADR 0046 punt 10). Een item dat deze PR afrondt maar open blijft, is een bevinding van de reviewer, net als een vinkje zonder bewijs. `pnpm check:roadmap` (in `gate:fast`) en `check-document-status` (CI) lezen beide vormen met dezelfde code; of het juiste item is afgevinkt blijft een oordeel van de reviewer.';
+  'Binnen een taakmandaat wijzigt in `docs/roadmap.md` alleen het vinkje van het item dat de spec van het mandaat tussen backticks noemt (precies één open item per spec);';
 
 const FRAMEWORK =
   'Binnen een taakmandaat mag `docs/roadmap.md` alleen het vinkje van het item van de taak meewijzigen; de precieze regel staat in `docs/dod.md`.';
@@ -60,6 +61,11 @@ describe('mandate-follow-up/AC-14: nieuwe documentatieteksten', () => {
   test.each([
     ['docs/dod.md (regel 10)', 'docs/dod.md', DOD],
     ['docs/framework.md §8', 'docs/framework.md', FRAMEWORK],
+  ])('AC-14 (PR 6b): %s bevat de mandaatzin niet meer', (_naam, bestand, tekst) => {
+    expect(tekstVan(bestand).includes(samen(tekst)), `${bestand} bevat nog: ${samen(tekst)}`).toBe(false);
+  });
+
+  test.each([
     ['docs/specs/_template.md (regel 2)', 'docs/specs/_template.md', TEMPLATE],
     ['docs/operations/agent-doorloop.md: voorbeeldopdracht', 'docs/operations/agent-doorloop.md', DOORLOOP_VOORBEELD],
     ['docs/operations/agent-doorloop.md: beschrijving', 'docs/operations/agent-doorloop.md', DOORLOOP_ZIN],
@@ -98,5 +104,26 @@ describe('mandate-follow-up/AC-26: de OV-8- en OV-10-teksten in de implementatie
     ['docs/operations/agent-doorloop.md', DOORLOOP_REGEL81],
   ])('%s bevat de versoepelde tekst', (bestand, tekst) => {
     expect(tekstVan(bestand).includes(samen(tekst)), `${bestand} bevat niet: ${samen(tekst)}`).toBe(true);
+  });
+});
+
+// compacte-kennisbasis-rails/AC-14 (PR 6b): het taakmandaat bestaat niet meer; geen document, agentinstructie of skill noemt het.
+describe('compacte-kennisbasis-rails/AC-14: de mandaatwoorden zijn uit de documenten', () => {
+  const BESTANDEN = [
+    'docs/dod.md',
+    'docs/framework.md',
+    'AGENTS.md',
+    '.claude/rules/core.md',
+    '.claude/agents/developer.md',
+    '.claude/skills/spec/SKILL.md',
+    '.claude/skills/opleveren/SKILL.md',
+    'docs/operations/agent-doorloop.md',
+  ];
+  const WOORDEN = ['taakmandaat', 'broncodemandaat', 'docs:decision'];
+  const gevallen = BESTANDEN.flatMap((bestand) => WOORDEN.map((woord) => ({ bestand, woord })));
+
+  test.each(gevallen)('$bestand bevat "$woord" niet meer (hoofdletterongevoelig)', ({ bestand, woord }) => {
+    const tekst = readFileSync(path.join(ROOT, bestand), 'utf8').toLowerCase();
+    expect(tekst.includes(woord), bestand + ' noemt nog ' + woord).toBe(false);
   });
 });

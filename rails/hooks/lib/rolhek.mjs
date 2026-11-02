@@ -4,7 +4,7 @@
 import path from 'node:path';
 import { gitSubcommand, parseCommands, programName, splitCommand, writeTargets } from './shell.mjs';
 import { A4_MELDING, beslisOvergang, builtReference, documentInfo, documentKind, isArchief, isHerschrijving } from './document-state.mjs';
-import { canRecordStatus, canWriteProtected, TEMPLATE_REPOSITORY } from './task-authority.mjs';
+import { canRecordStatus, TEMPLATE_REPOSITORY } from './task-authority.mjs';
 import { automaticRunner } from './runner-authority.mjs';
 import { isCoreUiSource, testChangeRisk } from './functional-ui.mjs';
 import { staleBranchStart } from './verse-main.mjs';
@@ -87,7 +87,7 @@ export function decide(payload, ctx) {
   const tool = field(payload, 'tool_name');
   const input = objectField(payload, 'tool_input');
   const role = roleOf(field(payload, 'agent_type'));
-  // Een onbekende subagent houdt de bestaande developerbeperkingen, maar krijgt nooit een taakmandaat.
+  // Een onbekende subagent houdt de bestaande developerbeperkingen en leest geen statusbesluit uit main.
   const namedRole = field(payload, 'agent_type');
   const context = ['', 'developer', 'architect'].includes(namedRole)
     ? ctx
@@ -102,7 +102,7 @@ export function decide(payload, ctx) {
   }
   else if (['Edit', 'Write', 'MultiEdit', 'NotebookEdit'].includes(tool)) {
     decideEdit({ tool, input, role }, context, decision);
-    if (decision.context.some((reason) => reason.startsWith('Taakmandaat:')) && decision.ask.length + decision.deny.length === 0)
+    if (decision.context.some((reason) => reason.startsWith('Status uit main:')) && decision.ask.length + decision.deny.length === 0)
       decision.allow = true;
   }
   return decision;
@@ -279,7 +279,7 @@ function adrMetEigenaarstatusWeg(rel, basis, change) {
 }
 
 /**
- * Voor een rol die geen eigenaarstatus schrijft: alleen met een record op main, en `goedgekeurd` nooit zelf (ADR 0046 punt 6).
+ * Voor een rol die geen eigenaarstatus schrijft: alleen wat main al heeft, en `goedgekeurd` nooit zelf (ADR 0046 punt 6, ADR 0063).
  * @param {{ rel: string, change: Change, role: string }} target @param {Ctx} ctx @param {Decision} decision
  * @returns {boolean} true als de beslissing vaststaat
  */
@@ -299,7 +299,7 @@ function statusZonderBesluit({ rel, change, role }, ctx, decision) {
 }
 
 /**
- * Een statuswijziging mag alleen de statusregel aanpassen en een bestaand besluit administreren.
+ * Een statuswijziging mag alleen de statusregel terugzetten naar wat main al heeft.
  * @param {{ rel: string, change: Change, role: string }} target
  * @param {Ctx} ctx
  * @param {Decision} decision
@@ -312,7 +312,7 @@ function recordedStatus({ rel, change, role }, ctx, decision) {
   if (old === null || next === null || before === change.after || old.digest !== next.digest) return false;
   if (!['hoofdsessie', 'developer', 'architect'].includes(role) || !canRecordStatus({ file: rel, text: change.after }, ctx.authority)) {
     decision.deny.push(`${rel}: deze statusovergang heeft geen geldig besluit uit de vertrouwde basis; gebouwd via pnpm docs:status`);
-  } else decision.context.push(`Taakmandaat: ${rel}: status administratief vastgelegd op basis van het besluit uit main`);
+  } else decision.context.push(`Status uit main: ${rel}: dezelfde status en inhoud als op main`);
   return true;
 }
 
@@ -382,16 +382,12 @@ function decideByRole({ rel, change, role }, ctx, decision) {
   }
   // Tests (toevoegen is vrij) en specs (de agent schrijft ze; goedgekeurd bewaakt de check) zijn geen gate voor schrijven.
   const free = config.testpaden.some((glob) => globMatch(glob, rel)) || rel.startsWith('docs/specs/');
-  if (!free && ctx.authority != null && canWriteProtected({ file: rel, role }, ctx.authority)) {
-    decision.context.push(`Taakmandaat: ${rel}: exact bestand toegestaan door de goedgekeurde taak uit main`);
-    return;
-  }
   if (free || !config.gates.some((glob) => globMatch(glob, rel))) return;
   // ADR 0046 punt 28: buiten voorReview geen prompt, wel een melding; de eigenaar reviewt het in de PR.
   const voorReview = config.voorReview ?? config.gates;
   const melding = ctx.onbekendeRol !== true && (!voorReview.some((glob) => globMatch(glob, rel)) || inOnderhoud(rel, ctx));
   if (melding && isCoreUiSource(rel) && ctx.authority?.repository === TEMPLATE_REPOSITORY)
-    decision.context.push(`${rel}: functionele UI (ADR 0056): geen voorafgaand broncodemandaat; toepasselijke mini-spec en scope worden in CI en door de eigenaar beoordeeld; beperkte fixes vragen geen nieuwe mini-spec (ADR 0058)`);
+    decision.context.push(`${rel}: functionele UI (ADR 0056): geen voorafgaand besluit; toepasselijke mini-spec en scope worden in CI en door de eigenaar beoordeeld; beperkte fixes vragen geen nieuwe mini-spec (ADR 0058)`);
   else if (melding && ctx.onderhoud === true && voorReview.some((glob) => globMatch(glob, rel)))
     decision.context.push(`${rel} is een beschermd pad (framework §10, onderhoudsmodus ADR 0045): noem het in de PR (eigenaarreview)`);
   else if (melding)

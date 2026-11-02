@@ -52,7 +52,6 @@
     "auth:schema": "node scripts/auth-schema.mjs",
     "new:resource": "node scripts/kit/new-resource.mjs",
     "docs:status": "node scripts/kit/document-status.mjs",
-    "docs:decision": "node scripts/kit/document-decision.mjs",
     "pr:verify": "node scripts/kit/pr-verify.mjs",
     "app:init": "node scripts/kit/app-init.mjs",
     "gate:fast": "node scripts/kit/gate-fast.mjs",

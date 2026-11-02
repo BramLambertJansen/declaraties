@@ -10,14 +10,13 @@ import {
   statusregelOvertreding,
 } from '../../rails/hooks/lib/document-state.mjs';
 import { readAuthority, gitText } from '../../rails/hooks/lib/authority-context.mjs';
-import { canRecordStatus, canWriteProtected } from '../../rails/hooks/lib/task-authority.mjs';
+import { canRecordStatus } from '../../rails/hooks/lib/task-authority.mjs';
 import { builtRefusal } from '../../rails/hooks/lib/built-evidence.mjs';
 import { loadConfig, globMatch } from '../../rails/hooks/lib/rolhek.mjs';
 import { parseNameStatus } from './diff-guard.mjs';
 import { pullRequest, checkRuns } from './github-evidence.mjs';
-import { kaderVan, ROADMAP, taakVinkje } from './roadmap-item.mjs';
 import { regularGitFile, statusOnlyDiff, isAncestor, mergedEvidence } from './status-git.mjs';
-import { laneVan, migratieOvertreding, recordAlleenBesluit } from './lane.mjs';
+import { laneVan, migratieOvertreding } from './lane.mjs';
 import { isFunctionalUiSpec, isUiTest, testChangeRisk } from '../../rails/hooks/lib/functional-ui.mjs';
 import { functionalUiApproval, verifyFunctionalUiChanges } from './functional-ui-status.mjs';
 import { adrNumber, duplicateAdrNumbers } from './adr-numbers.mjs';
@@ -65,11 +64,11 @@ function verifyBuilt(document, context) {
   return pr.merged ? `; gebouwd na de merge vereist ${bezwaar}` : '';
 }
 
-/** @typedef {{ file: string, record: boolean }} Besluit */
+/** @typedef {{ file: string, opMain: boolean }} Besluit */
 
 /**
  * Controleert één document. Geeft een besluit terug als het document in deze PR een eigenaarstatus krijgt of een goedgekeurde
- * spec van inhoud wijzigt (ADR 0046 punt 1 en 5); `record` zegt of een record op main het al draagt.
+ * spec van inhoud wijzigt (ADR 0046 punt 1 en 5); `opMain` zegt of main dezelfde status en inhoud al heeft.
  * @param {{ file: string, before: string | null, after: string | null }} document @param {Context} context
  * @returns {Besluit | null}
  */
@@ -91,18 +90,18 @@ function verifyDocument(document, context) {
   const { uitslag } = beslisOvergang(document.file, document.before, document.after);
   if (uitslag === 'a4') throw new Error(`${document.file}: ${A4_MELDING}`);
   if (uitslag === 'vrij') return null;
-  // Een herschreven geaccepteerd ADR is een besluit zonder record: alleen een besluit-PR laat het door (verifyInPrStatus).
+  // Een herschreven geaccepteerd ADR is een besluit: alleen een besluit-PR laat het door (verifyInPrStatus).
   if (uitslag === 'herzien') {
     verifyHerzieningPr(document.file, nieuweHerzieningsregels(document.before ?? '', document.after), context.pr);
-    return { file: document.file, record: false };
+    return { file: document.file, opMain: false };
   }
   const target = { file: document.file, text: document.after };
   if (uitslag === 'gebouwd') return verifyGebouwd(document, target, context);
-  const record = canRecordStatus(target, context.authority);
-  if (uitslag === 'geweigerd' && !record) throw new Error(`${document.file}: ${GEEN_BESLUIT}`);
+  const opMain = canRecordStatus(target, context.authority);
+  if (uitslag === 'geweigerd' && !opMain) throw new Error(`${document.file}: ${GEEN_BESLUIT}`);
   if (uitslag === 'geweigerd') return null;
   verifyVervanger(document.file, info.status, context);
-  return { file: document.file, record };
+  return { file: document.file, opMain };
 }
 
 /**
@@ -124,12 +123,14 @@ function verifyGebouwd(document, target, context) {
       `${document.file}: ${GEEN_BESLUIT}; gebouwd zonder SHA vraagt het nummer van deze PR en code buiten docs/ en CHANGELOG.md (ADR 0062)`,
     );
   const oud = document.before === null ? null : documentInfo(document.file, document.before);
-  // Een vervallen spec komt niet zonder record terug (zoals `vervallen` → `goedgekeurd`, ADR 0046 punt 5).
+  // Een vervallen spec komt niet terug (zoals `vervallen` → `goedgekeurd`, ADR 0046 punt 5).
   if (oud !== null && !['voorstel', 'goedgekeurd', 'gebouwd'].includes(oud.status))
-    throw new Error(`${document.file}: ${GEEN_BESLUIT}; ${oud.status} naar gebouwd vraagt een record op main`);
+    throw new Error(
+      `${document.file}: ${GEEN_BESLUIT}; ${oud.status} naar gebouwd kan niet; een nieuwe spec vraagt een besluit-PR`,
+    );
   const info = documentInfo(document.file, target.text);
   if (oud !== null && oud.status !== 'voorstel' && oud.digest === info?.digest) return null;
-  return { file: document.file, record: false };
+  return { file: document.file, opMain: false };
 }
 
 /**
@@ -240,7 +241,7 @@ function verifyVervangersBestaan(context) {
 
 /**
  * A4 (ADR 0046 punt 2): een ADR met een eigenaarstatus op main verdwijnt alleen in een besluit-PR (alleen `docs/adr/`,
- * `docs/specs/` en het record), en nooit via een rename. Zo'n verwijdering is een besluit zonder record.
+ * `docs/specs/`), en nooit via een rename. Zo'n verwijdering is een besluit.
  * @param {{ status: string, pad: string, van?: string }[]} changes @param {Context} context
  * @returns {Besluit[]}
  */
@@ -263,14 +264,14 @@ function verifyAdrWeg(changes, context) {
   );
   if (zelfdeNummer !== undefined)
     throw new Error(`${zelfdeNummer}: verwijderd naast een nieuw ADR met hetzelfde nummer; ${A4_MELDING}`);
-  const vreemd = changes.find(({ pad }) => pad !== RECORD && !/^docs\/(?:adr|specs)\//.test(pad));
+  const vreemd = changes.find(({ pad }) => !/^docs\/(?:adr|specs)\//.test(pad));
   if (weg.length > 0 && vreemd !== undefined)
     throw new Error(`${weg.join(', ')}: verwijderd naast ${vreemd.pad}; ${A4_MELDING}`);
   // Elk verdwenen ADR-pad (ook een voorgesteld ADR, ook als bron van een rename) kan het doel van `vervangen door` zijn.
   const verdwenen = (/** @type {{ status: string, pad: string, van?: string }} */ { status, pad, van }) =>
     status === 'R' ? (van ?? '') : status === 'D' ? pad : '';
   if (changes.some((wijziging) => documentKind(verdwenen(wijziging)) === 'adr')) verifyVervangersBestaan(context);
-  return weg.map((file) => ({ file, record: false }));
+  return weg.map((file) => ({ file, opMain: false }));
 }
 
 /** `vervangen door NNNN` wijst naar een ADR (ook in het archief) op main of in de PR (ADR 0046 punt 5). @param {string} file @param {string} status @param {Context} context */
@@ -281,7 +282,6 @@ function verifyVervanger(file, status, context) {
     throw new Error(`${file}: vervangen door ${nummer}, maar dat ADR staat niet op main of in de PR`);
 }
 
-const RECORD = '.claude/decisions.json';
 const GEEN_BESLUIT = 'status of inhoud heeft geen geldig besluit of bouwbewijs uit de vertrouwde basis';
 
 /** De ADR-statusregel van een document, of null. @param {string | null} text */
@@ -354,75 +354,6 @@ function adrLijsten(root, sha) {
   return { adrBestanden: adrFiles(root, sha), adrArchief: adrFiles(root, sha, ARCHIEF) };
 }
 
-/** De specs met een actief mandaat op deze repository en branch. @param {Context} context */
-function mandatedSpecs(context) {
-  return context.authority.registry.decisions
-    .filter(
-      (entry) =>
-        entry.repository === context.authority.repository &&
-        entry.branch === context.authority.branch &&
-        entry.status === 'goedgekeurd' &&
-        documentKind(entry.file) === 'spec',
-    )
-    .map((entry) => entry.file);
-}
-
-/** @param {string} file @param {Context} context */
-function goesBuilt(file, context) {
-  const before = documentInfo(file, gitText(context.root, ['show', `${context.split}:${file}`]) ?? '');
-  const after = documentInfo(file, gitText(context.root, ['show', `${context.sha}:${file}`]) ?? '');
-  return before?.status !== 'gebouwd' && after?.status === 'gebouwd';
-}
-
-/** B1 (spec taakmandaat-vervolg): alleen het vinkje van een spec die in deze PR naar gebouwd gaat mag in de roadmap wijzigen. @param {{ status: string, pad: string, van?: string }[]} changes @param {string[]} mandated @param {Context} context */
-function verifyRoadmap(changes, mandated, context) {
-  const touched = changes.filter(({ pad, van }) => pad === ROADMAP || van === ROADMAP);
-  const intact = touched.length === 1 && touched[0]?.status === 'M';
-  const names = gitText(context.root, ['ls-tree', '-r', '--name-only', '-z', context.sha]) ?? '';
-  const message = taakVinkje({
-    basis: gitText(context.root, ['show', `${context.split}:${ROADMAP}`]),
-    head: intact ? gitText(context.root, ['show', `${context.sha}:${ROADMAP}`]) : null,
-    specs: mandated.filter((file) => goesBuilt(file, context)),
-    kader: kaderVan({
-      packageJson: gitText(context.root, ['show', `${context.sha}:package.json`]),
-      bestanden: names.split('\0').filter(Boolean),
-      testpaden: context.config.testpaden,
-    }),
-  });
-  if (message !== null) throw new Error(message);
-}
-
-/**
- * Een besluitdocument zelf valt buiten de taakscope: verifyDocument en verifyInPrStatus beoordelen het (ADR 0046 punt 5).
- * Wijzigt de inhoud van een gemandateerde spec, dan vervalt dat mandaat (punt 9): code eronder faalt hier tot er een nieuw record is.
- * @param {{ status: string, pad: string, van?: string }[]} changes @param {Context} context @param {readonly string[]} besluiten
- */
-function verifyScope(changes, context, besluiten) {
-  const mandated = mandatedSpecs(context);
-  if (mandated.length === 0) return; // Gewoon railwerk blijft onder de bestaande eigenaarreview van de diff-guard vallen.
-  const files = changes.flatMap(({ pad, van }) => [pad, ...(van === undefined ? [] : [van])]);
-  for (const file of files.filter((candidate) => candidate !== ROADMAP && !besluiten.includes(candidate)))
-    verifyScopedFile(file, context);
-  if (files.includes(ROADMAP)) verifyRoadmap(changes, mandated, context);
-}
-
-/** @param {string} file @param {{ authority: import('../../rails/hooks/lib/task-authority.mjs').Authority, config: import('../../rails/hooks/lib/rolhek.mjs').Config }} context */
-function verifyScopedFile(file, context) {
-  if (!context.config.gates.some((glob) => globMatch(glob, file))) return;
-  if (
-    context.config.testpaden.some((glob) => globMatch(glob, file)) &&
-    !/^(?:test\/rails\/fixtures\/|test\/setup\/)/.test(file)
-  )
-    return;
-  if (documentKind(file) !== null) {
-    const before = documentInfo(file, context.authority.trusted(file) ?? '');
-    const after = documentInfo(file, context.authority.working(file) ?? '');
-    if (before !== null && after !== null && before.digest === after.digest) return;
-  }
-  if (!canWriteProtected({ file, role: 'developer' }, context.authority))
-    throw new Error(`${file}: buiten het broncodemandaat; bewaking blijft beschermd`);
-}
-
 /** Een hernoemd of gekopieerd document met een eigenaarstatus op main telt niet als nieuw voorstel. @param {string} file @param {{ pad: string, van?: string }[]} changes @param {Context} context */
 function verifyGeenRename(file, changes, context) {
   const van = changes.find((change) => change.pad === file)?.van;
@@ -430,7 +361,7 @@ function verifyGeenRename(file, changes, context) {
   const status = documentInfo(van, context.authority.trusted(van) ?? '')?.status;
   if (status !== undefined && !['voorstel', 'voorgesteld'].includes(status))
     throw new Error(
-      `${file}: hernoemd of gekopieerd van ${van} (${status}); een nieuwe status vraagt een record op main`,
+      `${file}: hernoemd of gekopieerd van ${van} (${status}); een nieuwe status krijgt het onder een eigen naam in een besluit-PR`,
     );
 }
 
@@ -469,13 +400,13 @@ function verifyFeatureInhoud(files, changes, context) {
 }
 
 /**
- * Besluiten in de PR zelf (ADR 0046 punt 1 en 5, ADR 0062): zonder record alleen in een besluit-PR (framework-lane: alleen
- * `docs/adr/`, `docs/specs/` en het record) of in de feature-lane (specs met code, zonder ADR of kritiek pad). De merge door de eigenaar is het besluit.
+ * Besluiten in de PR zelf (ADR 0046 punt 1 en 5, ADR 0062, ADR 0063): alleen in een besluit-PR (framework-lane: alleen
+ * `docs/adr/` en `docs/specs/`) of in de feature-lane (specs met code, zonder ADR of kritiek pad). De merge door de eigenaar is het besluit.
  * @param {{ besluiten: Besluit[], changes: { status: string, pad: string, van?: string }[] }} pr @param {Context} context
- * @returns {string | null} de melding voor de uitvoer, of null zonder besluit zonder record
+ * @returns {string | null} de melding voor de uitvoer, of null zonder nieuw besluit
  */
 function verifyInPrStatus({ besluiten, changes }, context) {
-  const open = besluiten.filter(({ record }) => !record);
+  const open = besluiten.filter(({ opMain }) => !opMain);
   const [eerste] = open;
   if (eerste === undefined) return null;
   const bestanden = besluiten.map(({ file }) => file);
@@ -494,16 +425,6 @@ function verifyInPrStatus({ besluiten, changes }, context) {
     verifyFeatureInhoud(bestanden, changes, context);
     verifyVolgorde(bestanden, context);
   }
-  if (
-    lane === 'framework' &&
-    changes.some(({ pad }) => pad === RECORD) &&
-    !recordAlleenBesluit({
-      basis: context.authority.trusted(RECORD),
-      head: context.authority.working(RECORD),
-      file: bestanden,
-    })
-  )
-    throw new Error(`${RECORD}: wijzigt meer dan het record van ${bestanden.join(', ')}`);
   return `statusovergang in de PR (${lane === 'framework' ? 'besluit-PR, framework' : lane}-lane): ${bestanden.join(', ')}; het besluit is de merge door de eigenaar (ADR 0046)`;
 }
 
@@ -591,15 +512,10 @@ async function main() {
   const melding =
     besluitmelding === null && ui === ''
       ? null
-      : `${besluitmelding ?? 'besluiten, bouwbewijs en taakscope gecontroleerd vanuit main'}${ui}`;
-  verifyScope(
-    changes,
-    context,
-    besluiten.map(({ file }) => file),
-  );
-  console.log('document-status: besluiten, bouwbewijs en eventuele taakscope gecontroleerd vanuit main');
+      : `${besluitmelding ?? 'besluiten en bouwbewijs gecontroleerd vanuit main'}${ui}`;
+  console.log('document-status: besluiten en bouwbewijs gecontroleerd vanuit main');
   samenvatting(
-    `## document-status: goedgekeurd\n\n${melding ?? 'besluiten, bouwbewijs en taakscope gecontroleerd vanuit main'}\n`,
+    `## document-status: goedgekeurd\n\n${melding ?? 'besluiten en bouwbewijs gecontroleerd vanuit main'}\n`,
   );
   if (melding !== null) console.log(melding);
 }

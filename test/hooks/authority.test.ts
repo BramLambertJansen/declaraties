@@ -1,7 +1,7 @@
 import { createHash } from 'node:crypto';
 import { describe, expect, test } from 'vitest';
 import { changeStatus, documentInfo } from '../../rails/hooks/lib/document-state.mjs';
-import { canRecordStatus, canWriteProtected, readRegistry } from '../../rails/hooks/lib/task-authority.mjs';
+import { canRecordStatus, readRegistry } from '../../rails/hooks/lib/task-authority.mjs';
 
 const SPEC = 'docs/specs/framework-task.md';
 const ADR = 'docs/adr/0027-framework-task.md';
@@ -162,6 +162,7 @@ describe('changeStatus: formatter, geen eigenaartoestemming', () => {
   });
 });
 
+// AC-15: readRegistry blijft tolerant en strikt: oude main-commits met records worden nog gelezen (status-git.mjs).
 describe('readRegistry: strikte eigenaarsbesluiten', () => {
   test('de complete fixture wordt ongewijzigd gelezen', () => {
     const expected = registry();
@@ -236,25 +237,48 @@ describe('readRegistry: strikte eigenaarsbesluiten', () => {
 });
 
 describe('canRecordStatus: alleen inhoudelijk bewezen administratie', () => {
-  test('een registrybesluit staat uitsluitend zijn doelstatus voor dezelfde inhoud toe', () => {
-    expect(canRecordStatus({ file: SPEC, text: APPROVED }, authority())).toBe(true);
+  // AC-15 (compacte-kennisbasis-rails, PR 6b): record geeft niets meer; alleen dezelfde status en digest als main telt.
+  test('een registrybesluit geeft geen statusrecht meer, ook niet voor zijn doelstatus', () => {
+    expect(canRecordStatus({ file: SPEC, text: APPROVED }, authority())).toBe(false);
     expect(canRecordStatus({ file: SPEC, text: PROPOSED }, authority())).toBe(false);
     expect(canRecordStatus({ file: SPEC, text: APPROVED.replace('goedgekeurd', 'vervallen') }, authority())).toBe(
       false,
     );
   });
 
+  // GEWIJZIGD (AC-15, review): de basis is nu WAAR (main heeft dezelfde status en digest, geen record); elke rij verandert
+  // precies één voorwaarde en moet daardoor onwaar worden. Eerder was elke rij onwaar door het ontbrekende record.
+  const geldig = (change: Partial<Authority> = {}) =>
+    authority({ trusted: (file) => (file === SPEC ? APPROVED : null), registry: registry([]), ...change });
+
+  test('de basis is waar: main heeft dezelfde goedgekeurde status en digest', () => {
+    expect(canRecordStatus({ file: SPEC, text: APPROVED }, geldig())).toBe(true);
+  });
+
   test.each([
     { name: 'geen vertrouwde spec', change: { trusted: () => null } },
-    { name: 'geen eigenaarsbesluit', change: { registry: registry([]) } },
-    { name: 'onjuiste repository', change: { repository: 'owner/app' } },
-    { name: 'onjuiste branch', change: { branch: 'feat/other-task' } },
-    { name: 'onjuiste besluitdigest', change: { registry: registry([decision({ digest: 'b'.repeat(64) })]) } },
     { name: 'onveilige documentlocatie', change: { safe: () => false } },
-    { name: 'vervalste trusted body', change: { trusted: () => PROPOSED.replace('Exacte scope.', 'Meer scope.') } },
-    { name: 'gewijzigde werkversie', change: { working: () => APPROVED.replace('Exacte scope.', 'Meer scope.') } },
+    { name: 'main heeft voorstel', change: { trusted: () => PROPOSED } },
+    { name: 'main heeft een andere status', change: { trusted: () => APPROVED.replace('goedgekeurd', 'vervallen') } },
+    {
+      name: 'main heeft een andere inhoud',
+      change: { trusted: () => APPROVED.replace('Exacte scope.', 'Meer scope.') },
+    },
   ])('$name verleent geen statusrecht', ({ change }) => {
-    expect(canRecordStatus({ file: SPEC, text: APPROVED }, authority(change))).toBe(false);
+    expect(canRecordStatus({ file: SPEC, text: APPROVED }, geldig(change))).toBe(false);
+  });
+
+  test('een andere doelstatus of inhoud dan main verleent geen statusrecht', () => {
+    expect(canRecordStatus({ file: SPEC, text: APPROVED.replace('goedgekeurd', 'vervallen') }, geldig())).toBe(false);
+    expect(canRecordStatus({ file: SPEC, text: APPROVED.replace('Exacte scope.', 'Meer scope.') }, geldig())).toBe(
+      false,
+    );
+  });
+
+  test('een passend record op een voorstel in main geeft nog steeds geen statusrecht', () => {
+    expect(
+      canRecordStatus({ file: SPEC, text: APPROVED }, geldig({ trusted: () => PROPOSED, registry: registry() })),
+    ).toBe(false);
   });
 
   test.each([
@@ -288,7 +312,8 @@ describe('canRecordStatus: alleen inhoudelijk bewezen administratie', () => {
     expect(canRecordStatus({ file: ADR, text: ADR_PROPOSED }, existing)).toBe(false);
   });
 
-  test('ADR-acceptatie wordt alleen uit een passend registrybesluit afgeleid', () => {
+  // AC-15: record geeft niets meer; ook een passend ADR-besluit geeft geen acceptatierecht.
+  test('ADR-acceptatie wordt niet meer uit een passend registrybesluit afgeleid', () => {
     const digest = createHash('sha256')
       .update(ADR_PROPOSED.replace('Status: voorgesteld — 2026-10-13.\n', ''))
       .digest('hex');
@@ -298,114 +323,11 @@ describe('canRecordStatus: alleen inhoudelijk bewezen administratie', () => {
       registry: registry([decision({ file: ADR, digest, status: 'geaccepteerd', paths: [] })]),
     });
 
-    expect(canRecordStatus({ file: ADR, text: ADR_ACCEPTED }, accepted)).toBe(true);
+    expect(canRecordStatus({ file: ADR, text: ADR_ACCEPTED }, accepted)).toBe(false);
     expect(canRecordStatus({ file: ADR, text: ADR_ACCEPTED }, { ...accepted, registry: registry([]) })).toBe(false);
   });
 
   test.each([PROPOSED, APPROVED, BUILT])('gebouwd wordt nooit door statusadministratie toegestaan', (trusted) => {
     expect(canRecordStatus({ file: SPEC, text: BUILT }, authority({ trusted: () => trusted }))).toBe(false);
-  });
-});
-
-describe('canWriteProtected: afgebakende developerbevoegdheid', () => {
-  test('de exacte corebron mag in de template door de developer worden gewijzigd', () => {
-    expect(canWriteProtected({ file: SOURCE, role: 'developer' }, authority())).toBe(true);
-  });
-
-  test('een gebouwde werkstatus wijzigt het inhoudelijke mandaat niet', () => {
-    expect(canWriteProtected({ file: SOURCE, role: 'developer' }, authority({ working: () => BUILT }))).toBe(true);
-  });
-
-  test.each(['', 'Developer', 'developer-agent', 'architect', 'tester', 'reviewer', 'docs', 'main'])(
-    'rol %s krijgt geen mandaat',
-    (role) => {
-      expect(canWriteProtected({ file: SOURCE, role }, authority())).toBe(false);
-    },
-  );
-
-  test.each([
-    { name: 'geen trusted spec', change: { trusted: () => null } },
-    { name: 'geen working spec', change: { working: () => null } },
-    { name: 'geen registrybesluit', change: { registry: registry([]) } },
-    { name: 'verkeerde repository', change: { repository: 'owner/app' } },
-    { name: 'verkeerde branch', change: { branch: 'feat/other-task' } },
-    { name: 'mainbranch', change: { branch: 'main' } },
-    { name: 'verkeerde digest', change: { registry: registry([decision({ digest: 'b'.repeat(64) })]) } },
-    { name: 'besluit nog voorstel', change: { registry: registry([decision({ status: 'voorstel' })]) } },
-    { name: 'vervallen besluit', change: { registry: registry([decision({ status: 'vervallen' })]) } },
-    { name: 'werkstatus voorstel', change: { working: () => PROPOSED } },
-    { name: 'werkstatus vervallen', change: { working: () => APPROVED.replace('goedgekeurd', 'vervallen') } },
-    { name: 'trusted inhoud uitgebreid', change: { trusted: () => PROPOSED.replace('Exacte scope.', 'Meer scope.') } },
-    { name: 'werkversie uitgebreid', change: { working: () => APPROVED.replace('Exacte scope.', 'Meer scope.') } },
-    {
-      name: 'werkfrontmatter uitgebreid',
-      change: { working: () => APPROVED.replace('namespace:', 'scope: alles\nnamespace:') },
-    },
-    {
-      name: 'scope wijst naar ander bestand',
-      change: { registry: registry([decision({ paths: ['src/core/web/ui/other.tsx'] })]) },
-    },
-  ])('$name wordt geweigerd', ({ change }) => {
-    expect(canWriteProtected({ file: SOURCE, role: 'developer' }, authority(change))).toBe(false);
-  });
-
-  test.each([SOURCE, SPEC])('onveilig pad of symlink bij %s weigert het gehele mandaat', (unsafe) => {
-    expect(canWriteProtected({ file: SOURCE, role: 'developer' }, authority({ safe: (file) => file !== unsafe }))).toBe(
-      false,
-    );
-  });
-
-  test.each([
-    'src/core/web/ui/other.tsx',
-    'src/core/web/ui/example.tsx.extra',
-    'src/core/web/ui/nested/example.tsx',
-    'src/core/../core/web/ui/example.tsx',
-    '/src/core/web/ui/example.tsx',
-  ])('scopeprefix of aliasspelling %s geeft geen toestemming', (file) => {
-    expect(canWriteProtected({ file, role: 'developer' }, authority())).toBe(false);
-  });
-
-  test('een app kan zelfs met een exact besluit geen core wijzigen', () => {
-    const app = authority({ repository: 'owner/app', registry: registry([decision({ repository: 'owner/app' })]) });
-
-    expect(canWriteProtected({ file: SOURCE, role: 'developer' }, app)).toBe(false);
-  });
-
-  test.each(['src/api/app.ts', 'src/api/kit.ts', 'src/api/server.ts', 'src/api/env.ts', 'src/shared/permissions.ts'])(
-    'app-root %s mag met exact mandaat',
-    (file) => {
-      const app = authority({
-        repository: 'owner/app',
-        registry: registry([decision({ repository: 'owner/app', paths: [file] })]),
-      });
-
-      expect(canWriteProtected({ file, role: 'developer' }, app)).toBe(true);
-    },
-  );
-
-  test.each([
-    'src/core/web/ui/example.test.tsx',
-    'src/core/web/ui/example.spec.tsx',
-    'src/core/api/http/example.test-helper.ts',
-    'src/core/api/db/testing.ts',
-    'src/core/web/routeTree.gen.ts',
-    'src/api/db/schema.ts',
-    'src/api/db/ids.ts',
-    'src/web/routeTree.gen.ts',
-    '.claude/gates.json',
-    '.claude/hooks/lib/task-authority.mjs',
-    '.github/workflows/guard.yml',
-    'scripts/x.mjs',
-    'docs/specs/x.md',
-    'docs/framework.md',
-    'test/hooks/authority.test.ts',
-    'db/tests/rls.sql',
-    'db/schema.snapshot.sql',
-    'package.json',
-    'deploy/example/adapter.ts',
-  ])('ook expliciet genoemd blijft %s gesloten', (file) => {
-    const exactScope = authority({ registry: registry([decision({ paths: [file] })]) });
-
-    expect(canWriteProtected({ file, role: 'developer' }, exactScope)).toBe(false);
   });
 });
