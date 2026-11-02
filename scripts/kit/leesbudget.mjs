@@ -5,7 +5,7 @@
 //  - Melding vanaf ceil(0,85 × grens): "let op: … op <n> % van de grens; verplaats naar een lagere laag"; nooit rood.
 //  - Krimp (AC-6): een bindend document dat meer dan 20 % én minstens 1 KB krimpt tegenover `git merge-base origin/main
 //    HEAD` vraagt een Markdown-bestand in de diff met een kop `Normeninventaris` (regels `oud → R-id` of
-//    `oud → geschrapt: <reden>`). Zonder `origin/main` meldt hij niets. Deze overtreding komt nooit in de baseline.
+//    `oud → geschrapt: <reden>`). Zonder `origin/main` alleen een melding (`krimpZonderBasis`). Deze overtreding komt nooit in de baseline.
 import { Buffer } from 'node:buffer';
 import { spawnSync } from 'node:child_process';
 import { existsSync, statSync } from 'node:fs';
