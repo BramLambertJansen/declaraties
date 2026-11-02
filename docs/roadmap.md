@@ -210,6 +210,27 @@ Open werk dat niet geparkeerd is, grofweg in volgorde. Wat nog een spec of eigen
   awk-uitvoer via opties (`-o`/`--pretty-print=f`, `-d`/`--dump-variables=f`); `git restore <map>` en `git checkout -- <map>` voor een
   lokaal ontbrekende map (de map-regel kijkt naar `isDir`, niet naar getrackte bestanden eronder). Omhulsels met opties en xargs-optiewaarden staan in het item hierboven. Per gat kiezen tussen weigeren en melden, met tests.
   aanleiding: `rails/hooks/lib/shell.mjs` (review van PR 6a `fix/rolhek-gaten`; eigenaarbesluit 2026-11-01: de lijst bekende gaten uit R-ROL-10 naar de roadmap)
+- [ ] **Vervolg compacte kennisbasis (V1–V5 en restpunten).** Het regelboek, de instructies, het rolhek, de afschaffing van taakmandaat en
+  gate-label en het ADR-archief zijn gebouwd (#385–#404); wat resteert, elk als eigen kleine PR met eigenaarreview:
+  (V1) pnpm in de sandbox: uitzoeken welke paden `pnpm install`/`list`/`why` nodig hebben (alleen de store-index faalt; `allowWrite` voor
+  `~/.local/share/pnpm/store`); de sandboxinstelling past alleen de eigenaar aan.
+  (V2) Meten: per PR vijf kerncijfers uit `.git/agent-meting` in een tabel in de PR-beschrijving (bytes van het verplichte leespad, doorlooptijd,
+  reviewrondes, aantal keren CI rood, valse weigeringen van het rolhek) en een nulmeting tegenover nu (nieuwe feature: ~60 KB leespad, doel ≤ 25 KB);
+  hierbij hoort de keuze welke events `EVENTS` in `rails/hooks/lib/meting.mjs` meet (spec `docs/specs/compacte-kennisbasis-rails.md` AC-13 laat dat open).
+  (V3) Slankere review: één volledige review, daarna alleen het verschil sinds die ronde, met een checklist per risicoklasse waarin de gevonden
+  aanvalspatronen vast in `.claude/agents/reviewer.md` staan. (V4) SessionStart toont alleen branch, achterstand op main en waarschuwingen; de specslijst
+  eruit. (V5) Specsjabloon van één pagina: doel, acceptatiecriteria als tabel, randgevallen, hergebruik.
+  Restpunten: een hint "werk de branch bij" bij `trusted`/`working` in `rails/hooks/lib/werkstraat.mjs`; de RegExp buiten de lus in
+  `scripts/kit/check-roadmap.mjs` (rond regel 105); `docs/operations/agent-doorloop.md` inkorten (nu ~40 KB, doel ≤ 12 KB, overgangs- en
+  correctieprocedures naar `docs/template/`); `check-docs` laten toetsen dat de R-regels in `.claude/rules/*` woordelijk gelijk zijn aan `docs/framework.md`;
+  de fasekeuze voor Fase 0/1 uit `docs/dod.md` halen (bouwfasen van de template); `docs/adr/0039-lokale-gate-hergebruik.md` (vervallen) archiveren
+  of laten staan (nummer 0039 is gedeeld, AC-3); de links in `docs/specs/achtergrondtaken.md` en `docs/specs/mail-outbox.md` naar het archief
+  zetten zodra hun budgetvermelding in `.kit/baseline.json` dat toelaat; leerpunten #393, #395, #396 (tests laten tijdelijke mappen achter, `/tmp`
+  loopt vol), #399, #401 en #402 oppakken.
+  Voor de eigenaar zelf (beschermde bestanden): `.claude/decisions.json` leegmaken (`decisions: []`), in `.claude/settings.json` de labelregel
+  (`--add-label*gate-wijziging*`), de bewerkweigering op `decisions.json` en de verouderde allow voor `chore/mandate-adr-statusregel` weghalen,
+  `gateMarker` uit `.claude/gates.json`, en de release-reset bij v1.0 (#384).
+  aanleiding: #404 (laatste PR van het traject; plan en eigenaarbesluiten staan in #385, #394 en #400)
 
 ## Geparkeerd
 
