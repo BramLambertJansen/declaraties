@@ -6,8 +6,9 @@ import { afterEach, describe, expect, test } from 'vitest';
 import { docsViolations } from '../../scripts/kit/check-docs.mjs';
 import { metingen } from '../../scripts/kit/leespad.mjs';
 
-// compacte-kennisbasis-rails/AC-9 (ADR 0063 punt 3): budgetten als ratchet in `check-docs`, in bytes (1 KB = 1024):
-// AGENTS.md <= 100 regels en 9 KB, framework.md <= 40 KB, een nieuwe spec <= 10 KB, een nieuw ADR <= 6 KB. Bestaande
+// compacte-kennisbasis-rails/AC-9 (ADR 0063 punt 3): budget als ratchet in `check-docs`, in bytes (1 KB = 1024):
+// AGENTS.md <= 100 regels en 9 KB. Framework.md 40 KB, een spec 10 KB en een ADR 6 KB zijn sinds ADR 0065 streefwaarden
+// (meting in `pnpm leespad`), geen budget. Bestaande
 // overschrijdingen staan in een baseline die alleen omlaag mag: groei, krimp (de baseline blijft te ruim) en een handmatig
 // te ruime baselinewaarde zijn rood. Twee soorten tests: `docsViolations` op een fixture (wat komt erbij) en de echte
 // `scripts/kit/ratchet.mjs` op een fixture met zijn eigen baseline (zodat het baselineformaat niet vastligt).

@@ -80,9 +80,11 @@ describe('leesbudget/AC-8: framework §9 en de instructies volgen ADR 0064 en 00
     expect(r).not.toMatch(/≤\s*10\s*KB/);
   });
 
-  test('leesbudget/AC-8 R-TEST-02 heeft herkomst 0064 (regel over teksttests)', () => {
+  test('leesbudget/AC-8 R-TEST-02 noemt teksttests en structuur, met herkomst 0064', () => {
     const r = rRegel('R-TEST-02');
     expect(r, 'R-TEST-02 staat in het regelboek').not.toBe('');
+    expect(r).toMatch(/teksttests?/i);
+    expect(r).toMatch(/structuur/i);
     expect(herkomst(r) ?? '').toContain('0064');
   });
 
@@ -100,8 +102,11 @@ describe('leesbudget/AC-8: framework §9 en de instructies volgen ADR 0064 en 00
     expect(afwijkend).toStrictEqual([]);
   });
 
-  test('leesbudget/AC-8 de skill opleveren noemt pnpm meting --trend', () => {
-    expect(lees('.claude/skills/opleveren/SKILL.md')).toContain('pnpm meting --trend');
+  // Alleen de tekst ná de frontmatter: `allowed-tools` noemt het commando al, de oplevering zelf nog niet.
+  test('leesbudget/AC-8 de skill opleveren noemt pnpm meting --trend en "let op" na de frontmatter', () => {
+    const tekst = lees('.claude/skills/opleveren/SKILL.md').replace(/^---\n[\s\S]*?\n---\n/, '');
+    expect(tekst).toContain('pnpm meting --trend');
+    expect(tekst).toContain('let op');
   });
 });
 
