@@ -30,6 +30,13 @@ De Stop-feedback (ook SubagentStop van de developer) kijkt naar de werkmap plus 
 gecommit (`rails/hooks/lib/werkstraat.mjs:48`); een schone werkmap met rode gecommitte code geeft dus nog feedback.
 Elke rode controle krijgt een eigen deel van de 40 regels (`rails/hooks/lib/werkstraat.mjs:109`).
 
+## SessionStart-context
+
+De hook geeft alleen wat een sessie direct nodig heeft: branch, achterstand op main, PR-status, gewijzigde bestanden, een
+mislukte e2e-uitslag en de stack-melding (`stack uit: <diensten>` als alleen "niet bereikbaar"-fouten voorkomen; andere
+doctor-fouten staan er volledig). De specslijst, een geslaagde of ontbrekende e2e-uitslag en de ✓-regels van de doctor staan
+er niet meer in: vraag `node scripts/kit/feiten.mjs gates specs fase` en `scripts/doctor.sh` zelf (sessionstart-slank AC-1 t/m AC-5).
+
 ## Metingen lezen
 
 Gebruik `pnpm meting --help` voor de teldefinities en `--sessie <id>` of `--branch <naam>` voor een vaste selectie.
