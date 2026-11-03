@@ -1,6 +1,8 @@
 # 0073 — Eén proefkopie per PR voor app:init en de generator
 
 Status: geaccepteerd
+Herzien: 2026-11-03 (#499): gewijzigd door [0076](0076-ci-in-delen.md) punt 1 (één kopie per deel van de check; de suite draait
+nog steeds één keer)
 
 Wijzigt [0047](0047-generator-new-resource.md) punt 9 ("als eigen job in CI") en in spec app-init-proef OV-4 (overslaan in
 een app), OV-5 (eigen job `check:app-init`) en de stappen en AC's die daarop rusten (lijst in de spec, "Raakt ook"). Drempel: A4. Uitwerking: [spec](../specs/een-proefkopie.md). Aanleiding: bevinding P4 uit
