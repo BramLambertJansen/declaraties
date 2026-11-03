@@ -1,6 +1,69 @@
 {
+  "rails/hooks/lib/built-evidence.mjs": {
+    "complexity": {
+      "count": 2
+    }
+  },
+  "rails/hooks/lib/document-state.mjs": {
+    "complexity": {
+      "count": 1
+    }
+  },
+  "rails/hooks/lib/effect-compare.mjs": {
+    "complexity": {
+      "count": 1
+    }
+  },
+  "rails/hooks/lib/rolhek.mjs": {
+    "complexity": {
+      "count": 10
+    }
+  },
+  "rails/hooks/lib/shell.mjs": {
+    "complexity": {
+      "count": 3
+    }
+  },
+  "rails/hooks/lib/testteller.mjs": {
+    "complexity": {
+      "count": 3
+    }
+  },
   "scripts/db/schema-source.mjs": {
+    "complexity": {
+      "count": 1
+    },
     "max-params": {
+      "count": 1
+    }
+  },
+  "scripts/kit/catalogus-graph.ts": {
+    "complexity": {
+      "count": 1
+    }
+  },
+  "scripts/kit/check-document-status.mjs": {
+    "complexity": {
+      "count": 1
+    }
+  },
+  "scripts/kit/document-status.mjs": {
+    "complexity": {
+      "count": 1
+    }
+  },
+  "scripts/kit/lane.mjs": {
+    "complexity": {
+      "count": 1
+    }
+  },
+  "scripts/kit/roadmap-item.mjs": {
+    "complexity": {
+      "count": 1
+    }
+  },
+  "src/api/routes/accounts.ts": {
+    "complexity": {
       "count": 1
     }
   },
@@ -11,6 +74,21 @@
   },
   "src/core/shared/unsafe-cast.ts": {
     "@typescript-eslint/no-unnecessary-type-parameters": {
+      "count": 1
+    }
+  },
+  "src/core/web/ui/button.tsx": {
+    "complexity": {
+      "count": 1
+    }
+  },
+  "src/core/web/ui/combobox.tsx": {
+    "complexity": {
+      "count": 1
+    }
+  },
+  "src/web/features/account/account-deel2.test.tsx": {
+    "complexity": {
       "count": 1
     }
   },

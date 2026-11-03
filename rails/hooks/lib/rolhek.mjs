@@ -286,8 +286,22 @@ function decideFile({ rel, change, role }, ctx, decision) {
   const inPrGebouwd = overgang?.uitslag === 'gebouwd' && builtReference(change.after ?? '')?.sha === undefined;
   const eigenaarstatus = beslisrol && (a4Toegestaan || inPrGebouwd || ['besluit', 'vrij'].includes(overgang?.uitslag ?? ''));
   if (!eigenaarstatus && statusZonderBesluit({ rel, change, role }, ctx, decision)) return;
+  if (role === 'developer' && developerSpec(rel, change, basis)) {
+    decision.deny.push(`${rel}: de developer schrijft geen spec; dat doet de architect (R-WERK-07, ADR 0068 punt 4)`);
+    return;
+  }
   if (matches(config.testpaden) && ctx.read(rel) !== null) existingTest({ rel, change, role }, ctx, decision);
   decideByRole({ rel, change, role }, ctx, decision);
+}
+
+/**
+ * ADR 0068 punt 4: de developer maakt, wijzigt, verwijdert of hernoemt geen spec; alleen terugzetten naar de tekst van de
+ * basis mag. Een status terug naar `voorstel` blijft bij architect en hoofdsessie (R-WERK-08).
+ * @param {string} rel @param {Change} change @param {string | null} basis @returns {boolean} true als het geweigerd wordt
+ */
+function developerSpec(rel, change, basis) {
+  if (!rel.startsWith('docs/specs/')) return false;
+  return change.after === null || change.after !== basis;
 }
 
 /**
@@ -378,6 +392,8 @@ function existingTest({ rel, change, role }, ctx, decision) {
     gate(decision, role, `${rel}: testgevallen weghalen alleen met akkoord van de eigenaar (AGENTS.md)`);
   } else if (helper) {
     decision.context.push(`${rel}: hulpbestand gewijzigd: noem het met reden in de PR (AGENTS.md, framework §8).`);
+  } else if (role === 'developer') {
+    decision.deny.push(`${rel} is een bestaande test: de developer wijzigt hem niet; de hoofdsessie doet dat als spec of opdracht het gedrag verandert, de tester na akkoord van de eigenaar als hij fout lijkt (R-TEST-02, ADR 0068 punt 4)`);
   } else {
     decision.context.push(`${rel} is een bestaande test: noem de wijziging met reden in de PR (AGENTS.md, framework §8).`);
   }

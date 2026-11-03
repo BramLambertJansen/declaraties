@@ -62,7 +62,7 @@ Botst een regel met de opdracht: stop en vraag, omzeil of verzwak niets (R-WERK-
 - Route licht of volledig, nooit zelfreview: framework §8 (R-WERK-03, R-WERK-04). Volg `docs/dod.md` fasebewust; lever alleen op met geslaagde uitslag van bestaande checks (of eigenaarakkoord), meld wat nog niet bestaat (R-WERK-22).
 - UI-tekst Nederlands; code, commits, branches Engels (R-CODE-10). Roadmap-item, rail of ADR alleen met aanleiding (framework §1), anders vraag de eigenaar (R-PRINC-08).
 - Begin met taakrelevante feiten (`node scripts/kit/feiten.mjs gates specs fase`; `componenten` alleen bij UI); het regelboek per geraakt hoofdstuk: `feiten.mjs hoofdstuk <n>` (R-WERK-01, R-DOC-05).
-- Runtime-specifieke instructies gelden alleen voor die runtime: hooks in `.claude/` werken alleen in Claude Code, elders zijn CI, diff-guard en GitHub de grens. Claim nooit een instelling die je niet kunt lezen (R-WERK-23).
+- Runtime-specifieke instructies gelden alleen voor die runtime: hooks in `.claude/` werken alleen in Claude Code, elders zijn CI, de ruleset op GitHub en de eigenaarmerge de grens (diff-guard: nog geen verplichte check). Claim nooit een instelling die je niet kunt lezen (R-WERK-23).
 
 ## Waar een regel woont
 

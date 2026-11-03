@@ -20,7 +20,7 @@ async function draai(cwd, commando, args) {
 
 /** @param {string} root */
 async function genereer(root) {
-  // Fase 1 via de commandoregel: het spec-skelet. De eigenaar zet hem op goedgekeurd; hier doet de check dat.
+  // Fase 1 via de commandoregel: het spec-skelet. De architect zet hem op goedgekeurd, de eigenaarmerge is het besluit; hier doet de check dat.
   await draai(root, 'node', ['scripts/kit/new-resource.mjs', NAAM]);
   const spec = path.join(root, 'docs/specs', `${NAAM}.md`);
   // Ook OV-1 gaat op besloten, zoals de eigenaar na zijn antwoorden doet (anders weigert check-docs de goedgekeurde spec).

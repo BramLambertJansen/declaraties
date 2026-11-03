@@ -143,9 +143,13 @@ describe('developer, tester en docs: dezelfde schrijfacties blijven geweigerd (p
     ).not.toHaveLength(0);
   });
 
-  test('developer: een voorstel schrijven en wijzigen blijft vrij', () => {
+  // GEWIJZIGD (samenhang-checks-rollen/AC-4, ADR 0068 punt 4): de developer schrijft geen spec meer, ook geen voorstel;
+  // de architect wel.
+  test('developer: een voorstel wijzigen is geweigerd, de architect mag het', () => {
     const decision = run(edit(SPEC_VOORSTEL, ['Bestaande kit.', 'Meer tekst.'], 'developer'));
-    expect([decision.deny, decision.ask]).toStrictEqual([[], []]);
+    expect(decision.deny.join('\n')).toContain('de developer schrijft geen spec');
+    const architect = run(edit(SPEC_VOORSTEL, ['Bestaande kit.', 'Meer tekst.'], 'architect'));
+    expect([architect.deny, architect.ask]).toStrictEqual([[], []]);
   });
 
   test('spec-en-bouw/AC-8 hoofdsessie en architect: gebouwd # #<PR> zonder SHA in de PR zelf mag (ADR 0062 punt 4)', () => {

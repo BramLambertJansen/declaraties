@@ -243,6 +243,8 @@ export default defineConfig(
     '.runner-output/',
     // Worktrees van subagents: eigen kopieën van de repo, met hun eigen lint (ADR 0047).
     '.claude/worktrees/',
+    // Lokale kopie van de hooks van main (anker, R-ROL-09); de bron rails/hooks/ wordt wel gelint.
+    '.claude/hooks/.cache/',
     'test/rails/fixtures/',
     // Gegenereerd door @tanstack/router-plugin (vite.config.ts); niet bewerken.
     'src/web/routeTree.gen.ts',
@@ -268,8 +270,9 @@ export default defineConfig(
     languageOptions: { globals: { process: 'readonly', console: 'readonly', URL: 'readonly' } },
   },
   railConfigs,
-  // Kleine functies (AGENTS.md, framework §4): ≤ 60 regels in .ts/.mjs, ≤ 120 in .tsx, max 3 parameters, max diepte 3.
-  // In tests geldt de lengte niet (een describe-blok is een lijst gevallen); parameters en diepte wel.
+  // Kleine functies (AGENTS.md, framework §4): ≤ 60 regels in .ts/.mjs, ≤ 120 in .tsx, max 3 parameters, max diepte 3,
+  // cyclomatische complexiteit ≤ 15 (R-CODE-02, ADR 0068). In tests geldt de lengte niet (een describe-blok is een lijst
+  // gevallen); parameters, diepte en complexiteit wel.
   // Bestaande overtredingen staan in eslint-suppressions.json (ratchet).
   {
     files: CODE,
@@ -277,6 +280,7 @@ export default defineConfig(
       'max-lines-per-function': ['error', { max: 60, skipBlankLines: true, skipComments: true }],
       'max-params': ['error', 3],
       'max-depth': ['error', 3],
+      complexity: ['error', 15],
     },
   },
   {

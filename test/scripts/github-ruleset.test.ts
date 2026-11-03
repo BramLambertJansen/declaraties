@@ -160,6 +160,63 @@ describe('checknamen', () => {
   });
 });
 
+// ADR 0068 punt 1: `requiredChecks` in .claude/decisions.json is de enige lijst; ruleset en workflows volgen hem.
+function requiredChecks(): string[] {
+  const register: unknown = JSON.parse(readFileSync(path.join(ROOT, '.claude/decisions.json'), 'utf8'));
+  const lijst =
+    typeof register === 'object' && register !== null && 'requiredChecks' in register ? register.requiredChecks : [];
+  return Array.isArray(lijst) ? lijst.map(String) : [];
+}
+
+describe('samenhang-checks-rollen/AC-1: requiredChecks is de enige lijst', () => {
+  test('samenhang-checks-rollen/AC-1 requiredChecks bevat check-core', () => {
+    expect(requiredChecks()).toContain('check-core');
+  });
+
+  test('samenhang-checks-rollen/AC-1 de ruleset zet precies requiredChecks', () => {
+    const { status, payload } = run(['eigenaar/app']);
+    expect(status).toBe(0);
+    expect(
+      checks(payload)
+        .map((check) => check.context)
+        .toSorted(),
+    ).toStrictEqual(requiredChecks().toSorted());
+  });
+
+  test('samenhang-checks-rollen/AC-1 met --zonder-codeql precies requiredChecks zonder CodeQL', () => {
+    const { payload } = run(['eigenaar/app', '--zonder-codeql']);
+    expect(
+      checks(payload)
+        .map((check) => check.context)
+        .toSorted(),
+    ).toStrictEqual(
+      requiredChecks()
+        .filter((naam) => !CODEQL.includes(naam))
+        .toSorted(),
+    );
+  });
+
+  test('samenhang-checks-rollen/AC-1 elke workflowjob staat in requiredChecks of is bewust niet verplicht, en omgekeerd', () => {
+    expect(checksUitWorkflows()).toStrictEqual(requiredChecks().toSorted());
+  });
+
+  test('samenhang-checks-rollen/AC-1 R-CI-01 en dod.md verwijzen naar requiredChecks in plaats van op te sommen', () => {
+    const regel =
+      readFileSync(path.join(ROOT, 'docs/framework.md'), 'utf8')
+        .split('\n')
+        .find((r) => r.startsWith('- **R-CI-01**')) ?? '';
+    const dod =
+      readFileSync(path.join(ROOT, 'docs/dod.md'), 'utf8')
+        .split('\n')
+        .find((r) => r.includes('Vereiste checks')) ?? '';
+    for (const tekst of [regel, dod]) {
+      expect(tekst).toContain('requiredChecks');
+      expect(tekst).toContain('.claude/decisions.json');
+      expect(tekst).not.toMatch(/Vereiste checks:\s*`gate:fast`|R-CI-01: `gate:fast`/);
+    }
+  });
+});
+
 describe('scripts/github-ruleset.sh', () => {
   test('nieuwe ruleset: POST met de regels uit framework §10 en alle checks van GitHub Actions', () => {
     const { status, aanroepen, payload } = run(['eigenaar/app']);

@@ -64,7 +64,7 @@ export function fase(spec, naam) {
   if (status === 'goedgekeurd') return 'bouw';
   if (status === 'voorstel')
     throw new NewResourceError(
-      `docs/specs/${naam}.md staat op voorstel: bouwen pas als de eigenaar hem op goedgekeurd zet`,
+      `docs/specs/${naam}.md staat op voorstel: bouwen pas als hij op goedgekeurd staat (de architect zet de status, de merge door de eigenaar is het besluit (R-WERK-08))`,
     );
   throw new NewResourceError(
     `docs/specs/${naam}.md heeft status '${status ?? '(geen)'}'; de generator bouwt alleen bij goedgekeurd`,
@@ -573,7 +573,11 @@ function verslag(p, proef) {
   const kop = proef ? 'Plan (--dry-run, er is niets geschreven):' : 'Geschreven:';
   const regels = [kop, ...p.bestanden.map(({ pad, nieuw }) => `  ${nieuw ? 'nieuw   ' : 'gewijzigd'} ${pad}`)];
   if (p.fase === 'skelet')
-    return [...regels, '', 'Vul de spec in; de eigenaar zet hem op goedgekeurd. Draai daarna opnieuw met --rollen.'];
+    return [
+      ...regels,
+      '',
+      'Vul de spec in; bouwen pas als hij op goedgekeurd staat (de architect zet de status, de merge door de eigenaar is het besluit (R-WERK-08)). Draai daarna opnieuw met --rollen.',
+    ];
   /** @param {GateWijziging} w */
   const blok = ({ pad, zoek, vervang }) => ['', `--- ${pad}`, 'vervang:', zoek, 'door:', vervang];
   const gates = p.gates.flatMap(blok);
