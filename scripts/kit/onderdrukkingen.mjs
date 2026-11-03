@@ -69,6 +69,9 @@ const basisOngeldig = (basis) => typeof basis === 'string' && leesOnderdrukkinge
 /** @param {string} detail @param {string} message @returns {Violation} */
 const fout = (detail, message) => ({ key: `onderdrukkingen:${detail}`, message: `${message} (${SPEC})` });
 
+// Bekende grens (delta-review van #457): de naam telt overal in de tekst, ook in commentaar of een melding. Een naam die
+// alleen zo nieuw opduikt, maakt van de onderdrukkingen van die regel een melding; de grens daar is de eigenaarreview van
+// eslint.config.js (gate-pad). Een naam die op de basis al als tekst voorkwam, telt nooit als ingevoerd: dat faalt veilig.
 /** Staat de lintregel in de config? `rails/x` als `'x'`, andere met hun volle naam. @param {string} regel @param {string} config */
 function inConfig(regel, config) {
   const naam = regel.startsWith('rails/') ? regel.slice('rails/'.length) : regel;
