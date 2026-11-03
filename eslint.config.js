@@ -25,6 +25,7 @@ const ruleNames = [
   'klassen',
   'afwezigheid',
   'negatieve-tabel',
+  'kooi',
 ];
 const rails = { rules: Object.fromEntries(ruleNames.map((name) => [name, restrictedSyntax])) };
 
@@ -85,7 +86,35 @@ const LAYOUT_TOKEN = [
 const TOKEN = `((sm|md|lg|xl|2xl):)?(${LAYOUT_TOKEN})`;
 const LAYOUT_CLASSES = String.raw`/^\s*${TOKEN}(\s+${TOKEN})*\s*$/`;
 
+// Kooi (ADR 0072, spec kooi AC-5): een shell met een commandotekst alleen via inKooi uit scripts/kit/kooi.mjs. child_process
+// alleen met benoemde imports, zodat exec/execSync en een shell-aanroep hier zichtbaar zijn.
+const CHILD = '/^(node:)?child_process$/';
+const STARTER = 'CallExpression[callee.name=/^(spawn|spawnSync|execFile|execFileSync)$/]';
+const SHELL = String.raw`[arguments.0.value=/^(.*\/)?(ba|z|da|k)?sh$/]`;
+const KOOI_SELECTORS = [
+  `${STARTER}${SHELL}:has(Literal[value=/^-[a-zA-Z]*c[a-zA-Z]*$/])`,
+  `${STARTER}${SHELL}:not([arguments.1.type='ArrayExpression'])`,
+  `${STARTER} > ObjectExpression > Property:matches([key.name='shell'], [key.value='shell']):not([value.value=false])`,
+  // Een andere naam voor een starter zou de regels hierboven omzeilen.
+  ...['spawn', 'spawnSync', 'execFile', 'execFileSync'].map(
+    (naam) =>
+      `ImportDeclaration[source.value=${CHILD}] > ImportSpecifier[imported.name='${naam}']:not([local.name='${naam}'])`,
+  ),
+  `ImportDeclaration[source.value=${CHILD}] > ImportSpecifier[imported.name=/^exec(Sync)?$/]`,
+  `ImportDeclaration[source.value=${CHILD}] > :matches(ImportNamespaceSpecifier, ImportDefaultSpecifier)`,
+  `ImportExpression[source.value=${CHILD}]`,
+  `ImportExpression[source.type='TemplateLiteral'][source.quasis.0.value.raw=${CHILD}]`,
+  `CallExpression[callee.name='require'][arguments.0.value=${CHILD}]`,
+];
+
 const railConfigs = [
+  restrict(
+    'kooi',
+    [...CODE, 'deploy/**/*.{ts,mjs,js}', '*.{mjs,js}'],
+    ['scripts/kit/kooi.mjs'],
+    'Een shell met een commandotekst alleen via inKooi uit scripts/kit/kooi.mjs (ADR 0072, R-TOOL-03); child_process alleen met benoemde imports, zonder exec/execSync.',
+    KOOI_SELECTORS,
+  ),
   restrict(
     'query-hooks',
     WEB,

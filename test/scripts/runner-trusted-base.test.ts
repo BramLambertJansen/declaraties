@@ -3,6 +3,7 @@ import { chmodSync, existsSync, linkSync, mkdirSync, mkdtempSync, readFileSync, 
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, test } from 'vitest';
+import { inKooi } from '../../scripts/kit/kooi.mjs';
 
 // PR 3 (plan alright-ga-hier-een-bright-dahl): runner.sh vergelijkt met de echte remote-main (git ls-remote), niet met de
 // lokale ref origin/main; compose faalt dicht zonder RUNNER_INPUT_DIR; kleine invoerpunten. Zoals runner-guard.test.ts.
@@ -179,9 +180,11 @@ describe('compose.yaml: dicht falen zonder runner-invoer', () => {
       .replaceAll('$$', '$')
       .replaceAll('/db/tests', leeg);
 
-    const result = spawnSync('sh', ['-c', snippet], { encoding: 'utf8' });
+    // Een fragment uit compose.yaml: in de kooi (ADR 0072).
+    const result = inKooi(snippet, { werkmap: leeg });
 
     expect(result.status).not.toBe(0);
+    expect(result.stderr).toContain('geen pgTAP-tests in db/tests');
   });
 });
 
