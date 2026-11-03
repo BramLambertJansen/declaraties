@@ -1,6 +1,8 @@
 # 0047 — Generator `pnpm new:resource`
 
 Status: geaccepteerd
+Herzien: 2026-11-03 (#477): punt 9 volgt [0073](0073-een-proefkopie-per-pr.md): de check draait in de template na `app:init`
+in dezelfde kopie, één suite voor beide
 
 Vervangt [0016](0016-generator-new-resource.md).
 Drempel: A4. Consolidatie zonder inhoudelijke wijziging (eigenaarbesluit 2026-10-21, [0038](0038-beslisroute.md) Gevolgen).
