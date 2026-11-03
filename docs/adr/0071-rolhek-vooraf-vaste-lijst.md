@@ -39,12 +39,16 @@ schakelt de toets van datzelfde commando uit), en git-acties van de hoofdsessie 
    deze lijst omzeilen (niet-letterlijke commandowoorden, globs naar `gh`, `env -S`, substituties, omhulsels), en de vaste
    leeslijst van de reviewer (rolhek-lezen). Edit, Write en MCP blijven vooraf exact getoetst.
 2. **Paden die vóór de toets op effect schade doen, zijn vooraf dicht zonder dat het rolhek de schrijfvorm hoeft te kennen.**
-   Een vaste lijst zelfladende paden: `.git/**` en wat Claude Code, git of pnpm laden vóór de volgende toets (`.claude/hooks/`
-   behalve `.cache/`, `.claude/settings.json`, `lefthook.yml`, `.pnpmfile.cjs`). Een commando dat zo'n pad noemt (als woord,
-   als redirectdoel, als optiewaarde zoals `--output=` of `-o`, of via een glob die erop kan passen), is `deny` voor een
-   subagent en `ask` voor de hoofdsessie. Alleen een leesprogramma uit een vaste lijst of `git` zonder redirect en zonder
-   schrijfoptie naar zo'n pad gaat door. Een git-actie die deze bestanden zelf bijwerkt (`pull`, `merge origin/main`), noemt
-   ze niet en gaat dus door; wat ze dan veranderen, komt van `main`. De lijst groeit niet met nieuwe programma's.
+   Een vaste lijst zelfladende paden, relatief aan de root van de repository: `.git/**` en wat Claude Code, git of pnpm laden
+   vóór de volgende toets (`.claude/hooks/` behalve `.cache/`, `.claude/settings.json`, `lefthook.yml`, `.pnpmfile.cjs`). Een
+   commando dat zo'n pad noemt (als woord, als redirectdoel, als optiewaarde zoals `--output=` of `-o`, of via een glob die er
+   volgens de shell op kan passen), is `deny` voor elke rol bij `.git/**` (R-ROL-03), en bij de andere paden `deny` voor een
+   subagent en `ask` voor de hoofdsessie. Alleen een leesprogramma uit een vaste lijst of een git-subcommando dat de werkmap
+   niet schrijft, gaat door, beide zonder redirect en zonder schrijfoptie naar zo'n pad. Een git-subcommando dat de werkmap
+   schrijft (`checkout`, `switch`, `restore`, `reset`, `stash`, `apply`, `am`, `cherry-pick`, `merge`, `pull`, `rebase`,
+   `revert`, `read-tree`, `checkout-index`), is voor een subagent `deny`, tenzij het alleen expliciete paden buiten de lijst
+   noemt: zo kan geen ref, blob of patch een stub vervangen. Voor de hoofdsessie is het `ask` als het een zelfladend pad noemt;
+   anders gaat het door, en wat het verandert, ziet de toets op effect. De lijst groeit niet met nieuwe programma's.
 3. **Elke andere padbeslissing over een Bash-commando valt onder de toets op effect.** `writeTargets` en de padregels vooraf
    vervallen, ook de `pnpm format`-regel en het `--output`-verbod. Wat een commando schrijft, verwijdert, verplaatst of
    formatteert, krijgt achteraf de beslissing van een Edit. Een verhuizing naar het ADR-archief met dezelfde naam en inhoud
