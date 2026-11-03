@@ -26,8 +26,10 @@ const TEST_GEWIJZIGD = new Set(['M', 'D', 'R', 'T']);
  * @typedef {{ gates: string[], testpaden: string[], jsonGates: Record<string, string[]>, goedkeurders: string[] }} GuardConfig
  * @typedef {{ user: string, state: string, commitId: string, submittedAt: string }} Review
  * @typedef {{ wijzigingen: Wijziging[], json: Record<string, { voor: string | null, na: string | null }>,
- *   reviews: Review[], auteur: string, headSha: string, src?: Record<string, { voor: string | null, na: string | null }> }} Pr
- *   `src`: elk geraakt bestand onder src/ (ook verwijderd), alleen voor het agent-merge-oordeel
+ *   reviews: Review[], auteur: string, headSha: string, src?: Record<string, { voor: string | null, na: string | null }>,
+ *   regels?: number, binair?: string[] }} Pr
+ *   `src`: elk geraakt bestand onder src/ (ook verwijderd), alleen voor het agent-merge-oordeel; `regels` en `binair` uit
+ *   `parseNumstat`, ook alleen voor dat oordeel (spec agent-merge-zonder-codex AC-2)
  * @typedef {{ gates: string[], tests: string[], json: string[] }} Geraakt
  * @typedef {{ migraties: string[], permissies: string[], dependencies: string[], routes: string[] }} Risico
  * @typedef {{ uitslag: 'groen' | 'overgang' | 'rood', redenen: string[], geraakt: Geraakt }} Uitslag
@@ -56,6 +58,44 @@ export function parseNameStatus(tekst) {
     }
   }
   return wijzigingen;
+}
+
+/**
+ * De git-aanroep voor de omvang (spec agent-merge-zonder-codex AC-2); apart zodat een test hem op een echte repo draait.
+ * @param {string} splitsing @param {string} head
+ */
+export const numstatArgs = (splitsing, head) => [
+  'diff',
+  '--numstat',
+  '-z',
+  '--find-renames',
+  '--no-ext-diff',
+  '--no-textconv',
+  splitsing,
+  head,
+];
+
+/**
+ * Uitvoer van `git diff --numstat -z`: `<toegevoegd>\t<verwijderd>\t<pad>\0`, bij een hernoeming of kopie
+ * `<toegevoegd>\t<verwijderd>\t\0<oud>\0<nieuw>\0`. Een `-` als telling is een binair bestand (nieuwe pad op de lijst).
+ * @param {string} tekst
+ * @returns {{ regels: number, binair: string[] }}
+ */
+export function parseNumstat(tekst) {
+  const velden = tekst.split('\0');
+  let regels = 0;
+  /** @type {string[]} */
+  const binair = [];
+  for (let i = 0; i < velden.length;) {
+    const [toegevoegd = '', verwijderd = '', ...rest] = (velden[i] ?? '').split('\t');
+    if (toegevoegd === '') break;
+    const hernoemd = rest.join('\t') === '';
+    const pad = hernoemd ? (velden[i + 2] ?? '') : rest.join('\t');
+    i += hernoemd ? 3 : 1;
+    if (toegevoegd === '-' || verwijderd === '-') binair.push(pad);
+    else regels += Number(toegevoegd) + Number(verwijderd);
+  }
+  return { regels, binair };
 }
 
 /** @param {string} tekst @returns {GuardConfig} */
@@ -563,6 +603,7 @@ async function leesPr(config) {
   const wijzigingen = parseNameStatus(
     git(['diff', '--name-status', '-z', '--find-renames', '--no-ext-diff', '--no-textconv', splitsing, head]),
   );
+  const omvang = parseNumstat(git(numstatArgs(splitsing, head)));
   const json = Object.fromEntries(
     teLezen(config, wijzigingen).map(({ pad, van }) => [
       pad,
@@ -583,12 +624,14 @@ async function leesPr(config) {
     commitId: tekst(veld(review, 'commit_id')),
     submittedAt: tekst(veld(review, 'submitted_at')),
   }));
-  return { wijzigingen, json, reviews, auteur: env('AUTHOR'), headSha: head, src };
+  return { wijzigingen, json, reviews, auteur: env('AUTHOR'), headSha: head, src, ...omvang };
 }
 
 /**
  * Oordeel agent-merge (ADR 0069, spec agent-merge-niet-kritiek AC-1) uit dezelfde invoer als de diff-guard; een goedkeuring
- * telt niet mee.
+ * telt niet mee. Omvang uit `pr.regels` en `pr.binair` (spec agent-merge-zonder-codex AC-2). Ontbreekt
+ * `agentMerge.maxRegels`, dan meldt het oordeel "agentMerge ontbreekt of is onleesbaar" (leesAgentMerge geeft null), niet de
+ * omvangreden; die verschijnt hier alleen als de telling ontbreekt.
  * @param {Pr} pr @param {Oordeel} oordeel @param {string} configTekst
  */
 export function agentMerge(pr, oordeel, configTekst) {
@@ -598,6 +641,8 @@ export function agentMerge(pr, oordeel, configTekst) {
       json: { ...pr.src, ...pr.json },
       geraakteJson: oordeel.geraakt.json,
       risico: oordeel.risico,
+      regels: pr.regels,
+      binair: pr.binair,
     },
     leesMergeConfig(configTekst),
   );
