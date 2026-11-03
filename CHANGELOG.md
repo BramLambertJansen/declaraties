@@ -6,6 +6,12 @@ Hier staan wijzigingen die van belang zijn bij het gebruiken of bijwerken van de
 
 ### Toegevoegd
 
+- Lintregel `rails/afwezigheid` en helper `expectAbsent` (`test/support/absence.ts`, leerpunt #402): een negatieve
+  regex-assertie in een test (`.not.toMatch`, `expect.not.stringMatching`, `assert.doesNotMatch`) loopt via
+  `expectAbsent(tekst, patroon, { recognizes, allows })`, die eerst bewijst dat het patroon elk voorbeeld herkent en geen
+  toegestaan voorbeeld raakt. Bestaande gevallen staan in `eslint-suppressions.json`. Wat verandert voor een app: een
+  nieuwe `.not.toMatch` in een test wordt rood; noem in `recognizes` elke vorm en taalvariant die in de bron kan staan.
+
 - `check-docs` regel 12 (leerpunt #393): onder "Hoe (geen norm)" in `.claude/rules/*.md` staat geen normwoord (`nooit`,
   `alleen`, `moet`, `altijd`, `verboden`, `verplicht`, `mag niet` en Engelse tegenhangers; codespans en codeblokken tellen
   niet). Wat verandert voor een app: een eigen rule met zo'n woord onder "Hoe" wordt rood; zet de norm met R-id in het

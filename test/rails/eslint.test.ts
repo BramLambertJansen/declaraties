@@ -351,6 +351,7 @@ const fixtures: Fixture[] = [
     'expect(x).not.toMatch(/mandat/i);',
     "expect(x).not['toMatch'](/mandat/i);",
     "expect(x)['not'].toMatch(/mandat/i);",
+    "expect(x)['not']['toMatch'](/mandat/i);",
     'expect.soft(x).not.toMatch(/mandat/i);',
     'expect(x).toEqual(expect.not.stringMatching(/mandat/i));',
     "import assert from 'node:assert'; assert.doesNotMatch(x, /mandat/i);",

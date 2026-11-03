@@ -23,6 +23,7 @@ const ruleNames = [
   'axe-uitzondering',
   'axe-scan',
   'klassen',
+  'afwezigheid',
 ];
 const rails = { rules: Object.fromEntries(ruleNames.map((name) => [name, restrictedSyntax])) };
 
@@ -38,6 +39,7 @@ const CODE = [
 const TESTS = ['**/*.test.{ts,tsx}', '**/*.spec.ts', 'test/**/*.ts', 'e2e/**/*.ts'];
 const WEB = ['src/web/**/*.{ts,tsx}', 'src/core/web/**/*.{ts,tsx}'];
 const AXE_UITZONDERING = '/^(disableRules|exclude|include|options|withRules|setLegacyMode|disableFrameSandbox)$/';
+const NEGATIEF_REGEX = '/^(toMatch|stringMatching)$/';
 const ELEMENTS = '/^(button|input|select|textarea|dialog|a)$/';
 const IMPORTS = ['ImportDeclaration', 'ExportNamedDeclaration', 'ExportAllDeclaration', 'ImportExpression'].join(', ');
 
@@ -198,6 +200,26 @@ const railConfigs = [
       "JSXSpreadAttribute > ObjectExpression > Property[key.name='className']",
       `JSXAttribute[name.name='className'] > Literal[value!=${LAYOUT_CLASSES}]`,
       "JSXAttribute[name.name='style']",
+    ],
+  ),
+  // Afwezigheid (leerpunt #402): `not.toMatch(/mandat/i)` bleef groen terwijl de bron "taakmandaat" noemde. Een negatieve
+  // regex-assertie loopt daarom alleen via expectAbsent, die eerst bewijst dat het patroon de vormen in de bron herkent.
+  restrict(
+    'afwezigheid',
+    TESTS,
+    ['test/support/absence.ts'],
+    'Een afwezigheidstest bewijst alleen iets als het patroon de vormen in de bron herkent (leerpunt #402): gebruik ' +
+      "expectAbsent(tekst, patroon, { recognizes: ['mandaat', 'mandate'] }) uit test/support/absence.ts en noem elke " +
+      'vorm en taalvariant die in de bron kan staan.',
+    [
+      `MemberExpression[object.property.name='not'][property.name=${NEGATIEF_REGEX}]`,
+      `MemberExpression[object.property.name='not'][property.value=${NEGATIEF_REGEX}]`,
+      `MemberExpression[object.property.value='not'][property.name=${NEGATIEF_REGEX}]`,
+      `MemberExpression[object.property.value='not'][property.value=${NEGATIEF_REGEX}]`,
+      "MemberExpression[property.name='doesNotMatch']",
+      "MemberExpression[property.value='doesNotMatch']",
+      "VariableDeclarator > MemberExpression.init[property.name='not']",
+      "VariableDeclarator > ObjectPattern.id > Property[key.name='not']",
     ],
   ),
   // Toegankelijkheid (framework §7, roadmap 3c): één axe-scan zonder uitzonderingen. Een regel of element uitzetten moet
