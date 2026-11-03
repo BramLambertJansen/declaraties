@@ -37,6 +37,11 @@ export const appAuditLog = appSchema.table('audit_log', {
     .default(sql`'{}'::jsonb`),
 });
 
+export const appOneTimeUse = appSchema.table('one_time_use', {
+  key: text('key').primaryKey(),
+  expiresAt: timestamp('expires_at', { withTimezone: true, mode: 'string' }).notNull(),
+});
+
 export const appRateLimits = appSchema.table('rate_limits', {
   key: text('key').primaryKey(),
   windowStart: timestamp('window_start', { withTimezone: true, mode: 'string' }).notNull(),

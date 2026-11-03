@@ -3,7 +3,7 @@ import pg from 'pg';
 import { afterAll, describe, expect, test } from 'vitest';
 import { inviteUser } from '../../src/core/api/auth/index.ts';
 import { AppError } from '../../src/core/api/errors.ts';
-import { Browser, createTestApp, latestMailTo, required, tokenFrom, totp, uniqueEmail } from '../auth/harness.ts';
+import { Browser, createTestApp, latestMailTo, required, freshTotp, tokenFrom, uniqueEmail } from '../auth/harness.ts';
 import { UserId } from '../../src/core/shared/ids.ts';
 
 // GET /api/me door de hele pipeline (spec accountbeheer; framework §6): sessie uit Better Auth, rol uit user_roles,
@@ -65,7 +65,7 @@ describe('GET /api/me', () => {
     const uri: unknown = await enable.json();
     const totpURI =
       typeof uri === 'object' && uri !== null && 'totpURI' in uri && typeof uri.totpURI === 'string' ? uri.totpURI : '';
-    await browser.post('/api/auth/two-factor/verify-totp', { code: totp(totpURI) });
+    await browser.post('/api/auth/two-factor/verify-totp', { code: freshTotp(totpURI) });
 
     const allowed = await browser.get('/api/me');
     expect(allowed.status).toBe(200);

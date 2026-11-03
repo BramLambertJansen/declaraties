@@ -1,5 +1,5 @@
 ---
-status: gebouwd # #464
+status: gebouwd # #483
 namespace: agent-merge-niet-kritiek
 model: opus
 ---
@@ -72,11 +72,12 @@ n.v.t. — geen UI. Meldingen van `pr:merge` en het rolhek zijn Nederlands en no
   `agentMerge.codex: false`): de samenvatting van `chatgpt-codex-connector[bot]` (marker `codex-review-state:v1`) zegt voor
   `code_review` (de nieuwste samenvatting telt) `status: completed`, `commit_sha` gelijk aan de head-SHA en `has_unresolved_findings: false`; of die bot gaf
   een 👍 op de PR na het moment dat GitHub de head ontving (de vroegste check-suite op die SHA, niet de commitdatum). Een 👀, een lopende review,
-  een review op een andere SHA of open punten op de head (ook met een latere 👍) telt niet (negatieve test); en geen onopgeloste review-thread: REST kent die stand niet,
+  een review op een andere SHA of open punten op de head (ook met een latere 👍) telt niet als afronding (negatieve test);
+  een 👀 van die bot of een lopende review geeft de wachtreden ([agent-merge-codex-wachten](agent-merge-codex-wachten.md) AC-3); en geen onopgeloste review-thread: REST kent die stand niet,
   dus de ruleset op main (`required_review_thread_resolution`) weigert de merge dan. Elke ontbrekende
   voorwaarde geeft een eigen regel en exit 1 zonder schrijfactie. Alleen REST, geen GraphQL. Unittest per voorwaarde met
   nagebootste API-antwoorden. De Codex-voorwaarde kent drie waarden (`true`, `false`, `"indien-aanwezig"`: alleen bij een
-  spoor van een afgeronde Codex-review) en `pr:merge` telt de omvang via REST tegen `agentMerge.maxRegels`
+  spoor van Codex: een afgeronde review of een die nog bezig is) en `pr:merge` telt de omvang via REST tegen `agentMerge.maxRegels`
   ([agent-merge-zonder-codex](agent-merge-zonder-codex.md) AC-3 tot en met AC-5).
 - **agent-merge-niet-kritiek/AC-4** — Het rolhek weigert elke rol `gh pr merge`, `gh api …/merge`, auto-merge en elke
   `mcp__`-merge, zoals nu. Het geeft de hoofdsessie `allow` voor precies `pnpm pr:merge <nr>` (`<nr>` alleen cijfers), alleen

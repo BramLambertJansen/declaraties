@@ -9,7 +9,7 @@ import {
   latestMailTo,
   required,
   tokenFrom,
-  totp,
+  freshTotp,
   uniqueEmail,
 } from '../auth/harness.ts';
 
@@ -76,7 +76,7 @@ export function createAccountTestApp(options: TestAppOptions = {}) {
   async function enableTotp(browser: Browser): Promise<string> {
     const enable = await browser.post('/api/auth/two-factor/enable', { password: PASSWORD });
     const { totpURI } = z.object({ totpURI: z.string() }).parse(await enable.json());
-    const verify = await browser.post('/api/auth/two-factor/verify-totp', { code: totp(totpURI) });
+    const verify = await browser.post('/api/auth/two-factor/verify-totp', { code: freshTotp(totpURI) });
     if (verify.status !== 200) throw new Error(`TOTP bevestigen mislukt: ${String(verify.status)}`);
     return totpURI;
   }
