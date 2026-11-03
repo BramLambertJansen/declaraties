@@ -4,6 +4,10 @@ Status: geaccepteerd
 
 Herzien: 2026-10-30 (#385): taakmandaat en gate-label vervallen ([0063](0063-compacte-kennisbasis-en-lichtere-werkstraat.md));
 geschrapt in punt 5, 7, 8, 9, 11 en 15.
+Herzien: 2026-11-03 (#469): gewijzigd door [0054](0054-gebouwd-in-de-bouw-pr.md) punt 5, 6 en 10;
+[0056](0056-functionele-ui-in-een-pr.md) punt 8–9 en 12–15; [0057](0057-risicogestuurde-werkstraat.md) de vaste
+rolvolgorde; [0062](0062-spec-en-bouw-in-een-pr.md) punt 5, 10, 12, 14 en 15; [0069](0069-agent-merge-niet-kritiek.md)
+punt 30, 31, 33, 34 en 35; [0074](0074-herziene-adr-punten-gemarkeerd.md) punt 2
 
 Vervangt [0025](0025-werkstraat-tot-de-merge.md), [0027](0027-taakmandaat-voor-frameworkwerk.md),
 [0030](0030-ci-lus-en-agent-merge.md) en [0038](0038-beslisroute.md); neemt de delen van [0029](0029-snellere-beslisroute.md)

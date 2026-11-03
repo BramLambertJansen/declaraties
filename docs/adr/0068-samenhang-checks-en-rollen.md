@@ -2,6 +2,8 @@
 
 Status: geaccepteerd
 
+Herzien: 2026-11-03 (#469): gewijzigd door [0069](0069-agent-merge-niet-kritiek.md) punt 3
+
 Vult [0045](0045-railwerk.md), [0057](0057-risicogestuurde-werkstraat.md) en [0062](0062-spec-en-bouw-in-een-pr.md) aan; die blijven gelden.
 
 ## Context

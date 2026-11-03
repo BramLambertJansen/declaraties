@@ -3,6 +3,7 @@
 Status: geaccepteerd
 
 Herzien: 2026-11-03 (#454): punt 3 en de buitenscope "hoofdsessie" volgen [0071](0071-rolhek-vooraf-vaste-lijst.md)
+Herzien: 2026-11-03 (#469): gewijzigd door [0071](0071-rolhek-vooraf-vaste-lijst.md) punt 3
 
 Vult [0045](0045-railwerk.md) aan: het rolhek blijft vooraf toetsen, en toetst daarnaast achteraf wat een Bash-commando
 van een subagent echt veranderde. Uitwerking: spec [rolhek-effect](../specs/rolhek-effect.md).
