@@ -5,6 +5,11 @@ namespace: app-init-proef
 
 # App-init-proef: de snelle suite draait ook tegen een verse app
 
+> Herzien 2026-11-03 (#467, [ADR 0073](../adr/0073-een-proefkopie-per-pr.md)): `app:init` draait voortaan in de kopie van
+> `check:new-resource`, vóór de generator; `check:app-init` is geen verplichte check meer en verdwijnt. Dat raakt stap 0,
+> 1, 3 en 7, OV-4 en OV-5, en AC-1, AC-2, AC-5, AC-8, AC-12, AC-13, AC-15, AC-16 en AC-17. Het geldende gedrag staat in
+> spec [een-proefkopie](een-proefkopie.md).
+
 Geen kop weglaten; "n.v.t. — reden" mag. Ontbreekt een antwoord, dan vraagt de agent het.
 
 ## Doel

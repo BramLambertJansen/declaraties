@@ -3,6 +3,8 @@
 Status: geaccepteerd
 
 Herzien: 2026-11-02 (#418): punt 1 en 3 volgen [0065](0065-grenzen-als-meting.md)
+Herzien: 2026-11-03 (#469): gewijzigd door [0069](0069-agent-merge-niet-kritiek.md) ("zodra de GitHub App er is");
+[0070](0070-meting-die-stuurt.md) punt 1
 
 Herziet [0063](0063-compacte-kennisbasis-en-lichtere-werkstraat.md) punt 3 en 7. Uitwerking: specs
 [leesbudget](../specs/leesbudget.md) en [rolhek-lezen](../specs/rolhek-lezen.md).

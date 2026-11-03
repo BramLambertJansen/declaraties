@@ -5,6 +5,7 @@
 import { readFileSync } from 'node:fs';
 import { decide } from './lib/rolhek.mjs';
 import { rolhekContext } from './lib/rolhek-context.mjs';
+import { uitvoer } from './lib/rolhek-uitvoer.mjs';
 import { payloadCwd, projectRoot } from './lib/root.mjs';
 
 function main() {
@@ -14,21 +15,10 @@ function main() {
   // Niet CLAUDE_PROJECT_DIR maar de git-root van cwd: zie lib/root.mjs.
   const root = projectRoot(cwd);
   const decision = decide(payload, rolhekContext(root, cwd));
-  if (decision.deny.length > 0) {
-    process.stderr.write(`rolhek: ${decision.deny.join('\nrolhek: ')}\n`);
-    process.exit(2);
-  }
-  const output = {
-    hookEventName: 'PreToolUse',
-    ...(decision.ask.length > 0
-      ? {
-          permissionDecision: 'ask',
-          permissionDecisionReason: decision.ask.join('; '),
-        }
-      : decision.allow === true ? { permissionDecision: 'allow' } : {}),
-    ...(decision.context.length > 0 ? { additionalContext: decision.context.join('\n') } : {}),
-  };
-  if (Object.keys(output).length > 1) process.stdout.write(JSON.stringify({ hookSpecificOutput: output }));
+  const { exitCode, stdout, stderr } = uitvoer(decision);
+  if (stderr !== '') process.stderr.write(stderr);
+  if (stdout !== '') process.stdout.write(stdout);
+  if (exitCode !== 0) process.exit(exitCode);
 }
 
 try {

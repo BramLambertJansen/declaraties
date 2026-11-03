@@ -2,6 +2,8 @@
 
 Status: geaccepteerd
 
+Herzien: 2026-11-03 (#469): gewijzigd door [0057](0057-risicogestuurde-werkstraat.md) punt 8 (de organisatievoorwaarde)
+
 Vervangt [0001](0001-stack-en-architectuur.md), [0002](0002-provider-neutraal.md) en
 [0005](0005-toolchain-en-identiteit.md). Drempel: A4. Consolidatie zonder inhoudelijke wijziging (eigenaarbesluit 2026-10-21,
 [0038](0038-beslisroute.md) Gevolgen); de zones in `src/core` staan in [0040](0040-template-app-en-grens-core-app.md).

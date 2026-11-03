@@ -2,6 +2,8 @@
 
 Status: geaccepteerd
 
+Herzien: 2026-11-03 (#469): gewijzigd door [0057](0057-risicogestuurde-werkstraat.md) (de activering)
+
 Wijzigt [0046](0046-werkstraat-en-beslisroute.md) punt 10, en punt 5 en 6 waar ze `gebouwd` noemen.
 Drempel: A4 (een punt van een geaccepteerd ADR vervangen) en A3 (de guard aanvaardt `gebouwd` zonder eigen checkcontrole).
 

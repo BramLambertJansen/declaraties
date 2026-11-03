@@ -123,5 +123,5 @@ n.v.t.: geen API-route, permissie of foutcode.
 
 ## Open vragen
 
-- **OV-1 (aanbeveling: samenvoegen)**: samenvoegen in één kopie, of overslaan als de invoer gelijk is? Aanbeveling:
-  samenvoegen (ADR 0073, alternatieven). De eigenaar kiest in de projectthread; de merge van deze PR is het besluit.
+- **OV-1 ✅ besloten**: samenvoegen in één kopie, niet overslaan als de invoer gelijk is (eigenaar, 2026-11-03, keuze in de
+  projectthread; ADR 0073).

@@ -4,6 +4,8 @@ Status: geaccepteerd
 
 Herzien: 2026-10-30 (#385): in punt 1 vervallen de exacte mandaten voor beschermde broncode
 ([0063](0063-compacte-kennisbasis-en-lichtere-werkstraat.md)).
+Herzien: 2026-11-03 (#469): gewijzigd door [0058](0058-beperkte-fixroute-en-volledige-featurestraat.md) punt 1 en 4;
+[0069](0069-agent-merge-niet-kritiek.md) (de zin "automatische agent-merges vallen af")
 
 Wijzigt de vaste rolvolgorde uit framework §8 en [0046](0046-werkstraat-en-beslisroute.md), de organisatievoorwaarde
 uit [0039](0039-stack-provider-neutraal-en-toolchain.md) punt 8 en de activering van [0054](0054-gebouwd-in-de-bouw-pr.md).
