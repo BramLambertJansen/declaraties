@@ -24,7 +24,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { globMatch, onderhoudVan } from '../../rails/hooks/lib/rolhek.mjs';
 import { adrNumber, duplicateAdrNumbers, invalidAdrNames } from './adr-numbers.mjs';
-import { leesMergeConfig, padReden } from './agent-merge.mjs';
+import { geheelVanaf, leesMergeConfig, padReden } from './agent-merge.mjs';
 import { grensMeldingen, grensViolations, normenMeldingenUitGit, normenUitGit, zonderBasis } from './leesbudget.mjs';
 
 export { normViolations } from './normen.mjs';
@@ -711,6 +711,38 @@ function voorbeeldPad(glob) {
 }
 
 /**
+ * Vorm van `agentMerge.codex` en `agentMerge.maxRegels` op het ruwe blok (spec agent-merge-zonder-codex AC-6): het script
+ * leest een afwijkende vorm dicht, maar hij moet zichtbaar fout zijn. Zonder `agentMerge`-blok geen toets (het oordeel is dan
+ * altijd nee); een ontbrekende `codex` leest het script als `true` en is geldig.
+ * @param {unknown} ruw
+ * @returns {Violation[]}
+ */
+function agentMergeVorm(ruw) {
+  const blok = typeof ruw === 'object' && ruw !== null && 'agentMerge' in ruw ? ruw.agentMerge : undefined;
+  if (typeof blok !== 'object' || blok === null) return [];
+  const codex = 'codex' in blok ? blok.codex : undefined;
+  const maxRegels = 'maxRegels' in blok ? blok.maxRegels : undefined;
+  return [
+    ...(codex === undefined || codex === true || codex === false || codex === 'indien-aanwezig'
+      ? []
+      : [
+          {
+            key: 'docs:agentMerge.codex',
+            message: `.claude/gates.json: agentMerge.codex is ${JSON.stringify(codex)}, niet true, false of "indien-aanwezig"`,
+          },
+        ]),
+    ...(geheelVanaf(maxRegels, 1)
+      ? []
+      : [
+          {
+            key: 'docs:agentMerge.maxRegels',
+            message: `.claude/gates.json: agentMerge.maxRegels is ${maxRegels === undefined ? 'afwezig' : JSON.stringify(maxRegels)}, geen geheel getal ≥ 1`,
+          },
+        ]),
+  ];
+}
+
+/**
  * `merge` en `agentMerge` (ADR 0069, spec agent-merge-niet-kritiek AC-5): de modus is `eigenaar` of `niet-kritiek`, en na de
  * uitsluitingen is geen pad uit `voorReview` of `altijdVragen` agent-mergebaar; getoetst met dezelfde functie als het
  * oordeel, op elk getrackt pad en een voorbeeldpad per glob van die lijsten.
@@ -723,15 +755,17 @@ export function agentMergeViolations(files, text) {
   const ruw = JSON.parse(text);
   const modus = typeof ruw === 'object' && ruw !== null && 'merge' in ruw ? ruw.merge : undefined;
   /** @type {Violation[]} */
-  const fouten =
-    modus === undefined || modus === 'eigenaar' || modus === 'niet-kritiek'
+  const fouten = [
+    ...(modus === undefined || modus === 'eigenaar' || modus === 'niet-kritiek'
       ? []
       : [
           {
             key: 'docs:merge',
             message: `.claude/gates.json: merge is ${JSON.stringify(modus)}, niet "eigenaar" of "niet-kritiek"`,
           },
-        ];
+        ]),
+    ...agentMergeVorm(ruw),
+  ];
   const config = leesMergeConfig(text);
   const agentMerge = config.agentMerge;
   if (agentMerge === null) return fouten;

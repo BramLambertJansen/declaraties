@@ -2,11 +2,19 @@
 // zelf merget. Alles wordt via de REST-API van GitHub gelezen, niet uit de lokale `origin/main`; elke ontbrekende voorwaarde
 // geeft een eigen regel en exit 1 zonder schrijfactie. Pas als alles klopt: squash-merge met de head-SHA als voorwaarde.
 // Onopgeloste review-threads houdt de ruleset op main tegen (`required_review_thread_resolution`); REST kent hun stand niet.
+// Omvang en Codex-spoor: spec agent-merge-zonder-codex AC-3 tot en met AC-5.
 import { Buffer } from 'node:buffer';
 import { execFileSync } from 'node:child_process';
 import { gitText, readAuthority } from '../../rails/hooks/lib/authority-context.mjs';
 import { expectedCheckAppId } from '../../rails/hooks/lib/built-evidence.mjs';
-import { leesAgentMerge, leesModus } from './agent-merge.mjs';
+import {
+  OMVANG_ONLEESBAAR,
+  agentMergeFouten,
+  binairReden,
+  leesAgentMerge,
+  leesModus,
+  teGroot,
+} from './agent-merge.mjs';
 import { parseCheckRun } from './github-evidence.mjs';
 import { checkProgress, verifyEffect } from './pr-verify.mjs';
 
@@ -214,21 +222,109 @@ export function codexRedenen({ comments, reactions, suites }, head) {
 }
 
 /**
- * Alle voorwaarden uit ADR 0069 punt 3; een lege lijst betekent mergen.
- * @param {Api} api @param {{ repo: string, nummer: number, head: string }} doel
+ * Omvang via REST (spec agent-merge-zonder-codex AC-3): `additions + deletions` uit `pulls/<nr>` hoogstens `maxRegels`, en elk
+ * bestand uit `pulls/<nr>/files` heeft een `patch`, behalve een zuivere hernoeming (`renamed`, `changes: 0`). Zonder `patch`
+ * zijn: een binair bestand, een nieuw of verwijderd leeg bestand, een diff die GitHub te groot vindt en een wijziging van
+ * alleen de bestandsmodus. Alle worden geweigerd met de letterlijke spectekst `binairReden` (faalt dicht), ook als het
+ * bestand niet binair is; de diff-guard geeft bij het lege bestand en de moduswijziging wel `ja` (numstat `0 0`). Een
+ * hernoemde binary, zuiver of ook gewijzigd, lijkt hier een zuivere hernoeming en komt door; die vangt de job `agent-merge`
+ * (numstat `-`, `nee`).
+ * @param {unknown} pull @param {unknown[]} files @param {number} maxRegels
  */
-export function voorwaarden(api, { repo, nummer, head }) {
-  if (!SHA.test(head)) return ['geen geldige lokale HEAD'];
+export function omvangRedenen(pull, files, maxRegels) {
+  const [erbij, eraf] = [veld(pull, 'additions'), veld(pull, 'deletions')];
+  const regels = Number.isInteger(erbij) && Number.isInteger(eraf) ? Number(erbij) + Number(eraf) : Number.NaN;
+  const zonderPatch = files
+    .filter((f) => typeof veld(f, 'patch') !== 'string')
+    .filter((f) => !(veld(f, 'status') === 'renamed' && veld(f, 'changes') === 0))
+    .map((f) => binairReden(tekst(veld(f, 'filename'))));
+  if (!(regels >= 0)) return [OMVANG_ONLEESBAAR, ...zonderPatch];
+  return [...(regels > maxRegels ? [teGroot(regels, maxRegels)] : []), ...zonderPatch];
+}
+
+/** @param {unknown} item */
+const vanCodex = (item) => pad(item, 'user', 'login') === CODEX;
+
+/**
+ * Een spoor van een afgeronde Codex-review op PR `nummer` (spec agent-merge-zonder-codex AC-4): een samenvatting met
+ * `code_review.status` `completed`, een PR-review, een inline-reviewcommentaar of een 👍, op welke SHA ook. Een andere status,
+ * een commentaar zonder marker, een 👀 en alles van een ander account tellen niet. Een onleesbare lijst gooit (geen merge).
+ * @param {Api} api @param {{ repo: string, nummer: number, comments?: unknown[], reactions?: unknown[] }} doel
+ */
+export function codexSpoorOp(api, { repo, nummer, comments, reactions }) {
+  const nr = String(nummer);
+  return (
+    (comments ?? alle(api, `repos/${repo}/issues/${nr}/comments`)).some(
+      (c) => vanCodex(c) && veld(codexStand(tekst(veld(c, 'body'))), 'status') === 'completed',
+    ) ||
+    (reactions ?? alle(api, `repos/${repo}/issues/${nr}/reactions`)).some(
+      (r) => vanCodex(r) && veld(r, 'content') === '+1',
+    ) ||
+    alle(api, `repos/${repo}/pulls/${nr}/reviews`).some(vanCodex) ||
+    alle(api, `repos/${repo}/pulls/${nr}/comments`).some(vanCodex)
+  );
+}
+
+/**
+ * De andere PR's van dezelfde head-branch die open zijn of zonder merge gesloten (`merged_at` null); een gemergde telt niet.
+ * @param {Api} api @param {{ repo: string, nummer: number, pull: unknown }} doel
+ */
+function branchPrs(api, { repo, nummer, pull }) {
+  const eigenaar = repo.split('/')[0] ?? '';
+  const branch = encodeURIComponent(tekst(pad(pull, 'head', 'ref')));
+  return (
+    alle(api, `repos/${repo}/pulls?head=${eigenaar}:${branch}&state=all`)
+      // Alleen een leesbare `merged_at` sluit uit: ontbreekt het veld, dan telt de PR mee (faalt dicht).
+      .filter((p) => tekst(veld(p, 'merged_at')) === '' && veld(p, 'number') !== nummer)
+      .map((p) => Number(veld(p, 'number')))
+      .filter((n) => Number.isInteger(n) && n > 0)
+  );
+}
+
+/**
+ * De Codex-voorwaarde (spec agent-merge-zonder-codex AC-4, AC-5): `uit` bij `codex: false`; bij `true` geldt `codexRedenen()`
+ * (`voldaan` betekent: de voorwaarde geldt, de redenen zeggen of ze vervuld is); bij `"indien-aanwezig"` alleen met een spoor
+ * op deze PR of een niet-gemergde PR van dezelfde branch, anders `verviel`.
+ * @param {Api} api
+ * @param {{ repo: string, nummer: number, head: string, pull: unknown, comments: unknown[], codex: import('./agent-merge.mjs').CodexModus }} doel
+ * @returns {{ stand: 'voldaan' | 'verviel' | 'uit', redenen: string[] }}
+ */
+export function codexVoorwaarde(api, { repo, nummer, head, pull, comments, codex }) {
+  if (codex === false) return { stand: 'uit', redenen: [] };
+  const reactions = alle(api, `repos/${repo}/issues/${String(nummer)}/reactions`);
+  const spoor =
+    codex === true ||
+    codexSpoorOp(api, { repo, nummer, comments, reactions }) ||
+    branchPrs(api, { repo, nummer, pull }).some((n) => codexSpoorOp(api, { repo, nummer: n }));
+  if (!spoor) return { stand: 'verviel', redenen: [] };
+  const suites = alle(api, `repos/${repo}/commits/${head}/check-suites`, 'check_suites');
+  return { stand: 'voldaan', redenen: codexRedenen({ comments, reactions, suites }, head) };
+}
+
+/**
+ * Alle voorwaarden uit ADR 0069 punt 3 plus de stand van de Codex-voorwaarde; geen redenen betekent mergen. Is `agentMerge`
+ * op main onleesbaar (AC-3), dan één reden per fout (`agentMergeFouten`): de omvangreden `OMVANG_ONLEESBAAR` bij een
+ * ongeldige `maxRegels`, "agentMerge ontbreekt of is onleesbaar" bij een ontbrekend blok of een ongeldige lijst.
+ * @param {Api} api @param {{ repo: string, nummer: number, head: string }} doel
+ * @returns {{ redenen: string[], codex: 'voldaan' | 'verviel' | 'uit' | null }}
+ */
+export function beoordeelMerge(api, { repo, nummer, head }) {
+  if (!SHA.test(head)) return { redenen: ['geen geldige lokale HEAD'], codex: null };
   const mainSha = tekst(pad(api(`repos/${repo}/branches/main`), 'commit', 'sha'));
-  if (!SHA.test(mainSha)) return ['de kop van main is niet leesbaar'];
+  if (!SHA.test(mainSha)) return { redenen: ['de kop van main is niet leesbaar'], codex: null };
   const gates = bestandOp(api, { repo, sha: mainSha, bestand: '.claude/gates.json' });
-  if (leesModus(gates) !== 'niet-kritiek') return ['de modus op main is niet "niet-kritiek": de eigenaar merget'];
+  if (leesModus(gates) !== 'niet-kritiek')
+    return { redenen: ['de modus op main is niet "niet-kritiek": de eigenaar merget'], codex: null };
+  const agentMerge = leesAgentMerge(gates);
+  if (agentMerge === null) return { redenen: agentMergeFouten(gates), codex: null };
   const vereist = requiredChecks(bestandOp(api, { repo, sha: mainSha, bestand: '.claude/decisions.json' }));
   const checks = alle(api, `repos/${repo}/commits/${head}/check-runs`, 'check_runs');
   const comments = alle(api, `repos/${repo}/issues/${String(nummer)}/comments`);
-  const codex = leesAgentMerge(gates)?.codex !== false;
-  return [
-    ...prRedenen(api(`repos/${repo}/pulls/${String(nummer)}`), { repo, head }),
+  const pull = api(`repos/${repo}/pulls/${String(nummer)}`);
+  const codex = codexVoorwaarde(api, { repo, nummer, head, pull, comments, codex: agentMerge.codex });
+  const redenen = [
+    ...prRedenen(pull, { repo, head }),
+    ...omvangRedenen(pull, alle(api, `repos/${repo}/pulls/${String(nummer)}/files`), agentMerge.maxRegels),
     ...(veld(api(`repos/${repo}/compare/${mainSha}...${head}`), 'behind_by') === 0
       ? []
       : ['de PR bevat de kop van main niet: eerst git merge origin/main']),
@@ -239,16 +335,31 @@ export function voorwaarden(api, { repo, nummer, head }) {
       sha: mainSha,
     }),
     ...reviewRedenen(comments, head),
-    ...(codex
-      ? codexRedenen(
-          {
-            comments,
-            reactions: alle(api, `repos/${repo}/issues/${String(nummer)}/reactions`),
-            suites: alle(api, `repos/${repo}/commits/${head}/check-suites`, 'check_suites'),
-          },
-          head,
-        )
-      : []),
+    ...codex.redenen,
+  ];
+  return { redenen, codex: codex.stand };
+}
+
+/** Alle voorwaarden uit ADR 0069 punt 3; een lege lijst betekent mergen. @param {Api} api @param {{ repo: string, nummer: number, head: string }} doel */
+export function voorwaarden(api, doel) {
+  return beoordeelMerge(api, doel).redenen;
+}
+
+export const STEEKPROEF_VERVIEL =
+  'Geen Codex-spoor op deze PR of zijn branch: de Codex-voorwaarde verviel (indien-aanwezig). Meld deze merge als steekproef (ADR 0069 punt 5).';
+export const STEEKPROEF_UIT =
+  'Geen Codex-voorwaarde (agentMerge.codex: false). Meld deze merge als steekproef (ADR 0069 punt 5).';
+
+/**
+ * De slotregels na een geslaagde merge; zonder Codex-oordeel een steekproefregel (spec agent-merge-zonder-codex AC-5). Het
+ * script telt niet: de eigenaar telt (ADR 0069 punt 5).
+ * @param {number} nummer @param {string} head @param {'voldaan' | 'verviel' | 'uit' | null} codex
+ */
+export function slotRegels(nummer, head, codex) {
+  return [
+    `PR #${String(nummer)} gemerged op ${head}. Meld PR en SHA in de thread en volg de CI op main (ADR 0069 punt 5).`,
+    ...(codex === 'verviel' ? [STEEKPROEF_VERVIEL] : []),
+    ...(codex === 'uit' ? [STEEKPROEF_UIT] : []),
   ];
 }
 
@@ -278,7 +389,7 @@ function main() {
   const head = gitText(root, ['rev-parse', 'HEAD'])?.trim() ?? '';
   if (authority === null) throw new Error('Geen leesbare vertrouwde basis');
   const repo = authority.repository;
-  const redenen = voorwaarden(gh, { repo, nummer, head });
+  const { redenen, codex } = beoordeelMerge(gh, { repo, nummer, head });
   if (redenen.length > 0) throw new Error(`Geen merge (ADR 0069):\n${redenen.map((r) => `- ${r}`).join('\n')}`);
   execFileSync(
     'gh',
@@ -294,9 +405,7 @@ function main() {
     ],
     { stdio: ['ignore', 'pipe', 'inherit'], env: ZONDER_BIN },
   );
-  console.log(
-    `PR #${String(nummer)} gemerged op ${head}. Meld PR en SHA in de thread en volg de CI op main (ADR 0069 punt 5).`,
-  );
+  console.log(slotRegels(nummer, head, codex).join('\n'));
 }
 
 if (import.meta.main) {

@@ -1,19 +1,33 @@
 // Oordeel agent-merge (ADR 0069 punt 1, spec agent-merge-niet-kritiek AC-1): mag de hoofdsessie deze PR zelf mergen? Puur:
 // de diff-guard levert de wijzigingen, de tekst van de bronbestanden en het risico-overzicht. Een toegestane lijst, de rest
 // dicht: elk pad moet op `agentMerge.toegestaan` staan en op geen gate, `agentMerge.kritiek` of kritiek pad (ADR 0062). Een
-// goedkeuring telt niet mee; reviews worden hier niet gelezen.
+// goedkeuring telt niet mee; reviews worden hier niet gelezen. Omvang (spec agent-merge-zonder-codex AC-2): hoogstens
+// `agentMerge.maxRegels` regels en geen binair bestand. Ontbreekt `maxRegels`, dan is `agentMerge` null en meldt het oordeel
+// de bestaande reden "agentMerge ontbreekt of is onleesbaar"; de reden "omvang … niet leesbaar" verschijnt hier alleen als
+// `regels` ontbreekt of geen geheel getal ≥ 0 is. `pr:merge` meldt per fout in het blok een eigen reden (`agentMergeFouten`):
+// de omvangreden bij een ongeldige `maxRegels`, "agentMerge ontbreekt of is onleesbaar" bij een ongeldige lijst.
 
 import { globMatch } from '../../rails/hooks/lib/rolhek.mjs';
 import { kritiekPad } from './lane.mjs';
 
 /**
- * @typedef {{ toegestaan: string[], kritiek: string[], codex: boolean }} AgentMerge
+ * @typedef {true | false | 'indien-aanwezig'} CodexModus
+ * @typedef {{ toegestaan: string[], kritiek: string[], codex: CodexModus, maxRegels: number }} AgentMerge
  * @typedef {{ gates: string[], testpaden: string[], jsonGates: Record<string, string[]>, voorReview?: string[] | undefined,
  *   altijdVragen?: string[] | undefined, agentMerge: AgentMerge | null, merge: 'eigenaar' | 'niet-kritiek' }} MergeConfig
  * @typedef {{ status: string, pad: string, van?: string }} Wijziging
  * @typedef {{ wijzigingen: Wijziging[], json: Record<string, { voor: string | null, na: string | null }>,
- *   geraakteJson: string[], risico: Record<string, string[]> }} MergeInvoer
+ *   geraakteJson: string[], risico: Record<string, string[]>, regels?: unknown, binair?: unknown }} MergeInvoer
+ *   `regels`: toegevoegd plus verwijderd; `binair`: paden van binaire bestanden (spec agent-merge-zonder-codex AC-2)
  */
+
+export const AGENT_MERGE_ONLEESBAAR = 'agentMerge ontbreekt of is onleesbaar in .claude/gates.json';
+export const OMVANG_ONLEESBAAR = 'omvang van de PR niet leesbaar of agentMerge.maxRegels ontbreekt: geen agent-merge';
+/** @param {number} regels @param {number} maxRegels */
+export const teGroot = (regels, maxRegels) =>
+  `PR te groot voor een agent-merge: ${String(regels)} regels, grens ${String(maxRegels)} (agentMerge.maxRegels)`;
+/** @param {string} pad */
+export const binairReden = (pad) => `binair bestand in de PR: geen agent-merge (${pad})`;
 
 const TEST_GEWIJZIGD = new Set(['M', 'D', 'R', 'T']);
 // Een nieuwe test mag alleen als code op de vaste testplekken; `docs/adr/x.spec.md` of `.claude/agents/x.test.md` niet.
@@ -42,8 +56,22 @@ function veld(ruw, sleutel) {
     : undefined;
 }
 
+/** Een geheel getal ≥ `minimum` (geen tekst, geen breuk). @param {unknown} waarde @param {number} minimum @returns {waarde is number} */
+export const geheelVanaf = (waarde, minimum) => Number.isInteger(waarde) && Number(waarde) >= minimum;
+
 /**
- * `agentMerge` uit .claude/gates.json, of null als het ontbreekt of een andere vorm heeft (faalt dicht).
+ * `agentMerge.codex`: `false` en `"indien-aanwezig"` zoals ze staan, elke andere of ontbrekende waarde `true` (faalt dicht,
+ * spec agent-merge-zonder-codex AC-1); `check-docs` toetst de vorm apart.
+ * @param {unknown} waarde @returns {CodexModus}
+ */
+export function leesCodex(waarde) {
+  if (waarde === false) return false;
+  return waarde === 'indien-aanwezig' ? 'indien-aanwezig' : true;
+}
+
+/**
+ * `agentMerge` uit .claude/gates.json, of null als het ontbreekt of een andere vorm heeft (faalt dicht); ook null zonder
+ * `maxRegels` als geheel getal ≥ 1 (spec agent-merge-zonder-codex AC-1).
  * @param {unknown} ruw
  * @returns {AgentMerge | null}
  */
@@ -51,9 +79,23 @@ export function leesAgentMerge(ruw) {
   const blok = veld(ruw, 'agentMerge');
   const toegestaan = veld(blok, 'toegestaan');
   const kritiek = veld(blok, 'kritiek');
-  const codex = veld(blok, 'codex');
-  if (!tekstLijst(toegestaan) || !tekstLijst(kritiek) || typeof codex !== 'boolean') return null;
-  return { toegestaan, kritiek, codex };
+  const maxRegels = veld(blok, 'maxRegels');
+  if (!tekstLijst(toegestaan) || !tekstLijst(kritiek) || !geheelVanaf(maxRegels, 1)) return null;
+  return { toegestaan, kritiek, codex: leesCodex(veld(blok, 'codex')), maxRegels };
+}
+
+/**
+ * Waarom `leesAgentMerge()` null geeft, per fout één reden (leeg als het blok geldig is): `AGENT_MERGE_ONLEESBAAR` bij een
+ * ontbrekend blok of een ongeldige `toegestaan` of `kritiek`, `OMVANG_ONLEESBAAR` bij een ongeldige `maxRegels`.
+ * @param {unknown} ruw
+ * @returns {string[]}
+ */
+export function agentMergeFouten(ruw) {
+  const blok = veld(ruw, 'agentMerge');
+  return [
+    ...(tekstLijst(veld(blok, 'toegestaan')) && tekstLijst(veld(blok, 'kritiek')) ? [] : [AGENT_MERGE_ONLEESBAAR]),
+    ...(geheelVanaf(veld(blok, 'maxRegels'), 1) ? [] : [OMVANG_ONLEESBAAR]),
+  ];
 }
 
 /** `merge` uit .claude/gates.json; ontbrekend of onbekend telt als `eigenaar` (ADR 0069 punt 3). @param {unknown} ruw */
@@ -130,14 +172,23 @@ export function permissieRegels(json) {
 }
 
 /**
- * Het oordeel: `ja` alleen zonder enige reden (spec agent-merge-niet-kritiek AC-1).
+ * Omvang: meer dan `maxRegels` regels, een binair bestand of een onleesbare telling sluit uit (spec agent-merge-zonder-codex
+ * AC-2); precies `maxRegels` mag.
+ * @param {MergeInvoer} invoer @param {number} maxRegels
+ */
+export function omvangRedenen({ regels, binair }, maxRegels) {
+  if (!geheelVanaf(regels, 0) || !tekstLijst(binair)) return [OMVANG_ONLEESBAAR];
+  return [...(regels > maxRegels ? [teGroot(regels, maxRegels)] : []), ...binair.map(binairReden)];
+}
+
+/**
+ * Het oordeel: `ja` alleen zonder enige reden (spec agent-merge-niet-kritiek AC-1, agent-merge-zonder-codex AC-2).
  * @param {MergeInvoer} invoer @param {MergeConfig} config
  * @returns {{ oordeel: 'ja' | 'nee', redenen: string[] }}
  */
 export function agentMergeOordeel(invoer, config) {
   const agentMerge = config.agentMerge;
-  if (agentMerge === null)
-    return { oordeel: 'nee', redenen: ['agentMerge ontbreekt of is onleesbaar in .claude/gates.json'] };
+  if (agentMerge === null) return { oordeel: 'nee', redenen: [AGENT_MERGE_ONLEESBAAR] };
   const volledig = { ...config, agentMerge };
   // Bij een hernoeming verdwijnt het oude pad ook; de bron van een kopie blijft ongewijzigd staan.
   const paden = invoer.wijzigingen.flatMap(({ status, pad, van }) => [
@@ -158,6 +209,7 @@ export function agentMergeOordeel(invoer, config) {
       items.map((item) => `risico-overzicht (${soort}): ${item}`),
     ),
     ...permissieRegels(invoer.json).map((pad) => `${pad}: regel met permission toegevoegd of verwijderd`),
+    ...omvangRedenen(invoer, agentMerge.maxRegels),
   ];
   const uniek = [...new Set(redenen)];
   return { oordeel: uniek.length === 0 ? 'ja' : 'nee', redenen: uniek };
