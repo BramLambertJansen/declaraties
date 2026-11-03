@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { clientIpHeaders, createAccount, PASSWORD, totpFor, type TestAccount } from './support/accounts.ts';
+import { clientIpHeaders, createAccount, PASSWORD, freshTotpFor, type TestAccount } from './support/accounts.ts';
 import { collectCspViolations, scanAxe } from './support/axe.ts';
 
 // Account blokkeren en deblokkeren in de UI (spec accountbeheer-uitbreiding, AC-11, AC-12 en AC-14; ADR 0043) tegen de
@@ -21,7 +21,7 @@ async function signIn(page: Page, account: { email: string }): Promise<void> {
 
 async function signInAsAdmin(page: Page, admin: TestAccount): Promise<void> {
   await signIn(page, admin);
-  await page.getByLabel('Code', { exact: true }).fill(totpFor(admin.totpSecret ?? ''));
+  await page.getByLabel('Code', { exact: true }).fill(freshTotpFor(admin.totpSecret ?? ''));
   await page.getByRole('button', { name: 'Bevestigen' }).click();
   await expect(page.getByRole('heading', { level: 1, name: 'Dashboard' })).toBeVisible();
 }

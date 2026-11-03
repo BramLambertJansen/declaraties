@@ -1,6 +1,8 @@
 import { APIError } from 'better-auth/api';
 import { z } from 'zod';
+import { EMAIL_CHANGE_TTL_SECONDS } from '../../shared/limits.ts';
 import type { Auth } from './auth.ts';
+import { emailLinkKey, signedPart } from './one-time-use.ts';
 import { describeDevice } from './user-agent.ts';
 import { sessionRejection } from './session-policy.ts';
 
@@ -76,16 +78,28 @@ const STEPS: ReadonlyMap<string, 'oud' | 'nieuw'> = new Map([
   ['change-email-verification', 'nieuw'],
 ]);
 
-const tokenPayload = z.object({ email: z.string(), updateTo: z.string(), requestType: z.string() });
+const tokenPayload = z.object({
+  email: z.string(),
+  updateTo: z.string(),
+  requestType: z.string(),
+  exp: z.number().int(),
+});
 
 // Het token is een JWT; de handtekening controleert Better Auth zelf in verifyEmail. Hier alleen wat we nodig hebben.
-function readToken(token: string): { step: 'oud' | 'nieuw'; oldEmail: string; newEmail: string } {
+interface TokenFacts {
+  readonly step: 'oud' | 'nieuw';
+  readonly oldEmail: string;
+  readonly newEmail: string;
+  readonly expiresAt: number;
+}
+
+function readToken(token: string): TokenFacts {
   try {
     const [, payload = ''] = token.split('.');
     const parsed = tokenPayload.parse(JSON.parse(Buffer.from(payload, 'base64url').toString('utf8')));
     const step = STEPS.get(parsed.requestType);
     if (step === undefined) throw new EmailLinkInvalidError();
-    return { step, oldEmail: parsed.email, newEmail: parsed.updateTo };
+    return { step, oldEmail: parsed.email, newEmail: parsed.updateTo, expiresAt: parsed.exp };
   } catch (error) {
     throw error instanceof EmailLinkInvalidError ? error : new EmailLinkInvalidError();
   }
@@ -106,11 +120,26 @@ export interface ConfirmEmailInput extends SessionOwner {
   readonly headers: Headers;
 }
 
+// Een link werkt één keer (ADR 0075, spec inloggat-dichten): eerst wat zonder geheim te controleren is (vorm, geldigheid, en
+// dat de link bij het account van de actor hoort, met de vergelijking van Better Auth, anders verbrandt een link in het
+// verkeerde account), dan de claim; pas daarna controleert verifyEmail de handtekening. Elke weigering: EmailLinkInvalidError.
+async function claimLink(auth: Auth, input: ConfirmEmailInput, now: number = Date.now()): Promise<TokenFacts> {
+  const signed = signedPart(input.token);
+  if (signed === null) throw new EmailLinkInvalidError();
+  const facts = readToken(input.token);
+  const ttlSeconds = facts.expiresAt - Math.floor(now / 1000);
+  if (ttlSeconds < 1 || ttlSeconds > EMAIL_CHANGE_TTL_SECONDS) throw new EmailLinkInvalidError();
+  const user = await (await auth.$context).internalAdapter.findUserById(input.userId);
+  if (user === null || user.email !== facts.oldEmail) throw new EmailLinkInvalidError();
+  if (!(await auth.claimOnce(emailLinkKey(input.userId, signed), ttlSeconds))) throw new EmailLinkInvalidError();
+  return facts;
+}
+
 // Stap 1 (oud adres) stuurt de link naar het nieuwe adres; stap 2 wijzigt het adres, trekt de andere sessies in en meldt het
 // oude adres (OV-7). Elke fout van Better Auth (verlopen, vervalst, andere gebruiker, onbekend account) en een adres dat
 // tussendoor bezet raakte (23505) is één fout: EmailLinkInvalidError.
 export async function confirmEmail(auth: Auth, input: ConfirmEmailInput): Promise<'oud' | 'nieuw'> {
-  const { step, oldEmail, newEmail } = readToken(input.token);
+  const { step, oldEmail, newEmail } = await claimLink(auth, input);
   try {
     await auth.api.verifyEmail({ query: { token: input.token }, headers: input.headers });
   } catch (error) {

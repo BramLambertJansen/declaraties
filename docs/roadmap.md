@@ -101,6 +101,7 @@ Open werk dat niet geparkeerd is, grofweg in volgorde. Wat nog een spec of eigen
 - [ ] **ST-02 (P0) — accountbeheer en herstel afmaken** (stuk 3e; bestaande accountbeheer-specs). Open: TOTP-backupcodes (zodat een admin
   zonder telefoon niet alleen via `admin:create` terugkomt), een openstaande uitnodiging intrekken (opnieuw versturen bestaat al:
   `reinviteRoute`) en een admin-resetlink ("wachtwoord vergeten" blijft dicht, ADR 0043). Elk deel eerst een spec.
+  Gedaan: eenmalige TOTP-code en e-maillink, geen sessietoken in JSON (spec `inloggat-dichten`, ADR 0075; bewijs `test/auth/eenmalig.int.test.ts`, `db/tests/one_time_use.sql`).
   **Werk:** specificeer herauthenticatie, sessie-intrekking, tokenverval, oude/nieuwe adresbevestiging en herstel zonder rolpromotie;
   koppel audit en mail aan ST-04 en ST-03 en kopieer geen synchroon mailpad als de outbox de geldende route wordt.
   **Afhankelijkheden:** ADR 0043; audit voor admin-acties; relevante stappen uit ADR 0050.

@@ -3,7 +3,7 @@ import { inviteUser } from '../../src/core/api/auth/index.ts';
 import { SESSION_IDLE_SECONDS, SESSION_REFRESH_SECONDS } from '../../src/core/shared/limits.ts';
 import { accountsListContract } from '../../src/shared/contracts/accounts.ts';
 import { createAccountTestApp, NEW_PASSWORD, PASSWORD } from '../api/account-harness.ts';
-import { Browser, latestMailTo, tokenFrom, totp, uniqueEmail } from './harness.ts';
+import { Browser, freshTotp, latestMailTo, nextTotpStep, tokenFrom, totp, uniqueEmail } from './harness.ts';
 
 const setup = createAccountTestApp();
 const HISTORICAL = new Date('2000-01-01T00:00:00.000Z');
@@ -100,7 +100,7 @@ describe('account-lifecycle: laatste geslaagde login', () => {
     expect(await lastLogin(target.userId)).toEqual(HISTORICAL);
 
     const before = Date.now();
-    expect((await browser.post('/api/auth/two-factor/verify-totp', { code: totp(uri) })).status).toBe(200);
+    expect((await browser.post('/api/auth/two-factor/verify-totp', { code: freshTotp(uri) })).status).toBe(200);
     expect((await lastLogin(target.userId))?.getTime()).toBeGreaterThanOrEqual(before);
   });
 
@@ -127,19 +127,22 @@ describe('account-lifecycle: laatste geslaagde login', () => {
     expect((await setup.call(admin.browser, `POST /api/accounts/${target.userId}/block`, {})).status).toBe(200);
     expect((await setup.call(admin.browser, `POST /api/accounts/${target.userId}/unblock`, {})).status).toBe(200);
 
-    const oldChallenge = await browser.post('/api/auth/two-factor/verify-totp', { code: totp(uri) });
+    const oldChallenge = await browser.post('/api/auth/two-factor/verify-totp', { code: freshTotp(uri) });
     expect(oldChallenge.status).toBeGreaterThanOrEqual(400);
     expect(oldChallenge.status).toBeLessThan(500);
     expect(await (await browser.get('/api/auth/get-session')).json()).toBeNull();
     expect(await lastLogin(target.userId)).toEqual(HISTORICAL);
 
+    // Drie codes van één account (inschrijving, oude challenge, nieuwe login): een code werkt één keer (spec
+    // inloggat-dichten AC-1), dus de derde wacht expliciet op de volgende tijdstap.
+    await nextTotpStep();
     const fresh = new Browser(setup.app);
     const password = await fresh.post('/api/auth/sign-in/email', { email: target.email, password: PASSWORD });
     expect(await password.json()).toMatchObject({ twoFactorRedirect: true });
-    expect((await fresh.post('/api/auth/two-factor/verify-totp', { code: totp(uri) })).status).toBe(200);
+    expect((await fresh.post('/api/auth/two-factor/verify-totp', { code: freshTotp(uri) })).status).toBe(200);
     expect((await fresh.get('/api/me')).status).toBe(200);
     expect((await lastLogin(target.userId))?.getTime()).toBeGreaterThan(HISTORICAL.getTime());
-  });
+  }, 45_000);
 
   test.each([
     ['deactivate', 'activate'],

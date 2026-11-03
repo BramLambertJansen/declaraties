@@ -11,6 +11,9 @@ export const SESSION_ABSOLUTE_SECONDS = 7 * 24 * 60 * 60;
 export const SESSION_FRESH_SECONDS = 10 * 60;
 // Geldigheid van de twee links van een e-mailwijziging (spec eigen-account, OV-5): stateless JWT's, dus kort.
 export const EMAIL_CHANGE_TTL_SECONDS = 60 * 60;
+// Hoe lang een gebruikte TOTP-code geweigerd blijft (ADR 0075): Better Auth accepteert een code in een venster van ±1 stap van
+// 30 s, dus ongeveer 90 s; met marge 120 s.
+export const TOTP_REUSE_BLOCK_SECONDS = 120;
 
 // Audit log (ADR 0051, spec audit-log): dezelfde waarden als de CHECK's op `app.audit_log` (pgTAP test dat ze gelijk zijn).
 export const MAX_AUDIT_DETAILS_BYTES = 2048;

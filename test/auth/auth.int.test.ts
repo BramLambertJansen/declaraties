@@ -10,7 +10,17 @@ const CLOSED = [
   { method: 'GET', path: '/reset-password/abc?callbackURL=/' },
 ];
 import { AccountAlreadyActiveError, inviteUser, reinviteUser } from '../../src/core/api/auth/index.ts';
-import { APP_ORIGIN, Browser, createTestApp, latestMailTo, required, tokenFrom, totp, uniqueEmail } from './harness.ts';
+import {
+  APP_ORIGIN,
+  Browser,
+  createTestApp,
+  latestMailTo,
+  required,
+  tokenFrom,
+  freshTotp,
+  totp,
+  uniqueEmail,
+} from './harness.ts';
 
 // Better Auth in de API (ADR 0041, 0043; spec accountbeheer). Draait via `pnpm test:db` tegen de echte database
 // (als auth_service) en Mailpit.
@@ -192,26 +202,26 @@ describe('MFA en session_strength (framework §6, ADR 0043)', () => {
     const { browser, totpURI } = await enrolled();
     expect(await sessionStrength(browser)).toBe('password');
 
-    expect((await browser.post('/api/auth/two-factor/verify-totp', { code: totp(totpURI) })).status).toBe(200);
+    expect((await browser.post('/api/auth/two-factor/verify-totp', { code: freshTotp(totpURI) })).status).toBe(200);
     expect(await sessionStrength(browser)).toBe('mfa');
   });
 
   test('inloggen met TOTP: eerst geen sessie, na de code een mfa-sessie', async () => {
     const { email, browser: first, totpURI } = await enrolled();
-    await first.post('/api/auth/two-factor/verify-totp', { code: totp(totpURI) });
+    await first.post('/api/auth/two-factor/verify-totp', { code: freshTotp(totpURI) });
     const browser = new Browser(app);
 
     const signIn = await browser.post('/api/auth/sign-in/email', { email, password: PASSWORD });
     expect(await signIn.json()).toMatchObject({ twoFactorRedirect: true });
     expect(await sessionStrength(browser)).toBeUndefined();
 
-    expect((await browser.post('/api/auth/two-factor/verify-totp', { code: totp(totpURI) })).status).toBe(200);
+    expect((await browser.post('/api/auth/two-factor/verify-totp', { code: freshTotp(totpURI) })).status).toBe(200);
     expect(await sessionStrength(browser)).toBe('mfa');
   });
 
   test('een foute code geeft geen sessie', async () => {
     const { email, browser: first, totpURI } = await enrolled();
-    await first.post('/api/auth/two-factor/verify-totp', { code: totp(totpURI) });
+    await first.post('/api/auth/two-factor/verify-totp', { code: freshTotp(totpURI) });
     const browser = new Browser(app);
     await browser.post('/api/auth/sign-in/email', { email, password: PASSWORD });
     const wrong = totp(totpURI) === '000000' ? '111111' : '000000';
@@ -231,7 +241,7 @@ describe('MFA en session_strength (framework §6, ADR 0043)', () => {
 
   test('2FA uitzetten zet de sessie terug op password', async () => {
     const { browser, totpURI } = await enrolled();
-    await browser.post('/api/auth/two-factor/verify-totp', { code: totp(totpURI) });
+    await browser.post('/api/auth/two-factor/verify-totp', { code: freshTotp(totpURI) });
 
     expect((await browser.post('/api/auth/two-factor/disable', { password: PASSWORD })).status).toBe(200);
     expect(await sessionStrength(browser)).toBe('password');
