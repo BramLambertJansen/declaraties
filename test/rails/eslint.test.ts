@@ -358,6 +358,11 @@ const fixtures: Fixture[] = [
     "import assert from 'node:assert'; assert['doesNotMatch'](x, /mandat/i);",
     'const n = expect(x).not; n.toMatch(/mandat/i);',
     'const { not } = expect(x); not.toMatch(/mandat/i);',
+    'expect(/mandat/i.test(x)).toBe(false);',
+    'expect(/mandat/i.exec(x)).toBeNull();',
+    'expect(x.match(/mandat/i)).toBeNull();',
+    'expect(x.search(/mandat/i)).toBe(-1);',
+    "import assert from 'node:assert'; assert.ok(!/mandat/i.test(x));",
   ].map((code) => ({
     name: `afwezigheid/#402: ${code}`,
     file: 'test/x.test.ts',
@@ -376,6 +381,10 @@ const fixtures: Fixture[] = [
     'expect(x).not.toBe(1);',
     'expect(x).not.toMatchObject({});',
     "expectAbsent(x, /manda+te?/i, { recognizes: ['mandaat', 'mandate'] });",
+    'const { not } = { not: 1 }; expect(not).toBe(1);',
+    "expect(x.match('mandaat')).toBeNull();",
+    'const ok = !/mandat/i.test(x); export { ok };',
+    'expect(x.match(/mandat/g)).toHaveLength(1);',
   ].map((code) => ({
     name: `afwezigheid/#402: mag: ${code}`,
     file: 'test/x.test.ts',

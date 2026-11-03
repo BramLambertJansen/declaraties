@@ -56,7 +56,7 @@ describe('expectAbsent', () => {
       expectAbsent('abc', /x/g, { recognizes: ['x', 'x', 'x'] });
     }).not.toThrow();
     expect(() => {
-      expectAbsent('x', /x/y, { recognizes: ['x', 'x'] });
-    }).toThrow(/"x"/);
+      expectAbsent('ax', /x/y, { recognizes: ['ax'] });
+    }).toThrow(/vindt "x"/);
   });
 });

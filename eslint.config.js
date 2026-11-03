@@ -40,6 +40,12 @@ const TESTS = ['**/*.test.{ts,tsx}', '**/*.spec.ts', 'test/**/*.ts', 'e2e/**/*.t
 const WEB = ['src/web/**/*.{ts,tsx}', 'src/core/web/**/*.{ts,tsx}'];
 const AXE_UITZONDERING = '/^(disableRules|exclude|include|options|withRules|setLegacyMode|disableFrameSandbox)$/';
 const NEGATIEF_REGEX = '/^(toMatch|stringMatching)$/';
+const REGEX_METHODE = '/^(test|exec)$/';
+const TEKST_METHODE = '/^(match|search)$/';
+// expect(…) gevolgd door een vergelijking met een vaste waarde; assert(…) of assert.ok(…) met een ontkenning.
+const VERGELIJK =
+  "CallExpression[callee.property.name=/^(toBe|toEqual|toStrictEqual|toBeNull|toBeFalsy|toBeTruthy|toBeUndefined)$/] > MemberExpression.callee > CallExpression.object[callee.name='expect']";
+const ASSERT = "CallExpression:matches([callee.name='assert'], [callee.property.name='ok'], [callee.name='expect'])";
 const ELEMENTS = '/^(button|input|select|textarea|dialog|a)$/';
 const IMPORTS = ['ImportDeclaration', 'ExportNamedDeclaration', 'ExportAllDeclaration', 'ImportExpression'].join(', ');
 
@@ -219,7 +225,12 @@ const railConfigs = [
       "MemberExpression[property.name='doesNotMatch']",
       "MemberExpression[property.value='doesNotMatch']",
       "VariableDeclarator > MemberExpression.init[property.name='not']",
-      "VariableDeclarator > ObjectPattern.id > Property[key.name='not']",
+      "VariableDeclarator[init.type='CallExpression'] > ObjectPattern.id > Property[key.name='not']",
+      // Omschrijvingen naar een boolean of null: expect(/re/.test(x)).toBe(false), expect(x.match(/re/)).toBeNull(),
+      // assert.ok(!/re/.test(x)). Een positieve vorm hiervan schrijf je als toMatch; een telling (toHaveLength) mag.
+      `${VERGELIJK} > CallExpression.arguments[callee.property.name=${REGEX_METHODE}][callee.object.regex]`,
+      `${VERGELIJK} > CallExpression.arguments[callee.property.name=${TEKST_METHODE}][arguments.0.regex]`,
+      `${ASSERT} > UnaryExpression.arguments[operator='!'] > CallExpression[callee.property.name=${REGEX_METHODE}][callee.object.regex]`,
     ],
   ),
   // Toegankelijkheid (framework §7, roadmap 3c): één axe-scan zonder uitzonderingen. Een regel of element uitzetten moet
