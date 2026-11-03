@@ -6,8 +6,6 @@ Hier staan wijzigingen die van belang zijn bij het gebruiken of bijwerken van de
 
 ### Toegevoegd
 
-<<<<<<< HEAD
-=======
 - Lintregel `rails/negatieve-tabel` en helper `expectNegativeTable` (`test/support/negative-table.ts`, leerpunt #401):
   een tabeltest die per rij onwaar eist (`test.each`/`it.each`/`describe.each`/`test.for`, ook als tagged template, met
   `toBe(false)`, `toBeFalsy()`, `not.toBe(true)` of `not.toBeTruthy()`) loopt via `expectNegativeTable({ base, check, cases })`. Die bewijst eerst dat de basis waar is en
@@ -15,7 +13,6 @@ Hier staan wijzigingen die van belang zijn bij het gebruiken of bijwerken van de
   staan in `eslint-suppressions.json`. Wat verandert voor een app: een nieuwe negatieve tabel wordt rood; geef een geldige
   basis en per rij één gewijzigde voorwaarde.
 
->>>>>>> origin/main
 - Lintregel `rails/afwezigheid` en helper `expectAbsent` (`test/support/absence.ts`, leerpunt #402): een negatieve
   regex-assertie in een test (`.not.toMatch`, `expect.not.stringMatching`, `assert.doesNotMatch`) loopt via
   `expectAbsent(tekst, patroon, { recognizes, allows })`, die eerst bewijst dat het patroon elk voorbeeld herkent en geen
