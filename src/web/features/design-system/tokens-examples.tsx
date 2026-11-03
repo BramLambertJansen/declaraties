@@ -74,7 +74,12 @@ const MOTION = [
 
 export function TokensExamples() {
   return (
-    <Section id="example-tokens" title="Tokens">
+    <Section
+      id="example-tokens"
+      title="Tokens"
+      description="De basis van het uiterlijk: alle andere onderdelen gebruiken deze waarden."
+      framed
+    >
       <Text tone="muted">
         Kleur, typografie, dichtheid, lagen en beweging uit de tokens; een app past ze aan in src/web/styles/theme.css.
       </Text>

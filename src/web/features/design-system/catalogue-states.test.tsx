@@ -1,7 +1,16 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { cleanup, fireEvent, render, screen, within } from '@testing-library/react';
 import { createRootRoute, createRouter, createMemoryHistory, RouterProvider } from '@tanstack/react-router';
-import { AdditionalExamples } from './additional-examples.tsx';
+import { AsyncAndErrorSections, CenteredCardSection } from './additional-examples.tsx';
+
+function AdditionalExamples() {
+  return (
+    <>
+      <CenteredCardSection />
+      <AsyncAndErrorSections />
+    </>
+  );
+}
 import { afterEach, expect, test } from 'vitest';
 import { AsyncStatesExample } from './async-states-example.tsx';
 import { FormStateExamples } from './form-state-examples.tsx';

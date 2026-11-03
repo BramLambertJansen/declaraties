@@ -22,7 +22,7 @@ for (const width of [375, 1280]) {
     await context.setExtraHTTPHeaders(clientIpHeaders());
     await page.setViewportSize({ width, height: 900 });
     await signIn(page, await createAccount('admin', { totp: true }));
-    await page.goto('/design-system');
+    await page.goto('/design-system?vak=formulieren');
     const inputs = page.getByRole('region', { name: 'PasswordInput en DateInput' });
     const password = inputs.getByLabel('Voorbeeldwachtwoord', { exact: true });
     const toggle = inputs.getByRole('button', { name: 'Wachtwoord tonen', exact: true }).first();

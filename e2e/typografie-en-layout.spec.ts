@@ -7,7 +7,7 @@ import { signIn } from './support/eigen-account.ts';
 // licht en donker. Deze suite draait in `pnpm ui:check`.
 async function openCatalog(page: Page) {
   await signIn(page, await createAccount('admin', { totp: true }));
-  await page.goto('/design-system');
+  await page.goto('/design-system?vak=layout');
   await expect(page.getByRole('heading', { level: 1, name: 'Design system' })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Text, Heading, Stack en Inline' })).toBeVisible();
 }

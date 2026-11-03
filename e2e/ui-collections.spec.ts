@@ -3,9 +3,18 @@ import { clientIpHeaders, createAccount } from './support/accounts.ts';
 import { signIn } from './support/eigen-account.ts';
 import { collectCspViolations, scanAxe } from './support/axe.ts';
 
+// Open een tabblad van /design-system (spec designsystem-toolbox); een sectie buiten het open tabblad is verborgen.
+async function openVak(page: Page, label: string): Promise<void> {
+  const tab = page
+    .getByRole('tablist', { name: 'Onderdelen per soort' })
+    .getByRole('tab', { name: label, exact: true });
+  await tab.click();
+  await expect(tab).toHaveAttribute('aria-selected', 'true');
+}
+
 async function openCatalogue(page: Page) {
   await signIn(page, await createAccount('admin', { totp: true }));
-  await page.goto('/design-system');
+  await page.goto('/design-system?vak=formulieren');
   await page.getByRole('region', { name: 'Combobox', exact: true }).waitFor();
 }
 
@@ -99,6 +108,7 @@ for (const width of [375, 1280]) {
     }) => {
       const csp = collectCspViolations(page);
       await openCatalogue(page);
+      await openVak(page, 'Gegevens tonen');
       const section = page.getByRole('region', { name: 'Accordion', exact: true });
       const general = section.getByRole('button', { name: 'Algemeen', exact: true }).first();
       const name = section.getByRole('textbox', { name: 'Naam' });
@@ -156,6 +166,7 @@ test.describe('UI-collecties: alleen lokale data', () => {
     const form = page.getByRole('region', { name: 'FormComboboxField', exact: true });
     await form.getByRole('button', { name: 'Versturen', exact: true }).click();
     await form.getByRole('button', { name: 'Annuleren', exact: true }).click();
+    await openVak(page, 'Gegevens tonen');
     const accordion = page.getByRole('region', { name: 'Accordion', exact: true });
     await accordion.getByRole('button', { name: 'Algemeen', exact: true }).first().click();
     const list = page.getByRole('region', { name: 'List', exact: true });

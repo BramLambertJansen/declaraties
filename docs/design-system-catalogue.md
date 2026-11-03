@@ -1,14 +1,22 @@
 # De UI-catalogus gebruiken
 
-De adminpagina `/design-system` gebruikt dezelfde UI-kit als de app. De componentenindex ontdekt alle componenten uit
-`src/core/web/ui` en `src/web/ui`, inclusief interne onderdelen. De zoekparameter `q` bewaart de zoekopdracht bij herladen.
+De adminpagina `/design-system` is de gereedschapskist van de app: dezelfde UI-kit als de app, met live voorbeelden in
+het echte thema ([spec designsystem-toolbox](specs/designsystem-toolbox.md)). Bovenaan staat de **Componentenindex**:
+zoeken op naam of variant, met de zoekparameter `q`. De lijst met alle componenten (ook interne onderdelen, met bron en
+importnaam) staat dicht en gaat open zodra je zoekt.
+
+Daaronder staan de voorbeelden in zeven tabbladen: Basis, Acties, Formulieren, Meldingen en status, Gegevens tonen,
+Navigatie en layout en Patronen. Het open tabblad staat in de zoekparameter `vak` (bijvoorbeeld
+`/design-system?vak=formulieren`); een onbekende waarde opent Basis. Elk voorbeeld heeft een titel, één gebruikszin en
+een omlijst voorbeeldvlak (`Section` met `description` en `framed`, [section.tsx](../src/web/ui/section.tsx)).
 
 De gebruikscontracten voor tabellen, tabs, galerijen en filters staan in [Gegevensweergave en navigatie](ui-data-display.md).
 
-Bij iedere indexrij staat **Toon [component]**. Die knop scrollt naar het voorbeeld en verplaatst de toetsenbordfocus naar
-de benoemde sectie. De zoekopdracht blijft behouden. Onderdelen zoals CardHeader en TableCell worden in hun compositie getoond.
-De vindplaatstekst legt uit wanneer je een menu moet openen of een knop moet bedienen. Layoutcomponenten werken in de echte
-navigatie en topbalk; providers worden via hun zichtbare resultaten gedemonstreerd.
+Bij iedere indexrij staat **Toon [component]**. Die knop opent het tabblad van het voorbeeld, scrollt ernaartoe en
+verplaatst de toetsenbordfocus naar de benoemde sectie. De zoekopdracht blijft behouden. Onderdelen zoals CardHeader en
+TableCell worden in hun compositie getoond. De vindplaatstekst legt uit wanneer je een menu moet openen of een knop moet
+bedienen. Layoutcomponenten werken in de echte navigatie en topbalk; providers worden via hun zichtbare resultaten
+gedemonstreerd.
 
 ## Voorbeeldtoestanden
 
@@ -30,11 +38,15 @@ De query- en submituitkomsten zijn lokale voorbeelddata. Ze doen geen API-aanroe
 ## Uitbreiden en controleren
 
 Bij een nieuw UI-onderdeel blijven bronindex, barrel-export en bereikbaar voorbeeld verplicht (ADR 0048).
-Voeg daarnaast in [example-targets.ts](../src/web/features/design-system/example-targets.ts) de vindplaats en korte bedieningsinstructie toe. Het doel is het `id` van een
-Section; die wordt alleen met een expliciet id programmatisch focusbaar. Nieuwe Section-aanroepen zonder id veranderen niet.
+Voeg daarnaast in [example-targets.ts](../src/web/features/design-system/example-targets.ts) de vindplaats, het tabblad
+(`vak`) en een korte bedieningsinstructie toe, en zet de sectie in het juiste tabblad in
+[vak-panels.tsx](../src/web/features/design-system/vak-panels.tsx), met `description` en `framed`. Het doel is het `id`
+van een Section; die wordt alleen met een expliciet id programmatisch focusbaar. Nieuwe Section-aanroepen zonder id
+veranderen niet. In e2e-tests open je een tabblad met een lokale `openVak`-helper (klik het tabblad in de lijst "Onderdelen per soort") of direct
+via `?vak=`.
 
 `pnpm check:catalogus` controleert bronbereikbaarheid en eindige stringvarianten. De e2e-test
-[design-system-coverage.spec.ts](../e2e/design-system-coverage.spec.ts) bedient voor iedere indexrij de voorbeeldknop en controleert het bestaande focusdoel.
+[design-system-coverage.spec.ts](../e2e/design-system-coverage.spec.ts) bedient voor iedere indexrij de voorbeeldknop en controleert het bestaande focusdoel, ook in een ander tabblad.
 Dezelfde test controleert lokale toestanden, formulierfouten, mobiele overflow, CSP en axe in licht/donker.
 [catalogue-states.test.tsx](../src/web/features/design-system/catalogue-states.test.tsx) test de query- en formulierinteracties zonder netwerk.
 

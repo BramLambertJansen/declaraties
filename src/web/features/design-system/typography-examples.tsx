@@ -158,7 +158,12 @@ function InlineExamples() {
 
 export function TypographyExamples() {
   return (
-    <Section id="example-typografie" title="Text, Heading, Stack en Inline">
+    <Section
+      id="example-typografie"
+      title="Text, Heading, Stack en Inline"
+      description="Tekst, koppen en afstand; gebruik deze in plaats van eigen klassen."
+      framed
+    >
       <TextExamples />
       <Stack gap="sm">
         <Heading level={2}>Kop van niveau 2</Heading>

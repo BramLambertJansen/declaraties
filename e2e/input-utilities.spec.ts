@@ -1,7 +1,16 @@
-import { expect, test } from '@playwright/test';
+import { expect, test, type Page } from '@playwright/test';
 import { clientIpHeaders, createAccount } from './support/accounts.ts';
 import { collectCspViolations, scanAxe } from './support/axe.ts';
 import { signIn } from './support/eigen-account.ts';
+
+// Open een tabblad van /design-system (spec designsystem-toolbox); een sectie buiten het open tabblad is verborgen.
+async function openVak(page: Page, label: string): Promise<void> {
+  const tab = page
+    .getByRole('tablist', { name: 'Onderdelen per soort' })
+    .getByRole('tab', { name: label, exact: true });
+  await tab.click();
+  await expect(tab).toHaveAttribute('aria-selected', 'true');
+}
 
 for (const width of [375, 1280]) {
   test(`invoer, klembord en kruimelpad op ${String(width)} px`, async ({ page, context }) => {
@@ -9,7 +18,7 @@ for (const width of [375, 1280]) {
     await page.setViewportSize({ width, height: 900 });
     const csp = collectCspViolations(page);
     await signIn(page, await createAccount('admin', { totp: true }));
-    await page.goto('/design-system');
+    await page.goto('/design-system?vak=formulieren');
     const inputs = page.getByRole('region', { name: 'PasswordInput en DateInput' });
     const password = inputs.getByLabel('Voorbeeldwachtwoord', { exact: true });
     const date = inputs.getByLabel('Voorbeelddatum', { exact: true });
@@ -32,6 +41,7 @@ for (const width of [375, 1280]) {
     await expect(date).toHaveValue('');
     await expect(inputs.getByLabel('Uitgeschakelde datum')).toBeDisabled();
     await expect(inputs.getByLabel('Uitgeschakeld wachtwoord')).toBeDisabled();
+    await openVak(page, 'Acties');
     const copy = page.getByRole('region', { name: 'CopyButton', exact: true });
     await context.grantPermissions(['clipboard-read', 'clipboard-write']);
     const copyButton = copy.getByRole('button', { name: 'E-mailadres kopiëren' });
@@ -39,6 +49,7 @@ for (const width of [375, 1280]) {
     await expect(copy.getByRole('status').first()).toHaveText('Gekopieerd.');
     expect(await page.evaluate<string>('navigator.clipboard.readText()')).toBe('anna@example.test');
     await expect(copyButton).toBeFocused();
+    await openVak(page, 'Navigatie en layout');
     const breadcrumbs = page.getByRole('navigation', { name: 'Voorbeeldkruimelpad' });
     await expect(breadcrumbs.locator('[aria-current="page"]')).toHaveText('Accountgegevens met een lange beschrijving');
     await scanAxe(page);

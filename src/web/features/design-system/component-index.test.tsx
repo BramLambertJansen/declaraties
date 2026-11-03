@@ -7,11 +7,24 @@ afterEach(cleanup);
 
 function ControlledIndex() {
   const [search, setSearch] = useState('');
-  return <ComponentIndex search={search} onSearchChange={setSearch} />;
+  return <ComponentIndex search={search} onSearchChange={setSearch} onShow={() => undefined} />;
 }
+
+// Spec designsystem-toolbox/AC-4: de lijst staat dicht tot je zoekt of hem opent.
+test('de lijst met alle componenten staat dicht en gaat open bij zoeken', () => {
+  render(<ControlledIndex />);
+  expect(screen.getByRole('button', { name: 'Lijst met alle componenten' }).getAttribute('aria-expanded')).toBe(
+    'false',
+  );
+  expect(screen.queryByRole('table')).toBeNull();
+  fireEvent.change(screen.getByLabelText('Component zoeken'), { target: { value: 'tabs' } });
+  expect(screen.getByRole('button', { name: 'Lijst met alle componenten' }).getAttribute('aria-expanded')).toBe('true');
+  expect(screen.getByRole('row', { name: /^Tabs Gegevens tonen/ })).toBeTruthy();
+});
 
 test('de echte bronindex toont ook RouteError, NotFound en interne ToastCard', () => {
   render(<ControlledIndex />);
+  fireEvent.click(screen.getByRole('button', { name: 'Lijst met alle componenten' }));
   const table = screen.getByRole('table');
   for (const name of ['Button', 'RouteError', 'NotFound', 'ToastCard']) {
     expect(within(table).getByText(name)).toBeTruthy();

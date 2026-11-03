@@ -10,9 +10,10 @@ afterEach(cleanup);
 
 const SECTION = 'Text, Heading, Stack en Inline';
 
+// Spec designsystem-toolbox: de sectie staat in het tabblad Navigatie en layout.
 function setup() {
   const route = createRootRoute({ component: DesignSystemPage });
-  const router = createRouter({ routeTree: route, history: createMemoryHistory({ initialEntries: ['/'] }) });
+  const router = createRouter({ routeTree: route, history: createMemoryHistory({ initialEntries: ['/?vak=layout'] }) });
   return render(
     <ToastProvider>
       <QueryClientProvider client={new QueryClient()}>
@@ -85,8 +86,10 @@ test('typografie-en-layout/AC-10: Stack per gap, als ul, ol en section; Inline p
 // typografie-en-layout/AC-10
 test('typografie-en-layout/AC-10: de componentindex vindt Text, Heading, Stack en Inline in core', async () => {
   setup();
-  await section();
-  const search = screen.getByLabelText('Component zoeken');
+  const search = await screen.findByLabelText('Component zoeken');
+  // Op bronpad binnen de index zoeken: een rij op toegankelijke naam berekenen over alle rijen duurt in CI te lang.
+  const index = search.closest('section');
+  expect(index?.getAttribute('aria-labelledby')).toBeTruthy();
   for (const [name, file] of [
     ['Text', 'text'],
     ['Heading', 'heading'],
@@ -94,7 +97,8 @@ test('typografie-en-layout/AC-10: de componentindex vindt Text, Heading, Stack e
     ['Inline', 'inline'],
   ] as const) {
     fireEvent.change(search, { target: { value: name } });
-    const row = screen.getByRole('row', { name: new RegExp(`^${name} `) });
-    expect(within(row).getByText(`src/core/web/ui/${file}.tsx`)).toBeTruthy();
+    const source = await within(index ?? document.body).findByText(`src/core/web/ui/${file}.tsx`);
+    const row = source.closest('tr');
+    expect(row?.firstElementChild?.textContent.startsWith(name)).toBe(true);
   }
 });

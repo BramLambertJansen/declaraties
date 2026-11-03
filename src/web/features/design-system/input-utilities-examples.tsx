@@ -68,28 +68,51 @@ function InputUtilitiesForm() {
   );
 }
 
-export function InputUtilitiesExamples() {
+export function InputUtilitiesSection() {
   return (
-    <>
-      <Section id="example-input-utilities" title="PasswordInput en DateInput">
-        <InputUtilitiesForm />
-      </Section>
-      <Section id="example-breadcrumbs" title="Breadcrumbs">
-        <Breadcrumbs
-          label="Voorbeeldkruimelpad"
-          items={[
-            { id: 'home', label: 'Start', href: '/' },
-            { id: 'accounts', label: 'Accounts', href: '/admin/accounts' },
-          ]}
-          currentPage="Accountgegevens met een lange beschrijving"
-        />
-        <Breadcrumbs label="Kruimelpad zonder bovenliggende pagina" items={[]} currentPage="Design system" />
-      </Section>
-      <Section id="example-copy-button" title="CopyButton">
-        <p>anna@example.test</p>
-        <CopyButton value="anna@example.test" label="E-mailadres kopiëren" />
-        <CopyButton value="anna@example.test" label="Kopiëren uitgeschakeld" disabled />
-      </Section>
-    </>
+    <Section
+      id="example-input-utilities"
+      title="PasswordInput en DateInput"
+      description="Een wachtwoord dat je kunt tonen, en een datum."
+      framed
+    >
+      <InputUtilitiesForm />
+    </Section>
+  );
+}
+
+export function BreadcrumbsSection() {
+  return (
+    <Section
+      id="example-breadcrumbs"
+      title="Breadcrumbs"
+      description="Laat zien waar een pagina in de structuur zit."
+      framed
+    >
+      <Breadcrumbs
+        label="Voorbeeldkruimelpad"
+        items={[
+          { id: 'home', label: 'Start', href: '/' },
+          { id: 'accounts', label: 'Accounts', href: '/admin/accounts' },
+        ]}
+        currentPage="Accountgegevens met een lange beschrijving"
+      />
+      <Breadcrumbs label="Kruimelpad zonder bovenliggende pagina" items={[]} currentPage="Design system" />
+    </Section>
+  );
+}
+
+export function CopyButtonSection() {
+  return (
+    <Section
+      id="example-copy-button"
+      title="CopyButton"
+      description="Een waarde zoals een adres of code met één klik kopiëren."
+      framed
+    >
+      <p>anna@example.test</p>
+      <CopyButton value="anna@example.test" label="E-mailadres kopiëren" />
+      <CopyButton value="anna@example.test" label="Kopiëren uitgeschakeld" disabled />
+    </Section>
   );
 }

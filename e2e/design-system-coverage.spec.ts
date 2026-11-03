@@ -2,6 +2,15 @@ import { expect, test, type Page } from '@playwright/test';
 import { clientIpHeaders, createAccount, PASSWORD, freshTotpFor } from './support/accounts.ts';
 import { collectCspViolations, scanAxe } from './support/axe.ts';
 
+// Open een tabblad van /design-system (spec designsystem-toolbox); een sectie buiten het open tabblad is verborgen.
+async function openVak(page: Page, label: string): Promise<void> {
+  const tab = page
+    .getByRole('tablist', { name: 'Onderdelen per soort' })
+    .getByRole('tab', { name: label, exact: true });
+  await tab.click();
+  await expect(tab).toHaveAttribute('aria-selected', 'true');
+}
+
 async function openCatalogue(page: Page) {
   const admin = await createAccount('admin', { totp: true });
   await page.goto('/login');
@@ -27,6 +36,8 @@ for (const width of [375, 1280]) {
     test('ieder indexitem heeft een werkend, focusbaar voorbeeld; zoeken blijft behouden', async ({ page }) => {
       await openCatalogue(page);
       const index = page.getByRole('region', { name: 'Componentenindex' });
+      // Spec designsystem-toolbox/AC-3: de lijst staat dicht; Toon opent het tabblad van het voorbeeld en zet de focus.
+      await index.getByRole('button', { name: 'Lijst met alle componenten' }).click();
       const rows = index.getByRole('row');
       const controls = index.getByRole('button', { name: /^Toon / });
       const count = await controls.count();
@@ -44,11 +55,17 @@ for (const width of [375, 1280]) {
       await index.getByRole('button', { name: 'Toon FormRadioGroupField', exact: true }).click();
       await expect(page.getByRole('region', { name: 'Formulier: toestanden' })).toBeFocused();
       await expect(page).toHaveURL(/q=FormRadioGroupField/);
+      await expect(page).toHaveURL(/vak=formulieren/);
+      await expect(page.getByRole('tab', { name: 'Formulieren', exact: true })).toHaveAttribute(
+        'aria-selected',
+        'true',
+      );
     });
 
     test('lokale toestanden, adaptervalidatie en pending blijven bedienbaar in licht en donker', async ({ page }) => {
       const csp = collectCspViolations(page);
       await openCatalogue(page);
+      await openVak(page, 'Meldingen en status');
       const asyncSection = page.getByRole('region', { name: 'AsyncView', exact: true });
       await asyncSection.getByLabel('AsyncView-toestand').selectOption('loading');
       await expect(asyncSection.getByRole('status')).toHaveText('Laden…');
@@ -59,6 +76,7 @@ for (const width of [375, 1280]) {
       await expect(asyncSection.getByText('Voorbeeld geladen.')).toBeVisible();
       await asyncSection.getByLabel('AsyncView-toestand').selectOption('empty');
       await expect(asyncSection.getByText('Er is nog niets om te tonen.')).toBeVisible();
+      await openVak(page, 'Formulieren');
       const form = page.getByRole('region', { name: 'Formulier: toestanden' });
       await form.getByRole('button', { name: 'Voorbeeld versturen' }).click();
       await expect(form.getByLabel('Meldingen')).toHaveAttribute('aria-invalid', 'true');

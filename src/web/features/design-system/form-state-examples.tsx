@@ -30,14 +30,23 @@ const schema = z
 export function FormStateExamples() {
   return (
     <>
-      <Section id="example-form-states" title="Formulier: toestanden">
+      <Section
+        id="example-form-states"
+        title="Formulier: toestanden"
+        description="Alle toestanden van een formulier: fouten, serverfout, bezig en uitgeschakeld."
+        framed
+      >
         <p>
           Verstuur het lege formulier voor veldvalidatie. Vul alle velden in om de gekozen uitkomst te bekijken. In de
           pending-toestand blijft het formulier bezig tot je Afronden kiest. Alle uitkomsten zijn lokaal.
         </p>
         <FormSubmissionExample />
       </Section>
-      <Section title="Input en Select: disabled en invalid">
+      <Section
+        title="Input en Select: disabled en invalid"
+        description="Uitgeschakeld en ongeldig, met label en gekoppelde fouttekst."
+        framed
+      >
         <InputStatesExample />
       </Section>
     </>

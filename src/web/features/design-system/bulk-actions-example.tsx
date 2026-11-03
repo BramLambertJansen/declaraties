@@ -26,7 +26,12 @@ export function BulkActionsExample() {
     setBusy(false);
   };
   return (
-    <Section id="example-bulk-actions" title="Selectie en bulkacties">
+    <Section
+      id="example-bulk-actions"
+      title="Selectie en bulkacties"
+      description="Meerdere rijen kiezen en in één keer verwerken."
+      framed
+    >
       <p>
         Selecteer rijen en kies Verwerken. Afronden beëindigt de lokale voorbeeldactie. Bert mislukt de eerste keer en
         blijft geselecteerd.

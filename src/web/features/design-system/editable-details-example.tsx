@@ -43,7 +43,12 @@ export function EditableDetailsExample() {
     setConfirm(false);
   };
   return (
-    <Section id="example-editable-details" title="Detail bekijken en bewerken">
+    <Section
+      id="example-editable-details"
+      title="Detail bekijken en bewerken"
+      description="Een detailpagina die per blok te bewerken is, met een waarschuwing bij weggaan."
+      framed
+    >
       <p>
         Dit voorbeeld bewaart lokaal. Bewerk gegevens, controleer fouten of probeer de pagina met gewijzigde invoer te
         verlaten.

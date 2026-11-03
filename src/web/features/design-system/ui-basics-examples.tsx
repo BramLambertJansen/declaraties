@@ -84,19 +84,36 @@ function InvalidControlsExample() {
   );
 }
 
-export function UiBasicsExamples() {
+export function FormControlSections() {
   return (
     <>
-      <Section id="example-controls" title="Textarea, Checkbox en RadioGroup">
+      <Section
+        id="example-controls"
+        title="Textarea, Checkbox en RadioGroup"
+        description="Lange tekst, een ja-of-nee-keuze en één keuze uit een paar opties."
+        framed
+      >
         <FormControlsExample />
       </Section>
-      <Section title="Invoervelden: disabled">
+      <Section title="Invoervelden: disabled" description="Een veld dat nu niet te wijzigen is." framed>
         <DisabledControlsExample />
       </Section>
-      <Section title="Invoervelden: invalid">
+      <Section title="Invoervelden: invalid" description="Een veld met een foutmelding." framed>
         <InvalidControlsExample />
       </Section>
-      <Section id="example-badges" title="StatusBadge">
+    </>
+  );
+}
+
+export function StatusSections() {
+  return (
+    <>
+      <Section
+        id="example-badges"
+        title="StatusBadge"
+        description="De status van een item in een lijst of tabel."
+        framed
+      >
         <div className="flex flex-wrap gap-3">
           <StatusBadge tone="neutral">Uitgenodigd</StatusBadge>
           <StatusBadge tone="accent">Actief</StatusBadge>
@@ -105,16 +122,31 @@ export function UiBasicsExamples() {
           <StatusBadge tone="warning">Verloopt binnenkort</StatusBadge>
         </div>
       </Section>
-      <Section id="example-empty" title="EmptyState en AsyncView">
+      <Section
+        id="example-empty"
+        title="EmptyState en AsyncView"
+        description="Wat je toont als er nog niets is."
+        framed
+      >
         <EmptyExample />
       </Section>
-      <Section title="Button: busy">
-        <BusyButtonExample />
-      </Section>
-      <Section title="DropdownMenu: busy">
-        <BusyMenuExample />
-      </Section>
     </>
+  );
+}
+
+export function BusyButtonSection() {
+  return (
+    <Section title="Button: busy" description="Een knop tijdens een actie die even duurt." framed>
+      <BusyButtonExample />
+    </Section>
+  );
+}
+
+export function BusyMenuSection() {
+  return (
+    <Section title="DropdownMenu: busy" description="Een menu-item tijdens een actie die even duurt." framed>
+      <BusyMenuExample />
+    </Section>
   );
 }
 

@@ -9,7 +9,7 @@ for (const width of [375, 1280]) {
     await page.setViewportSize({ width, height: 900 });
     const csp = collectCspViolations(page);
     await signIn(page, await createAccount('admin', { totp: true }));
-    await page.goto('/design-system?q=patronen');
+    await page.goto('/design-system?q=patronen&vak=patronen');
     const detail = page.getByRole('region', { name: 'Detail bekijken en bewerken' });
     const edit = detail.getByRole('button', { name: 'Contactgegevens bewerken' });
     await edit.press('Enter');
@@ -31,7 +31,7 @@ for (const width of [375, 1280]) {
     await expect(leave.getByRole('button', { name: 'Annuleren' })).toBeFocused();
     await leave.press('Escape');
     await expect(leave).not.toBeVisible();
-    await expect(page).toHaveURL(/design-system\?q=patronen$/);
+    await expect(page).toHaveURL(/design-system\?q=patronen&vak=patronen$/);
     await expect(detail.getByRole('link', { name: 'Terug naar accounts' })).toBeFocused();
     await detail.getByRole('button', { name: 'Annuleren' }).click();
     const discard = page.getByRole('alertdialog', { name: 'Wijzigingen verwerpen?' });
@@ -42,7 +42,7 @@ for (const width of [375, 1280]) {
     await detail.getByRole('button', { name: 'Contactgegevens opslaan' }).click();
     await expect(edit).toBeFocused();
     await expect(detail.getByText('Wijziging opgeslagen.')).toBeVisible();
-    await expect(page).toHaveURL(/design-system\?q=patronen$/);
+    await expect(page).toHaveURL(/design-system\?q=patronen&vak=patronen$/);
     const refresh = page.getByRole('region', { name: 'Verversen met behoud van inhoud' });
     await refresh.getByRole('button', { name: 'Verversen', exact: true }).click();
     await expect(refresh.getByText('Gegevens verversen…')).toBeVisible();

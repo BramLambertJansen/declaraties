@@ -25,7 +25,7 @@ export function CollectionExamples() {
   const [done, setDone] = useState(false);
   return (
     <>
-      <Section id="example-accordion" title="Accordion">
+      <Section id="example-accordion" title="Accordion" description="Secundaire inhoud in- en uitklappen." framed>
         <p>Single: één sectie tegelijk; de eerste staat open. Gesloten inhoud blijft bewaard.</p>
         <Accordion mode="single" defaultValue={['general']} items={items} />
         <p>Multiple: de ouder beheert de open secties. Annuleren sluit ze allemaal.</p>
@@ -48,7 +48,7 @@ export function CollectionExamples() {
           Annuleren
         </Button>
       </Section>
-      <Section id="example-list" title="List">
+      <Section id="example-list" title="List" description="Items onder elkaar, elk met een eigen actie." framed>
         <List aria-label="Gebruikers">
           <ListItem
             title="Anna de Vries"
@@ -73,7 +73,12 @@ export function CollectionExamples() {
         <List aria-label="Lege lijst">{null}</List>
         {done ? <p role="status">Anna de Vries</p> : null}
       </Section>
-      <Section id="example-description-list" title="DescriptionList">
+      <Section
+        id="example-description-list"
+        title="DescriptionList"
+        description="Kenmerken van één item: term en waarde."
+        framed
+      >
         <DescriptionList items={metadata} />
         <DescriptionList items={[{ id: 'long', term: 'Naam'.repeat(20), value: 'Anna de Vries '.repeat(15) }]} />
         <DescriptionList items={[]} />

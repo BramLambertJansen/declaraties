@@ -1,5 +1,8 @@
+import { useState } from 'react';
 import {
+  Accordion,
   Button,
+  Field,
   Input,
   Section,
   Table,
@@ -8,37 +11,44 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-  Field,
 } from '#web/ui/index.ts';
-import { exampleTarget, showExample } from './example-targets.ts';
-import { components } from '#web/ui/component-metadata.ts';
+import { exampleTarget, type ExampleTarget } from './example-targets.ts';
+import { vakLabel } from './vakken.ts';
+import { components, type ComponentMetadata } from '#web/ui/component-metadata.ts';
 
+const LIST_ID = 'alle-componenten';
+
+function matches(item: ComponentMetadata, query: string): boolean {
+  return `${item.naam} ${item.bron} ${item.importnamen.join(' ')} ${Object.entries(item.varianten)
+    .flatMap(([name, values]) => [name, ...values])
+    .join(' ')}`
+    .toLocaleLowerCase('nl')
+    .includes(query);
+}
+
+// Zoeken in de bronindex (ADR 0048). De lijst staat standaard dicht en gaat open zodra er een zoekopdracht is
+// (spec designsystem-toolbox/AC-4); Toon opent het tabblad van het voorbeeld en zet daar de focus (AC-3).
 export function ComponentIndex({
   search,
   onSearchChange,
+  onShow,
 }: {
   readonly search: string;
   readonly onSearchChange: (value: string) => void;
+  readonly onShow: (target: ExampleTarget) => void;
 }) {
+  const [open, setOpen] = useState(search.trim() !== '');
   const query = search.trim().toLocaleLowerCase('nl');
-  const items = components.filter((item) =>
-    `${item.naam} ${item.bron} ${item.importnamen.join(' ')} ${Object.entries(item.varianten)
-      .flatMap(([name, values]) => [name, ...values])
-      .join(' ')}`
-      .toLocaleLowerCase('nl')
-      .includes(query),
-  );
+  const items = components.filter((item) => matches(item, query));
   return (
     <Section title="Componentenindex">
-      <p>
-        Zoek eerst een bestaand element. Publieke componenten importeer je uit src/web/ui/index.ts; interne onderdelen
-        gebruik je via hun oudercomponent.
-      </p>
+      <p>Zoek een onderdeel op naam of variant. Toon opent het juiste tabblad en springt naar het voorbeeld.</p>
       <Field id="component-search" label="Component zoeken">
         <Input
           id="component-search"
           value={search}
           onChange={(event) => {
+            if (event.target.value.trim() !== '') setOpen(true);
             onSearchChange(event.target.value);
           }}
         />
@@ -46,20 +56,47 @@ export function ComponentIndex({
       <p role="status">
         {items.length} van {components.length} componenten
       </p>
-      <Table label="Beschikbare UI-componenten">
-        <TableHeader>
-          <TableRow>
-            <TableHead>Component</TableHead>
-            <TableHead>Bron</TableHead>
-            <TableHead>Hergebruik</TableHead>
-            <TableHead>Varianten</TableHead>
-            <TableHead>Voorbeeld</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {items.map((item) => (
+      <Accordion
+        mode="multiple"
+        headingLevel={3}
+        value={open ? [LIST_ID] : []}
+        onValueChange={(value) => {
+          setOpen(value.includes(LIST_ID));
+        }}
+        items={[
+          { id: LIST_ID, title: 'Lijst met alle componenten', content: <IndexTable items={items} onShow={onShow} /> },
+        ]}
+      />
+    </Section>
+  );
+}
+
+function IndexTable({
+  items,
+  onShow,
+}: {
+  readonly items: readonly ComponentMetadata[];
+  readonly onShow: (target: ExampleTarget) => void;
+}) {
+  return (
+    <Table label="Beschikbare UI-componenten">
+      <TableHeader>
+        <TableRow>
+          <TableHead>Component</TableHead>
+          <TableHead>Tabblad</TableHead>
+          <TableHead>Bron</TableHead>
+          <TableHead>Hergebruik</TableHead>
+          <TableHead>Varianten</TableHead>
+          <TableHead>Voorbeeld</TableHead>
+        </TableRow>
+      </TableHeader>
+      <TableBody>
+        {items.map((item) => {
+          const target = exampleTarget(item.naam);
+          return (
             <TableRow key={`${item.bron}:${item.naam}`}>
               <TableCell>{item.naam}</TableCell>
+              <TableCell>{target === undefined ? '—' : vakLabel(target.vak)}</TableCell>
               <TableCell>
                 <code>{item.bron}</code>
               </TableCell>
@@ -70,18 +107,25 @@ export function ComponentIndex({
                   .join('; ') || '—'}
               </TableCell>
               <TableCell>
-                <ExampleLocation name={item.naam} />
+                <ExampleLocation name={item.naam} target={target} onShow={onShow} />
               </TableCell>
             </TableRow>
-          ))}
-        </TableBody>
-      </Table>
-    </Section>
+          );
+        })}
+      </TableBody>
+    </Table>
   );
 }
 
-function ExampleLocation({ name }: { readonly name: string }) {
-  const target = exampleTarget(name);
+function ExampleLocation({
+  name,
+  target,
+  onShow,
+}: {
+  readonly name: string;
+  readonly target: ExampleTarget | undefined;
+  readonly onShow: (target: ExampleTarget) => void;
+}) {
   if (target === undefined) return <p>Voorbeeldlocatie ontbreekt.</p>;
   return (
     <div className="flex flex-col gap-2">
@@ -89,7 +133,7 @@ function ExampleLocation({ name }: { readonly name: string }) {
         variant="outline"
         aria-controls={target.id}
         onClick={() => {
-          showExample(target.id);
+          onShow(target);
         }}
       >
         Toon {name}

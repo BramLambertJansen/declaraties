@@ -2,6 +2,25 @@ import { expect, test, type Page } from '@playwright/test';
 import { clientIpHeaders, createAccount, PASSWORD, freshTotpFor } from './support/accounts.ts';
 import { collectCspViolations, scanAxe } from './support/axe.ts';
 
+// Open een tabblad van /design-system (spec designsystem-toolbox); een sectie buiten het open tabblad is verborgen.
+async function openVak(page: Page, label: string): Promise<void> {
+  const tab = page
+    .getByRole('tablist', { name: 'Onderdelen per soort' })
+    .getByRole('tab', { name: label, exact: true });
+  await tab.click();
+  await expect(tab).toHaveAttribute('aria-selected', 'true');
+}
+
+const VAKKEN = [
+  'Basis',
+  'Acties',
+  'Formulieren',
+  'Meldingen en status',
+  'Gegevens tonen',
+  'Navigatie en layout',
+  'Patronen',
+];
+
 // De catalogus als beveiligde pagina in de app (spec design-system): admin met MFA, binnen de AppShell. Op 375 en 1280 px,
 // licht en donker: axe, geen CSP-schendingen, geen horizontaal scrollen, precies een main/Hoofdmenu/Profielmenu, en de
 // toetsenbordafspraken (Esc sluit, focus terug op de knop). Een user krijgt de geen-toegang-melding.
@@ -24,16 +43,25 @@ for (const width of [375, 1280]) {
   test.describe(`design-system op ${String(width)} px`, () => {
     test.use({ viewport: { width, height: 900 } });
 
+    // Spec designsystem-toolbox/AC-6: axe per tabblad, in licht en donker.
     test('axe in licht en donker, zonder CSP-schendingen of horizontaal scrollen', async ({ page }) => {
       const csp = collectCspViolations(page);
       await signInAsAdmin(page);
       await page.goto('/design-system');
       await expect(page.getByRole('heading', { level: 1, name: 'Design system' })).toBeVisible();
 
-      await scanAxe(page);
+      for (const vak of VAKKEN) {
+        await openVak(page, vak);
+        await scanAxe(page);
+      }
       await page.getByRole('button', { name: 'Donker thema' }).click();
       await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
-      await scanAxe(page);
+      for (const vak of VAKKEN) {
+        await openVak(page, vak);
+        await scanAxe(page);
+        const overflow = await page.evaluate<number>('document.documentElement.scrollWidth - window.innerWidth');
+        expect(overflow, `horizontaal scrollen in ${vak}`).toBeLessThanOrEqual(0);
+      }
 
       await expect(page.getByRole('main')).toHaveCount(1);
       await expect(page.getByRole('navigation', { name: 'Hoofdmenu' })).toHaveCount(width === 1280 ? 1 : 0);
@@ -51,7 +79,7 @@ for (const width of [375, 1280]) {
 test('dialoog: focus erin, Esc sluit, focus terug op de knop', async ({ page }) => {
   const csp = collectCspViolations(page);
   await signInAsAdmin(page);
-  await page.goto('/design-system');
+  await page.goto('/design-system?vak=acties');
   const opener = page.getByRole('button', { name: 'Dialoog openen' });
 
   await opener.click();
@@ -68,7 +96,7 @@ test('UI-index toont de echte bron en importnaam; beide toastvoorbeelden zijn be
   page,
 }) => {
   await signInAsAdmin(page);
-  await page.goto('/design-system');
+  await page.goto('/design-system?vak=meldingen');
   const index = page.getByRole('region', { name: 'Componentenindex' });
   await index.getByLabel('Component zoeken').fill('RouteError');
   await expect(page).toHaveURL(/q=RouteError/);
@@ -97,7 +125,7 @@ test('bevestigen: focus op Annuleren, Enter annuleert; tijdens Bezig… houdt oo
 }) => {
   const csp = collectCspViolations(page);
   await signInAsAdmin(page);
-  await page.goto('/design-system');
+  await page.goto('/design-system?vak=acties');
   const opener = page.getByRole('button', { name: 'Account blokkeren' });
   const dialog = page.getByRole('alertdialog', { name: 'Account blokkeren?' });
   const status = page.getByRole('status').filter({ hasText: 'Geblokkeerd' });
@@ -125,7 +153,7 @@ test('bevestigen: focus op Annuleren, Enter annuleert; tijdens Bezig… houdt oo
 test('menu: met het toetsenbord open, Esc sluit, focus terug op de knop', async ({ page }) => {
   const csp = collectCspViolations(page);
   await signInAsAdmin(page);
-  await page.goto('/design-system');
+  await page.goto('/design-system?vak=acties');
   const trigger = page.getByRole('main').getByRole('button', { name: 'Menu openen' });
 
   await trigger.focus();
@@ -155,6 +183,12 @@ test('AC-10: de pagina doet geen aanroep naar /api/ buiten /api/me', async ({ pa
   });
   await page.goto('/design-system');
   await expect(page.getByRole('heading', { level: 1, name: 'Design system' })).toBeVisible();
+  // Spec designsystem-toolbox/AC-8: ook tabbladen wisselen en Toon doen geen aanroep.
+  for (const vak of VAKKEN) await openVak(page, vak);
+  const index = page.getByRole('region', { name: 'Componentenindex' });
+  await index.getByLabel('Component zoeken').fill('Combobox');
+  await index.getByRole('button', { name: 'Toon Combobox', exact: true }).click();
+  await expect(page.getByRole('tab', { name: 'Formulieren', exact: true })).toHaveAttribute('aria-selected', 'true');
 
   expect(calls.filter((pathname) => pathname !== '/api/me')).toStrictEqual([]);
 });
@@ -184,7 +218,7 @@ test('lijsttoolbar: zoeken met debounce, filter en sortering, wissen houdt sorte
 }) => {
   const csp = collectCspViolations(page);
   await signInAsAdmin(page);
-  await page.goto('/design-system');
+  await page.goto('/design-system?vak=patronen');
   const section = page.getByRole('region', { name: 'ListToolbar' });
   const search = section.getByLabel('Zoeken');
   const role = section.getByLabel('Rol');

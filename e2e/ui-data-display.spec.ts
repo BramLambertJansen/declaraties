@@ -5,7 +5,7 @@ import { collectCspViolations, scanAxe } from './support/axe.ts';
 
 async function openCatalogue(page: Page) {
   await signIn(page, await createAccount('admin', { totp: true }));
-  await page.goto('/design-system');
+  await page.goto('/design-system?vak=gegevens');
   await page.getByRole('region', { name: 'DataTable', exact: true }).waitFor();
 }
 

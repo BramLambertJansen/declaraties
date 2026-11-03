@@ -9,7 +9,7 @@ import {
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterAll, afterEach, beforeAll, expect, test } from 'vitest';
 import { EditableDetailsExample } from './editable-details-example.tsx';
-import { InputUtilitiesExamples } from './input-utilities-examples.tsx';
+import { BreadcrumbsSection, CopyButtonSection, InputUtilitiesSection } from './input-utilities-examples.tsx';
 
 // jsdom mist native dialogmethoden; de router en de navigatieblokkering blijven echt.
 const originalShow = Object.getOwnPropertyDescriptor(HTMLDialogElement.prototype, 'showModal');
@@ -35,7 +35,9 @@ function Catalogue() {
   return (
     <>
       <EditableDetailsExample />
-      <InputUtilitiesExamples />
+      <InputUtilitiesSection />
+      <BreadcrumbsSection />
+      <CopyButtonSection />
     </>
   );
 }

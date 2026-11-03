@@ -26,7 +26,7 @@ const schema = z
 export function ComboboxExamples() {
   return (
     <>
-      <Section id="example-combobox" title="Combobox">
+      <Section id="example-combobox" title="Combobox" description="Eén keuze uit een lange lijst, met zoeken." framed>
         <p>
           Zoek op een label. Kies met Enter of een klik; Escape of Tab behoudt je vorige keuze. Wissen maakt de keuze
           leeg.
@@ -34,7 +34,12 @@ export function ComboboxExamples() {
         <StandaloneComboboxes />
         <ComboboxDialogExample />
       </Section>
-      <Section id="example-form-combobox" title="FormComboboxField">
+      <Section
+        id="example-form-combobox"
+        title="FormComboboxField"
+        description="Een Combobox binnen een Form, met validatie."
+        framed
+      >
         <p>Verstuur leeg voor validatie, of kies een serverveldfout. Annuleren herstelt ook een lopende zoekactie.</p>
         <ComboboxFormExample />
       </Section>

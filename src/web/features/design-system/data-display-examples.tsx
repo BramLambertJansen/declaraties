@@ -110,7 +110,12 @@ function DataTableExample() {
   } = model;
   return (
     <>
-      <Section id="example-data-table" title="DataTable">
+      <Section
+        id="example-data-table"
+        title="DataTable"
+        description="Een tabel met zoeken, filteren, sorteren, selecteren en meer laden."
+        framed
+      >
         <p>
           Zoek, filter en sorteer de lokale voorbeeldgegevens. Selecteer rijen of laad meer; dezelfde filters veranderen
           de gallery.
@@ -194,7 +199,7 @@ function TabsExamples() {
     { id: 'disabled', label: 'Uitgeschakeld', content: <p>Niet bereikbaar.</p>, disabled: true },
   ];
   return (
-    <Section id="example-tabs" title="Tabs">
+    <Section id="example-tabs" title="Tabs" description="Verwante inhoud op één pagina verdelen." framed>
       <p>Pijltjes verplaatsen focus; Enter of Spatie activeert. De invoer blijft bij wisselen bewaard.</p>
       <Tabs label="Voorbeeldtabs" items={items} />
       <Tabs label="Bestuurde tabs" items={items} value={value} onValueChange={setValue} />
@@ -206,7 +211,7 @@ function TabsExamples() {
 function GalleryExamples() {
   return (
     <>
-      <Section id="example-gallery" title="Gallery">
+      <Section id="example-gallery" title="Gallery" description="Afbeeldingen in een raster, met preview." framed>
         <Gallery
           label="Voorbeeldafbeeldingen"
           items={media}

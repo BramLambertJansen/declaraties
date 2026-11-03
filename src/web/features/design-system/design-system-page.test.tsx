@@ -8,9 +8,13 @@ import { DesignSystemPage } from './design-system-page.tsx';
 // Catalogus: de sectie Toast toont de kit-toasts met twee knoppen. In de app staat de Toaster in de AppShell; hier renderen we hem zelf.
 afterEach(cleanup);
 
+// Spec designsystem-toolbox: de sectie Toast staat in het tabblad Meldingen en status.
 function setup() {
   const route = createRootRoute({ component: DesignSystemPage });
-  const router = createRouter({ routeTree: route, history: createMemoryHistory({ initialEntries: ['/'] }) });
+  const router = createRouter({
+    routeTree: route,
+    history: createMemoryHistory({ initialEntries: ['/?vak=meldingen'] }),
+  });
   return render(
     <ToastProvider>
       <QueryClientProvider client={new QueryClient()}>
