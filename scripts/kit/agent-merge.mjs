@@ -2,23 +2,28 @@
 // de diff-guard levert de wijzigingen, de tekst van de bronbestanden en het risico-overzicht. Een toegestane lijst, de rest
 // dicht: elk pad moet op `agentMerge.toegestaan` staan en op geen gate, `agentMerge.kritiek` of kritiek pad (ADR 0062). Een
 // goedkeuring telt niet mee; reviews worden hier niet gelezen. Omvang (spec agent-merge-zonder-codex AC-2): hoogstens
-// `agentMerge.maxRegels` regels en geen binair bestand. Ontbreekt `maxRegels`, dan is `agentMerge` null en meldt het oordeel
-// de bestaande reden "agentMerge ontbreekt of is onleesbaar"; de reden "omvang … niet leesbaar" verschijnt hier alleen als
-// `regels` ontbreekt of geen geheel getal ≥ 0 is. `pr:merge` meldt per fout in het blok een eigen reden (`agentMergeFouten`):
-// de omvangreden bij een ongeldige `maxRegels`, "agentMerge ontbreekt of is onleesbaar" bij een ongeldige lijst.
+// `agentMerge.maxRegels` regels, hoogstens `agentMerge.maxBytes` gewijzigde bytes (spec agent-merge-bytegrens: weinig maar
+// zeer lange regels omzeilen de regelgrens niet) en geen binair bestand. Ontbreekt `maxRegels` of `maxBytes`, dan is
+// `agentMerge` null en meldt het oordeel de bestaande reden "agentMerge ontbreekt of is onleesbaar"; een omvangreden
+// "… niet leesbaar" verschijnt hier alleen als `regels` of `bytes` ontbreekt of geen geheel getal ≥ 0 is. `pr:merge` meldt per
+// fout in het blok een eigen reden (`agentMergeFouten`): de omvangreden bij een ongeldige `maxRegels` of `maxBytes`,
+// "agentMerge ontbreekt of is onleesbaar" bij een ongeldige lijst. `patchBytes()` is de ene bytetelling voor CI en `pr:merge`.
 
+import { Buffer } from 'node:buffer';
 import { globMatch } from '../../rails/hooks/lib/rolhek.mjs';
 import { kritiekPad } from './lane.mjs';
 
 /**
  * @typedef {true | false | 'indien-aanwezig'} CodexModus
- * @typedef {{ toegestaan: string[], kritiek: string[], codex: CodexModus, maxRegels: number }} AgentMerge
+ * @typedef {{ toegestaan: string[], kritiek: string[], codex: CodexModus, maxRegels: number,
+ *   maxBytes: number }} AgentMerge
  * @typedef {{ gates: string[], testpaden: string[], jsonGates: Record<string, string[]>, voorReview?: string[] | undefined,
  *   altijdVragen?: string[] | undefined, agentMerge: AgentMerge | null, merge: 'eigenaar' | 'niet-kritiek' }} MergeConfig
  * @typedef {{ status: string, pad: string, van?: string }} Wijziging
  * @typedef {{ wijzigingen: Wijziging[], json: Record<string, { voor: string | null, na: string | null }>,
- *   geraakteJson: string[], risico: Record<string, string[]>, regels?: unknown, binair?: unknown }} MergeInvoer
- *   `regels`: toegevoegd plus verwijderd; `binair`: paden van binaire bestanden (spec agent-merge-zonder-codex AC-2)
+ *   geraakteJson: string[], risico: Record<string, string[]>, regels?: unknown, binair?: unknown, bytes?: unknown }} MergeInvoer
+ *   `regels`: toegevoegd plus verwijderd; `binair`: paden van binaire bestanden (spec agent-merge-zonder-codex AC-2);
+ *   `bytes`: gewijzigde bytes volgens `patchBytes()` (spec agent-merge-bytegrens AC-3)
  */
 
 export const AGENT_MERGE_ONLEESBAAR = 'agentMerge ontbreekt of is onleesbaar in .claude/gates.json';
@@ -26,6 +31,10 @@ export const OMVANG_ONLEESBAAR = 'omvang van de PR niet leesbaar of agentMerge.m
 /** @param {number} regels @param {number} maxRegels */
 export const teGroot = (regels, maxRegels) =>
   `PR te groot voor een agent-merge: ${String(regels)} regels, grens ${String(maxRegels)} (agentMerge.maxRegels)`;
+export const BYTES_ONLEESBAAR = 'omvang van de PR niet leesbaar of agentMerge.maxBytes ontbreekt: geen agent-merge';
+/** @param {number} bytes @param {number} maxBytes */
+export const teGrootBytes = (bytes, maxBytes) =>
+  `PR te groot voor een agent-merge: ${String(bytes)} bytes gewijzigd, grens ${String(maxBytes)} (agentMerge.maxBytes)`;
 /** @param {string} pad */
 export const binairReden = (pad) => `binair bestand in de PR: geen agent-merge (${pad})`;
 
@@ -70,8 +79,21 @@ export function leesCodex(waarde) {
 }
 
 /**
+ * Gewijzigde bytes van een hunk-tekst (spec agent-merge-bytegrens AC-2): elke regel die met `+` of `-` begint telt met de
+ * UTF-8-bytes ná dat eerste teken, een `\r` incluis; `@@`-regels, contextregels en `\ No newline at end of file` tellen
+ * niet. De tekst bevat geen kopregels: de diff-guard slaat ze over, REST levert ze niet.
+ * @param {string} tekst @returns {number}
+ */
+export function patchBytes(tekst) {
+  let bytes = 0;
+  for (const regel of tekst.split('\n'))
+    if (regel.startsWith('+') || regel.startsWith('-')) bytes += Buffer.byteLength(regel.slice(1), 'utf8');
+  return bytes;
+}
+
+/**
  * `agentMerge` uit .claude/gates.json, of null als het ontbreekt of een andere vorm heeft (faalt dicht); ook null zonder
- * `maxRegels` als geheel getal ≥ 1 (spec agent-merge-zonder-codex AC-1).
+ * `maxRegels` of `maxBytes` als geheel getal ≥ 1 (spec agent-merge-zonder-codex AC-1, agent-merge-bytegrens AC-1).
  * @param {unknown} ruw
  * @returns {AgentMerge | null}
  */
@@ -80,13 +102,16 @@ export function leesAgentMerge(ruw) {
   const toegestaan = veld(blok, 'toegestaan');
   const kritiek = veld(blok, 'kritiek');
   const maxRegels = veld(blok, 'maxRegels');
-  if (!tekstLijst(toegestaan) || !tekstLijst(kritiek) || !geheelVanaf(maxRegels, 1)) return null;
-  return { toegestaan, kritiek, codex: leesCodex(veld(blok, 'codex')), maxRegels };
+  const maxBytes = veld(blok, 'maxBytes');
+  if (!tekstLijst(toegestaan) || !tekstLijst(kritiek) || !geheelVanaf(maxRegels, 1) || !geheelVanaf(maxBytes, 1))
+    return null;
+  return { toegestaan, kritiek, codex: leesCodex(veld(blok, 'codex')), maxRegels, maxBytes };
 }
 
 /**
  * Waarom `leesAgentMerge()` null geeft, per fout één reden (leeg als het blok geldig is): `AGENT_MERGE_ONLEESBAAR` bij een
- * ontbrekend blok of een ongeldige `toegestaan` of `kritiek`, `OMVANG_ONLEESBAAR` bij een ongeldige `maxRegels`.
+ * ontbrekend blok of een ongeldige `toegestaan` of `kritiek`, `OMVANG_ONLEESBAAR` bij een ongeldige `maxRegels`,
+ * `BYTES_ONLEESBAAR` bij een ongeldige `maxBytes`.
  * @param {unknown} ruw
  * @returns {string[]}
  */
@@ -95,6 +120,7 @@ export function agentMergeFouten(ruw) {
   return [
     ...(tekstLijst(veld(blok, 'toegestaan')) && tekstLijst(veld(blok, 'kritiek')) ? [] : [AGENT_MERGE_ONLEESBAAR]),
     ...(geheelVanaf(veld(blok, 'maxRegels'), 1) ? [] : [OMVANG_ONLEESBAAR]),
+    ...(geheelVanaf(veld(blok, 'maxBytes'), 1) ? [] : [BYTES_ONLEESBAAR]),
   ];
 }
 
@@ -172,13 +198,18 @@ export function permissieRegels(json) {
 }
 
 /**
- * Omvang: meer dan `maxRegels` regels, een binair bestand of een onleesbare telling sluit uit (spec agent-merge-zonder-codex
- * AC-2); precies `maxRegels` mag.
- * @param {MergeInvoer} invoer @param {number} maxRegels
+ * Omvang: meer dan `maxRegels` regels of `maxBytes` bytes, een binair bestand of een onleesbare telling sluit uit (spec
+ * agent-merge-zonder-codex AC-2, agent-merge-bytegrens AC-3); precies `maxRegels` of `maxBytes` mag.
+ * @param {MergeInvoer} invoer @param {Pick<AgentMerge, 'maxRegels' | 'maxBytes'>} grenzen
  */
-export function omvangRedenen({ regels, binair }, maxRegels) {
-  if (!geheelVanaf(regels, 0) || !tekstLijst(binair)) return [OMVANG_ONLEESBAAR];
-  return [...(regels > maxRegels ? [teGroot(regels, maxRegels)] : []), ...binair.map(binairReden)];
+export function omvangRedenen({ regels, binair, bytes }, { maxRegels, maxBytes }) {
+  const bytesReden = !geheelVanaf(bytes, 0)
+    ? [BYTES_ONLEESBAAR]
+    : bytes > maxBytes
+      ? [teGrootBytes(bytes, maxBytes)]
+      : [];
+  if (!geheelVanaf(regels, 0) || !tekstLijst(binair)) return [OMVANG_ONLEESBAAR, ...bytesReden];
+  return [...(regels > maxRegels ? [teGroot(regels, maxRegels)] : []), ...bytesReden, ...binair.map(binairReden)];
 }
 
 /**
@@ -209,7 +240,7 @@ export function agentMergeOordeel(invoer, config) {
       items.map((item) => `risico-overzicht (${soort}): ${item}`),
     ),
     ...permissieRegels(invoer.json).map((pad) => `${pad}: regel met permission toegevoegd of verwijderd`),
-    ...omvangRedenen(invoer, agentMerge.maxRegels),
+    ...omvangRedenen(invoer, agentMerge),
   ];
   const uniek = [...new Set(redenen)];
   return { oordeel: uniek.length === 0 ? 'ja' : 'nee', redenen: uniek };

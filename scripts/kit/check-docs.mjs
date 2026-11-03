@@ -717,7 +717,8 @@ function voorbeeldPad(glob) {
 }
 
 /**
- * Vorm van `agentMerge.codex` en `agentMerge.maxRegels` op het ruwe blok (spec agent-merge-zonder-codex AC-6): het script
+ * Vorm van `agentMerge.codex`, `agentMerge.maxRegels` en `agentMerge.maxBytes` op het ruwe blok (spec agent-merge-zonder-codex
+ * AC-6, agent-merge-bytegrens AC-1): het script
  * leest een afwijkende vorm dicht, maar hij moet zichtbaar fout zijn. Zonder `agentMerge`-blok geen toets (het oordeel is dan
  * altijd nee); een ontbrekende `codex` leest het script als `true` en is geldig.
  * @param {unknown} ruw
@@ -727,7 +728,18 @@ function agentMergeVorm(ruw) {
   const blok = typeof ruw === 'object' && ruw !== null && 'agentMerge' in ruw ? ruw.agentMerge : undefined;
   if (typeof blok !== 'object' || blok === null) return [];
   const codex = 'codex' in blok ? blok.codex : undefined;
-  const maxRegels = 'maxRegels' in blok ? blok.maxRegels : undefined;
+  /** @param {string} sleutel */
+  const grens = (sleutel) => {
+    const waarde = sleutel in blok ? Reflect.get(blok, sleutel) : undefined;
+    return geheelVanaf(waarde, 1)
+      ? []
+      : [
+          {
+            key: `docs:agentMerge.${sleutel}`,
+            message: `.claude/gates.json: agentMerge.${sleutel} is ${waarde === undefined ? 'afwezig' : JSON.stringify(waarde)}, geen geheel getal ≥ 1`,
+          },
+        ];
+  };
   return [
     ...(codex === undefined || codex === true || codex === false || codex === 'indien-aanwezig'
       ? []
@@ -737,14 +749,8 @@ function agentMergeVorm(ruw) {
             message: `.claude/gates.json: agentMerge.codex is ${JSON.stringify(codex)}, niet true, false of "indien-aanwezig"`,
           },
         ]),
-    ...(geheelVanaf(maxRegels, 1)
-      ? []
-      : [
-          {
-            key: 'docs:agentMerge.maxRegels',
-            message: `.claude/gates.json: agentMerge.maxRegels is ${maxRegels === undefined ? 'afwezig' : JSON.stringify(maxRegels)}, geen geheel getal ≥ 1`,
-          },
-        ]),
+    ...grens('maxRegels'),
+    ...grens('maxBytes'),
   ];
 }
 

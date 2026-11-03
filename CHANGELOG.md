@@ -271,6 +271,11 @@ Hier staan wijzigingen die van belang zijn bij het gebruiken of bijwerken van de
 
 ### Gewijzigd
 
+- Agent-merge kent naast de regelgrens een bytegrens (ADR 0069 punt 3, spec `docs/specs/agent-merge-bytegrens.md`):
+  boven `agentMerge.maxBytes` gewijzigde bytes (40000) is het oordeel `nee`, zodat een paar zeer lange regels de
+  omvanggrens niet omzeilen. De diff-guard telt met `git diff -U0`, `pnpm pr:merge` op de REST-patch; beide vallen dicht
+  bij een onleesbare of afgekapte telling. Een app zonder `agentMerge.maxBytes` krijgt geen agent-merge (zie Bij een update).
+
 - Eén proefkopie per PR (ADR 0073, spec `een-proefkopie`): `check:new-resource` draait in de template in één kopie eerst
   `app:init`, dan `new:resource` en één keer de snelle suite; in een app alleen de generator en de suite. `check:app-init`
   is geen verplichte check meer (`requiredChecks`, `scripts/github-ruleset.sh`); de job draait nog tot de volgende
@@ -482,6 +487,11 @@ Hier staan wijzigingen die van belang zijn bij het gebruiken of bijwerken van de
 - De lichte en volledige route staan alleen nog in `docs/framework.md` §8; instructies, agents en skills verwijzen ernaar.
 
 ### Bij een update
+
+Agent-merge vraagt nu ook `agentMerge.maxBytes` in `.claude/gates.json` (gewijzigde bytes, geheel getal ≥ 1; de template
+gebruikt 40000), naast `maxRegels`. Een app zonder `maxBytes` valt dicht: geen agent-merge, de diff-guard meldt
+"agentMerge ontbreekt of is onleesbaar" en `check-docs` is rood tot de sleutel er staat
+([spec](docs/specs/agent-merge-bytegrens.md)).
 
 Account-lifecycle vereist de nieuwe migratie vóór de nieuwe API-code. Bestaande accounts krijgen geen verzonnen
 loginhistorie: de lijst toont "Onbekend" tot de volgende volledig geslaagde login. Zie

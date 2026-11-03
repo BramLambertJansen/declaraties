@@ -19,7 +19,7 @@ function pr(
   json: Versies = {},
   reviews: { user: string; state: string; commitId: string; submittedAt: string }[] = [],
 ) {
-  return { wijzigingen, json, reviews, auteur: 'BramLambertJansen', headSha: HEAD, regels: 0, binair: [] };
+  return { wijzigingen, json, reviews, auteur: 'BramLambertJansen', headSha: HEAD, regels: 0, binair: [], bytes: 0 };
 }
 
 function oordeel(wijzigingen: Wijziging[], json: Versies = {}) {

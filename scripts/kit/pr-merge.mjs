@@ -3,18 +3,21 @@
 // geeft een eigen regel en exit 1 zonder schrijfactie. Pas als alles klopt: squash-merge met de head-SHA als voorwaarde.
 // Onopgeloste review-threads houdt de ruleset op main tegen (`required_review_thread_resolution`); REST kent hun stand niet.
 // Omvang en Codex-spoor: spec agent-merge-zonder-codex AC-3 tot en met AC-5; wachten op een lopende Codex-review: spec
-// agent-merge-codex-wachten.
+// agent-merge-codex-wachten; bytegrens: spec agent-merge-bytegrens AC-4.
 import { Buffer } from 'node:buffer';
 import { execFileSync } from 'node:child_process';
 import { gitText, readAuthority } from '../../rails/hooks/lib/authority-context.mjs';
 import { expectedCheckAppId } from '../../rails/hooks/lib/built-evidence.mjs';
 import {
+  BYTES_ONLEESBAAR,
   OMVANG_ONLEESBAAR,
   agentMergeFouten,
   binairReden,
   leesAgentMerge,
   leesModus,
+  patchBytes,
   teGroot,
+  teGrootBytes,
 } from './agent-merge.mjs';
 import { parseCheckRun } from './github-evidence.mjs';
 import { checkProgress, verifyEffect } from './pr-verify.mjs';
@@ -239,17 +242,42 @@ export function codexRedenen({ comments, reactions, suites }, head) {
  * bestand niet binair is; de diff-guard geeft bij het lege bestand en de moduswijziging wel `ja` (numstat `0 0`). Een
  * hernoemde binary, zuiver of ook gewijzigd, lijkt hier een zuivere hernoeming en komt door; die vangt de job `agent-merge`
  * (numstat `-`, `nee`).
- * @param {unknown} pull @param {unknown[]} files @param {number} maxRegels
+ * Bytes (spec agent-merge-bytegrens AC-4): zie `bytesRedenen`.
+ * @param {unknown} pull @param {unknown[]} files @param {{ maxRegels: number, maxBytes: number }} grenzen
  */
-export function omvangRedenen(pull, files, maxRegels) {
+export function omvangRedenen(pull, files, { maxRegels, maxBytes }) {
   const [erbij, eraf] = [veld(pull, 'additions'), veld(pull, 'deletions')];
   const regels = Number.isInteger(erbij) && Number.isInteger(eraf) ? Number(erbij) + Number(eraf) : Number.NaN;
   const zonderPatch = files
     .filter((f) => typeof veld(f, 'patch') !== 'string')
     .filter((f) => !(veld(f, 'status') === 'renamed' && veld(f, 'changes') === 0))
     .map((f) => binairReden(tekst(veld(f, 'filename'))));
-  if (!(regels >= 0)) return [OMVANG_ONLEESBAAR, ...zonderPatch];
-  return [...(regels > maxRegels ? [teGroot(regels, maxRegels)] : []), ...zonderPatch];
+  const bytes = bytesRedenen(regels, files, maxBytes);
+  if (!(regels >= 0)) return [OMVANG_ONLEESBAAR, ...bytes, ...zonderPatch];
+  return [...(regels > maxRegels ? [teGroot(regels, maxRegels)] : []), ...bytes, ...zonderPatch];
+}
+
+/**
+ * Per bestand met `patch`: bytes via `patchBytes()`, en het aantal `+`- en `-`-regels moet gelijk zijn aan `additions` en
+ * `deletions` van dat bestand; de som van alle getelde regels moet gelijk zijn aan `regels` (additions + deletions van de
+ * PR). Wijkt iets af, bijvoorbeeld een afgekapte patch, dan de onleesbaar-melding (faalt dicht). Een bestand zonder patch
+ * telt hier niet en heeft zijn eigen reden in `omvangRedenen`.
+ * @param {number} regels @param {unknown[]} files @param {number} maxBytes
+ */
+function bytesRedenen(regels, files, maxBytes) {
+  let [bytes, som, klopt] = [0, 0, true];
+  for (const f of files) {
+    const patch = veld(f, 'patch');
+    if (typeof patch !== 'string') continue;
+    const lijnen = patch.split('\n');
+    const erbij = lijnen.filter((r) => r.startsWith('+')).length;
+    const eraf = lijnen.filter((r) => r.startsWith('-')).length;
+    klopt &&= veld(f, 'additions') === erbij && veld(f, 'deletions') === eraf;
+    som += erbij + eraf;
+    bytes += patchBytes(patch);
+  }
+  if (!klopt || som !== regels) return [BYTES_ONLEESBAAR];
+  return bytes > maxBytes ? [teGrootBytes(bytes, maxBytes)] : [];
 }
 
 /** @param {unknown} item */
@@ -349,7 +377,7 @@ export function codexVoorwaarde(api, { repo, nummer, head, pull, comments, codex
 /**
  * Alle voorwaarden uit ADR 0069 punt 3 plus de stand van de Codex-voorwaarde; geen redenen betekent mergen. Is `agentMerge`
  * op main onleesbaar (AC-3), dan één reden per fout (`agentMergeFouten`): de omvangreden `OMVANG_ONLEESBAAR` bij een
- * ongeldige `maxRegels`, "agentMerge ontbreekt of is onleesbaar" bij een ontbrekend blok of een ongeldige lijst.
+ * ongeldige `maxRegels`, `BYTES_ONLEESBAAR` bij een ongeldige `maxBytes`, "agentMerge ontbreekt of is onleesbaar" bij een ontbrekend blok of een ongeldige lijst.
  * @param {Api} api @param {{ repo: string, nummer: number, head: string }} doel
  * @returns {{ redenen: string[], codex: 'voldaan' | 'verviel' | 'uit' | null }}
  */
@@ -369,7 +397,7 @@ export function beoordeelMerge(api, { repo, nummer, head }) {
   const codex = codexVoorwaarde(api, { repo, nummer, head, pull, comments, codex: agentMerge.codex });
   const redenen = [
     ...prRedenen(pull, { repo, head }),
-    ...omvangRedenen(pull, alle(api, `repos/${repo}/pulls/${String(nummer)}/files`), agentMerge.maxRegels),
+    ...omvangRedenen(pull, alle(api, `repos/${repo}/pulls/${String(nummer)}/files`), agentMerge),
     ...(veld(api(`repos/${repo}/compare/${mainSha}...${head}`), 'behind_by') === 0
       ? []
       : ['de PR bevat de kop van main niet: eerst git merge origin/main']),

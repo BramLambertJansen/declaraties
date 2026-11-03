@@ -27,7 +27,7 @@ function goed(): Wereld {
     [`repos/${REPO}/contents/.claude/gates.json?ref=${MAIN}`]: {
       content: b64({
         merge: 'niet-kritiek',
-        agentMerge: { toegestaan: ['src/**'], kritiek: [], codex: true, maxRegels: 400 },
+        agentMerge: { toegestaan: ['src/**'], kritiek: [], codex: true, maxRegels: 400, maxBytes: 40000 },
       }),
     },
     [`repos/${REPO}/contents/.claude/decisions.json?ref=${MAIN}`]: { content: b64({ requiredChecks: VEREIST }) },
@@ -40,7 +40,14 @@ function goed(): Wereld {
       deletions: 2,
     },
     [`repos/${REPO}/pulls/7/files`]: [
-      { filename: 'src/web/x.ts', status: 'modified', changes: 12, patch: '@@ -1 +1 @@' },
+      {
+        filename: 'src/web/x.ts',
+        status: 'modified',
+        additions: 10,
+        deletions: 2,
+        changes: 12,
+        patch: ['@@ -1,2 +1,10 @@', '-a', '-b', ...Array.from({ length: 10 }, (_, i) => `+r${String(i)}`)].join('\n'),
+      },
     ],
     [`repos/${REPO}/compare/${MAIN}...${HEAD}`]: { behind_by: 0 },
     [`repos/${REPO}/commits/${HEAD}/check-runs`]: {
@@ -314,7 +321,7 @@ describe('agent-merge-niet-kritiek/AC-3 pr:merge', () => {
         w[`repos/${REPO}/contents/.claude/gates.json?ref=${MAIN}`] = {
           content: b64({
             merge: 'niet-kritiek',
-            agentMerge: { toegestaan: ['src/**'], kritiek: [], codex: false, maxRegels: 400 },
+            agentMerge: { toegestaan: ['src/**'], kritiek: [], codex: false, maxRegels: 400, maxBytes: 40000 },
           }),
         };
         w[`repos/${REPO}/issues/7/comments`] = [

@@ -38,7 +38,10 @@ const TEGOED_OP = [
 ];
 
 const gatesMet = (agentMerge: Record<string, unknown>) => ({
-  content: b64({ merge: 'niet-kritiek', agentMerge: { toegestaan: ['src/**'], kritiek: [], ...agentMerge } }),
+  content: b64({
+    merge: 'niet-kritiek',
+    agentMerge: { toegestaan: ['src/**'], kritiek: [], maxBytes: 40000, ...agentMerge },
+  }),
 });
 
 const PULL = {
@@ -49,6 +52,16 @@ const PULL = {
   additions: 300,
   deletions: 100,
 };
+const BYTES_ONLEESBAAR = 'omvang van de PR niet leesbaar of agentMerge.maxBytes ontbreekt: geen agent-merge';
+// Een REST-bestand waarvan de patch klopt met `additions` en `deletions` (spec agent-merge-bytegrens AC-4).
+const bestand = (erbij: number, eraf: number) => ({
+  filename: 'src/web/x.ts',
+  status: 'modified',
+  additions: erbij,
+  deletions: eraf,
+  changes: erbij + eraf,
+  patch: ['@@', ...Array.from({ length: eraf }, () => '-a'), ...Array.from({ length: erbij }, () => '+b')].join('\n'),
+});
 
 function goed(): Wereld {
   return {
@@ -56,7 +69,7 @@ function goed(): Wereld {
     [`repos/${REPO}/contents/.claude/gates.json?ref=${MAIN}`]: gatesMet({ codex: 'indien-aanwezig', maxRegels: 400 }),
     [`repos/${REPO}/contents/.claude/decisions.json?ref=${MAIN}`]: { content: b64({ requiredChecks: VEREIST }) },
     [`repos/${REPO}/pulls/7`]: PULL,
-    [`repos/${REPO}/pulls/7/files`]: [{ filename: 'src/web/x.ts', status: 'modified', changes: 400, patch: '@@' }],
+    [`repos/${REPO}/pulls/7/files`]: [bestand(300, 100)],
     [`repos/${REPO}/compare/${MAIN}...${HEAD}`]: { behind_by: 0 },
     [`repos/${REPO}/commits/${HEAD}/check-runs`]: {
       check_runs: [
@@ -128,23 +141,23 @@ describe('agent-merge-zonder-codex/AC-3 pr:merge telt de omvang via REST', () =>
   test.each([
     [
       '401 regels',
-      zet(['pulls/7', { ...PULL, deletions: 101 }]),
+      zet(['pulls/7', { ...PULL, deletions: 101 }], ['pulls/7/files', [bestand(300, 101)]]),
       'PR te groot voor een agent-merge: 401 regels, grens 400 (agentMerge.maxRegels)',
     ],
     [
       'een bestand zonder patch met changes 3',
       zet(['pulls/7/files', [{ filename: 'src/web/groot.ts', status: 'modified', changes: 3 }]]),
-      'binair bestand in de PR: geen agent-merge (src/web/groot.ts)',
+      [BYTES_ONLEESBAAR, 'binair bestand in de PR: geen agent-merge (src/web/groot.ts)'],
     ],
     [
       'een binair bestand (changes 0, geen patch)',
       zet(['pulls/7/files', [{ filename: 'docs/x.png', status: 'added', changes: 0 }]]),
-      'binair bestand in de PR: geen agent-merge (docs/x.png)',
+      [BYTES_ONLEESBAAR, 'binair bestand in de PR: geen agent-merge (docs/x.png)'],
     ],
     [
       'additions onleesbaar',
       zet(['pulls/7', { ...PULL, additions: undefined }]),
-      'omvang van de PR niet leesbaar of agentMerge.maxRegels ontbreekt: geen agent-merge',
+      ['omvang van de PR niet leesbaar of agentMerge.maxRegels ontbreekt: geen agent-merge', BYTES_ONLEESBAAR],
     ],
     [
       'agentMerge zonder maxRegels',
@@ -157,7 +170,7 @@ describe('agent-merge-zonder-codex/AC-3 pr:merge telt de omvang via REST', () =>
       'agentMerge ontbreekt of is onleesbaar in .claude/gates.json',
     ],
   ])('%s', (_naam, aanpassing, reden) => {
-    expect(uitslag(aanpassing).redenen).toEqual([reden]);
+    expect(uitslag(aanpassing).redenen).toEqual([reden].flat());
   });
 
   test('agentMerge ontbreekt op main: beide redenen', () => {
@@ -166,16 +179,20 @@ describe('agent-merge-zonder-codex/AC-3 pr:merge telt de omvang via REST', () =>
     ).toEqual([
       'agentMerge ontbreekt of is onleesbaar in .claude/gates.json',
       'omvang van de PR niet leesbaar of agentMerge.maxRegels ontbreekt: geen agent-merge',
+      BYTES_ONLEESBAAR,
     ]);
   });
 
   test('zuivere hernoeming (renamed, changes 0, geen patch): geen reden', () => {
     expect(
       redenen(
-        zet([
-          'pulls/7/files',
-          [{ filename: 'src/web/nieuw.ts', previous_filename: 'src/web/oud.ts', status: 'renamed', changes: 0 }],
-        ]),
+        zet(
+          ['pulls/7', { ...PULL, additions: 0, deletions: 0 }],
+          [
+            'pulls/7/files',
+            [{ filename: 'src/web/nieuw.ts', previous_filename: 'src/web/oud.ts', status: 'renamed', changes: 0 }],
+          ],
+        ),
       ),
     ).toBe('');
   });

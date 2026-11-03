@@ -14,7 +14,8 @@ describe('agent-merge-zonder-codex/AC-7 regelboek en skill', () => {
   test('agent-merge-zonder-codex/AC-7 R-REPO-01 noemt de omvanggrens naast de toegestane lijst', () => {
     const tekst = regel('R-REPO-01');
     expect(tekst).toMatch(/toegestane lijst `agentMerge`/);
-    expect(tekst).toMatch(/omvanggrens `agentMerge\.maxRegels`/);
+    // Sinds spec agent-merge-bytegrens AC-5 zonder sleutelnamen: de omvanggrens omvat maxRegels en maxBytes.
+    expect(tekst).toMatch(/omvanggrens `agentMerge`/);
   });
 
   test('agent-merge-zonder-codex/AC-7 R-ROL-10 noemt Codex niet', () => {

@@ -9,12 +9,13 @@
 // `permission:`-regels uit de ruwe tekst (oud → nieuw waar eenduidig) of anders "controleer permissie met de hand". Grenzen:
 // een verwijderd bestand (status D), een hernoeming van contracts/ naar elders (naar contracts/ telt als nieuw), `*.spec.*`-bestanden en permissiewaarden die uit een bestand buiten
 // src/shared/contracts/** komen vallen buiten het overzicht. Puur tekstuele analyse van de voor- en na-versie, PR-code wordt
-// nooit geïmporteerd of uitgevoerd.
+// nooit geïmporteerd of uitgevoerd. Het agent-merge-oordeel krijgt daarnaast de omvang: regels en binaire bestanden uit
+// numstat, gewijzigde bytes uit `git diff -U0` tegen `agentMerge.maxBytes` (spec agent-merge-bytegrens AC-3).
 import { execFileSync } from 'node:child_process';
 import { appendFileSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { globMatch } from '../../rails/hooks/lib/rolhek.mjs';
-import { agentMergeOordeel, leesMergeConfig } from './agent-merge.mjs';
+import { agentMergeOordeel, leesMergeConfig, patchBytes } from './agent-merge.mjs';
 
 // Een review die de stand bepaalt; COMMENTED en PENDING laten de vorige beslissing staan.
 const BESLISSEND = new Set(['APPROVED', 'CHANGES_REQUESTED', 'DISMISSED']);
@@ -27,9 +28,10 @@ const TEST_GEWIJZIGD = new Set(['M', 'D', 'R', 'T']);
  * @typedef {{ user: string, state: string, commitId: string, submittedAt: string }} Review
  * @typedef {{ wijzigingen: Wijziging[], json: Record<string, { voor: string | null, na: string | null }>,
  *   reviews: Review[], auteur: string, headSha: string, src?: Record<string, { voor: string | null, na: string | null }>,
- *   regels?: number, binair?: string[] }} Pr
+ *   regels?: number, binair?: string[], bytes?: number | undefined }} Pr
  *   `src`: elk geraakt bestand onder src/ (ook verwijderd), alleen voor het agent-merge-oordeel; `regels` en `binair` uit
- *   `parseNumstat`, ook alleen voor dat oordeel (spec agent-merge-zonder-codex AC-2)
+ *   `parseNumstat`, `bytes` uit `leesBytes`, ook alleen voor dat oordeel (spec agent-merge-zonder-codex AC-2, agent-merge-bytegrens
+ *   AC-3)
  * @typedef {{ gates: string[], tests: string[], json: string[] }} Geraakt
  * @typedef {{ migraties: string[], permissies: string[], dependencies: string[], routes: string[] }} Risico
  * @typedef {{ uitslag: 'groen' | 'overgang' | 'rood', redenen: string[], geraakt: Geraakt }} Uitslag
@@ -492,6 +494,57 @@ export function samenvatting(oordeel) {
   ].join('\n');
 }
 
+/**
+ * De git-aanroep voor de bytetelling (spec agent-merge-bytegrens AC-3), op dezelfde merge-base als numstat.
+ * @param {string} splitsing @param {string} head
+ */
+export const bytesArgs = (splitsing, head) => [
+  'diff',
+  '-U0',
+  '--no-color',
+  '--no-ext-diff',
+  '--no-textconv',
+  '--find-renames',
+  splitsing,
+  head,
+];
+
+/**
+ * Gewijzigde bytes uit `git diff -U0`: per bestand de kopregels overslaan (van `diff --git` tot de eerste `@@`, dus ook
+ * `--- a/…` en `+++ b/…`), de rest tellen met `patchBytes()`. Een bestand zonder `@@` (zuivere hernoeming, moduswijziging)
+ * telt 0. Ongeldige UTF-8 wordt U+FFFD (3 bytes) en telt dus eerder te hoog dan te laag.
+ * @param {Buffer} uitvoer @returns {number}
+ */
+export function parseDiffBytes(uitvoer) {
+  let bytes = 0;
+  let kop = true;
+  for (const regel of uitvoer.toString('utf8').split('\n')) {
+    if (regel.startsWith('diff --git ')) kop = true;
+    else if (kop && regel.startsWith('@@')) kop = false;
+    else if (!kop) bytes += patchBytes(regel);
+  }
+  return bytes;
+}
+
+/**
+ * Gewijzigde bytes tussen `splitsing` en `head`, of `undefined` als git faalt of de uitvoer te groot is (ENOBUFS): het
+ * oordeel valt dan dicht, de diff-guard crasht niet (spec agent-merge-bytegrens AC-3).
+ * @param {string} splitsing @param {string} head @param {{ cwd?: string, maxBuffer?: number }} [opties]
+ * @returns {number | undefined}
+ */
+export function leesBytes(splitsing, head, { cwd, maxBuffer = 64 * 1024 * 1024 } = {}) {
+  try {
+    const uitvoer = execFileSync('git', ['-c', 'core.quotePath=false', ...bytesArgs(splitsing, head)], {
+      cwd,
+      maxBuffer,
+      stdio: ['ignore', 'pipe', 'ignore'],
+    });
+    return parseDiffBytes(uitvoer);
+  } catch {
+    return undefined;
+  }
+}
+
 // ---------- CI (guard.yml) ----------
 
 /** @param {string} naam */
@@ -603,7 +656,7 @@ async function leesPr(config) {
   const wijzigingen = parseNameStatus(
     git(['diff', '--name-status', '-z', '--find-renames', '--no-ext-diff', '--no-textconv', splitsing, head]),
   );
-  const omvang = parseNumstat(git(numstatArgs(splitsing, head)));
+  const omvang = { ...parseNumstat(git(numstatArgs(splitsing, head))), bytes: leesBytes(splitsing, head) };
   const json = Object.fromEntries(
     teLezen(config, wijzigingen).map(({ pad, van }) => [
       pad,
@@ -629,8 +682,8 @@ async function leesPr(config) {
 
 /**
  * Oordeel agent-merge (ADR 0069, spec agent-merge-niet-kritiek AC-1) uit dezelfde invoer als de diff-guard; een goedkeuring
- * telt niet mee. Omvang uit `pr.regels` en `pr.binair` (spec agent-merge-zonder-codex AC-2). Ontbreekt
- * `agentMerge.maxRegels`, dan meldt het oordeel "agentMerge ontbreekt of is onleesbaar" (leesAgentMerge geeft null), niet de
+ * telt niet mee. Omvang uit `pr.regels`, `pr.binair` en `pr.bytes` (spec agent-merge-zonder-codex AC-2, agent-merge-bytegrens
+ * AC-3). Ontbreekt `agentMerge.maxRegels` of `agentMerge.maxBytes`, dan meldt het oordeel "agentMerge ontbreekt of is onleesbaar" (leesAgentMerge geeft null), niet de
  * omvangreden; die verschijnt hier alleen als de telling ontbreekt.
  * @param {Pr} pr @param {Oordeel} oordeel @param {string} configTekst
  */
@@ -643,6 +696,7 @@ export function agentMerge(pr, oordeel, configTekst) {
       risico: oordeel.risico,
       regels: pr.regels,
       binair: pr.binair,
+      bytes: pr.bytes,
     },
     leesMergeConfig(configTekst),
   );

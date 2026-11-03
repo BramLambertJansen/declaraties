@@ -16,12 +16,12 @@ import { agentMergeViolations } from '../../scripts/kit/check-docs.mjs';
 const TEKST = readFileSync('.claude/gates.json', 'utf8');
 const guardConfig = leesConfig(TEKST);
 const HEAD = 'a'.repeat(40);
-const BLOK = { toegestaan: ['src/**'], kritiek: [] };
+const BLOK = { toegestaan: ['src/**'], kritiek: [], maxBytes: 40000 };
 
 type Wijziging = { status: string; pad: string; van?: string };
 
 function oordeel(wijzigingen: Wijziging[], omvang: { regels?: number; binair?: string[] }, tekst = TEKST) {
-  const p = { wijzigingen, json: {}, reviews: [], auteur: 'BramLambertJansen', headSha: HEAD, ...omvang };
+  const p = { wijzigingen, json: {}, reviews: [], auteur: 'BramLambertJansen', headSha: HEAD, bytes: 0, ...omvang };
   return agentMerge(p, beoordeel(p, guardConfig), tekst);
 }
 
@@ -109,7 +109,7 @@ describe('agent-merge-zonder-codex/AC-2 oordeel op omvang en binaire bestanden',
     ['is null', { regels: null, binair: [] }],
     ['binair ontbreekt', { regels: 3 }],
   ])('regels %s: nee met de omvangreden', (_naam, omvang) => {
-    const invoer = { wijzigingen: src, json: {}, geraakteJson: [], risico: {}, ...omvang };
+    const invoer = { wijzigingen: src, json: {}, geraakteJson: [], risico: {}, bytes: 0, ...omvang };
     expect(agentMergeOordeel(invoer, leesMergeConfig(TEKST))).toEqual({
       oordeel: 'nee',
       redenen: ['omvang van de PR niet leesbaar of agentMerge.maxRegels ontbreekt: geen agent-merge'],
@@ -246,6 +246,7 @@ describe('agent-merge-zonder-codex/AC-3 agentMergeFouten: één reden per fout',
       [
         'agentMerge ontbreekt of is onleesbaar in .claude/gates.json',
         'omvang van de PR niet leesbaar of agentMerge.maxRegels ontbreekt: geen agent-merge',
+        'omvang van de PR niet leesbaar of agentMerge.maxBytes ontbreekt: geen agent-merge',
       ],
     ],
   ])('%s', (_naam, blok, verwacht) => {
