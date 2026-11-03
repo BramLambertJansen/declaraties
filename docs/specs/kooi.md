@@ -39,7 +39,9 @@ proef: `✗ kooi: de proef schreef buiten de werkmap; het commando is niet uitge
 
 - **kooi/AC-1** — `scripts/kit/kooi.mjs` exporteert `inKooi(commando, { werkmap, env, timeout })` en is als CLI te starten:
   `node scripts/kit/kooi.mjs --werkmap <map> -- <commando>`. Het commando draait als `bash -c` onder bubblewrap, in deze
-  volgorde: `--ro-bind / /`, `--dev /dev`, `--proc /proc`, `--tmpfs /tmp`, `--tmpfs /run`, `--tmpfs /var/run`, `--tmpfs` over
+  volgorde: `--ro-bind / /`, `--dev /dev`, `--proc /proc`, daarna `/proc/sys`, `/proc/sysrq-trigger`, `/proc/irq` en `/proc/bus`
+  weer als `--ro-bind` (een verse `/proc` is voor root schrijfbaar, ook zonder capabilities: een sysctl zoals
+  `kernel.core_pattern` toetst alleen de bestandsrechten), `--tmpfs /tmp`, `--tmpfs /run`, `--tmpfs /var/run`, `--tmpfs` over
   de thuismap en over `$XDG_RUNTIME_DIR` van de aanroeper, daarna de toolchain (de installatiemap van mise en de map van
   `node`) weer als `--ro-bind`, en als laatste de werkmap als enige `--bind`; verder `--unshare-all` (geen netwerk),
   `--cap-drop ALL`, `--die-with-parent`, `--new-session` en `--chdir <werkmap>`. De timeout (standaard 30 s) stopt bubblewrap
@@ -50,16 +52,18 @@ proef: `✗ kooi: de proef schreef buiten de werkmap; het commando is niet uitge
   `os.tmpdir()` (dus niet die map zelf), of die de root van de repository, de thuismap of `/` is of bevat.
 - **kooi/AC-3** — Dicht vallen. Zonder `bwrap` op het pad, of als bubblewrap niet start, gooit `inKooi` een fout met de
   melding uit Hergebruik en draait het commando niet. Vóór het eerste commando per proces draait een proef: schrijven binnen
-  een proefwerkmap lukt, en afkappen (`: >`) en hernoemen (`mv`) van een kanariebestand buiten die werkmap én buiten `/tmp`
-  (in `.git/` van de repository) falen allebei en laten het kanariebestand onveranderd. Faalt de proef, dan draait geen enkel
-  commando in dat proces.
-- **kooi/AC-4** — Bewijs dat de kooi afschermt, als test in `gate:fast` zonder verwijdercommando's, met kanariebestanden
-  buiten `/tmp`: vanuit de kooi faalt schrijven naar een pad buiten de werkmap via een absoluut pad, via `../`, via `cd /`, via
-  `$HOME` van de aanroeper en via een symlink in de werkmap die naar buiten wijst; schrijven naar
-  `/proc/sys/kernel/core_pattern` faalt; een netwerkverbinding faalt; verbinden met een socketbestand dat de test buiten de
-  werkmap onder `/run` of de thuismap opent, faalt; een bestand in de thuismap van de aanroeper is niet leesbaar; `CapEff` en
-  `CapBnd` in `/proc/self/status` zijn 0, voor elke uid; een `sleep 600` stopt bij de timeout, met zijn kindprocessen. Elk
-  kanariebestand is na afloop byte-gelijk.
+  een proefwerkmap lukt, en schrijven naar `/usr/.kooi-proef` faalt met `Read-only file system` (niet alleen met een
+  rechtenfout, die ook zonder kooi zou komen). Faalt de proef, dan draait geen enkel commando in dat proces; een bestand dat
+  een mislukte proef toch maakte, ruimt de kooi buiten de kooi op.
+- **kooi/AC-4** — Bewijs dat de kooi afschermt, als test in `gate:fast` zonder verwijdercommando's. Kanariebestanden staan
+  buiten de werkmap: in de tijdelijke map van de test, in de repository en in de thuismap van de aanroeper. Vanuit de kooi
+  proberen afkappen (`: >`) en hernoemen (`mv`) via een absoluut pad, via `../`, via `cd /`, via `$HOME` van de aanroeper en via
+  een symlink in de werkmap die naar buiten wijst; na afloop is elk kanariebestand byte-gelijk en op zijn plek. Een kanarie
+  die in de kooi zichtbaar is (alleen-lezen) geeft bovendien `Read-only file system`; een kanarie onder een lege map (`/tmp`,
+  de thuismap) is in de kooi onzichtbaar. Verder: schrijven naar `/proc/sys/kernel/core_pattern`, `/proc/sys/vm/drop_caches` en onder `/sys` faalt, ook als root; een netwerkverbinding
+  faalt; verbinden met een socketbestand dat de test onder `/run` of de thuismap opent, faalt; een bestand in de thuismap van de
+  aanroeper is niet leesbaar; `CapEff` en `CapBnd` in `/proc/self/status` zijn 0, voor elke uid; een `sleep 600` stopt bij de
+  timeout, met zijn kindprocessen.
 - **kooi/AC-5** — Lintregel, met hetzelfde bereik als `CODE` in `eslint.config.js` plus `deploy/` en `*.mjs` in de root,
   behalve `scripts/kit/kooi.mjs`. ESLint weigert: `spawn`, `spawnSync`, `execFile` of `execFileSync`, ook als member-aanroep
   (`cp.spawnSync`), met als eerste argument een letterlijke `bash`, `sh`, `zsh`, `dash` of `ksh` (ook met pad, zoals
@@ -94,6 +98,7 @@ proef: `✗ kooi: de proef schreef buiten de werkmap; het commando is niet uitge
 | Commando heeft netwerk nodig | niet via de kooi; een overgenomen commando krijgt geen netwerk | n.v.t. |
 | Commando probeert `/var/run/docker.sock` of de Postgres-socket | bestaat niet in de kooi (`--tmpfs /run`, `/var/run`) | n.v.t. |
 | Commando leest `~/.config/gh/hosts.yml` | lege thuismap in de kooi | n.v.t. |
+| Commando als root schrijft een sysctl (`/proc/sys/…`) | faalt: `/proc/sys` is alleen-lezen in de kooi (AC-1) | n.v.t. |
 | Commando loopt vast | timeout; bubblewrap stopt met de aanroeper | n.v.t. |
 | Een git-commando in de kooi op de tijdelijke repository | werkt; `.git` ligt in de werkmap | n.v.t. |
 | Test heeft de kooi nodig maar bubblewrap ontbreekt | test faalt, wordt nooit overgeslagen | n.v.t. |

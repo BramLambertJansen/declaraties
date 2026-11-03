@@ -1,6 +1,8 @@
 # 0072 — Destructieve en overgenomen commando's alleen in de kooi
 
 Status: geaccepteerd
+Herzien: 2026-11-03 (#466): punt 2 (de proef schrijft in een alleen-lezen systeemmap; uitwerking en `/proc/sys` alleen-lezen in de
+spec)
 
 Vult [0045](0045-railwerk.md) en [0066](0066-schrijfgrens-op-effect.md) aan; voorwaarde voor bouw-PR 1 van
 [0071](0071-rolhek-vooraf-vaste-lijst.md) (corpus op effect). Drempel: A4 (nieuwe bewaking). Uitwerking:
@@ -40,7 +42,7 @@ Drie dingen maakten dat mogelijk:
    buiten de werkmap kan het niets veranderen en niets bereiken.
 2. **De kooi valt dicht.** Ontbreekt bubblewrap, of lukt de proef niet, dan draait het commando niet en geeft de kooi een fout
    met de oplossing. De proef draait één keer per proces vóór het eerste commando: schrijven binnen de werkmap moet lukken,
-   schrijven op een kanariebestand buiten de werkmap en buiten `/tmp` moet falen. Een werkmap die geen echte submap van de tijdelijke map is
+   schrijven in een systeemmap moet falen omdat die alleen-lezen is. Een werkmap die geen echte submap van de tijdelijke map is
    (de root van de repository, de thuismap, `/`, een link), weigert de kooi. Een test die de kooi nodig heeft, slaat zichzelf
    nooit over; hij faalt.
 3. **Een lintregel houdt shell-uit-data in de kooi.** Buiten `scripts/kit/kooi.mjs` weigert ESLint in code en tests: een
