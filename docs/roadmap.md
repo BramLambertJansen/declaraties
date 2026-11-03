@@ -329,15 +329,15 @@ Bewust nog niet, tot de genoemde aanleiding er is (P1). Niets verdwijnt: elk ite
   verstuurt core alleen via SMTP (`src/core/api/mail/smtp.ts`). **Werk:** een provider-neutrale poort voor uitgaande mail met SMTP als standaard
   en een adapter voor een HTTP-maildienst per app-ADR (bezorgbaarheid, bounces); een registratie van mailsoorten (onderwerp, variabelen,
   Nederlandse tekst) op het basissjabloon, met voorbeeldweergave in Mailpit en een snapshottest per mailsoort. **Afhankelijkheden:** ST-03
-  (verzenden alleen via de outbox, ADR 0050); het algemene plan voor externe koppelingen (HTTP-client met rail, opslag van geheimen,
-  webhook-inbox voor bounce- en klachtmeldingen): de adapter bouwt geen eigen HTTP- of geheimenpad; provider-ADR en dependencyakkoord
+  (verzenden alleen via de outbox, ADR 0050); het algemene plan voor externe koppelingen (uitgaande client met rail, machineroute en inbox
+  voor bounce- en klachtmeldingen, app-brede sleutel in env): de adapter bouwt geen eigen HTTP- of geheimenpad; provider-ADR en dependencyakkoord
   (R-PROV-01, R-SEC-06). Mailsoorten met een inloglink raken auth (R-AUTH-05, R-AUTH-06) en gaan via een besluit-PR.
   terug als: ST-03 gebouwd en het koppelingsplan besloten is, of een app meer dan de basismails nodig heeft
 - [ ] **SSO-module.** Inloggen via een externe identiteitsprovider (OIDC eerst, SAML alleen op aanleiding), per organisatie in te schakelen;
   koppelen aan een bestaand account alleen op geverifieerd e-mailadres; rol-, MFA- en sessieregels blijven gelijk (R-AUTH-02, R-AUTH-03,
   R-AUTH-08); intrekken bij de provider sluit de toegang. **Afhankelijkheden:** kritiek pad, eerst besluit-PR met ADR: R-AUTH-01 staat nu
   alleen de plugins two-factor en magic link toe en ADR 0041 wees een externe OIDC-provider als standaard af; tenantmodel uit ST-13 als SSO per
-  organisatie gaat; geheimen van de provider via de opslag uit het koppelingsplan; dependencyakkoord (R-SEC-06); integratietests tegen een
+  organisatie gaat; het clientgeheim van de provider in env via het koppelingsplan, niet in de database; dependencyakkoord (R-SEC-06); integratietests tegen een
   lokale provider (R-TEST-01). Bouwt een app het eerder, dan gaat dat als `leerpunt` naar de template en wordt het hier algemeen herbouwd
   (R-WERK-13).
   terug als: een concrete app zakelijke klanten met een eigen identiteitsprovider heeft
