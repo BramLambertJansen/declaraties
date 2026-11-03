@@ -25,7 +25,7 @@ van de reviewer) bewaakt acties buiten de werkmap. Die ziet de toets op effect n
 vaste lijst. Dit besluit kiest de krimp die wel kan.
 
 Een spec-review vond drie soorten paden waar "achteraf" te laat is: `.git` (een hook draait bij de volgende git-aanroep;
-`refs/remotes` en `packed-refs` ziet de toets op effect niet), de bestanden die Claude Code of git zelf laden vóór de volgende
+`refs/remotes` en `packed-refs` ziet de toets op effect niet), de bestanden die Claude Code, git of pnpm zelf laden vóór de volgende
 toets (de stubs in `.claude/hooks/`, `.claude/settings.json`, `lefthook.yml`, `.pnpmfile.cjs`; een vervangen `effect.mjs`-stub
 schakelt de toets van datzelfde commando uit), en git-acties van de hoofdsessie die HEAD of de index verplaatsen.
 
@@ -38,22 +38,24 @@ schakelt de toets van datzelfde commando uit), en git-acties van de hoofdsessie 
    template, nieuwe branch alleen vanaf verse `origin/main`), een programma starten via een optie (`git grep -O`), de trucs die
    deze lijst omzeilen (niet-letterlijke commandowoorden, globs naar `gh`, `env -S`, substituties, omhulsels), en de vaste
    leeslijst van de reviewer (rolhek-lezen). Edit, Write en MCP blijven vooraf exact getoetst.
-2. **Paden die vóór de toets op effect schade doen, zijn dicht zonder dat het rolhek de schrijfvorm hoeft te kennen.** Een
-   commando dat een pad in `.git` noemt, is `deny` voor elke rol, behalve een git-subcommando of een leesprogramma uit een vaste
-   lijst. De stubs in `.claude/hooks/`, `.claude/settings.json`, `lefthook.yml` en `.pnpmfile.cjs` gaan in
-   `sandbox.filesystem.denyWrite`: dan weigert het besturingssysteem elk Bash-programma, en Edit (buiten de sandbox, vooraf
-   exact getoetst) blijft de enige weg. Beide regels zijn een gesloten lijst die niet groeit met nieuwe programma's.
+2. **Paden die vóór de toets op effect schade doen, zijn vooraf dicht zonder dat het rolhek de schrijfvorm hoeft te kennen.**
+   Een vaste lijst zelfladende paden: `.git/**` en wat Claude Code, git of pnpm laden vóór de volgende toets (`.claude/hooks/`
+   behalve `.cache/`, `.claude/settings.json`, `lefthook.yml`, `.pnpmfile.cjs`). Een commando dat zo'n pad noemt (als woord,
+   als redirectdoel, als optiewaarde zoals `--output=` of `-o`, of via een glob die erop kan passen), is `deny` voor een
+   subagent en `ask` voor de hoofdsessie. Alleen een leesprogramma uit een vaste lijst of `git` zonder redirect en zonder
+   schrijfoptie naar zo'n pad gaat door. Een git-actie die deze bestanden zelf bijwerkt (`pull`, `merge origin/main`), noemt
+   ze niet en gaat dus door; wat ze dan veranderen, komt van `main`. De lijst groeit niet met nieuwe programma's.
 3. **Elke andere padbeslissing over een Bash-commando valt onder de toets op effect.** `writeTargets` en de padregels vooraf
    vervallen, ook de `pnpm format`-regel en het `--output`-verbod. Wat een commando schrijft, verwijdert, verplaatst of
    formatteert, krijgt achteraf de beslissing van een Edit. Een verhuizing naar het ADR-archief met dezelfde naam en inhoud
    telt als verhuizing, niet als nieuw archiefbestand.
-4. **De toets op effect toetst ook de hoofdsessie, op de werkmap.** Bij de hoofdsessie telt alleen een pad waarvan de inhoud
-   in de werkmap veranderde. Een verschoven HEAD, een indexwijziging en een commando dat alleen uit git-subcommando's bestaat,
-   tellen niet: wat zo binnenkomt, kwam via Edit (vooraf getoetst) of van `main` (CI). `deny` blokkeert en komt op de open
-   lijst; `ask` komt op de open lijst, en overnemen (`pnpm rolhek:overnemen`) is het akkoord dat vooraf een vraag was; een
-   melding blijft een melding. Een gegenereerd pad blijft `deny`, behalve na een generator uit een vaste lijst in
-   `.claude/gates.json`. Vallen een venster van de hoofdsessie en een Bash-commando van een subagent samen, dan geldt voor dat
-   pad de strengste beslissing van beide rollen.
+4. **De toets op effect toetst ook de hoofdsessie, op de werkmap.** Bij de hoofdsessie telt een pad waarvan de inhoud in de
+   werkmap veranderde en dat niet verklaard wordt door een verschoven HEAD (de paden uit `git diff <oud> <nieuw>`) of door
+   alleen een indexwijziging. Zo tellen `git commit`, `add`, `pull`, `rebase` en `checkout <branch>` niet, en `git checkout --
+   <pad>`, `git restore`, `git apply` en `git stash pop` wel. `deny` blokkeert en komt op de open lijst; `ask` komt op de open
+   lijst, en overnemen (`pnpm rolhek:overnemen`) is het akkoord dat vooraf een vraag was; een melding blijft een melding. Een
+   gegenereerd pad blijft `deny`, behalve na een generator uit een vaste lijst in `.claude/gates.json`. Vallen een venster van
+   de hoofdsessie en een Bash-commando van een subagent samen, dan geldt voor dat pad de strengste beslissing van beide rollen.
 5. **Uitkomstbehoud is de voorwaarde voor elke verwijdering.** Elk bestaand testgeval dat een Bash-commando op een pad laat
    weigeren, vragen, melden of doorlaten, wordt een rij in één corpus en draait als echt commando in een tijdelijke repository
    door de toets op effect, met dezelfde uitkomst voor dezelfde rol. De merge van dit besluit is het eigenaarakkoord om die
@@ -75,8 +77,9 @@ schakelt de toets van datzelfde commando uit), en git-acties van de hoofdsessie 
   Dat is verlies, geen verschuiving.
 - **De hoofdsessie ook op HEAD en index toetsen.** Elke `git commit`, `pull` en `rebase` geeft dan een beslissing per
   beschermd pad; de open lijst zou bijna elke PR tegenhouden.
-- **Heel `.git` in `denyWrite`.** `git` zelf schrijft daar (`fetch`, `push -u`, `lefthook install`). Daarom de tekstregel van
-  punt 2 voor `.git` en `denyWrite` alleen voor bestanden die Bash nooit legitiem schrijft.
+- **Zelfladende bestanden in `sandbox.filesystem.denyWrite`.** Sterker dan een tekstregel, maar git draait in de sandbox:
+  elke `checkout`, `pull` of `merge origin/main` die zo'n bestand meeneemt, faalt halverwege. In `.git` schrijft git zelf
+  (`fetch`, `push -u`, `lefthook install`). Daarom de tekstregel van punt 2.
 
 ## Gevolgen
 
@@ -84,8 +87,9 @@ schakelt de toets van datzelfde commando uit), en git-acties van de hoofdsessie 
   (ongeveer 12 ms op deze repo). Het groeit met het aantal afwijkende paden, niet met het aantal programma's.
 - De hoofdsessie krijgt een vraag op een beschermd pad pas achteraf, als open overtreding. Daar staat tegenover dat elk
   programma meetelt, ook `node -e`, globs en links.
-- `git checkout <ref> -- <pad>` en `git restore --source` van de hoofdsessie tellen niet (alleen git); hun inhoud komt uit de
-  geschiedenis. `git stash pop` ook niet.
+- Wat de hoofdsessie met een verschoven HEAD binnenhaalt (`merge <branch>`, `cherry-pick`, `am`), telt niet. Die inhoud
+  staat in commits die de diff-guard in CI en de eigenaarmerge zien. `git stash pop` telt wel en kan een eerder goedgekeurde
+  vraag opnieuw op de open lijst zetten; dat is een geaccepteerd vals positief aan de veilige kant.
 - De vier pad-items in R-ROL-11 vervallen, en het schrijfdeel van de roadmap-gaten ook voor de hoofdsessie. Wat geen pad
   schrijft (een programma starten, `curl -K`, `gh` onder een andere naam) blijft open.
 - Ongeveer 415 regels code verdwijnen. Hun testgevallen blijven bestaan als corpus op effect.
