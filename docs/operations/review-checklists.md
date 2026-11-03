@@ -24,7 +24,7 @@ De reviewer bepaalt de klasse(n) van de diff en loopt alleen die lijsten af. Elk
 ## Tekstchecks
 
 - Een regex op woorden toets je met beide spellingen: de Engelse stam mist het Nederlandse woord ("mandaat", #402).
-- Elke geschrapte norm houdt een R-id of een reden; "Hoe (geen norm)" bevat geen `nooit`, `alleen` of `moet`.
+- Elke geschrapte norm houdt een R-id of een reden; normwoorden onder "Hoe (geen norm)" weigert `check-docs` (regel 12, #393).
 
 ## Schaal en scripts
 

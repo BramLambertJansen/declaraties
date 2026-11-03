@@ -18,6 +18,7 @@
 //     de ratchet groei en krimp ziet (ADR 0065, scripts/kit/leesbudget.mjs). Hoofdstuk, regelboek, spec en ADR zijn een
 //     meting in `pnpm leespad`, nooit een overtreding. `docsMeldingen` geeft "let op" vanaf 85 % van een grens;
 //     `docsKrimp` de krimpcheck (AC-6), die de ratchet buiten de baseline houdt.
+//  12. Geen normwoord onder "Hoe (geen norm)" in .claude/rules/*.md (leerpunt #393, sleutel `docs:<bestand>:hoe-norm:<woord>`).
 import { execFileSync, spawnSync } from 'node:child_process';
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
@@ -58,6 +59,7 @@ export async function docsViolations(root = '.') {
     ...paragraafViolations(files, read),
     ...(files.includes(REGELBOEK) ? regelboekPadViolations(root, read(REGELBOEK), files) : []),
     ...rIdViolations(files, read),
+    ...hoeNormViolations(files, read),
     ...grensViolations((file) => (files.includes(file) ? read(file) : null)),
   ]);
 }
@@ -226,6 +228,72 @@ function rIdViolations(files, read) {
       message: `${REGELBOEK}: ${id} staat er meer dan één keer`,
     })),
   ];
+}
+
+// Regel 12: woorden die een norm maken, als heel woord; Nederlands en Engels, elk met zijn vervoegingen (#402: een te
+// smalle regex blijft stil groen, daarom pint test/rails/check-docs-hoe-norm.test.ts elke vorm). Bewust erbuiten:
+// woorden die ook beschrijven ("dient als", "vereist", "eist", "dwingt af"): Hoe-tekst mag zeggen wat een check doet.
+// Een woordgroep mag over één regelafbreking lopen, niet over een witregel.
+const WIT = '(?:[ \\t]+|[ \\t]*\\n[ \\t]*)';
+const NORMWOORD = new RegExp(
+  `\\b(?:nooit|never|alleen|uitsluitend|only|altijd|always|moet(?:en)?|must|should|shall|verboden|forbidden|mag${WIT}niet|mogen${WIT}niet|verplicht(?:e|en)?|mandatory)\\b`,
+  'gi',
+);
+// De kop kaal, als Markdown-kop of vet, met of zonder dubbele punt; tekst erachter hoort bij de sectie.
+const HOE_KOP = /^(?:#{1,6}\s+)?(?:\*\*)?Hoe \(geen norm\)(?:\*\*)?:?(?:\*\*)?(.*)$/;
+// Een codespan sluit met een reeks backticks van dezelfde lengte (CommonMark), ook over regels heen.
+const CODESPAN = /(?<!`)(`+)(?!`)[\s\S]*?(?<!`)\1(?!`)/g;
+const HEK = /^ {0,3}(`{3,}|~{3,})/;
+
+/**
+ * Een hek sluit alleen met hetzelfde teken, minstens even lang en zonder tekst erachter (CommonMark).
+ * @param {string} line @param {string} open
+ */
+function sluitHek(line, open) {
+  const hek = /^ {0,3}(`{3,}|~{3,})\s*$/.exec(line)?.[1] ?? '';
+  return hek[0] === open[0] && hek.length >= open.length;
+}
+
+/**
+ * De secties onder "Hoe (geen norm)" tot de volgende Markdown-kop. Regels in een codeblok worden leeg (een
+ * `# commentaar` daarin is geen kop), zodat regelnummers kloppen. @param {string} text
+ */
+function hoeSecties(text) {
+  /** @type {{ regels: string[], start: number }[]} */
+  const secties = [];
+  /** @type {{ regels: string[], start: number } | undefined} */
+  let sectie;
+  let hek = '';
+  text.split('\n').forEach((line, index) => {
+    const inCode = hek !== '' || HEK.test(line);
+    if (hek !== '') hek = sluitHek(line, hek) ? '' : hek;
+    else hek = HEK.exec(line)?.[1] ?? '';
+    const kop = inCode ? null : HOE_KOP.exec(line);
+    if (kop !== null) secties.push((sectie = { regels: [kop[1] ?? ''], start: index }));
+    else if (!inCode && /^#{1,6}\s/.test(line)) sectie = undefined;
+    else sectie?.regels.push(inCode ? '' : line);
+  });
+  return secties;
+}
+
+/**
+ * Regel 12 (leerpunt #393): onder "Hoe (geen norm)" in `.claude/rules/*.md` staat geen normwoord. Zo'n sectie noemt
+ * zichzelf niet-bindend, dus een norm daar valt buiten het regelboek (R-DOC-03) en buiten de R-id-controles (regel 10,
+ * krimp-op-normen). Codespans tellen niet (`--only` is een optie).
+ * @param {readonly string[]} files @param {(file: string) => string} read @returns {Violation[]}
+ */
+function hoeNormViolations(files, read) {
+  return files
+    .filter((file) => file.startsWith('.claude/rules/') && file.endsWith('.md'))
+    .flatMap((file) =>
+      hoeSecties(read(file)).flatMap(({ regels, start }) => {
+        const tekst = regels.join('\n').replace(CODESPAN, (span) => span.replace(/[^\n]/g, ' '));
+        return [...tekst.matchAll(NORMWOORD)].map(({ 0: woord, index }) => ({
+          key: `docs:${file}:hoe-norm:${woord.toLowerCase().replace(/\s+/g, '-')}`,
+          message: `${file}:${String(start + 1 + tekst.slice(0, index).split('\n').length - 1)}: "${woord.replace(/\s+/g, ' ')}" onder "Hoe (geen norm)" is een norm zonder R-id; zet hem als regel met R-id in ${REGELBOEK} en boven "Hoe" (R-DOC-03), of beschrijf zonder normwoord`,
+        }));
+      }),
+    );
 }
 
 /**
