@@ -6,7 +6,7 @@ import path from 'node:path';
 import { loadConfig } from './rolhek.mjs';
 import { gitText, readAuthority, repositoryName, trustedBase } from './authority-context.mjs';
 import { anker } from './objecten.mjs';
-import { trustedRunner } from './runner-authority.mjs';
+import { trustedMerge, trustedRunner } from './runner-authority.mjs';
 
 /**
  * @param {string} root
@@ -69,6 +69,8 @@ function onderhoudActief(config, vertrouwd, root) {
 export function rolhekContext(root, cwd) {
   /** @type {boolean | undefined} */
   let trusted;
+  /** @type {boolean | undefined} */
+  let mergeVertrouwd;
   const authority = readAuthority({ root });
   const basis = trustedBase(root, undefined);
   const { config, vertrouwd } = configuratie(root, basis, authority);
@@ -94,6 +96,7 @@ export function rolhekContext(root, cwd) {
     branch: gitBranch(root),
     authority,
     runnerTrusted: () => (trusted ??= trustedRunner(root, basis)),
+    mergeTrusted: () => (mergeVertrouwd ??= trustedMerge(root, basis)),
   };
 }
 

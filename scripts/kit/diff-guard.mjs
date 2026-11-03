@@ -14,6 +14,7 @@ import { execFileSync } from 'node:child_process';
 import { appendFileSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { globMatch } from '../../rails/hooks/lib/rolhek.mjs';
+import { agentMergeOordeel, leesMergeConfig } from './agent-merge.mjs';
 
 // Een review die de stand bepaalt; COMMENTED en PENDING laten de vorige beslissing staan.
 const BESLISSEND = new Set(['APPROVED', 'CHANGES_REQUESTED', 'DISMISSED']);
@@ -25,7 +26,8 @@ const TEST_GEWIJZIGD = new Set(['M', 'D', 'R', 'T']);
  * @typedef {{ gates: string[], testpaden: string[], jsonGates: Record<string, string[]>, goedkeurders: string[] }} GuardConfig
  * @typedef {{ user: string, state: string, commitId: string, submittedAt: string }} Review
  * @typedef {{ wijzigingen: Wijziging[], json: Record<string, { voor: string | null, na: string | null }>,
- *   reviews: Review[], auteur: string, headSha: string }} Pr
+ *   reviews: Review[], auteur: string, headSha: string, src?: Record<string, { voor: string | null, na: string | null }> }} Pr
+ *   `src`: elk geraakt bestand onder src/ (ook verwijderd), alleen voor het agent-merge-oordeel
  * @typedef {{ gates: string[], tests: string[], json: string[] }} Geraakt
  * @typedef {{ migraties: string[], permissies: string[], dependencies: string[], routes: string[] }} Risico
  * @typedef {{ uitslag: 'groen' | 'overgang' | 'rood', redenen: string[], geraakt: Geraakt }} Uitslag
@@ -536,6 +538,22 @@ export function teLezen(config, wijzigingen) {
   return [...geraakteVaste, ...bron];
 }
 
+/**
+ * Elk geraakt bestand onder src/, ook verwijderd of buiten `BRON`, voor de permission-regels van het agent-merge-oordeel
+ * (spec agent-merge-niet-kritiek AC-1). Staat los van `teLezen`, zodat de uitslag van de diff-guard niet verandert.
+ * @param {readonly Wijziging[]} wijzigingen
+ */
+export function srcTeLezen(wijzigingen) {
+  return wijzigingen
+    .filter(({ pad, van }) => pad.startsWith('src/') || (van ?? '').startsWith('src/'))
+    .map(({ status, pad, van }) => ({
+      // Hernoemd van src/ naar buiten: de sleutel blijft onder src/, zodat een verhuisde permission-regel meetelt.
+      sleutel: pad.startsWith('src/') ? pad : (van ?? pad),
+      pad,
+      van: status === 'R' ? van : status === 'A' || status === 'C' ? undefined : pad,
+    }));
+}
+
 /** @param {GuardConfig} config @returns {Promise<Pr>} */
 async function leesPr(config) {
   const [base, head] = [env('BASE_SHA'), env('HEAD_SHA')];
@@ -551,6 +569,12 @@ async function leesPr(config) {
       { voor: van === undefined ? null : versie(splitsing, van), na: versie(head, pad) },
     ]),
   );
+  const src = Object.fromEntries(
+    srcTeLezen(wijzigingen).map(({ sleutel, pad, van }) => [
+      sleutel,
+      { voor: van === undefined ? null : versie(splitsing, van), na: versie(head, pad) },
+    ]),
+  );
   const pr = `https://api.github.com/repos/${env('REPO')}`;
   const nummer = env('PR_NUMBER');
   const reviews = (await api(`${pr}/pulls/${nummer}/reviews`)).map((review) => ({
@@ -559,16 +583,48 @@ async function leesPr(config) {
     commitId: tekst(veld(review, 'commit_id')),
     submittedAt: tekst(veld(review, 'submitted_at')),
   }));
-  return { wijzigingen, json, reviews, auteur: env('AUTHOR'), headSha: head };
+  return { wijzigingen, json, reviews, auteur: env('AUTHOR'), headSha: head, src };
+}
+
+/**
+ * Oordeel agent-merge (ADR 0069, spec agent-merge-niet-kritiek AC-1) uit dezelfde invoer als de diff-guard; een goedkeuring
+ * telt niet mee.
+ * @param {Pr} pr @param {Oordeel} oordeel @param {string} configTekst
+ */
+export function agentMerge(pr, oordeel, configTekst) {
+  return agentMergeOordeel(
+    {
+      wijzigingen: pr.wijzigingen,
+      json: { ...pr.src, ...pr.json },
+      geraakteJson: oordeel.geraakt.json,
+      risico: oordeel.risico,
+    },
+    leesMergeConfig(configTekst),
+  );
+}
+
+/** @param {ReturnType<typeof agentMerge>} uitslag */
+export function agentMergeTekst(uitslag) {
+  return [
+    `## agent-merge: ${uitslag.oordeel}`,
+    '',
+    ...uitslag.redenen.map((reden) => `- \`${reden.replaceAll('`', "'")}\``),
+    '',
+  ].join('\n');
 }
 
 async function main() {
-  const config = leesConfig(readFileSync(path.join(import.meta.dirname, '../../.claude/gates.json'), 'utf8'));
-  const oordeel = beoordeel(await leesPr(config), config);
-  const tekstSamenvatting = samenvatting(oordeel);
+  const configTekst = readFileSync(path.join(import.meta.dirname, '../../.claude/gates.json'), 'utf8');
+  const config = leesConfig(configTekst);
+  const pr = await leesPr(config);
+  const oordeel = beoordeel(pr, config);
+  const merge = agentMerge(pr, oordeel, configTekst);
+  const tekstSamenvatting = `${samenvatting(oordeel)}\n${agentMergeTekst(merge)}`;
   console.log(tekstSamenvatting);
   const summary = process.env['GITHUB_STEP_SUMMARY'];
   if (summary !== undefined) appendFileSync(summary, `${tekstSamenvatting}\n`);
+  const output = process.env['GITHUB_OUTPUT'];
+  if (output !== undefined) appendFileSync(output, `agent-merge=${merge.oordeel}\n`);
   if (oordeel.uitslag === 'overgang') console.log(`::warning title=diff-guard::${oordeel.redenen.join('; ')}`);
   if (oordeel.uitslag === 'rood') {
     console.log(`::error title=diff-guard::${oordeel.redenen.join('; ')}`);

@@ -41,7 +41,15 @@ Feiten nu:
 
 ## Mergen
 
-Bij modus "eigenaar" reviewt en merget de eigenaar; de hoofdsessie merget nooit. Een agent-modus komt er pas als ADR 0046 punt 30 aanstaat.
+Kritiek of beschermd werk merget de eigenaar. Niet-kritiek werk (ADR 0069) merget de hoofdsessie zelf, alleen zo:
+
+1. De job `agent-merge` in de checklijst van de PR is geslaagd (overgeslagen = oordeel nee: de eigenaar merget).
+2. Een verse reviewer keurde precies de head goed; zet dan in een PR-commentaar de regel
+   `Review <head-SHA>: geen blokkerende bevindingen`. Na elke push opnieuw.
+3. Codex rondde de head af zonder open punten (vraag zo nodig `@codex review`); open review-threads zijn beantwoord en opgelost.
+4. `pnpm pr:merge <nr>`. Het script controleert alles opnieuw via GitHub en merget alleen als alles klopt; anders noemt het
+   wat ontbreekt. Nooit `gh pr merge`, `gh api …/merge` of een andere route.
+5. Meld PR en SHA aan de eigenaar en volg de CI op `main`; is die rood, dan een revert-PR.
 
 ## Opruimen
 

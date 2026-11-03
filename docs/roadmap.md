@@ -179,17 +179,17 @@ Open werk dat niet geparkeerd is, grofweg in volgorde. Wat nog een spec of eigen
   releasecommit; de smoketest bewijst login, lezen en gesloten browser-datatoegang; een back-up is in een aparte omgeving teruggezet met gemeten
   dataverlies en hersteltijd. Productiegoedkeuring blijft bij de eigenaar.
   aanleiding: `docs/reviews/2026-10-15-principes-inventaris.md` (B-6: niet geparkeerd besloten)
-- [ ] **ADR 0029 stap 7: agent-merge in de feature-lane** (route 2, onder het account van de eigenaar; zwakte in ADR 0046, Gevolgen, aanvaard).
-  Spec: `docs/specs/agent-merge.md`. PR A: `scripts/check-github.mjs`, `.github/settings/main-protection.json`, sleutel `merge`, lane-uitslag in de diff-guard;
-  PR B: rolhek, `.claude/settings.json`, skill `opleveren` en docs (eigenaar); PR C: `merge` op `"feature-lane"` zetten (eigenaar).
-  aanleiding: `docs/adr/0046-werkstraat-en-beslisroute.md` (punt 30, 33–35 en Gevolgen)
+- [x] **ADR 0029 stap 7: agent-merge van niet-kritiek werk** (#448; ADR 0069, vervangt ADR 0046 punt 30; onder het account van de eigenaar).
+  Spec: `docs/specs/agent-merge-niet-kritiek.md` (de oude spec `agent-merge` is vervallen): oordeel `agent-merge` in de diff-guard,
+  job in `guard.yml`, `pnpm pr:merge`, rolhek en `merge: "niet-kritiek"` in `.claude/gates.json`.
+  aanleiding: `docs/adr/0069-agent-merge-niet-kritiek.md`
 - [x] **Volledig pad naar `gh` in het rolhek** (V-13): `/usr/bin/gh pr merge …` viel buiten het rolhek (`program === "gh"`) en de settings-patronen.
   Weigeringen en schrijfdoelen kijken nu naar de naam zonder pad (`programName` in `rails/hooks/lib/shell.mjs`), ook voor `git`, `rm` en `sed`;
   bewijs `test/hooks/rolhek-volledig-pad.test.ts`. De `deny`-patronen in `.claude/settings.json` vangen de vorm met pad niet (gemak, geen grens; framework §8).
   Niet in deze klasse gedicht: omhulsels met opties (`sudo -u x gh …`, `env -i gh …`) en omhulsels buiten de lijst (`timeout`, `xargs`);
   expansie (`$GH`, `bash -c`) is werk van de diff-guard. Ook open, voor de reviewer: `reviewerMay` negeert voorafgaande variabelen
   (`GIT_PAGER=…`, `PATH=…`) en opties als `git diff --output=<bestand>`.
-  aanleiding: `rails/hooks/lib/rolhek.mjs` (spec `agent-merge`, Bekende gaten)
+  aanleiding: `rails/hooks/lib/rolhek.mjs` (spec `agent-merge`, Bekende gaten; vervallen, nu `docs/specs/agent-merge-niet-kritiek.md`)
 - [x] **Schrijven via een programma buiten `fileTargets` omzeilt het rolhek.** `writeTargets` in `rails/hooks/lib/shell.mjs` kent alleen een
   vaste lijst (redirect, `tee`, `sed -i`, `cp`, `git checkout` …). Een script via `python3`, `node -e` of een heredoc naar zo'n interpreter
   (`python3 - <<EOF`), en ook `patch`, `git apply`, `curl -o`, `tar x` of `prettier --write`, schrijft beschermde paden zonder de
@@ -314,7 +314,8 @@ Bewust nog niet, tot de genoemde aanleiding er is (P1). Niets verdwijnt: elk ite
   - Renovate automatisch mergen en OpenTelemetry; terug als: de basis stabiel draait
   - devcontainer of agent-sandbox in Docker; terug als: iemand meewerkt of agents zonder toestemmingsprompts draaien
   aanleiding: `docs/framework.md` §12 (R-FASE-01; één plek per norm, R-DOC-06)
-- [ ] **ADR 0030 PR 2: algemene agent-merge** (voor de framework-lane; de feature-lane volgt ADR 0046 punt 30). Zie `.claude/skills/opleveren/SKILL.md`
+- [ ] **ADR 0030 PR 2: algemene agent-merge** (voor de framework-lane). Voor niet-kritiek werk vervangen door ADR 0069
+  (`docs/specs/agent-merge-niet-kritiek.md`); dit item gaat alleen nog over agent-merge van kritiek werk. Zie `.claude/skills/opleveren/SKILL.md`
   en `docs/operations/agent-doorloop.md`.
   terug als: er ≥ 10 feature-PR's zijn zonder gevolgfout, de AC→test-check en het risico-overzicht actief zijn en ST-01 is besloten
 

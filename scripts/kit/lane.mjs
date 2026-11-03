@@ -34,6 +34,8 @@ const KRITIEK = [
     'roadmap-item',
     'document-status',
     'gates',
+    'agent-merge',
+    'pr-merge',
   ].map((naam) => `scripts/kit/${naam}.mjs`),
 ];
 
@@ -43,7 +45,7 @@ const inLijst = (globs, pad) => globs.some((glob) => globMatch(glob, pad));
 /**
  * Kritiek werk (ADR 0062 punt 2) krijgt eerst een besluit-PR. Ontbreekt `altijdVragen`, dan telt elk `voorReview`-pad als
  * kritiek, en zonder `voorReview` elke gate (faalt dicht).
- * @param {string} pad @param {import('../../rails/hooks/lib/rolhek.mjs').Config} config
+ * @param {string} pad @param {{ gates: string[], voorReview?: string[] | undefined, altijdVragen?: string[] | undefined }} config
  */
 export function kritiekPad(pad, config) {
   const vragen = config.altijdVragen ?? config.voorReview ?? config.gates;

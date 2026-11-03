@@ -6,7 +6,7 @@ Wat een gate kan afdwingen, staat hier niet. Groeit dit bestand of `AGENTS.md` o
 
 ## Werkstraat (verplicht)
 
-Licht alleen voor beperkte fixes binnen bestaand gedrag; anders volledig, met eigenaarmerge (jij nooit) — framework §8.
+Licht alleen voor beperkte fixes binnen bestaand gedrag; anders volledig, met eigenaarmerge; zelf mergen alleen via `pnpm pr:merge` bij oordeel `agent-merge: ja` (ADR 0069) — framework §8.
 Docs gaan mee in dezelfde PR als de code
 (`check:docs-drift` waarschuwt); een aparte docs-stap na de merge bestaat niet.
 Ook wanneer je een bestaande test mag wijzigen: framework §8.

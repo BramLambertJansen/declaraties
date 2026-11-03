@@ -18,6 +18,7 @@ import { staleBranchStart } from './verse-main.mjs';
  * @typedef {{ root: string, cwd: string, config: Config, read: (rel: string) => string | null,
  *   committed: (rel: string) => boolean | 'zonder-origin', isDir: (rel: string) => boolean, branch: string,
  *   authority?: import('./task-authority.mjs').Authority | null, runnerTrusted?: boolean | (() => boolean),
+ *   mergeTrusted?: boolean | (() => boolean),
  *   onbekendeRol?: boolean, onderhoud?: boolean, files?: (rel: string) => string[] }} Ctx
  * `files`: bestanden (getrackt en niet-genegeerd) onder een map, repo-relatief; `''` is de hele repo.
  * `onderhoud`: de onderhoudsmodus is actief (vertrouwde configuratie en origin is die repository, ADR 0045 punt 8–9).
@@ -99,6 +100,7 @@ export function decide(payload, ctx) {
     if (command.includes('--sta-wijzigingen-toe')) decision.deny.push('De agent omzeilt de hostcontrole van de runner nooit; gebruik voor gewijzigd railwerk de CI-runner');
     if (ctx.cwd === ctx.root && automaticRunner(command) && decision.ask.length + decision.deny.length === 0 && runnerIsTrusted(ctx))
       decision.allow = true;
+    decidePrMerge({ command, role }, ctx, decision);
   }
   else if (['Edit', 'Write', 'MultiEdit', 'NotebookEdit'].includes(tool)) {
     decideEdit({ tool, input, role }, context, decision);
@@ -135,6 +137,67 @@ export function decideChange({ rel, change, agentType }, ctx) {
  */
 function runnerIsTrusted(ctx) {
   const value = typeof ctx.runnerTrusted === 'function' ? ctx.runnerTrusted() : ctx.runnerTrusted;
+  return value === true;
+}
+
+const PR_MERGE_EXACT = /^pnpm pr:merge [1-9]\d*$/;
+// Elke andere manier om het mergescript te starten, als vangnet op de tekst zonder `\`, `'` en `"` (zoals bij gh): het
+// scriptwoord `pr:merge` overal, en `pr-merge` naast elk programma dat geen bekend leesprogramma is (`/usr/bin/node …`,
+// `sh -c "…"`, `env node …`). Vals positief (`grep pr:merge package.json`) is bewust geaccepteerd; lezen kan met de leestools.
+const PR_MERGE_SCRIPT = /(?:^|[^\w.-])pr:merge(?=$|[^\w.-])/;
+const PR_MERGE_BESTAND = /pr-merge/;
+// Alleen programma's die niets starten; `rg --pre`, `less` (LESSOPEN) en een git-alias kunnen dat wel.
+const PR_MERGE_LEZERS = new Set(['cat', 'head', 'tail', 'grep', 'wc', 'ls', 'diff', 'stat']);
+const PR_MERGE_GIT = new Set(['log', 'show', 'diff', 'blame']);
+
+/** Een segment dat alleen leest: een leesprogramma of `git log|show|diff|blame` zonder `-c`, zonder omgevingsvariabelen. @param {string[]} words */
+function leestAlleen(words) {
+  const { assignments, argv, pathWrappers } = splitCommand(words);
+  const [woord = '', ...args] = argv;
+  if (assignments.length + pathWrappers.length > 0) return false;
+  if (programName(woord) !== 'git') return PR_MERGE_LEZERS.has(programName(woord));
+  const { subcommand, config } = gitSubcommand(args);
+  return PR_MERGE_GIT.has(subcommand) && config.length === 0;
+}
+
+/** Een glob-woord (`pr-mer*.mjs`, `scripts/kit/pr-*`) dat het mergescript of `pr:merge` kan raken. @param {string} woord */
+function globRaaktMerge(woord) {
+  if (!/[*?[]/.test(woord)) return false;
+  const doelen = ['pr-merge.mjs', 'pr:merge', 'scripts/kit/pr-merge.mjs', './scripts/kit/pr-merge.mjs'];
+  return doelen.some((doel) => path.matchesGlob(doel, woord) || path.matchesGlob(path.basename(doel), path.basename(woord)));
+}
+
+/** @param {string} command */
+function startMergescript(command) {
+  const tekst = command.replace(/[\\'"]/g, '');
+  if (PR_MERGE_SCRIPT.test(tekst)) return true;
+  const segmenten = parseCommands(command);
+  if (segmenten.some(({ words }) => !leestAlleen(words) && words.some(globRaaktMerge))) return true;
+  return PR_MERGE_BESTAND.test(tekst) && !segmenten.every(({ words }) => leestAlleen(words));
+}
+
+/**
+ * `pnpm pr:merge <nr>` (ADR 0069 punt 4, spec agent-merge-niet-kritiek AC-4): alleen de hoofdsessie, alleen precies die vorm,
+ * en zonder prompt alleen als modus en `MERGE_FILES` uit het anker kloppen; anders een weigering met de reden.
+ * @param {{ command: string, role: string }} bash @param {Ctx} ctx @param {Decision} decision
+ */
+function decidePrMerge({ command, role }, ctx, decision) {
+  const tekst = command.trim().replace(/ +/g, ' ');
+  const exact = PR_MERGE_EXACT.test(tekst);
+  if (!exact && !startMergescript(command)) return;
+  if (role !== 'hoofdsessie') decision.deny.push('Mergen via pnpm pr:merge doet alleen de hoofdsessie (ADR 0069)');
+  else if (!exact) decision.deny.push('Het mergescript draait alleen als precies `pnpm pr:merge <nummer>` (ADR 0069)');
+  else if (decision.deny.length + decision.ask.length > 0) return;
+  else if (ctx.cwd === ctx.root && mergeIsTrusted(ctx)) decision.allow = true;
+  else
+    decision.deny.push(
+      'pnpm pr:merge alleen vanuit de repo-root, met modus "niet-kritiek" in het anker en scripts, rails en hostbestanden (package.json, .npmrc, …) gelijk aan het anker (ADR 0069)',
+    );
+}
+
+/** @param {{ mergeTrusted?: boolean | (() => boolean) }} ctx */
+function mergeIsTrusted(ctx) {
+  const value = typeof ctx.mergeTrusted === 'function' ? ctx.mergeTrusted() : ctx.mergeTrusted;
   return value === true;
 }
 

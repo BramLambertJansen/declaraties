@@ -1,6 +1,7 @@
 # Diff-guard (framework §10, ADR 0045 punt 15–19). pull_request_target draait altijd de workflow en de scripts van de
 # default branch; de PR is hier alleen git-data: geen checkout van de PR, geen install, niets uit de PR uitvoeren.
-# Jobs `diff-guard` en `document-status` (ADR 0045 punt 20) en `check-core` (ADR 0040), elk met een eigen naam in de checklijst.
+# Jobs `diff-guard` en `document-status` (ADR 0045 punt 20), `check-core` (ADR 0040) en `agent-merge` (ADR 0069), elk met een
+# eigen naam in de checklijst.
 # `diff-guard` is nog geen verplichte check (ADR 0045 punt 17): dat wordt hij bij de overstap op de GitHub App;
 # `check-core` en `document-status` wel (`scripts/github-ruleset.sh`, ADR 0062). Na een goedkeuring draait hij
 # opnieuw via Re-run.
@@ -23,6 +24,8 @@ jobs:
     name: diff-guard
     runs-on: ubuntu-24.04
     timeout-minutes: 5
+    outputs:
+      agent-merge: ${{ steps.diff-guard.outputs.agent-merge }}
     env:
       BASE_REPO: ${{ github.event.pull_request.base.repo.full_name }}
       BASE_REF: ${{ github.event.pull_request.base.ref }}
@@ -62,10 +65,26 @@ jobs:
           version: 2026.9.18
           install_args: node
       - name: diff-guard
+        id: diff-guard
         env:
           GITHUB_TOKEN: ${{ github.token }}
           REPO: ${{ github.repository }}
         run: node scripts/kit/diff-guard.mjs
+
+  agent-merge:
+    # Oordeel agent-merge (ADR 0069, spec agent-merge-niet-kritiek AC-2): draait en slaagt alleen als de diff-guard `ja` gaf,
+    # anders overgeslagen (niet rood). Geen verplichte check: GitHub ziet niet wie merget, dus verplicht blokkeerde hij ook de
+    # eigenaar. `pnpm pr:merge` leest hem alleen uit deze workflow met event pull_request_target. Voert niets uit de PR uit.
+    name: agent-merge
+    needs: diff-guard
+    if: needs.diff-guard.outputs.agent-merge == 'ja'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 1
+    steps:
+      - name: Oordeel agent-merge
+        env:
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: echo "agent-merge ja voor $HEAD_SHA"
 
   document-status:
     name: document-status

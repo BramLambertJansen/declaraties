@@ -11,7 +11,8 @@ const SCRIPT = path.join(ROOT, 'scripts/github-ruleset.sh');
 const WORKFLOWS = path.join(ROOT, '.github/workflows');
 // Geen verplichte check tot de GitHub App er is (ADR 0045, guard.yml). `check-core` (ADR 0040 punt 17) is wel verplicht in de
 // app-ruleset. GEWIJZIGD (spec-en-bouw/AC-12, ADR 0062): `document-status` staat voortaan in de ruleset.
-const NIET_VERPLICHT = ['diff-guard'];
+// `agent-merge` (ADR 0069): verplicht zou hij elke kritieke PR ook voor de eigenaar blokkeren.
+const NIET_VERPLICHT = ['diff-guard', 'agent-merge'];
 // De matrixdelen van gate:slow (job `gate-slow-part`) zijn bewust geen verplichte check; de aggregatiejob `gate:slow` is dat wel.
 // Exact deze ene naam: een andere nieuwe matrixnaam blijft letterlijk staan en laat de test falen.
 const GATE_SLOW_DEEL = 'gate:slow (${{ matrix.script }})';

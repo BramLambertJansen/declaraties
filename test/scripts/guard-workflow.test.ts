@@ -52,9 +52,13 @@ test('het script van document-status draait in een eigen job, niet als stap van 
 
 // De jobs zijn gelijk tot en met de laatste stap (de eigen controle): wie een stap toevoegt, moet dat in beide doen en
 // valt dan op in de review. Precies één checkout (van de base-SHA) en precies één `node scripts/kit/`-aanroep per job.
+// Het `outputs:`-blok van diff-guard (oordeel agent-merge, ADR 0069) telt niet mee: alleen diff-guard geeft een uitslag door.
 function zonderLaatsteStap(tekst: string, naam: string): string {
   const laatste = tekst.lastIndexOf('\n      - name:');
-  return tekst.slice(0, laatste).replaceAll(naam, '<job>');
+  return tekst
+    .slice(0, laatste)
+    .replace(/^ {4}outputs:\n(?: {6}.+\n)+/m, '')
+    .replaceAll(naam, '<job>');
 }
 
 function stappen(tekst: string): string[] {
@@ -85,4 +89,31 @@ describe('beide jobs behandelen de PR als git-data', () => {
       expect(laatste).toMatch(/run: node scripts\/kit\/[a-z-]+\.mjs\s*$/);
     },
   );
+});
+
+// ADR 0069, spec agent-merge-niet-kritiek AC-2: de job agent-merge draait alleen bij oordeel `ja` van diff-guard en voert
+// niets uit: geen checkout, geen node, geen install. Overgeslagen is geen rood, dus de eigenaar merget elke PR zoals nu.
+describe('guard.yml job agent-merge', () => {
+  const tekst = job('agent-merge');
+
+  test('agent-merge-niet-kritiek/AC-2 hangt aan het oordeel van diff-guard en slaagt alleen bij ja', () => {
+    expect(tekst).toMatch(/^ {4}name: agent-merge$/m);
+    expect(tekst).toMatch(/^ {4}needs: diff-guard$/m);
+    expect(tekst).toMatch(/^ {4}if: needs\.diff-guard\.outputs\.agent-merge == 'ja'$/m);
+    expect(job('diff-guard')).toMatch(/^ {6}agent-merge: \$\{\{ steps\.diff-guard\.outputs\.agent-merge \}\}$/m);
+    expect(job('diff-guard')).toMatch(/^ {8}id: diff-guard$/m);
+  });
+
+  test('agent-merge-niet-kritiek/AC-2 voert niets uit de PR uit', () => {
+    expect(tekst).not.toContain('actions/checkout');
+    const runs = tekst.split('\n').filter((regel) => /^\s+run:/.test(regel));
+    expect(runs).toEqual(['        run: echo "agent-merge ja voor $HEAD_SHA"']);
+    expect(tekst).not.toContain('github.head_ref');
+    expect(tekst).not.toMatch(/run: .*\$\{\{/);
+  });
+
+  test('agent-merge-niet-kritiek/AC-2 de workflow draait alleen op pull_request_target', () => {
+    expect(WORKFLOW).toMatch(/^on:\n {2}pull_request_target:/m);
+    expect(WORKFLOW).not.toMatch(/^ {2}pull_request:/m);
+  });
 });

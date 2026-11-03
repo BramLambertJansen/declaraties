@@ -22,8 +22,9 @@
 import { execFileSync, spawnSync } from 'node:child_process';
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
-import { onderhoudVan } from '../../rails/hooks/lib/rolhek.mjs';
+import { globMatch, onderhoudVan } from '../../rails/hooks/lib/rolhek.mjs';
 import { adrNumber, duplicateAdrNumbers, invalidAdrNames } from './adr-numbers.mjs';
+import { leesMergeConfig, padReden } from './agent-merge.mjs';
 import { grensMeldingen, grensViolations, normenMeldingenUitGit, normenUitGit, zonderBasis } from './leesbudget.mjs';
 
 export { normViolations } from './normen.mjs';
@@ -56,6 +57,7 @@ export async function docsViolations(root = '.') {
     ...mirrorViolations(files, read),
     ...(files.includes('.claude/gates.json') ? schrijfrechtViolations(read('.claude/gates.json')) : []),
     ...(files.includes('.claude/gates.json') ? werkmapNegeerViolations(files, read('.claude/gates.json')) : []),
+    ...(files.includes('.claude/gates.json') ? agentMergeViolations(files, read('.claude/gates.json')) : []),
     ...paragraafViolations(files, read),
     ...(files.includes(REGELBOEK) ? regelboekPadViolations(root, read(REGELBOEK), files) : []),
     ...rIdViolations(files, read),
@@ -699,6 +701,54 @@ function gatesViolations(owners, text) {
       .map((path) => ({
         key: `docs:spiegel:gates:${path}`,
         message: `CODEOWNERS noemt ${path}, .claude/gates.json niet`,
+      })),
+  ];
+}
+
+/** Een pad dat een glob dekt: `**` en `*` worden een gewoon segment. @param {string} glob */
+function voorbeeldPad(glob) {
+  return glob.replaceAll('**', 'x/y').replaceAll('*', 'x');
+}
+
+/**
+ * `merge` en `agentMerge` (ADR 0069, spec agent-merge-niet-kritiek AC-5): de modus is `eigenaar` of `niet-kritiek`, en na de
+ * uitsluitingen is geen pad uit `voorReview` of `altijdVragen` agent-mergebaar; getoetst met dezelfde functie als het
+ * oordeel, op elk getrackt pad en een voorbeeldpad per glob van die lijsten.
+ * @param {readonly string[]} files
+ * @param {string} text
+ * @returns {Violation[]}
+ */
+export function agentMergeViolations(files, text) {
+  /** @type {unknown} */
+  const ruw = JSON.parse(text);
+  const modus = typeof ruw === 'object' && ruw !== null && 'merge' in ruw ? ruw.merge : undefined;
+  /** @type {Violation[]} */
+  const fouten =
+    modus === undefined || modus === 'eigenaar' || modus === 'niet-kritiek'
+      ? []
+      : [
+          {
+            key: 'docs:merge',
+            message: `.claude/gates.json: merge is ${JSON.stringify(modus)}, niet "eigenaar" of "niet-kritiek"`,
+          },
+        ];
+  const config = leesMergeConfig(text);
+  const agentMerge = config.agentMerge;
+  if (agentMerge === null) return fouten;
+  const bewaakt = [...(config.voorReview ?? []), ...(config.altijdVragen ?? [])];
+  const kandidaten = [
+    ...new Set([
+      ...bewaakt.map(voorbeeldPad),
+      ...files.filter((file) => bewaakt.some((glob) => globMatch(glob, file))),
+    ]),
+  ];
+  return [
+    ...fouten,
+    ...kandidaten
+      .filter((pad) => padReden(pad, 'M', { ...config, agentMerge }) === null)
+      .map((pad) => ({
+        key: `docs:agentMerge:${pad}`,
+        message: `agentMerge maakt ${pad} (voorReview of altijdVragen) agent-mergebaar`,
       })),
   ];
 }

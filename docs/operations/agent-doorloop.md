@@ -154,7 +154,7 @@ nu gerichte controles uitvoert; de controle op de git-root uit de payload blijft
 
 Een besluit kost één PR: de merge is het besluit. Architect of hoofdsessie zet de statusregel in het voorstel; commitvolgorde,
 inhoud na de status en committer doen er niet toe (ADR 0046 punt 7). `check-document-status` herkent twee gevallen
-(`scripts/kit/lane.mjs`); de samenvatting noemt elk document dat een eigenaarstatus krijgt. Een PR met een eigenaarstatus merget altijd de eigenaar.
+(`scripts/kit/lane.mjs`); de samenvatting noemt elk document dat een eigenaarstatus krijgt. Een PR met een eigenaarstatus merget altijd de eigenaar. Niet-kritiek werk zonder besluit (oordeel `agent-merge: ja`) merget de hoofdsessie zelf via `pnpm pr:merge` (ADR 0069, skill `opleveren`).
 
 **Functionele UI in de template (ADR 0056/0058):** een lichte fix volgt framework §8, zonder mini-spec.
 Voor overige functionele UI gebruik je de mini-spec met aanvullend `scope: functionele-ui` in de frontmatter.
