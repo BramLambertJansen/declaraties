@@ -1,5 +1,5 @@
 ---
-status: goedgekeurd
+status: gebouwd # #485; gevalideerd: 50eb43234567c54a7751287bcd0a68a30de99520
 namespace: adr-herzien
 ---
 
