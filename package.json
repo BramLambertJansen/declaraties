@@ -54,6 +54,7 @@
     "new:resource": "node scripts/kit/new-resource.mjs",
     "docs:status": "node scripts/kit/document-status.mjs",
     "pr:verify": "node scripts/kit/pr-verify.mjs",
+    "rolhek:overnemen": "node scripts/kit/rolhek-overnemen.mjs",
     "app:init": "node scripts/kit/app-init.mjs",
     "gate:fast": "node scripts/kit/gate-fast.mjs",
     "check:snapshot": "scripts/check-snapshot.sh",

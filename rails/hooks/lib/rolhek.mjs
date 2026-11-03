@@ -109,6 +109,27 @@ export function decide(payload, ctx) {
 }
 
 /**
+ * De beslissing van een Edit voor een pad dat een Bash-commando veranderde (ADR 0066, spec rolhek-effect AC-3): dezelfde
+ * rolcontext als `decide`, met `ctx.read` als inhoud van vóór het commando. Een pad in `.git` is voor elke rol deny (R-ROL-03).
+ * @param {{ rel: string, change: Change, agentType: string }} target
+ * @param {Ctx} ctx
+ * @returns {Decision}
+ */
+export function decideChange({ rel, change, agentType }, ctx) {
+  /** @type {Decision} */
+  const decision = { deny: [], ask: [], context: [] };
+  if (inGitMap(rel)) {
+    decision.deny.push(gitMapMelding(rel));
+    return decision;
+  }
+  const context = ['', 'developer', 'architect'].includes(agentType)
+    ? ctx
+    : { ...ctx, authority: null, onbekendeRol: !SUBAGENT_ROLES.has(agentType) };
+  decideFile({ rel, change, role: roleOf(agentType) }, context, decision);
+  return decision;
+}
+
+/**
  * Alleen `true` telt als vertrouwd (fail-closed); een functie wordt pas hier uitgevoerd (de aanroeper memoïseert).
  * @param {{ runnerTrusted?: boolean | (() => boolean) }} ctx
  */
@@ -826,6 +847,16 @@ function isNewResource(program, args) {
 }
 
 /**
+ * `pnpm rolhek:overnemen` (ook via `run`) of het script rechtstreeks met node.
+ * @param {string} program
+ * @param {readonly string[]} args
+ */
+function isOvernemen(program, args) {
+  if (program === 'pnpm') return pnpmCommand(args)[0] === 'rolhek:overnemen';
+  return program === 'node' && args.some((arg) => /(?:^|\/)scripts\/kit\/rolhek-overnemen\.mjs$/.test(arg));
+}
+
+/**
  * Wat voor elke rol verboden is (zelfreview, hooks overslaan, push naar main), plus wat alleen een subagent niet mag.
  * @param {{ assignments: string[], argv: string[], expanded: readonly string[] }} command
  * @param {{ role: string, ctx: Ctx }} who
@@ -857,6 +888,11 @@ function forbidden({ assignments, argv, expanded }, { role, ctx }, decision) {
   if (role !== 'hoofdsessie') {
     const command = { program, args, expanded };
     decision.deny.push(...subagentGitHub(command), ...subagentTokens(command), ...subagentFormatting(command, ctx));
+  }
+  if (isOvernemen(program, args)) {
+    const melding = 'rolhek:overnemen heft een overtreding van de toets op effect op (spec rolhek-effect AC-5); de eigenaar beslist';
+    if (role === 'hoofdsessie') decision.ask.push(melding);
+    else decision.deny.push(`subagent: ${melding}`);
   }
   if (role !== 'hoofdsessie' && isNewResource(program, args))
     decision.deny.push('pnpm new:resource: alleen de hoofdsessie (ADR 0047 punt 6); wat hij schrijft, ziet het rolhek niet');

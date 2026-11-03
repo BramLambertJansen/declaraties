@@ -91,7 +91,8 @@
     "pnpm ui:check *",
     "pnpm gate:slow *",
     "pnpm db:generate *",
-    "pnpm check:snapshot *"
+    "pnpm check:snapshot *",
+    "pnpm rolhek:overnemen *"
   ],
   "network": {
     "allowedDomains": ["registry.npmjs.org", "github.com", "api.github.com"]

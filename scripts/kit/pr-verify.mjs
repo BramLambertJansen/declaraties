@@ -4,6 +4,11 @@ import { checkedCommit, expectedCheckAppId, requiredProofChecks } from '../../ra
 import { pullRequest, checkRuns } from './github-evidence.mjs';
 import { setTimeout } from 'node:timers/promises';
 import { unchangedHead } from './status-git.mjs';
+import { lijstTekst, nacontrole } from '../../rails/hooks/lib/effect-hooks.mjs';
+import { gitIn } from '../../rails/hooks/lib/effect-snapshot.mjs';
+import { opslag } from '../../rails/hooks/lib/effect.mjs';
+import { existsSync } from 'node:fs';
+import { rolhekContext } from '../../rails/hooks/lib/rolhek-context.mjs';
 
 /** @param {import('../../rails/hooks/lib/built-evidence.mjs').CheckRun[]} checks @param {{ names: string[], sha: string }} required */
 function codeqlAnalysisPending(checks, required) {
@@ -110,9 +115,28 @@ function verifyHead(context) {
   verifyWorktree(context);
 }
 
+/**
+ * Open overtredingen van de toets op effect, na de nacontrole van elke subagent (spec rolhek-effect AC-4, AC-5); alleen lezen.
+ * @param {string} root
+ */
+export function verifyEffect(root) {
+  // Zonder opslag heeft geen subagent in deze repo gewerkt; dan is er niets na te controleren.
+  const git = gitIn(root);
+  if (!existsSync(opslag({ root, git }))) return;
+  const lijst = nacontrole(
+    { root, git, ctx: rolhekContext(root, root), now: () => Date.now(), alleenLezen: true },
+    null,
+  );
+  if (lijst.length > 0)
+    throw new Error(
+      `Open overtredingen van subagents (rolhek-effect):\n${lijstTekst(lijst)}\nZet de paden terug of laat de eigenaar ze overnemen: pnpm rolhek:overnemen <pad>`,
+    );
+}
+
 async function main() {
   const root = process.cwd();
   const target = argumentsFor(process.argv.slice(2));
+  verifyEffect(root);
   const base = gitText(root, ['rev-parse', 'origin/main'])?.trim();
   const authority = base === undefined ? null : readAuthority({ root, base });
   const head = gitText(root, ['rev-parse', 'HEAD'])?.trim();
@@ -126,7 +150,8 @@ async function main() {
     const progress = checkProgress(checkRuns(authority.repository, head), required);
     verifyHead(context);
     console.log(`PR #${String(target.number)} · ${head}\n${progress.lines.join('\n')}`);
-    if (progress.state === 'success') return;
+    // Opnieuw vlak voor het groene antwoord: een achtergrondproces van een subagent kan tijdens het wachten nog schrijven.
+    if (progress.state === 'success') return verifyEffect(root);
     if (progress.state === 'failure') throw new Error('CI is rood; herstel de oorzaak en controleer de nieuwe commit');
     if (!target.watch || Date.now() >= deadline)
       throw new Error('CI ontbreekt of loopt nog; geen geslaagde oplevering');
