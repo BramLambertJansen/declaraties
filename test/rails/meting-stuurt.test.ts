@@ -360,3 +360,23 @@ describe('meting-stuurt/AC-9: regelboek en operations-doc', () => {
     expect(doc).toContain('git merge-base origin/main HEAD');
   });
 });
+
+describe('meting-stuurt/AC-8: leesbudget volgt de meting die stuurt', () => {
+  const ac = (n: number) =>
+    lees('docs/specs/leesbudget.md')
+      .split('\n')
+      .find((r) => r.startsWith(`- **leesbudget/AC-${String(n)}**`)) ?? '';
+
+  test('meting-stuurt/AC-8 leesbudget AC-7: REST, twintig nieuwste op merged_at, "meet", drempel uit meting-stuurt/AC-2', () => {
+    expect(ac(7)).toContain('via REST: één `gh api …/pulls?state=closed`, de twintig nieuwste op `merged_at`');
+    expect(ac(7)).not.toContain('gh pr list');
+    expect(ac(7)).toContain("meet nooit meer dan twintig PR's");
+    expect(ac(7)).toContain('meting-stuurt/AC-2');
+  });
+
+  test('meting-stuurt/AC-8 leesbudget AC-3: de herijkte waarden en "let op" via meting-stuurt/AC-1', () => {
+    expect(ac(3)).toContain('nieuwe-feature ≤ 50 KB');
+    expect(ac(3)).toContain('88, 34 en 22 KB');
+    expect(ac(3)).toContain('meting-stuurt/AC-1');
+  });
+});

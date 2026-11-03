@@ -1,5 +1,5 @@
 ---
-status: goedgekeurd
+status: gebouwd # #452
 namespace: meting-stuurt
 ---
 
@@ -63,7 +63,7 @@ Nieuwe maten in de trend; een PR-comment door CI; padregels of feiten-uitvoer in
 
 ## Testplan
 
-Naast `test/rails/leesbudget.test.ts` en `test/rails/meting-kerncijfers-leespad.test.ts`: AC-1 in een tijdelijke repo met en zonder basis (de basis geeft een getal), met per-eenheid-gevallen en de 1 KB-grens; AC-2 tabelgedreven met de vijf gevallen; AC-3 met een tijdelijk `GITHUB_STEP_SUMMARY`-bestand, als teksttest op workflow en skill, en een tabeltest in het rolhek (`--basis origin/main` en `--basis=<sha>` mag; een waarde met `$`, `;` of spatie niet); AC-4 tegen de echte scenariobestanden en een fixture; AC-5 tegen fixtures; AC-6 met pure functies en een lezer; AC-7 in een tijdelijke repo (afvinken, parkeren, verhuizen; "uit fase N"; doorlopend naast een fasenummer; kop ontbreekt; zonder basis); AC-8 en AC-9 als teksttests.
+Naast `test/rails/leesbudget.test.ts` en `test/rails/meting-kerncijfers-leespad.test.ts`: AC-1 in een tijdelijke repo met en zonder basis (de basis geeft een getal), met per-eenheid-gevallen en de 1 KB-grens; AC-2 tabelgedreven met de vijf gevallen; AC-3 met een tijdelijk `GITHUB_STEP_SUMMARY`-bestand, als teksttest op workflow en skill, en een tabeltest in het rolhek (`--basis origin/main` en `--basis <sha>` mag; `--basis=<sha>` niet, zoals `--ref=…`, en een waarde met `$`, `;` of spatie ook niet); AC-4 tegen de echte scenariobestanden en een fixture; AC-5 tegen fixtures; AC-6 met pure functies en een lezer; AC-7 in een tijdelijke repo (afvinken, parkeren, verhuizen; "uit fase N"; doorlopend naast een fasenummer; kop ontbreekt; zonder basis); AC-8 en AC-9 als teksttests.
 
 ## Open vragen
 
