@@ -4,6 +4,8 @@ Status: geaccepteerd
 Herzien: 2026-11-03 (#456): punt 3 (Codex-voorwaarde drieledig, omvanggrens `agentMerge.maxRegels`), punt 5
 (steekproef, terugval, overgang), Gevolgen en Meten; versoepelt de Codex-voorwaarde; uitwerking in
 [spec](../specs/agent-merge-zonder-codex.md)
+Herzien: 2026-11-03 (#468): punt 3 (een 👀 van Codex of een review die nog bezig is, telt als spoor en houdt de merge tegen),
+punt 5 (overgang) en Gevolgen; verscherpt de Codex-voorwaarde; uitwerking in [spec](../specs/agent-merge-codex-wachten.md)
 
 Wijzigt [0046](0046-werkstraat-en-beslisroute.md) punt 30, 31, 33, 34 en 35, de zin "automatische agent-merges vallen af" uit
 [0057](0057-risicogestuurde-werkstraat.md), in [0064](0064-leesbudget-per-laag.md) "zodra de GitHub App er is" (R-DOC-09) en in
@@ -67,13 +69,15 @@ punt begint, `*.config.*`, `package.json`, `tsconfig*.json`). Daarnaast: geen be
      (punt 2, geteld met git op de merge-base);
    - de Codex-voorwaarde volgens `agentMerge.codex` (ontbreekt of onleesbaar: `true`):
      - `true`: Codex (`chatgpt-codex-connector[bot]`) rondde de head-SHA af zonder open punten (samenvatting met marker
-       `codex-review-state:v1` op die SHA, nieuwste telt, of een 👍 na de ontvangst van die SHA) en er is geen onopgeloste
-       review-thread (afspraak);
+       `codex-review-state:v1` op die SHA, nieuwste telt, of een 👍 na de ontvangst van die SHA), Codex is niet meer bezig op
+       deze PR (geen 👀 van die bot op de PR of op een issue-commentaar ervan, en de nieuwste samenvatting, als die er is,
+       heeft status `completed` of `failed`) en er is geen onopgeloste review-thread (afspraak);
      - `"indien-aanwezig"` (template): rondde Codex ooit een review af, dan geldt de voorwaarde van `true` volledig; zonder
        zo'n spoor vervalt ze. Een spoor is een samenvatting met marker en status `completed`, een PR-review, een
        inline-reviewcommentaar of een 👍 van die bot, op welke SHA ook, op deze PR of op een andere PR met dezelfde
-       head-branch die open is of zonder merge gesloten. Geen spoor: een 👀, een samenvatting met een andere status
-       (`failed`, bezig), een commentaar zonder marker;
+       head-branch die open is of zonder merge gesloten. Ook een review die nog bezig is (een 👀 van die bot op de PR of op
+       een issue-commentaar ervan, of een nieuwste samenvatting met een andere status dan `completed` of `failed`) is een spoor: dan wacht de merge. Geen spoor: een
+       samenvatting met status `failed`, een commentaar zonder marker, een 👍 op een commentaar;
      - `false`: geen Codex-voorwaarde (een app zonder Codex).
    *Waarom:* elke voorwaarde dekt een eigen faalwijze: verkeerde PR of SHA, verouderde basis, verouderde lokale `origin/main`,
    rode CI, kritieke inhoud, doorbouwen op rode `main`, review van een oudere versie, genegeerde Codex-punten, een diff te groot
@@ -81,12 +85,14 @@ punt begint, `*.config.*`, `package.json`, `tsconfig*.json`). Daarnaast: geen be
    op, dan merget geen agent meer (review 3 november 2026, P2). Dit versoepelt de Codex-voorwaarde (R-PRINC-09, met
    eigenaarsbesluit); in de plaats komen de omvanggrens, de steekproef en de terugval (punt 5). `"indien-aanwezig"` houdt
    een gegeven Codex-oordeel bindend: een inline-punt zonder samenvatting of een nieuwe PR van dezelfde branch laat de
-   voorwaarde niet vervallen. Alleen een afgeronde review telt, omdat Codex bij tegoed op zelf een samenvatting met marker
+   voorwaarde niet vervallen. Alleen een afgeronde of nog lopende review telt, omdat Codex bij tegoed op zelf een samenvatting met marker
    (status `failed`, `has_unresolved_findings: true` zonder bevinding) en een limietmelding plaatst (PR #447 tot en met #453,
    met `gh api` nagegaan); "elke marker" of "elk commentaar" blokkeerde dan elke PR. Een gemergde PR van dezelfde branch telt
-   niet, omdat een thread meerdere PR's na elkaar van één branch maakt. Een 👀 of een ronde die nog bezig is, telt niet
-   (ontwerp van de eigenaar); daarmee is het venster waarin Codex met tegoed nog bezig is en de agent al mergt, aanvaard (spec
-   OV-1). *Waarom een omvanggrens, ook met Codex:* zonder Codex is
+   niet, omdat een thread meerdere PR's na elkaar van één branch maakt. *Waarom wachten (herzien 2026-11-03):* een 👀 of
+   een ronde die nog bezig is, telt als spoor (besluit van de eigenaar); anders mergt een snelle agent terwijl Codex met
+   tegoed nog bezig is, en is Codex ook met tegoed in de praktijk optioneel. Bij tegoed op zet Codex geen 👀 (PR #447 tot en
+   met #453), dus daar vervalt de voorwaarde zoals eerder. Prijs: een 👀 die blijft hangen, faalt dicht; dan merget de
+   eigenaar. *Waarom een omvanggrens, ook met Codex:* zonder Codex is
    de verse reviewer de enige inhoudelijke lezer, en een kleine diff is wat die betrouwbaar overziet. Voorbeeld is de praktijk
    van Ona die de eigenaar aanhaalde (opdracht 3 november 2026: laag-risico-PR's automatisch goedgekeurd onder 1.000 regels
    met een deterministische padregel; cijfers niet zelf nagegaan), hier strenger omdat er geen mens meekijkt. Een binair
@@ -110,9 +116,11 @@ punt begint, `*.config.*`, `package.json`, `tsconfig*.json`). Daarnaast: geen be
    achteraf kritiek blijkt, merget de hoofdsessie niets meer via `pr:merge`, opent een PR die `merge` op `"eigenaar"` zet,
    meldt dat, en dit besluit wordt herzien; pas na de merge van die PR of een ander besluit van de eigenaar gaat het verder.
    Overgang: de herziening van punt 3 en 5 geldt vanaf de merge van de bouw-PR; tot dan merget de hoofdsessie geen PR boven
-   400 regels. Bij `"indien-aanwezig"` vraagt de hoofdsessie geen extra `@codex review` zolang er geen spoor is, en met spoor
+   400 regels. De wachtregel van punt 3 (tweede herziening van 2026-11-03) zit pas met de merge van zijn bouw-PR in
+   `pr:merge`; tot dan kijkt de hoofdsessie vóór `pnpm pr:merge` zelf naar een 👀 van Codex en de status van de nieuwste
+   samenvatting, en merget ze niet zolang Codex bezig is. Bij `"indien-aanwezig"` vraagt de hoofdsessie geen extra `@codex review` zolang er geen spoor is, en met spoor
    vraagt ze er een op elke nieuwe head; ze ontwijkt Codex niet (geen draft om de automatische review te mijden, geen
-   commentaar weghalen). Elke agent-merge bij `codex: false` geldt ook als steekproef. Steekproef, terugval, overgang en het
+   commentaar weghalen, ook niet het eigen commentaar `@codex review`). Elke agent-merge bij `codex: false` geldt ook als steekproef. Steekproef, terugval, overgang en het
    vragen van Codex zijn afspraken, geen gate: het script meldt alleen dat de Codex-voorwaarde
    verviel, en `.claude/gates.json` wijzigen is een gate die de eigenaar merget.
    *Waarom (herzien 2026-11-03):* zonder Codex valt een vangnet weg; de steekproef laat de eigenaar zien of de reviewer en de
@@ -153,8 +161,11 @@ punt begint, `*.config.*`, `package.json`, `tsconfig*.json`). Daarnaast: geen be
 - Met `"indien-aanwezig"` gaat de agent-merge door als het Codex-tegoed op is, maar alleen voor PR's tot `maxRegels`
   regels zonder binair bestand; een grotere niet-kritieke PR merget de eigenaar, of de agent splitst hem in PR's onder de
   grens, elk met een eigen verse review. Restrisico's (herzien 2026-11-03): komt Codex pas na de merge met punten, dan telden
-  ze niet, ook als Codex met tegoed nog bezig was toen de agent mergde; en onder het eigenaaraccount kan de sessie een Codex-commentaar verwijderen of bewerken (het rolhek weigert dat
-  nu niet), zodat het spoor verdwijnt; of ze opent de PR als draft, zodat de automatische Codex-review niet start. Een Codex-review
+  ze niet; met de wachtregel alleen nog als Codex zijn ronde pas na de controle van `pr:merge` begon (nog geen 👀); een
+  👀 die blijft hangen op die PR, houdt de agent-merge ervan tegen tot Codex de head afrondt of de eigenaar merget (op een
+  andere PR van de branch geeft ze alleen een spoor); en onder het eigenaaraccount kan de sessie een Codex-commentaar
+  verwijderen of bewerken, of haar eigen commentaar `@codex review` met de 👀 erop verwijderen (het rolhek weigert beide nu
+  niet), zodat het spoor verdwijnt; of ze opent de PR als draft, zodat de automatische Codex-review niet start. Een Codex-review
   die mislukt terwijl er tegoed is, laat geen spoor na. Het verwijderen en de draft zijn een bewuste omzeiling, net als het script omzeilen hierboven; de steekproef
   en de terugval vangen het achteraf op.
 - Meten (0046 punt 36): aantal agent-merges, met en zonder Codex-signaal, reverts daarvan en rode `main` na een agent-merge.

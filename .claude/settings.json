@@ -176,7 +176,7 @@
     "SessionEnd": [{ "hooks": [{ "type": "command", "command": "node \"$CLAUDE_PROJECT_DIR/.claude/hooks/meting.mjs\"", "timeout": 5 }] }],
     "SubagentStart": [{ "hooks": [{ "type": "command", "command": "node \"$CLAUDE_PROJECT_DIR/.claude/hooks/effect.mjs\" subagent-start", "timeout": 30 }] }],
     "SubagentStop": [{ "matcher": "developer|tester|reviewer", "hooks": [{ "type": "command", "command": "node \"$CLAUDE_PROJECT_DIR/.claude/hooks/werkstraat.mjs\" subagent-stop", "timeout": 600 }] }, { "hooks": [{ "type": "command", "command": "node \"$CLAUDE_PROJECT_DIR/.claude/hooks/effect.mjs\" subagent-stop", "timeout": 30 }] }],
-    "SessionStart": [{ "matcher": "startup|resume|clear|compact", "hooks": [{ "type": "command", "command": "node \"$CLAUDE_PROJECT_DIR/.claude/hooks/werkstraat.mjs\" session-start", "timeout": 30 }] }],
+    "SessionStart": [{ "matcher": "startup|resume|clear|compact|fork", "hooks": [{ "type": "command", "command": "node \"$CLAUDE_PROJECT_DIR/.claude/hooks/werkstraat.mjs\" session-start", "timeout": 30 }] }],
     "Notification": [{ "hooks": [{ "type": "command", "command": "node \"$CLAUDE_PROJECT_DIR/.claude/hooks/melding.mjs\"", "timeout": 10 }] }]
   },
   "statusLine": { "type": "command", "command": "node \"$CLAUDE_PROJECT_DIR/.claude/hooks/statusregel.mjs\"" }
