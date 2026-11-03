@@ -63,7 +63,7 @@
 \set ON_ERROR_ROLLBACK off
 begin;
 set search_path = tap, public;
-select plan(105);
+select plan(110);
 
 -- =====================================================================================================================
 -- 0. Registratie- en bewijstabellen
@@ -523,8 +523,9 @@ select is(
   'database-checks/AC-1: de echte I-gate is groen (geen verplicht insertveld zonder bron in public/app)'
 );
 select is(
-  array(select x from pg_temp.d_kandidaten() x order by x), array['app.audit_log|app_definer', 'app.rate_limits|app_definer'],
-  'database-checks/AC-6: D ontdekt precies app.audit_log en app.rate_limits (FORCE RLS, DELETE, permissieve DELETE/ALL-policy)'
+  array(select x from pg_temp.d_kandidaten() x order by x),
+  array['app.audit_log|app_definer', 'app.one_time_use|app_definer', 'app.rate_limits|app_definer'],
+  'database-checks/AC-6: D ontdekt precies app.audit_log, app.one_time_use en app.rate_limits (FORCE RLS, DELETE, permissieve DELETE/ALL-policy)'
 );
 select is(
   array(select x from pg_temp.d_structuur() x order by x), '{}'::text[],
@@ -871,6 +872,14 @@ insert into pg_temp.d_probe_rij values
   ('app.rate_limits', 'oud', '{"key": "sbf:oud"}', 'verwijderd', 'venster ouder dan de termijn van 60 seconden'),
   ('app.rate_limits', 'nieuw', '{"key": "sbf:nieuw"}', 'beschermd', 'lopend venster: restrictieve policy rate_limits_definer_delete_expired');
 
+-- app.one_time_use (ADR 0075): een verlopen en een geldige claim, beide op key.
+insert into app.one_time_use (key, expires_at) values
+  ('sbf:oud', now() - interval '1 hour'), ('sbf:nieuw', now() + interval '1 hour');
+insert into pg_temp.d_probe values ('app.one_time_use', array['key']);
+insert into pg_temp.d_probe_rij values
+  ('app.one_time_use', 'oud', '{"key": "sbf:oud"}', 'verwijderd', 'claim verlopen (termijn 0 seconden na expires_at)'),
+  ('app.one_time_use', 'nieuw', '{"key": "sbf:nieuw"}', 'beschermd', 'geldige claim: restrictieve policy one_time_use_definer_delete_expired');
+
 -- Synthetische D-tabellen (rijen vóór RLS, als eigenaar). Domeinbeleid oud/nieuw: alleen v = 'oud' mag weg.
 select pg_temp.maak_d('d_vis_false', false, 'select, delete',
   array[$$for delete to app_definer using (v = 'oud')$$, 'for select to app_definer using (false)']);
@@ -934,6 +943,7 @@ reset role;
 savepoint obs_voor;
 alter table app.audit_log no force row level security;
 alter table app.rate_limits no force row level security;
+alter table app.one_time_use no force row level security;
 alter table sbf_fx.d_vis_false no force row level security;
 alter table sbf_fx.d_restr_false no force row level security;
 alter table sbf_fx.d_all_true no force row level security;
@@ -953,6 +963,9 @@ select is(
 select is(
   (select jsonb_array_length(rijen) from pg_temp.d_observatie where moment = 'voor' and tabel = 'app.rate_limits'), 2,
   'database-checks/AC-7: vóór de delete staan beide rate-limit-proefrijen (verlopen en lopend) in de tabel');
+select is(
+  (select jsonb_array_length(rijen) from pg_temp.d_observatie where moment = 'voor' and tabel = 'app.one_time_use'), 2,
+  'database-checks/AC-7: vóór de delete staan beide claim-proefrijen (verlopen en geldig) in de tabel');
 -- AC-6/AC-7: onder FORCE ziet zelfs de eigenaar de rijen niet; dat maakt de NO FORCE-observatie onafhankelijk.
 select is((select count(*)::integer from sbf_fx.d_vis_false), 0,
   'database-checks/AC-7: onder FORCE ziet de eigenaar app_migrator in d_vis_false geen rijen (SELECT using (false))');
@@ -963,7 +976,7 @@ select is((select count(*)::integer from sbf_fx.d_all_restr), 0,
 do $$
 declare t text;
 begin
-  foreach t in array array['app.audit_log', 'app.rate_limits', 'sbf_fx.d_vis_false', 'sbf_fx.d_restr_false',
+  foreach t in array array['app.audit_log', 'app.rate_limits', 'app.one_time_use', 'sbf_fx.d_vis_false', 'sbf_fx.d_restr_false',
                            'sbf_fx.d_all_true', 'sbf_fx.d_all_restr', 'sbf_fx.d_geen_pos'] loop
     perform pg_temp.d_voer_uit(t);
   end loop;
@@ -975,6 +988,7 @@ reset role;
 savepoint obs_na;
 alter table app.audit_log no force row level security;
 alter table app.rate_limits no force row level security;
+alter table app.one_time_use no force row level security;
 alter table sbf_fx.d_vis_false no force row level security;
 alter table sbf_fx.d_restr_false no force row level security;
 alter table sbf_fx.d_all_true no force row level security;
@@ -1011,6 +1025,12 @@ select is(pg_temp.d_uitkomst('app.rate_limits', 'oud'), 'verwijderd',
   'database-checks/AC-7: het verlopen rate-limitvenster is als eigenaar waargenomen verwijderd');
 select is(pg_temp.d_uitkomst('app.rate_limits', 'nieuw'), 'ongewijzigd',
   'database-checks/AC-7: het lopende venster staat ongewijzigd in de tabel (restrictieve policy, niet de WHERE)');
+select is((select rijen from pg_temp.d_uitvoering where tabel = 'app.one_time_use'), 1,
+  'database-checks/AC-7: de ene echte DELETE als app_definer raakt in app.one_time_use precies één rij');
+select is(pg_temp.d_uitkomst('app.one_time_use', 'oud'), 'verwijderd',
+  'database-checks/AC-7: de verlopen claim is als eigenaar waargenomen verwijderd');
+select is(pg_temp.d_uitkomst('app.one_time_use', 'nieuw'), 'ongewijzigd',
+  'database-checks/AC-7: de geldige claim staat ongewijzigd in de tabel (restrictieve policy, niet de WHERE)');
 
 -- AC-6: SELECT-recht op de gelezen filterkolommen.
 select is(
@@ -1018,6 +1038,8 @@ select is(
   'database-checks/AC-6: app_definer heeft effectief SELECT op de gelezen filterkolommen id en at van app.audit_log');
 select is(pg_temp.eff_recht('app.rate_limits'::regclass, 'app_definer', 'SELECT', 'key'), true,
   'database-checks/AC-6: app_definer heeft effectief SELECT op de gelezen filterkolom key van app.rate_limits');
+select is(pg_temp.eff_recht('app.one_time_use'::regclass, 'app_definer', 'SELECT', 'key'), true,
+  'database-checks/AC-6: app_definer heeft effectief SELECT op de gelezen filterkolom key van app.one_time_use');
 select is(
   array[pg_temp.eff_recht('sbf_fx.d_kolrecht'::regclass, 'app_definer', 'SELECT', 'id'),
         pg_temp.eff_recht('sbf_fx.d_kolrecht'::regclass, 'app_definer', 'SELECT', 'v')],
@@ -1118,9 +1140,10 @@ select is(array(select x from pg_temp.d_structuur() x order by x), '{}'::text[],
 select is(
   array(select x from pg_temp.d_kandidaten() x order by x),
   array(select tabel || '|app_definer' from pg_temp.d_probe order by tabel),
-  'database-checks/AC-7: iedere ontdekte D-tabel (audit_log én rate_limits) heeft een geregistreerde probe');
+  'database-checks/AC-7: iedere ontdekte D-tabel (audit_log, one_time_use en rate_limits) heeft een geregistreerde probe');
 select is(
-  array(select tabel from pg_temp.d_uitvoering where rijen >= 1 order by tabel), array['app.audit_log', 'app.rate_limits'],
+  array(select tabel from pg_temp.d_uitvoering where rijen >= 1 order by tabel),
+  array['app.audit_log', 'app.one_time_use', 'app.rate_limits'],
   'database-checks/AC-7: iedere ontdekte D-tabel is werkelijk uitgevoerd met een positieve rowcount');
 select is(array(select x from pg_temp.d_gedrag() x order by x), '{}'::text[],
   'database-checks/AC-8: na opruimen is de echte D-gedragsgate groen (registratie, rechten, rowcount en per-rij-uitkomst)');

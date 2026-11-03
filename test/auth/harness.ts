@@ -118,6 +118,30 @@ export function totp(otpauthUri: string, at = Date.now()): string {
   return String(code).padStart(6, '0');
 }
 
+// Een code werkt één keer (spec inloggat-dichten AC-1): een test die inlogt of bevestigt, neemt een verse code. Per geheim
+// geeft deze hulp elke tijdstap hooguit één keer (eerst de huidige, dan de volgende, die de server ook nog accepteert) en
+// gooit daarna: wachten verstopt traagheid. Nodig je drie codes van één account, wacht dan expliciet met nextTotpStep().
+const usedSteps = new Map<string, Set<number>>();
+export function freshTotp(otpauthUri: string, at = Date.now()): string {
+  const step = Math.floor(at / 30_000);
+  const used = usedSteps.get(otpauthUri) ?? new Set<number>();
+  usedSteps.set(otpauthUri, used);
+  for (const candidate of [step, step + 1]) {
+    if (used.has(candidate)) continue;
+    used.add(candidate);
+    return totp(otpauthUri, candidate * 30_000);
+  }
+  throw new Error(
+    'freshTotp: huidige en volgende tijdstap al gebruikt voor dit geheim; wacht met nextTotpStep() of gebruik een eigen account',
+  );
+}
+
+// Wacht tot de volgende tijdstap van 30 s begint (hooguit 30 s); voor een test die bewust een derde code van één account nodig heeft.
+export async function nextTotpStep(): Promise<void> {
+  const wait = 30_000 - (Date.now() % 30_000) + 50;
+  await new Promise((resolve) => setTimeout(resolve, wait));
+}
+
 function base32Decode(input: string): Buffer {
   const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
   let bits = '';

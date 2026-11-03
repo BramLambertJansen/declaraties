@@ -44,8 +44,8 @@ draait hem; `--dry-run` toont het plan zonder te schrijven, en bestaat een doel 
    `test/security/resources.ts` en vult de samples in (tot dan is `pnpm test:db` rood), de developer voegt de velden toe in
    een nieuwe migratie met kolomgrants en bouwt de handlers. De stappen hieronder gelden dan per bestand.
 
-`pnpm check:new-resource` bewijst in een tijdelijke kopie dat de uitvoer `pnpm gate:fast` haalt (eigen job in CI, niet in elke
-`gate:fast`). De generator voegt geen dependency toe: de route-tree komt van de al geïnstalleerde `@tanstack/router-plugin`
+`pnpm check:new-resource` bewijst in een tijdelijke kopie dat de uitvoer `pnpm gate:fast` haalt, in de template na `app:init`
+(eigen job in CI, niet in elke `gate:fast`; ADR 0073). De generator voegt geen dependency toe: de route-tree komt van de al geïnstalleerde `@tanstack/router-plugin`
 (ADR 0047 punt 8–9).
 
 ## Padparameters en foutvolgorde

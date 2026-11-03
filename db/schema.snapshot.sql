@@ -154,6 +154,36 @@ CREATE FUNCTION app.audit_log_guard_delete() RETURNS trigger
 ALTER FUNCTION app.audit_log_guard_delete() OWNER TO app_definer;
 
 --
+-- Name: claim_one_time_use(text, integer); Type: FUNCTION; Schema: app; Owner: app_definer
+--
+
+CREATE FUNCTION app.claim_one_time_use(p_key text, p_ttl_seconds integer) RETURNS boolean
+    LANGUAGE plpgsql SECURITY DEFINER
+    SET search_path TO ''
+    AS $_$
+  declare
+    v_claimed boolean;
+  begin
+    if p_key is null or pg_catalog.length(p_key) > 200 or p_key !~ '^[a-z][a-z-]*:.+$' then
+      raise exception 'ongeldige sleutel' using errcode = '22023';
+    end if;
+    if p_ttl_seconds is null or p_ttl_seconds < 1 or p_ttl_seconds > 3600 then
+      raise exception 'ongeldige geldigheid' using errcode = '22023';
+    end if;
+    insert into app.one_time_use (key, expires_at)
+      values (p_key, pg_catalog.now() + pg_catalog.make_interval(secs => p_ttl_seconds))
+      on conflict (key) do update
+        set expires_at = excluded.expires_at
+        where one_time_use.expires_at <= pg_catalog.now()
+      returning true into v_claimed;
+    return coalesce(v_claimed, false);
+  end
+  $_$;
+
+
+ALTER FUNCTION app.claim_one_time_use(p_key text, p_ttl_seconds integer) OWNER TO app_definer;
+
+--
 -- Name: consume_rate_limit(text, integer, integer); Type: FUNCTION; Schema: app; Owner: app_definer
 --
 
@@ -553,6 +583,20 @@ ALTER TABLE app.audit_log ALTER COLUMN id ADD GENERATED ALWAYS AS IDENTITY (
 
 
 --
+-- Name: one_time_use; Type: TABLE; Schema: app; Owner: app_migrator
+--
+
+CREATE TABLE app.one_time_use (
+    key text NOT NULL,
+    expires_at timestamp with time zone NOT NULL
+);
+
+ALTER TABLE ONLY app.one_time_use FORCE ROW LEVEL SECURITY;
+
+
+ALTER TABLE app.one_time_use OWNER TO app_migrator;
+
+--
 -- Name: rate_limits; Type: TABLE; Schema: app; Owner: app_migrator
 --
 
@@ -674,6 +718,14 @@ ALTER TABLE public.schema_migrations OWNER TO app_migrator;
 
 ALTER TABLE ONLY app.audit_log
     ADD CONSTRAINT audit_log_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: one_time_use one_time_use_pkey; Type: CONSTRAINT; Schema: app; Owner: app_migrator
+--
+
+ALTER TABLE ONLY app.one_time_use
+    ADD CONSTRAINT one_time_use_pkey PRIMARY KEY (key);
 
 
 --
@@ -924,6 +976,26 @@ CREATE POLICY audit_log_select_admin ON app.audit_log FOR SELECT TO app_authenti
 
 
 --
+-- Name: one_time_use; Type: ROW SECURITY; Schema: app; Owner: app_migrator
+--
+
+ALTER TABLE app.one_time_use ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: one_time_use one_time_use_definer_all; Type: POLICY; Schema: app; Owner: app_migrator
+--
+
+CREATE POLICY one_time_use_definer_all ON app.one_time_use TO app_definer USING (true) WITH CHECK (true);
+
+
+--
+-- Name: one_time_use one_time_use_definer_delete_expired; Type: POLICY; Schema: app; Owner: app_migrator
+--
+
+CREATE POLICY one_time_use_definer_delete_expired ON app.one_time_use AS RESTRICTIVE FOR DELETE TO app_definer USING ((expires_at < ( SELECT app.retention_cutoff('app.one_time_use'::regclass) AS retention_cutoff)));
+
+
+--
 -- Name: rate_limits; Type: ROW SECURITY; Schema: app; Owner: app_migrator
 --
 
@@ -989,6 +1061,7 @@ CREATE POLICY user_roles_select_own ON public.user_roles FOR SELECT TO app_authe
 
 GRANT USAGE ON SCHEMA app TO app_authenticated;
 GRANT ALL ON SCHEMA app TO app_definer;
+GRANT USAGE ON SCHEMA app TO auth_service;
 
 
 --
@@ -1045,6 +1118,14 @@ REVOKE ALL ON FUNCTION app.audit_log_guard() FROM PUBLIC;
 --
 
 REVOKE ALL ON FUNCTION app.audit_log_guard_delete() FROM PUBLIC;
+
+
+--
+-- Name: FUNCTION claim_one_time_use(p_key text, p_ttl_seconds integer); Type: ACL; Schema: app; Owner: app_definer
+--
+
+REVOKE ALL ON FUNCTION app.claim_one_time_use(p_key text, p_ttl_seconds integer) FROM PUBLIC;
+GRANT ALL ON FUNCTION app.claim_one_time_use(p_key text, p_ttl_seconds integer) TO auth_service;
 
 
 --
@@ -1266,6 +1347,13 @@ GRANT INSERT(request_id) ON TABLE app.audit_log TO app_definer;
 --
 
 GRANT INSERT(details) ON TABLE app.audit_log TO app_definer;
+
+
+--
+-- Name: TABLE one_time_use; Type: ACL; Schema: app; Owner: app_migrator
+--
+
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE app.one_time_use TO app_definer;
 
 
 --

@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { clientIpHeaders, createAccount, PASSWORD, totpFor, type TestAccount } from './support/accounts.ts';
+import { clientIpHeaders, createAccount, PASSWORD, freshTotpFor, type TestAccount } from './support/accounts.ts';
 import { collectCspViolations } from './support/axe.ts';
 import { axeAtBothWidths } from './support/eigen-account.ts';
 
@@ -12,7 +12,7 @@ async function attemptLogin(page: Page, account: TestAccount): Promise<void> {
 
 async function adminLogin(page: Page, account: TestAccount): Promise<void> {
   await attemptLogin(page, account);
-  await page.getByLabel('Code', { exact: true }).fill(totpFor(account.totpSecret ?? ''));
+  await page.getByLabel('Code', { exact: true }).fill(freshTotpFor(account.totpSecret ?? ''));
   await page.getByRole('button', { name: 'Bevestigen' }).click();
   await expect(page.getByRole('heading', { level: 1, name: 'Dashboard' })).toBeVisible();
 }

@@ -2,8 +2,10 @@ import { betterAuth } from 'better-auth';
 import pg from 'pg';
 import { UserId } from '../../shared/ids.ts';
 import { createMailing } from './mailing.ts';
+import { createClaimOnce } from './one-time-use.ts';
 import { AUTH_BASE_PATH, type AuthConfig, createAuthOptions, DISABLED_PREFIXES } from './options.ts';
 import { sessionRejection } from './session-policy.ts';
+import { stripTokens } from './strip-token.ts';
 
 export interface CreateAuthConfig extends AuthConfig {
   // AUTH_DATABASE_URL: de rol auth_service (framework §3, uitzondering op "alleen src/core/api/db raakt pg").
@@ -33,6 +35,8 @@ export function createAuth(config: CreateAuthConfig) {
   return Object.assign(betterAuth(createAuthOptions(config, pool)), {
     closePool: () => pool.end(),
     mailing: createMailing(config),
+    // Eenmalig gebruik van een e-maillink (ADR 0075); de TOTP-claim zit in de hooks van createAuthOptions.
+    claimOnce: createClaimOnce(pool),
   });
 }
 
@@ -65,7 +69,7 @@ export function authGateway(auth: Auth, now: () => number = Date.now): AuthGatew
       const path = new URL(request.url).pathname.slice(AUTH_BASE_PATH.length);
       if (DISABLED_PREFIXES.some((prefix) => path.startsWith(prefix)))
         return new Response('Not Found', { status: 404 });
-      return auth.handler(request);
+      return stripTokens(await auth.handler(request));
     },
     getSession: async (headers) => {
       const { headers: responseHeaders, response } = await auth.api.getSession({ headers, returnHeaders: true });

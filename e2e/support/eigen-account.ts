@@ -1,6 +1,6 @@
 import pg from 'pg';
 import { expect, type Browser, type Page } from '@playwright/test';
-import { clientIpHeaders, PASSWORD, totpFor, type TestAccount } from './accounts.ts';
+import { clientIpHeaders, PASSWORD, freshTotpFor, type TestAccount } from './accounts.ts';
 import { scanAxe } from './axe.ts';
 
 // Hulp voor de e2e-tests van spec eigen-account. Elke browsercontext krijgt een eigen IP (rate limit van Better Auth per
@@ -23,7 +23,7 @@ export async function signIn(page: Page, account: TestAccount, password = PASSWO
   await page.getByLabel('Wachtwoord').fill(password);
   await page.getByRole('button', { name: 'Inloggen' }).click();
   if (account.totpSecret !== undefined) {
-    await page.getByLabel('Code', { exact: true }).fill(totpFor(account.totpSecret));
+    await page.getByLabel('Code', { exact: true }).fill(freshTotpFor(account.totpSecret));
     await page.getByRole('button', { name: 'Bevestigen' }).click();
   }
   await expect(page.getByRole('button', { name: 'Profielmenu' })).toBeVisible();

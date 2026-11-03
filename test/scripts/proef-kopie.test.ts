@@ -11,6 +11,7 @@ import {
 import { spawnSync } from 'node:child_process';
 import path from 'node:path';
 import { afterEach, describe, expect, test } from 'vitest';
+import { expectAbsent } from '../support/absence';
 import { draaiNode, git, maakBron, MODULE, nieuweWerkmap, overgebleven, ROOT } from './proef-fixture';
 
 // scripts/kit/proef-kopie.mjs (docs/specs/app-init-proef.md, OV-3): gedeeld door check:app-init en check:new-resource.
@@ -72,7 +73,8 @@ describe('import', () => {
 describe('AC-16: gedeeld door beide checks', () => {
   const lees = (naam: string) => readFileSync(path.join(ROOT, 'scripts/kit', naam), 'utf8');
 
-  test.each(['check-app-init.mjs', 'check-new-resource.mjs'])(
+  // GEWIJZIGD (spec een-proefkopie, ADR 0073): check-new-resource.mjs maakt zelf geen kopie meer, maar roept draaiProef aan.
+  test.each(['check-app-init.mjs'])(
     '%s importeert kopie en script uit ./proef-kopie.mjs en definieert ze niet zelf',
     (naam) => {
       const tekst = lees(naam);
@@ -85,6 +87,13 @@ describe('AC-16: gedeeld door beide checks', () => {
       expect(tekst).not.toMatch(/(const|let)\s+(kopie|script)\s*=/);
     },
   );
+
+  test('check-new-resource.mjs gebruikt draaiProef uit ./check-app-init.mjs en definieert kopie en script niet', () => {
+    const tekst = lees('check-new-resource.mjs');
+    expect(tekst).toMatch(/import\s*\{\s*draaiProef\s*\}\s*from\s*'\.\/check-app-init\.mjs'/);
+    expectAbsent(tekst, /function\s+(kopie|script)\b/, { recognizes: ['function kopie(', 'function  script('] });
+    expectAbsent(tekst, /(const|let)\s+(kopie|script)\s*=/, { recognizes: ['const kopie =', 'let script='] });
+  });
 });
 
 describe('kopie', () => {
@@ -384,7 +393,11 @@ describe('bijSignaal', () => {
   });
 
   test('check:new-resource gebruikt hem, en een rode gate geeft een ✗-regel zonder stacktrace', () => {
+    // GEWIJZIGD (ADR 0073): check:new-resource gebruikt bijSignaal via draaiProef uit check-app-init.mjs.
     expect(readFileSync(path.join(ROOT, 'scripts/kit/check-new-resource.mjs'), 'utf8')).toMatch(
+      /import \{[^}]*\bdraaiProef\b[^}]*\} from '\.\/check-app-init\.mjs'/,
+    );
+    expect(readFileSync(path.join(ROOT, 'scripts/kit/check-app-init.mjs'), 'utf8')).toMatch(
       /import \{[^}]*\bbijSignaal\b[^}]*\} from '\.\/proef-kopie\.mjs'/,
     );
     const werkmap = nieuweWerkmap(dirs);

@@ -184,6 +184,7 @@ test('de migraties in db/migrations zijn groen, en zonder `owner to app_definer`
     'db/migrations/20261021120000_account_lifecycle.sql:14: app.user_roles_keep_one_admin',
     'db/migrations/20261021120000_account_lifecycle.sql:36: app.set_account_blocked',
     'db/migrations/20261021120000_account_lifecycle.sql:90: app.set_account_deactivated',
+    'db/migrations/20261103160000_one_time_use.sql:28: app.claim_one_time_use',
   ]);
 });
 

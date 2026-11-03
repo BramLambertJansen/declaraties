@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { clientIpHeaders, createAccount, PASSWORD, totpFor } from './support/accounts.ts';
+import { clientIpHeaders, createAccount, PASSWORD, freshTotpFor } from './support/accounts.ts';
 import { collectCspViolations, scanAxe } from './support/axe.ts';
 
 async function openCatalogue(page: Page) {
@@ -8,7 +8,7 @@ async function openCatalogue(page: Page) {
   await page.getByLabel('E-mailadres').fill(admin.email);
   await page.getByLabel('Wachtwoord').fill(PASSWORD);
   await page.getByRole('button', { name: 'Inloggen' }).click();
-  await page.getByLabel('Code', { exact: true }).fill(totpFor(admin.totpSecret ?? ''));
+  await page.getByLabel('Code', { exact: true }).fill(freshTotpFor(admin.totpSecret ?? ''));
   await page.getByRole('button', { name: 'Bevestigen' }).click();
   await expect(page.getByRole('heading', { level: 1, name: 'Dashboard' })).toBeVisible();
   await page.goto('/design-system');
