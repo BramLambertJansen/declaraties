@@ -11,7 +11,7 @@ Geen kop weglaten; "n.v.t. — reden" mag. Ontbreekt een antwoord, dan vraagt de
 ## Doel
 
 De drie "Bekend gat"-punten van R-AUTH-06 dicht, elk met een integratietest die op de huidige code faalt
-([ADR 0073](../adr/0073-eenmalige-codes-en-geen-sessietoken-in-json.md)).
+([ADR 0075](../adr/0075-eenmalige-codes-en-geen-sessietoken-in-json.md)).
 
 ## Rollen en wie wat ziet
 
@@ -45,10 +45,10 @@ Eén nieuwe migratie (expand, raakt geen bestaande rijen):
 - `revoke all … from public`; `grant usage on schema app to auth_service`; `grant execute on function app.claim_one_time_use(text,
   integer) to auth_service`. Geen andere API-rol (`app_authenticated`, `api_user`) krijgt execute.
 - Bewaarcatalogus (R-DB-17): dezelfde migratie zet `app.retention` `no force`, voegt alleen
-  `('app.one_time_use', 'expires_at', interval '0 seconds', 'app', 'eenmalig gebruik: de geldigheid zit al in expires_at (ADR 0073)')`
+  `('app.one_time_use', 'expires_at', interval '0 seconds', 'app', 'eenmalig gebruik: de geldigheid zit al in expires_at (ADR 0075)')`
   in en zet `app.retention` weer op `force`.
 - Functiecatalogus (`db/tests/functies.sql`): nieuwe klasse `auth` = uitvoerbaar voor `auth_service` en voor geen andere API-rol;
-  `app.claim_one_time_use(text, integer)` is de enige functie in die klasse. Dit is een gate-wijziging (ADR 0073 punt 1).
+  `app.claim_one_time_use(text, integer)` is de enige functie in die klasse. Dit is een gate-wijziging (ADR 0075 punt 1).
 - Sleutels (in `src/core/api/auth`), nooit de code of het token zelf:
   - TOTP: `totp:` + sha256-hex van `<userId>:<code>`.
   - E-maillink: `email-link:` + sha256-hex van `<userId van de actor>:<header>.<payload>` van de JWT. Zonder de handtekening, want
@@ -193,7 +193,7 @@ Op `/api/me/email/bevestigen`, elke stap zonder claim bij falen (`EMAIL_LINK_INV
 
 ## Buiten scope
 
-Herstelcodes (eigen spec in ST-02, gebruiken later dezelfde claimfunctie), strengere TOTP-controle op tijdstap (ADR 0073,
+Herstelcodes (eigen spec in ST-02, gebruiken later dezelfde claimfunctie), strengere TOTP-controle op tijdstap (ADR 0075,
 Alternatieven), intrekken van een lopende e-mailwijziging, de bearer-plugin, opruimen van verlopen rijen (ST-03).
 
 ## Testplan
@@ -215,7 +215,7 @@ Tester schrijft de tests eerst; ze falen op de huidige code op een assertie (R-P
 ## Open vragen
 
 - **OV-1** — Blokkeert de claim alleen dezelfde code, of ook oudere codes uit het venster na een nieuwere (tijdstap bijhouden)?
-  Aanbeveling: alleen dezelfde code; voldoet aan RFC 6238 en vraagt geen eigen cryptocode of interne Better Auth-functies (ADR 0073).
+  Aanbeveling: alleen dezelfde code; voldoet aan RFC 6238 en vraagt geen eigen cryptocode of interne Better Auth-functies (ADR 0075).
 - **OV-2** — Link 1 een tweede keer: weigeren, of mail 2 opnieuw sturen zoals nu? Aanbeveling: weigeren; elke link werkt één keer,
   en wie mail 2 mist, start opnieuw.
 - **OV-3** — Geldt de TOTP-claim ook voor interne aanroepen (`auth.api.verifyTOTP` zonder HTTP-verzoek)? De enige is de dev-login,
