@@ -2,8 +2,8 @@ import { readFileSync } from 'node:fs';
 import { describe, expect, test } from 'vitest';
 import { expectAbsent } from '../support/absence';
 
-// Regelboek, skill en gebouwde spec voor de agent-merge zonder Codex-tegoed (ADR 0069 herzien, spec agent-merge-zonder-codex
-// AC-7, AC-8). Structuurtests op sleutelwoorden, geen hele zinnen. De bytemeting tegen main staat in de PR (AC-7).
+// Regelboek en skill voor de agent-merge zonder Codex-tegoed (ADR 0069 herzien, spec agent-merge-zonder-codex AC-7).
+// AC-8 (de gebouwde spec agent-merge-niet-kritiek) volgt in een eigen PR: document-status weigert besluittekst naast kritieke paden. Structuurtests op sleutelwoorden, geen hele zinnen. De bytemeting tegen main staat in de PR (AC-7).
 const lees = (pad: string): string => readFileSync(pad, 'utf8');
 const regel = (id: string): string =>
   lees('docs/framework.md')
@@ -32,28 +32,5 @@ describe('agent-merge-zonder-codex/AC-7 regelboek en skill', () => {
     expect(stap3).toMatch(/Zonder spoor: geen extra review, niet ontwijken \(draft, commentaar weghalen\)/);
     expect(stap3).toMatch(/"steekproef"/);
     expect(mergen).toMatch(/geen `pr:merge` meer \(ADR 0069 punt 5\)/);
-  });
-});
-
-describe('agent-merge-zonder-codex/AC-8 gebouwde spec agent-merge-niet-kritiek', () => {
-  const spec = lees('docs/specs/agent-merge-niet-kritiek.md');
-  const ac = (n: number): string => {
-    const start = spec.indexOf(`- **agent-merge-niet-kritiek/AC-${String(n)}**`);
-    const einde = spec.indexOf('\n- **', start + 1);
-    return spec.slice(start, einde === -1 ? undefined : einde);
-  };
-
-  test('agent-merge-zonder-codex/AC-8 status blijft gebouwd', () => {
-    expect(spec).toMatch(/^status: gebouwd\b/m);
-  });
-
-  test.each([
-    [1, /agentMerge\.maxRegels/],
-    [3, /"indien-aanwezig"/],
-    [3, /agentMerge\.maxRegels/],
-    [5, /maxRegels/],
-  ])('agent-merge-zonder-codex/AC-8 AC-%i noemt %s en verwijst naar de nieuwe spec', (n, patroon) => {
-    expect(ac(n)).toMatch(patroon);
-    expect(ac(n)).toMatch(/\(agent-merge-zonder-codex\.md\)/);
   });
 });
