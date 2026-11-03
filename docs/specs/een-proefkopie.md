@@ -1,5 +1,5 @@
 ---
-status: goedgekeurd
+status: gebouwd # #486
 namespace: een-proefkopie
 ---
 
