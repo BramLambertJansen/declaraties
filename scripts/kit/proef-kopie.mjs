@@ -1,7 +1,8 @@
-// Gedeelde kern van check:new-resource en check:app-init (docs/specs/app-init-proef.md, OV-3): een tijdelijke kopie van de
-// repo (git ls-files, ook nieuwe bestanden) met een link naar node_modules, een package.json-script zonder pnpm, en een
-// opruimguard. Geen bijwerkingen bij import. Elk kindproces krijgt de omgeving zonder de repovariabelen van git
-// (`git rev-parse --local-env-vars`, zoals test/setup/git-env.ts), zodat een git-hook de kopie niet naar de bron laat wijzen.
+// Kern van de proefkopie van check:new-resource (docs/specs/app-init-proef.md OV-3, docs/specs/een-proefkopie.md): een
+// tijdelijke kopie van de repo (git ls-files, ook nieuwe bestanden) met een link naar node_modules, een
+// package.json-script zonder pnpm, en een opruimguard. Geen bijwerkingen bij import. Elk kindproces krijgt de omgeving
+// zonder de repovariabelen van git (`git rev-parse --local-env-vars`, zoals test/setup/git-env.ts), zodat een git-hook
+// de kopie niet naar de bron laat wijzen.
 import { execFileSync, spawn } from 'node:child_process';
 import {
   cpSync,
@@ -18,10 +19,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 
 /** De naam van de check bij elk prefix, voor de melding van de opruimguard. */
-const CHECKNAMEN = new Map([
-  ['app-init-proef-', 'check:app-init'],
-  ['new-resource-', 'check:new-resource'],
-]);
+const CHECKNAMEN = new Map([['new-resource-', 'check:new-resource']]);
 
 /** @type {Set<import('node:child_process').ChildProcess>} */
 const lopend = new Set();
@@ -207,7 +205,7 @@ export function ruimOp(pad, prefix) {
   const eigen = echt(path.dirname(absoluut)) === echt(tmpdir()) && path.basename(absoluut).startsWith(prefix);
   if (!eigen) {
     console.error(
-      `✗ ${CHECKNAMEN.get(prefix) ?? 'check:app-init'}: weigert ${pad} te verwijderen: niet de eigen tijdelijke map`,
+      `✗ ${CHECKNAMEN.get(prefix) ?? 'check:new-resource'}: weigert ${pad} te verwijderen: niet de eigen tijdelijke map`,
     );
     return false;
   }

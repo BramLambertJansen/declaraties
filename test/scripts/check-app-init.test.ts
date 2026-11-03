@@ -21,7 +21,6 @@ import {
   MODULE,
   nieuweWerkmap,
   overgebleven,
-  ROOT,
   schrijfDriver,
   type Werkmap,
 } from './proef-fixture';
@@ -44,15 +43,19 @@ const escapeUnsafeJsLiteral = (str: string): string =>
     }
   });
 
-// check:app-init (docs/specs/app-init-proef.md): app:init op een tijdelijke kopie, daarna de snelle suite in die kopie.
+// De app:init-kant van de proefkopie (docs/specs/app-init-proef.md, sinds ADR 0073 onderdeel van check:new-resource,
+// docs/specs/een-proefkopie.md): app:init op een tijdelijke kopie, daarna de snelle suite in die kopie.
 // Contract van scripts/kit/check-app-init.mjs voor deze tests:
-//   export async function draaiProef(bron: string, scripts: readonly string[], opties?: { bewaar?: boolean }): Promise<number>
+//   export async function draaiProef(bron: string, scripts: readonly string[],
+//     opties: { bewaar?: boolean, genereer: (root: string) => Promise<void> }): Promise<number>
 //   - geeft de exitcode terug (0 = geslaagd), schrijft de teksten uit de spec naar stdout (✗-regels mogen naar stderr);
 //   - bij SIGINT/SIGTERM ruimt hij op en doet process.exit(130/143);
-//   - bij import gebeurt niets; de CLI (`node scripts/kit/check-app-init.mjs [--bewaar]`) draait alleen als hoofdmodule,
-//     met process.cwd() als bron en snelleGates() als scripts.
-const PREFIX = 'app-init-proef-';
-const SUCCES = 'check:app-init: proef-app haalt gate:fast na app:init';
+//   - bij import gebeurt niets; de module heeft geen CLI meer (spec een-proefkopie AC-10).
+// GEWIJZIGD (spec een-proefkopie, bouw-PR 2): naam, prefix en meldingen zijn die van check:new-resource; de driver geeft
+// een generatorstap mee die niets doet.
+const PREFIX = 'new-resource-';
+const SUCCES = 'check:new-resource: time-entries haalt gate:fast na app:init';
+const NA = 'faalt na app:init en new:resource (zie leerpunt #334)';
 const dirs: string[] = [];
 
 afterEach(() => {
@@ -137,8 +140,7 @@ describe('een test die alleen in de template slaagt', () => {
     const setup = opzet(['ok', 'eist-onderhoud']);
     const result = draai(setup);
     expect(result.code).not.toBe(0);
-    expect(result.alles).toContain('✗ check:app-init: eist-onderhoud faalt na app:init');
-    expect(result.alles).toContain('(de template slaagt; zie leerpunt #334)');
+    expect(result.alles).toContain(`✗ check:new-resource: eist-onderhoud ${NA}`);
     expect(result.alles).not.toContain(SUCCES);
   });
 
@@ -169,7 +171,7 @@ describe('een test die alleen in de template slaagt', () => {
       { TMPDIR: werkmap.tmp },
     );
     expect(result.code).not.toBe(0);
-    expect(result.alles).toContain('✗ check:app-init: faal faalt na app:init');
+    expect(result.alles).toContain(`✗ check:new-resource: faal ${NA}`);
     expect(existsSync(marker)).toBe(false);
   });
 
@@ -178,7 +180,7 @@ describe('een test die alleen in de template slaagt', () => {
     expect(draaiNode(['probe/plan.mjs'], setup.werkmap.bron, {}).code).toBe(0);
     const result = draai(setup);
     expect(result.code).not.toBe(0);
-    expect(result.alles).toContain('✗ check:app-init: eist-plan faalt na app:init');
+    expect(result.alles).toContain(`✗ check:new-resource: eist-plan ${NA}`);
   });
 });
 
@@ -219,7 +221,7 @@ describe('de kopie na init', () => {
       TMPDIR: werkmap.tmp,
     });
     expect(result.code).not.toBe(0);
-    expect(result.alles).toContain('✗ check:app-init: app:init faalde in de kopie');
+    expect(result.alles).toContain('✗ check:new-resource: app:init faalde in de kopie');
     expect(result.alles).toContain('✗ app:init: README.md: begint niet met');
     expect(existsSync(marker)).toBe(false);
     expect(overgebleven(werkmap, PREFIX)).toEqual([]);
@@ -234,7 +236,7 @@ describe('opruimen', () => {
     const setup = opzet(scripts);
     const result = draai(setup);
     if (scripts[0] === 'ok') expect(result.code, result.alles).toBe(0);
-    else expect(result.alles).toContain('✗ check:app-init: faal faalt na app:init');
+    else expect(result.alles).toContain(`✗ check:new-resource: faal ${NA}`);
     expect(overgebleven(setup.werkmap, PREFIX)).toEqual([]);
   });
 
@@ -311,7 +313,7 @@ describe('opruimen', () => {
       TMPDIR: werkmap.tmp,
     });
     expect(result.code, result.alles).toBe(1);
-    expect(result.alles).toContain('✗ check:app-init: .claude/gates.json ontbreekt');
+    expect(result.alles).toContain('✗ check:new-resource: .claude/gates.json ontbreekt');
     expect(overgebleven(werkmap, PREFIX)).toEqual([]);
   });
 });
@@ -341,7 +343,7 @@ describe('de opruimguard', () => {
     ['buiten os.tmpdir()', (w: Werkmap) => path.join(w.base, `${PREFIX}x`), undefined],
     ['zonder het prefix', (w: Werkmap) => path.join(w.tmp, 'ander-x'), undefined],
     ['dieper dan direct onder os.tmpdir()', (w: Werkmap) => path.join(w.tmp, 'sub', `${PREFIX}x`), undefined],
-    ['het prefix van de andere check', (w: Werkmap) => path.join(w.tmp, 'new-resource-x'), undefined],
+    ['het oude prefix van check:app-init', (w: Werkmap) => path.join(w.tmp, 'app-init-proef-x'), undefined],
     [
       // Aangeboden pad bevat .. en wijst naar <base>/<prefix>esc: buiten os.tmpdir(), maar met prefix.
       'met .. dat uit os.tmpdir() ontsnapt',
@@ -355,7 +357,7 @@ describe('de opruimguard', () => {
     const result = ruim(werkmap, pad, PREFIX);
     expect(result.code, result.alles).toBe(0);
     expect(result.stdout).toContain('RESULTAAT:false');
-    expect(result.alles).toContain(`✗ check:app-init: weigert ${pad} te verwijderen: niet de eigen tijdelijke map`);
+    expect(result.alles).toContain(`✗ check:new-resource: weigert ${pad} te verwijderen: niet de eigen tijdelijke map`);
     expect(existsSync(path.join(doel, 'bestand'))).toBe(true);
   });
 
@@ -377,7 +379,7 @@ describe('de bron blijft ongemoeid', () => {
     const voor = toestand(setup.werkmap.bron);
     const result = draai(setup);
     if (scripts[0] === 'ok') expect(result.code, result.alles).toBe(0);
-    else expect(result.alles).toContain('✗ check:app-init: faal faalt na app:init');
+    else expect(result.alles).toContain(`✗ check:new-resource: faal ${NA}`);
     expect(toestand(setup.werkmap.bron)).toEqual(voor);
     expect(existsSync(path.join(setup.werkmap.bron, 'node_modules'))).toBe(true);
   });
@@ -411,68 +413,21 @@ describe('geen pnpm, npm of docker', () => {
   });
 });
 
-describe('verwijzingen in de repo', () => {
-  const ciTekst = readFileSync(path.join(ROOT, '.github/workflows/ci.yml'), 'utf8');
+// GEWIJZIGD (spec een-proefkopie AC-9 en AC-10, ADR 0073): de job en het script check:app-init bestaan niet meer en de
+// check is niet meer verplicht; de toetsen op ci.yml, package.json en de lijsten staan in een-proefkopie.test.ts.
 
-  /** De regels van een job (twee spaties ingesprongen sleutel) tot de volgende job. */
-  function jobBlok(naam: string): string[] {
-    const regels = ciTekst.split('\n');
-    const naamIndex = regels.findIndex((regel) => regel === `    name: ${naam}`);
-    if (naamIndex === -1) return [];
-    let start = naamIndex;
-    while (start > 0 && !/^ {2}[\w-]+:\s*$/.test(regels[start] ?? '')) start -= 1;
-    let eind = naamIndex + 1;
-    while (eind < regels.length && !/^ {2}[\w-]+:\s*$/.test(regels[eind] ?? '') && !/^\S/.test(regels[eind] ?? 'x'))
-      eind += 1;
-    return regels.slice(start, eind);
-  }
-
-  test('AC-12: eigen job `check:app-init` met de vorm van `check:new-resource` en het commando pnpm check:app-init', () => {
-    const app = jobBlok('check:app-init');
-    const resource = jobBlok('check:new-resource');
-    expect(app.length, 'job met name: check:app-init ontbreekt in ci.yml').toBeGreaterThan(0);
-    expect(resource.length).toBeGreaterThan(0);
-    expect(resource.join('\n')).not.toContain('check:app-init');
-    expect(app.join('\n')).not.toContain('check:new-resource');
-    const vorm = (regels: string[]) =>
-      regels
-        .slice(1)
-        .filter((regel) => !regel.trim().startsWith('#'))
-        .join('\n')
-        .replaceAll('check:app-init', 'CHECK')
-        .replaceAll('check:new-resource', 'CHECK');
-    expect(vorm(app)).toBe(vorm(resource));
-    expect(app.join('\n')).toContain('- run: pnpm check:app-init');
-    expect(app.join('\n')).not.toMatch(/^\s+if:/m);
-  });
-
-  test('AC-12: de workflow draait op pull_request en push naar main; package.json start het script', () => {
-    expect(ciTekst).toMatch(/^on:\n {2}push:\n {4}branches: \[main\]\n {2}pull_request:/m);
-    const pkg: unknown = JSON.parse(readFileSync(path.join(ROOT, 'package.json'), 'utf8'));
-    const scripts = typeof pkg === 'object' && pkg !== null && 'scripts' in pkg ? pkg.scripts : undefined;
-    expect(scripts).toMatchObject({ 'check:app-init': 'node scripts/kit/check-app-init.mjs' });
-  });
-
-  // GEWIJZIGD (spec een-proefkopie AC-9, ADR 0073): check:app-init is geen verplichte check meer; de toets op de lijsten
-  // staat nu in test/scripts/een-proefkopie.test.ts.
-});
-
-describe('overslaan en stoppen vóór het kopiëren', () => {
-  test('AC-13: een app (geen onderhoud): exit 0, "overgeslagen" en geen tijdelijke map', () => {
-    const werkmap = nieuweWerkmap(dirs);
-    maakBron(werkmap, { gates: '{\n  "altijdVragen": []\n}\n', scripts: SCRIPTS, probes: PROBES });
-    const result = draaiNode([CHECK], werkmap.bron, { TMPDIR: werkmap.tmp });
-    expect(result.code, result.alles).toBe(0);
-    expect(result.stdout.trim()).toBe('check:app-init: overgeslagen, dit is al een app');
-    expect(readdirSync(werkmap.tmp)).toEqual([]);
-  });
+describe('stoppen vóór het kopiëren', () => {
+  // GEWIJZIGD (spec een-proefkopie AC-5): een app slaat niet meer over; check:new-resource draait daar de generator en de
+  // suite (test/scripts/een-proefkopie.test.ts).
 
   test('AC-14: zonder node_modules: exit ≠ 0 met de melding en geen tijdelijke map', () => {
     const werkmap = nieuweWerkmap(dirs);
     maakBron(werkmap, { nodeModules: false, scripts: SCRIPTS, probes: PROBES });
-    const result = draaiNode([CHECK], werkmap.bron, { TMPDIR: werkmap.tmp });
+    const result = draaiNode([schrijfDriver(werkmap), werkmap.bron, JSON.stringify(['ok'])], werkmap.bron, {
+      TMPDIR: werkmap.tmp,
+    });
     expect(result.code).not.toBe(0);
-    expect(result.alles).toContain('✗ check:app-init: node_modules ontbreekt; draai eerst pnpm install');
+    expect(result.alles).toContain('✗ check:new-resource: node_modules ontbreekt; draai eerst pnpm install');
     expect(readdirSync(werkmap.tmp)).toEqual([]);
   });
 

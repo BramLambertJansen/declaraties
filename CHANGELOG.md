@@ -49,7 +49,8 @@ Hier staan wijzigingen die van belang zijn bij het gebruiken of bijwerken van de
   (leerpunt #314). `document-status` wordt een verplichte check in `scripts/github-ruleset.sh`: de eigenaar past de
   ruleset na de merge toe.
 
-- `pnpm check:app-init` (spec `docs/specs/app-init-proef.md`, leerpunt #334): draait `app:init` op een tijdelijke kopie en daarna de
+- `pnpm check:app-init` (spec `docs/specs/app-init-proef.md`, leerpunt #334; sinds ADR 0073 opgegaan in
+  `check:new-resource`, zie "Gewijzigd"): draait `app:init` op een tijdelijke kopie en daarna de
   snelle suite; verplichte CI-check (`requiredChecks`, `scripts/github-ruleset.sh`: de eigenaar past de ruleset na de merge toe). De
   kopie-, opruim- en git-env-logica van `check:new-resource` staat nu in `scripts/kit/proef-kopie.mjs`.
   
@@ -270,8 +271,8 @@ Hier staan wijzigingen die van belang zijn bij het gebruiken of bijwerken van de
 
 - Eén proefkopie per PR (ADR 0073, spec `een-proefkopie`): `check:new-resource` draait in de template in één kopie eerst
   `app:init`, dan `new:resource` en één keer de snelle suite; in een app alleen de generator en de suite. `check:app-init`
-  is geen verplichte check meer (`requiredChecks`, `scripts/github-ruleset.sh`); de job draait nog tot de volgende
-  bouw-PR hem weghaalt. Wat verandert voor een app: `check:new-resource` faalt nu ook bij een ontbrekende `node_modules`
+  is geen verplichte check meer (`requiredChecks`, `scripts/github-ruleset.sh`), en de job en het script
+  `pnpm check:app-init` zijn weg; `scripts/kit/check-app-init.mjs` levert alleen nog `draaiProef`. Wat verandert voor een app: `check:new-resource` faalt nu ook bij een ontbrekende `node_modules`
   of `.claude/gates.json`, in plaats van stil te slagen. Zie "Bij een update".
 
 - Het rolhek valt dicht bij elke storing (ADR 0045 punt 3, spec `rolhek-dicht-bij-storing`): `onFailure: "block"` op zijn

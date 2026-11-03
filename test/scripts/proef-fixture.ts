@@ -100,8 +100,9 @@ export function draaiNode(args: string[], cwd: string, env: Record<string, strin
 }
 
 /**
- * Schrijft een driver die `draaiProef(bron, scripts, { bewaar })` uit check-app-init.mjs aanroept; de uitvoer en
- * exitcode van dat proces zijn die van de check. Argumenten: <bron> <json-scripts> [--bewaar].
+ * Schrijft een driver die `draaiProef(bron, scripts, { bewaar, genereer })` uit check-app-init.mjs aanroept, met een
+ * generatorstap die niets doet (de generator zelf toetst een-proefkopie.test.ts); de uitvoer en exitcode van dat proces
+ * zijn die van de check. Argumenten: <bron> <json-scripts> [--bewaar].
  */
 export function schrijfDriver(werkmap: Werkmap): string {
   const driver = path.join(werkmap.base, 'driver.mjs');
@@ -110,7 +111,9 @@ export function schrijfDriver(werkmap: Werkmap): string {
     [
       `import { draaiProef } from ${JSON.stringify(CHECK)};`,
       'const [bron, scripts, ...vlaggen] = process.argv.slice(2);',
-      'const code = await draaiProef(bron, JSON.parse(scripts), { bewaar: vlaggen.includes("--bewaar") });',
+      'const genereer = async () => {};',
+      'const opties = { bewaar: vlaggen.includes("--bewaar"), genereer };',
+      'const code = await draaiProef(bron, JSON.parse(scripts), opties);',
       'process.exitCode = code;',
       '',
     ].join('\n'),
