@@ -24,6 +24,7 @@ const ruleNames = [
   'axe-scan',
   'klassen',
   'afwezigheid',
+  'negatieve-tabel',
 ];
 const rails = { rules: Object.fromEntries(ruleNames.map((name) => [name, restrictedSyntax])) };
 
@@ -46,6 +47,13 @@ const TEKST_METHODE = '/^(match|search)$/';
 const VERGELIJK =
   "CallExpression[callee.property.name=/^(toBe|toEqual|toStrictEqual|toBeNull|toBeFalsy|toBeTruthy|toBeUndefined)$/] > MemberExpression.callee > CallExpression.object[callee.name='expect']";
 const ASSERT = "CallExpression:matches([callee.name='assert'], [callee.property.name='ok'], [callee.name='expect'])";
+// Een assertie dat de uitkomst onwaar is: toBe/toEqual/toStrictEqual(false), toBeFalsy(), not.toBe(true), not.toBeTruthy().
+const ONWAAR = [
+  'CallExpression[callee.property.name=/^(toBe|toEqual|toStrictEqual)$/][arguments.0.value=false]',
+  "CallExpression[callee.property.name='toBeFalsy']",
+  "CallExpression[callee.property.name='toBe'][callee.object.property.name='not'][arguments.0.value=true]",
+  "CallExpression[callee.property.name='toBeTruthy'][callee.object.property.name='not']",
+].join(', ');
 const ELEMENTS = '/^(button|input|select|textarea|dialog|a)$/';
 const IMPORTS = ['ImportDeclaration', 'ExportNamedDeclaration', 'ExportAllDeclaration', 'ImportExpression'].join(', ');
 
@@ -231,6 +239,21 @@ const railConfigs = [
       `${VERGELIJK} > CallExpression.arguments[callee.property.name=${REGEX_METHODE}][callee.object.regex]`,
       `${VERGELIJK} > CallExpression.arguments[callee.property.name=${TEKST_METHODE}][arguments.0.regex]`,
       `${ASSERT} > UnaryExpression.arguments[operator='!'] > CallExpression[callee.property.name=${REGEX_METHODE}][callee.object.regex]`,
+    ],
+  ),
+  // Negatieve tabel (leerpunt #401): alle rijen gaven `false`, maar de gedeelde basis was zelf al onwaar, zodat het
+  // weghalen van een bewaakte voorwaarde alles groen liet. Een tabel die per rij onwaar eist, loopt via
+  // expectNegativeTable, die eerst bewijst dat de basis waar is.
+  restrict(
+    'negatieve-tabel',
+    TESTS,
+    ['test/support/negative-table.ts'],
+    'Een negatieve tabel bewijst alleen iets als de basis eerst waar is (leerpunt #401): gebruik ' +
+      'expectNegativeTable({ base, check, cases }) uit test/support/negative-table.ts; elke rij wijzigt één voorwaarde. ' +
+      'Is `false` een bijassertie in een positieve tabel, schrijf die dan als not.toHaveClass of not.toContain.',
+    [
+      `CallExpression[callee.callee.property.name=/^(each|for)$/]:has(${ONWAAR})`,
+      `CallExpression[callee.tag.property.name=/^(each|for)$/]:has(${ONWAAR})`,
     ],
   ),
   // Toegankelijkheid (framework §7, roadmap 3c): één axe-scan zonder uitzonderingen. Een regel of element uitzetten moet

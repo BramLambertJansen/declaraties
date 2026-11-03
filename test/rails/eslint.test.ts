@@ -396,6 +396,48 @@ const fixtures: Fixture[] = [
     file,
     code: 'declare const x: string; expect(x).not.toMatch(/mandat/i);',
     rule: null,
+  })), // negatieve-tabel (leerpunt #401): een tabel die per rij `false` eist, bewijst alleen iets als de basis eerst waar is;
+  // dat bewijs levert expectNegativeTable uit test/support/negative-table.ts.
+  ...[
+    "test.each([1, 2])('rij %s', (n) => { expect(ok(n)).toBe(false); });",
+    "it.each([1, 2])('rij %s', (n) => { expect(ok(n)).toBe(false); });",
+    "test.for([1, 2])('rij %s', (n) => { expect(ok(n)).toBe(false); });",
+    "describe.each([1, 2])('rij %s', (n) => { test('t', () => { expect(ok(n)).toBe(false); }); });",
+    "test.each([1, 2])('rij %s', (n) => { expect(ok(n)).toStrictEqual(false); });",
+    "test.each([1, 2])('rij %s', (n) => { expect(ok(n)).toEqual(false); });",
+    "test.each([1, 2])('rij %s', (n) => { expect(ok(n)).toBeFalsy(); });",
+    "test.each([1, 2])('rij %s', (n) => { expect(ok(n)).not.toBe(true); });",
+    "test.skip.each([1, 2])('rij %s', (n) => { expect(ok(n)).toBe(false); });",
+    "test.each([1, 2])('rij %s', (n) => { expect(ok(n)).not.toBeTruthy(); });",
+    "test.each`n\n${1}\n${2}`('rij $n', ({ n }) => { expect(ok(n)).toBe(false); });",
+  ].map((code) => ({
+    name: `negatieve-tabel/#401: ${code}`,
+    file: 'test/x.test.ts',
+    code: `declare function ok(n: number): boolean; ${code}`,
+    rule: 'rails/negatieve-tabel',
+  })),
+  ...['src/web/x.test.tsx', 'e2e/x.spec.ts'].map((file) => ({
+    name: 'negatieve-tabel/#401: elk testbestand valt eronder',
+    file,
+    code: "declare function ok(n: number): boolean; test.each([1])('r', (n) => { expect(ok(n)).toBe(false); });",
+    rule: 'rails/negatieve-tabel',
+  })),
+  ...[
+    "test.each([1, 2])('rij %s', (n) => { expect(ok(n)).toBe(true); });",
+    "test.each([1, 2])('rij %s', (n) => { expect(n).toBe(n); });",
+    "test('los', () => { expect(ok(1)).toBe(false); });",
+    "test('tabel', () => { expectNegativeTable({ base: 1, check: ok, cases: [{ name: 'nul', change: () => 0 }] }); });",
+  ].map((code) => ({
+    name: `negatieve-tabel/#401: mag: ${code}`,
+    file: 'test/x.test.ts',
+    code: `declare function ok(n: number): boolean; ${code}`,
+    rule: null,
+  })),
+  ...['src/api/x.ts', 'test/support/negative-table.ts'].map((file) => ({
+    name: 'negatieve-tabel/#401: buiten het bereik mag',
+    file,
+    code: "declare function ok(n: number): boolean; test.each([1])('r', (n) => { expect(ok(n)).toBe(false); });",
+    rule: null,
   })),
 ];
 

@@ -82,9 +82,34 @@
       "count": 1
     }
   },
+  "src/core/shared/can-unknown-permission.test.ts": {
+    "rails/negatieve-tabel": {
+      "count": 1
+    }
+  },
   "src/core/shared/unsafe-cast.ts": {
     "@typescript-eslint/no-unnecessary-type-parameters": {
       "count": 1
+    }
+  },
+  "src/core/web/lib/list-search-enum-url.test.ts": {
+    "rails/negatieve-tabel": {
+      "count": 1
+    }
+  },
+  "src/core/web/lib/list-search-url.test.ts": {
+    "rails/negatieve-tabel": {
+      "count": 1
+    }
+  },
+  "src/core/web/ui/accordion.test.tsx": {
+    "rails/negatieve-tabel": {
+      "count": 1
+    }
+  },
+  "src/core/web/ui/button-disabled-link.test.tsx": {
+    "rails/negatieve-tabel": {
+      "count": 3
     }
   },
   "src/core/web/ui/button.tsx": {
@@ -92,8 +117,48 @@
       "count": 1
     }
   },
+  "src/core/web/ui/combobox-initial-focus.test.tsx": {
+    "rails/negatieve-tabel": {
+      "count": 1
+    }
+  },
   "src/core/web/ui/combobox.tsx": {
     "complexity": {
+      "count": 1
+    }
+  },
+  "src/core/web/ui/form-controls.test.tsx": {
+    "rails/negatieve-tabel": {
+      "count": 1
+    }
+  },
+  "src/core/web/ui/heading.test.tsx": {
+    "rails/negatieve-tabel": {
+      "count": 1
+    }
+  },
+  "src/core/web/ui/nav-link-native.test.tsx": {
+    "rails/negatieve-tabel": {
+      "count": 2
+    }
+  },
+  "src/core/web/ui/notice.test.tsx": {
+    "rails/negatieve-tabel": {
+      "count": 1
+    }
+  },
+  "src/core/web/ui/status-badge.test.tsx": {
+    "rails/negatieve-tabel": {
+      "count": 1
+    }
+  },
+  "src/shared/contracts/accounts.test.ts": {
+    "rails/negatieve-tabel": {
+      "count": 1
+    }
+  },
+  "src/shared/schemas/account-length-messages.test.ts": {
+    "rails/negatieve-tabel": {
       "count": 1
     }
   },
@@ -104,6 +169,11 @@
   },
   "src/web/features/account/account-deel2.test.tsx": {
     "complexity": {
+      "count": 1
+    }
+  },
+  "src/web/features/design-system/editable-details-example.test.tsx": {
+    "rails/negatieve-tabel": {
       "count": 1
     }
   },
@@ -122,9 +192,34 @@
       "count": 1
     }
   },
+  "test/hooks/authority.test.ts": {
+    "rails/negatieve-tabel": {
+      "count": 3
+    }
+  },
+  "test/hooks/built-evidence.test.ts": {
+    "rails/negatieve-tabel": {
+      "count": 6
+    }
+  },
+  "test/hooks/code-scanning-evidence.test.ts": {
+    "rails/negatieve-tabel": {
+      "count": 1
+    }
+  },
+  "test/hooks/hooks-van-main.test.ts": {
+    "rails/negatieve-tabel": {
+      "count": 1
+    }
+  },
   "test/hooks/mandate-follow-up-ci.test.ts": {
     "rails/afwezigheid": {
       "count": 2
+    }
+  },
+  "test/hooks/mandate-follow-up-status.test.ts": {
+    "rails/negatieve-tabel": {
+      "count": 1
     }
   },
   "test/hooks/meting.test.ts": {
@@ -145,6 +240,16 @@
   "test/hooks/rolhek-onderhoud.test.ts": {
     "rails/afwezigheid": {
       "count": 1
+    }
+  },
+  "test/hooks/rolhek-pr-merge.test.ts": {
+    "rails/negatieve-tabel": {
+      "count": 2
+    }
+  },
+  "test/hooks/runner-authority.test.ts": {
+    "rails/negatieve-tabel": {
+      "count": 6
     }
   },
   "test/hooks/statusregel.test.ts": {
@@ -177,6 +282,11 @@
       "count": 4
     }
   },
+  "test/rails/gebouwd-na-merge.test.ts": {
+    "rails/negatieve-tabel": {
+      "count": 4
+    }
+  },
   "test/rails/leerpunt-sjabloon.test.ts": {
     "rails/afwezigheid": {
       "count": 1
@@ -189,6 +299,14 @@
   },
   "test/rails/leesbudget.test.ts": {
     "rails/afwezigheid": {
+      "count": 2
+    },
+    "rails/negatieve-tabel": {
+      "count": 1
+    }
+  },
+  "test/rails/mandate-follow-up-docs.test.ts": {
+    "rails/negatieve-tabel": {
       "count": 2
     }
   },
@@ -225,6 +343,9 @@
   "test/rails/new-resource-lijst.test.ts": {
     "rails/afwezigheid": {
       "count": 2
+    },
+    "rails/negatieve-tabel": {
+      "count": 1
     }
   },
   "test/rails/new-resource-spec-vorm.test.ts": {
@@ -265,6 +386,14 @@
   "test/scripts/check-app-init.test.ts": {
     "rails/afwezigheid": {
       "count": 1
+    },
+    "rails/negatieve-tabel": {
+      "count": 1
+    }
+  },
+  "test/scripts/check-image-inputs.test.ts": {
+    "rails/negatieve-tabel": {
+      "count": 2
     }
   },
   "test/scripts/cloud-setup.test.ts": {
@@ -272,8 +401,18 @@
       "count": 1
     }
   },
+  "test/scripts/dependency-readiness.test.ts": {
+    "rails/negatieve-tabel": {
+      "count": 2
+    }
+  },
   "test/scripts/feiten.test.ts": {
     "rails/afwezigheid": {
+      "count": 1
+    }
+  },
+  "test/scripts/geheugen.test.ts": {
+    "rails/negatieve-tabel": {
       "count": 1
     }
   },
