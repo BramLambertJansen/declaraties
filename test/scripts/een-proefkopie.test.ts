@@ -1,6 +1,7 @@
 import { existsSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { afterEach, describe, expect, test } from 'vitest';
+import { expectAbsent } from '../support/absence';
 import {
   bewaardPad,
   CHECK,
@@ -222,7 +223,8 @@ describe('AC-8: de waarborgen van app-init-proef, met de nieuwe naam en het ene 
   });
 });
 
-describe('AC-9: check:app-init is geen verplichte check meer, maar draait nog (bouw-PR 1)', () => {
+// GEWIJZIGD (bouw-PR 2): AC-9 eiste dat job en script nog bestonden; AC-10 haalt ze weg.
+describe('AC-9: check:app-init is geen verplichte check meer', () => {
   test('requiredChecks, de ruleset en nieuwe-app.md noemen check:new-resource en niet check:app-init', () => {
     const decisions: unknown = JSON.parse(readFileSync(path.join(ROOT, '.claude/decisions.json'), 'utf8'));
     const required =
@@ -239,11 +241,50 @@ describe('AC-9: check:app-init is geen verplichte check meer, maar draait nog (b
     expect(nieuweApp).toContain('check:new-resource');
     expect(nieuweApp).not.toContain('check:app-init');
   });
+});
 
-  test('de job check:app-init en het script bestaan nog', () => {
-    expect(readFileSync(path.join(ROOT, '.github/workflows/ci.yml'), 'utf8')).toContain('name: check:app-init');
+describe('AC-10: de job en het script check:app-init bestaan niet meer (bouw-PR 2)', () => {
+  const ci = readFileSync(path.join(ROOT, '.github/workflows/ci.yml'), 'utf8');
+
+  /** De regels van een job (twee spaties ingesprongen sleutel) tot de volgende job. */
+  function jobBlok(naam: string): string {
+    const regels = ci.split('\n');
+    const naamIndex = regels.findIndex((regel) => regel === `    name: ${naam}`);
+    if (naamIndex === -1) return '';
+    let start = naamIndex;
+    while (start > 0 && !/^ {2}[\w-]+:\s*$/.test(regels[start] ?? '')) start -= 1;
+    let eind = naamIndex + 1;
+    while (eind < regels.length && !/^ {2}[\w-]+:\s*$/.test(regels[eind] ?? '') && !/^\S/.test(regels[eind] ?? 'x'))
+      eind += 1;
+    return regels.slice(start, eind).join('\n');
+  }
+
+  test('ci.yml heeft geen job check:app-init; check:new-resource draait altijd en voert pnpm check:new-resource uit', () => {
+    expect(jobBlok('check:app-init')).toBe('');
+    expect(ci).not.toContain('pnpm check:app-init');
+    const job = jobBlok('check:new-resource');
+    expect(job).toContain('- run: pnpm check:new-resource');
+    const zonderCommentaar = job
+      .split('\n')
+      .filter((regel) => !regel.trim().startsWith('#'))
+      .join('\n');
+    expectAbsent(zonderCommentaar, /^\s+(if|paths|paths-ignore):/m, {
+      recognizes: ['    if: github.event_name', '      paths:', '    paths-ignore:'],
+      allows: ['      - run: pnpm check:new-resource'],
+    });
+    expect(ci).toMatch(/^on:\n {2}push:\n {4}branches: \[main\]\n {2}pull_request:/m);
+    expectAbsent(ci.split(/^jobs:/m)[0] ?? '', /paths/, { recognizes: ['paths:', 'paths-ignore:'] });
+  });
+
+  test('package.json heeft geen script check:app-init en wel check:new-resource', () => {
     const pkg: unknown = JSON.parse(readFileSync(path.join(ROOT, 'package.json'), 'utf8'));
     const scripts = typeof pkg === 'object' && pkg !== null && 'scripts' in pkg ? pkg.scripts : undefined;
-    expect(scripts).toMatchObject({ 'check:app-init': 'node scripts/kit/check-app-init.mjs' });
+    expect(scripts).toMatchObject({ 'check:new-resource': 'node scripts/kit/check-new-resource.mjs' });
+    expect(scripts).not.toHaveProperty(['check:app-init']);
+  });
+
+  test('check-app-init.mjs heeft geen CLI-ingang meer', () => {
+    const tekst = readFileSync(path.join(ROOT, 'scripts/kit/check-app-init.mjs'), 'utf8');
+    expectAbsent(tekst, /import\.meta\.main/, { recognizes: ['if (import.meta.main) {'] });
   });
 });

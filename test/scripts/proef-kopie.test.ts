@@ -14,7 +14,8 @@ import { afterEach, describe, expect, test } from 'vitest';
 import { expectAbsent } from '../support/absence';
 import { draaiNode, git, maakBron, MODULE, nieuweWerkmap, overgebleven, ROOT } from './proef-fixture';
 
-// scripts/kit/proef-kopie.mjs (docs/specs/app-init-proef.md, OV-3): gedeeld door check:app-init en check:new-resource.
+// scripts/kit/proef-kopie.mjs (docs/specs/app-init-proef.md OV-3, docs/specs/een-proefkopie.md): de kern van
+// check:new-resource.
 // Contract voor deze tests:
 //   kopie(bron: string, prefix: string): string          synchroon; map direct onder os.tmpdir(), naam begint met prefix;
 //                                                          inhoud = git ls-files --cached --others --exclude-standard (bestanden
@@ -27,7 +28,7 @@ import { draaiNode, git, maakBron, MODULE, nieuweWerkmap, overgebleven, ROOT } f
 //                                                          van het kind; gooit/rejects bij een niet-nul exit of onbekend script
 //                                                          (bericht bevat `geen script <naam>`)
 //   ruimOp(pad: string, prefix: string): boolean          true = verwijderd; false = geweigerd (niets verwijderd,
-//                                                          console.error `✗ check:app-init: weigert <pad> te verwijderen: niet de eigen tijdelijke map`)
+//                                                          console.error `✗ check:new-resource: weigert <pad> te verwijderen: niet de eigen tijdelijke map`)
 // Bij import: geen proces, geen map, geen uitvoer.
 const dirs: string[] = [];
 
@@ -107,11 +108,12 @@ describe('kopie', () => {
 
   test('maakt een map direct onder TMPDIR met het prefix, met tracked en nieuwe bestanden, zonder verwijderde', () => {
     const werkmap = bronMetWijzigingen();
-    const result = kopieInKind(werkmap, 'app-init-proef-');
+    // GEWIJZIGD (spec een-proefkopie AC-8): new-resource- is het enige prefix.
+    const result = kopieInKind(werkmap, 'new-resource-');
     expect(result.code, result.alles).toBe(0);
     const doel = result.stdout.trim();
     expect(path.dirname(doel)).toBe(realpathSync(werkmap.tmp));
-    expect(overgebleven(werkmap, 'app-init-proef-')).toEqual([path.basename(doel)]);
+    expect(overgebleven(werkmap, 'new-resource-')).toEqual([path.basename(doel)]);
     expect(readFileSync(path.join(doel, 'nieuw.txt'), 'utf8')).toBe('ongetrackt');
     expect(existsSync(path.join(doel, 'README.md'))).toBe(true);
     expect(existsSync(path.join(doel, 'CHANGELOG.md'))).toBe(false);
@@ -316,7 +318,7 @@ describe('ruimOp', () => {
     );
     const geweigerd = draaiNode([driver, pad, 'new-resource-'], werkmap.base, { TMPDIR: werkmap.tmp });
     expect(geweigerd.stdout).toContain('RESULTAAT:false');
-    // De melding noemt de check die de guard aanroept, niet altijd check:app-init.
+    // De melding noemt de check bij het prefix.
     expect(geweigerd.alles).toContain('✗ check:new-resource: weigert');
     expect(existsSync(path.join(pad, 'bestand'))).toBe(true);
     // Met het eigen prefix gaat dezelfde map wel weg.

@@ -379,9 +379,6 @@
     }
   },
   "test/scripts/check-app-init.test.ts": {
-    "rails/afwezigheid": {
-      "count": 1
-    },
     "rails/negatieve-tabel": {
       "count": 1
     }
