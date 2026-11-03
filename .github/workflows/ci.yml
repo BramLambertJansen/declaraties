@@ -1,4 +1,4 @@
-# gate:fast en gate:slow op elke push naar main en elke PR (framework §10); check:new-resource als eigen job (ADR 0047 punt 9);
+# gate:fast en gate:slow op elke push naar main en elke PR (framework §10); check:new-resource als eigen job met app:init en generator in één kopie (ADR 0047 punt 9, ADR 0073);
 # image bouwt en controleert de productie-image (ADR 0049); secrets draait Betterleaks (PR: eigen commits, anders alle gefetchte refs). CodeQL in codeql.yml.
 # osv-scanner in osv.yml, de diff-guard in guard.yml. Actions op volledige SHA; Renovate werkt ze bij.
 name: ci
@@ -138,8 +138,9 @@ jobs:
         env:
           SMOKE_BROWSER: "1"
 
-  # Code uit pnpm new:resource haalt gate:fast (ADR 0047 punt 9). Duurt minuten, daarom niet in gate:fast zelf; wel altijd,
-  # want de templates doen bijna alles in src/ na.
+  # Eén proefkopie (ADR 0073): in de template eerst app:init, dan pnpm new:resource, dan één keer de snelle suite, zodat
+  # gegenereerde code en een test die alleen in de template slaagt (leerpunt #334) hier rood worden. Duurt minuten, daarom
+  # niet in gate:fast zelf; wel altijd en volledig (R-CI-08).
   new-resource:
     name: check:new-resource
     runs-on: ubuntu-24.04
@@ -158,8 +159,8 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm check:new-resource
 
-  # De snelle suite draait ook na pnpm app:init in een kopie, zodat een test die alleen in de template slaagt de template-CI
-  # rood maakt in plaats van de eerste app (leerpunt #334, spec app-init-proef). Duurt minuten, daarom niet in gate:fast.
+  # De oude losse proef na pnpm app:init (spec app-init-proef). Sinds ADR 0073 geen verplichte check meer: check:new-resource
+  # doet app:init in dezelfde kopie. Bouw-PR 2 van ADR 0073 haalt deze job weg.
   app-init:
     name: check:app-init
     runs-on: ubuntu-24.04

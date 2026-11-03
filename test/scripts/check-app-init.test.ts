@@ -453,22 +453,8 @@ describe('verwijzingen in de repo', () => {
     expect(scripts).toMatchObject({ 'check:app-init': 'node scripts/kit/check-app-init.mjs' });
   });
 
-  test('AC-15: requiredChecks, de checks-lijst van de ruleset en beide opsommingen in nieuwe-app.md', () => {
-    const decisions: unknown = JSON.parse(readFileSync(path.join(ROOT, '.claude/decisions.json'), 'utf8'));
-    const required =
-      typeof decisions === 'object' && decisions !== null && 'requiredChecks' in decisions
-        ? decisions.requiredChecks
-        : [];
-    expect(required).toContain('check:app-init');
-    const ruleset = readFileSync(path.join(ROOT, 'scripts/github-ruleset.sh'), 'utf8');
-    const lijst = /^checks=\(([^)]*)\)/m.exec(ruleset)?.[1] ?? '';
-    expect(lijst.split(/\s+/)).toContain('check:app-init');
-    const regels = readFileSync(path.join(ROOT, 'docs/nieuwe-app.md'), 'utf8')
-      .split('\n')
-      .filter((regel) => regel.includes('check:new-resource'));
-    expect(regels.length).toBeGreaterThanOrEqual(2);
-    for (const regel of regels) expect(regel).toContain('check:app-init');
-  });
+  // GEWIJZIGD (spec een-proefkopie AC-9, ADR 0073): check:app-init is geen verplichte check meer; de toets op de lijsten
+  // staat nu in test/scripts/een-proefkopie.test.ts.
 });
 
 describe('overslaan en stoppen vóór het kopiëren', () => {
