@@ -284,13 +284,19 @@ describe('krimp-op-normen/AC-6: melding bij een gewijzigde norm en de reviewer t
 });
 
 describe('krimp-op-normen/AC-7: regelboek en leesbudget verwijzen naar de nieuwe controle', () => {
-  // De verwijzing in docs/specs/leesbudget.md volgt in een docs-PR: een inhoudswijziging van een gebouwde spec gaat niet
-  // samen met kritieke paden zoals .claude/gates.json (document-status, ADR 0062 punt 2).
   test('krimp-op-normen/AC-7 R-DOC-07 noemt de lijst en 0067', () => {
     const regel = readFileSync('docs/framework.md', 'utf8')
       .split('\n')
       .find((r) => r.startsWith('- **R-DOC-07**'));
     expect(regel).toContain('docs/normen-vervallen.md');
     expect(regel).toContain('0067');
+  });
+
+  test('krimp-op-normen/AC-7 leesbudget verwijst bij AC-6, AC-8 en het randgeval naar deze spec', () => {
+    const tekst = readFileSync('docs/specs/leesbudget.md', 'utf8');
+    const ac = (n: number) => tekst.split('\n').find((r) => r.startsWith(`- **leesbudget/AC-${String(n)}**`)) ?? '';
+    expect(ac(6)).toContain('[krimp-op-normen](krimp-op-normen.md)');
+    expect(ac(8)).toContain('[krimp-op-normen](krimp-op-normen.md)');
+    expect(tekst).toContain('`docs/normen-vervallen.md`');
   });
 });
