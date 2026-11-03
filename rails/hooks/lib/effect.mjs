@@ -161,22 +161,44 @@ function leesNu(repo, rel) {
 
 /**
  * Een verandering met de beslissing van `decideChange` voor deze rol.
- * @param {Repo} repo @param {{ verandering: Verandering, agentType: string, voor: Snapshot }} doel
+ * @param {Repo} repo @param {{ verandering: Verandering, agentType: string, voor: Snapshot, verhuisd: ReadonlySet<string> }} doel
  */
-function beslis(repo, { verandering, agentType, voor }) {
+function beslis(repo, { verandering, agentType, voor, verhuisd }) {
   const { rel, na } = verandering;
   const ctx = { ...repo.ctx, read: leesVoor(repo, voor) };
   const del = { kind: /** @type {const} */ ('delete'), after: null };
-  const besluiten = [decideChange({ rel, change: weg(na) ? del : { kind: 'write', after: leesNu(repo, rel) }, agentType }, ctx)];
+  const nu = { kind: /** @type {const} */ ('write'), after: leesNu(repo, rel), verhuizing: verhuisd.has(rel) };
+  const besluiten = [decideChange({ rel, change: weg(na) ? del : nu, agentType }, ctx)];
   // Een gestagede inhoud telt apart: een tester kan een `test.skip` stagen en de werkmap ongemoeid laten.
   if (verandering.voor.idx !== na.idx && !rel.endsWith('/')) {
     const blob = indexBlob(na.idx);
-    const change = blob === null ? del : { kind: /** @type {const} */ ('write'), after: echteBlob(repo, blob) };
+    const after = blob === null ? null : echteBlob(repo, blob);
+    // `git mv` naar het archief staget dezelfde inhoud: ook die verhuizing telt (AC-5).
+    const change = blob === null ? del : { kind: /** @type {const} */ ('write'), after, verhuizing: nu.verhuizing && after === nu.after };
     besluiten.push(decideChange({ rel, change, agentType }, ctx));
   }
   /** @param {'deny' | 'ask' | 'context'} soort */
   const samen = (soort) => [...new Set(besluiten.flatMap((besluit) => besluit[soort]))];
   return { deny: samen('deny'), ask: samen('ask'), context: samen('context') };
+}
+
+/**
+ * Verhuizingen naar het ADR-archief (spec rolhek-vooraf-krimp AC-5): een nieuw `docs/adr/archief/<naam>` met dezelfde inhoud
+ * als het `docs/adr/<naam>` dat in hetzelfde commando verdween.
+ * @param {Repo} repo @param {{ lijst: readonly Verandering[], voor: Snapshot }} doel
+ * @returns {Set<string>}
+ */
+function verhuizingen(repo, { lijst, voor }) {
+  const weggehaald = new Set(lijst.filter((verandering) => weg(verandering.na)).map((verandering) => verandering.rel));
+  const lees = leesVoor(repo, voor);
+  return new Set(lijst
+    .filter((verandering) => verandering.rel.startsWith('docs/adr/archief/') && weg(verandering.voor) && !weg(verandering.na))
+    .filter((verandering) => {
+      const bron = `docs/adr/${verandering.rel.slice('docs/adr/archief/'.length)}`;
+      const inhoud = weggehaald.has(bron) ? lees(bron) : null;
+      return !bron.slice('docs/adr/'.length).includes('/') && inhoud !== null && inhoud === leesNu(repo, verandering.rel);
+    })
+    .map((verandering) => verandering.rel));
 }
 
 /** @param {Repo} repo @param {{ voor: Snapshot, na: Snapshot }} paar */
@@ -211,10 +233,11 @@ export function toets(repo, paar, wie) {
   const nieuw = [];
   /** @type {string[]} */
   const meldingen = [];
+  const verhuisd = verhuizingen(repo, { lijst, voor: paar.voor });
   for (const verandering of lijst) {
     if (verklaard.has(verandering.rel) || terug(verandering) || genomen[verandering.rel] === staatSleutel(paar.na, verandering.rel))
       continue;
-    const besluit = beslis(repo, { verandering, agentType: wie.agentType, voor: paar.voor });
+    const besluit = beslis(repo, { verandering, agentType: wie.agentType, voor: paar.voor, verhuisd });
     const reden = [...besluit.deny, ...besluit.ask].join('; ');
     if (reden !== '') nieuw.push({ rel: verandering.rel, actor: wie.actor, rol: wie.agentType || 'hoofdsessie', commando: wie.commando, reden, voor: verandering.voor });
     meldingen.push(...besluit.context);
