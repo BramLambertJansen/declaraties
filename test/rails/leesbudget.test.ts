@@ -9,7 +9,7 @@ import { afterEach, describe, expect, test } from 'vitest';
 // - scripts/kit/check-docs.mjs: docsViolations(root) (bestaat) zonder budget voor hoofdstuk, regelboek, spec en ADR;
 //   AGENTS.md (9 KB, 100 regels) en CLAUDE.md (50 regels, sleutel `docs:CLAUDE.md:regels:<n>`) blijven rood.
 //   docsMeldingen(root): Promise<string[]> | string[] met "let op: <eenheid> op <n> % van de grens; verplaats naar een
-//   lagere laag" vanaf ceil(0,85 × grens). krimpViolations({ oud, nieuw, markdown, rIds }): Violation[] (AC-6, puur).
+//   lagere laag" vanaf ceil(0,85 × grens). normViolations({ boek, lijst, bytes }): Violation[] (AC-6, nu krimp-op-normen).
 // - scripts/kit/ratchet.mjs: drukt de meldingen af (exit ongewijzigd); een krimpovertreding komt nooit in de baseline.
 // - scripts/kit/leespad.mjs: hoofdstukTekst(framework, n): string | null; leespad() telt van docs/framework.md alleen
 //   de tekst vóór de eerste `## `-kop plus hoofdstuk 8 met 8a, 8b…; metingen(paden, lees) per soort
@@ -123,7 +123,8 @@ async function docsMeldingen(dir: string): Promise<string[]> {
   return (Array.isArray(uit) ? uit : []).map(String);
 }
 
-function node(cwd: string, [script = '', ...args]: string[], env: Record<string, string> = {}) {
+// Een tijdelijke repo zonder origin/main is lokaal: in CI zou de krimpcontrole daar rood zijn (krimp-op-normen/AC-5).
+function node(cwd: string, [script = '', ...args]: string[], env: Record<string, string> = { GITHUB_ACTIONS: '' }) {
   const r = spawnSync(process.execPath, [path.join(root, script), ...args], {
     cwd,
     encoding: 'utf8',
@@ -424,12 +425,20 @@ describe('leesbudget/AC-5: groeiproef', { timeout: 60_000 }, () => {
   });
 });
 
-type Krimp = { oud: Record<string, number>; nieuw: Record<string, number>; markdown?: Record<string, string> };
-const R_IDS = ['R-DOC-01', 'R-TEST-02'];
+// leesbudget/AC-6 is vervangen door krimp-op-normen (ADR 0067): de bytedrempel blijft, de inventaris staat in
+// docs/normen-vervallen.md. De gevallen hieronder zijn die van de oude AC-6 met de lijst als enige plek; de overige
+// gevallen staan in test/rails/krimp-op-normen.test.ts.
+type Krimp = { oud: Record<string, number>; nieuw: Record<string, number>; lijst?: string | null };
+const LIJST_KOP = '# Vervallen normen\n\nUitleg.\n';
 
-async function krimp({ oud, nieuw, markdown = {} }: Krimp): Promise<{ key: string; message: string }[]> {
-  const fn = await functie('scripts/kit/check-docs.mjs', 'krimpViolations');
-  const uit = fn({ oud, nieuw, markdown, rIds: R_IDS });
+async function krimp({ oud, nieuw, lijst = null }: Krimp): Promise<{ key: string; message: string }[]> {
+  const fn = await functie('scripts/kit/check-docs.mjs', 'normViolations');
+  const boek = '- **R-DOC-01** Een norm.\n- **R-TEST-02** Nog een norm.\n';
+  const uit = fn({
+    boek: { oud: boek, nieuw: boek },
+    lijst: { oud: LIJST_KOP, nieuw: lijst ?? LIJST_KOP },
+    bytes: { oud, nieuw },
+  });
   expect(Array.isArray(uit)).toBe(true);
   return (Array.isArray(uit) ? uit : []).map((v: unknown) => ({
     key: String(veld(v, 'key')),
@@ -437,10 +446,10 @@ async function krimp({ oud, nieuw, markdown = {} }: Krimp): Promise<{ key: strin
   }));
 }
 
-const INVENTARIS =
-  '# PR\n\n## Normeninventaris\n\n- regel over X → R-DOC-01\n- regel over Y → geschrapt: dubbel met de lint\n';
+const INVENTARIS = (pad: string) =>
+  `${LIJST_KOP}\n## ${pad}\n\n- regel over X → R-DOC-01\n- regel over Y → geschrapt: dubbel met de lint\n`;
 
-describe('leesbudget/AC-6: krimp van een bindend document vraagt een normeninventaris', () => {
+describe('leesbudget/AC-6: krimp van een bindend document vraagt een regel in docs/normen-vervallen.md', () => {
   test.each(['docs/framework.md', 'AGENTS.md', 'CLAUDE.md', '.claude/rules/web.md', 'docs/dod.md'])(
     'leesbudget/AC-6 %s krimpt 22 % en 11000 bytes zonder inventaris: rood',
     async (pad) => {
@@ -474,29 +483,33 @@ describe('leesbudget/AC-6: krimp van een bindend document vraagt een normeninven
     expect(await krimp({ oud: {}, nieuw: { '.claude/rules/nieuw.md': 5000 } })).toStrictEqual([]);
   });
 
-  test('leesbudget/AC-6 een rename telt tegen het oude bestand; met inventaris groen', async () => {
+  test('leesbudget/AC-6 een rename telt tegen het oude bestand; met een regel onder die kop groen', async () => {
     const rename = { oud: { '.claude/rules/a.md': 5000 }, nieuw: { '.claude/rules/b.md': 5000 } };
     const v = await krimp(rename);
     expect(v).toHaveLength(1);
     expect(v[0]?.message).toContain('.claude/rules/a.md');
-    expect(await krimp({ ...rename, markdown: { 'docs/pr/inventaris.md': INVENTARIS } })).toStrictEqual([]);
+    expect(await krimp({ ...rename, lijst: INVENTARIS('.claude/rules/a.md') })).toStrictEqual([]);
   });
 
-  test('leesbudget/AC-6 een Markdown-bestand in de diff met een geldige Normeninventaris: groen', async () => {
-    const k = { oud: { 'docs/framework.md': 50_000 }, nieuw: { 'docs/framework.md': 30_000 } };
-    expect(await krimp({ ...k, markdown: { 'docs/notities.md': INVENTARIS } })).toStrictEqual([]);
+  test('leesbudget/AC-6 een nieuwe regel onder de kop van het document: groen', async () => {
+    const k = { oud: { 'docs/dod.md': 50_000 }, nieuw: { 'docs/dod.md': 30_000 } };
+    expect(await krimp({ ...k, lijst: INVENTARIS('docs/dod.md') })).toStrictEqual([]);
   });
 
   test.each([
-    ['zonder de kop Normeninventaris', '# PR\n\n- regel over X → R-DOC-01\n', undefined],
-    ['met de kop maar zonder regels', '## Normeninventaris\n\nNiets.\n', undefined],
-    ['met een R-id die niet in het regelboek staat', '## Normeninventaris\n\n- regel X → R-DOC-99\n', 'R-DOC-99'],
-    ['met "geschrapt:" zonder reden', '## Normeninventaris\n\n- regel X → geschrapt:\n', undefined],
-  ])('leesbudget/AC-6 inventaris %s: rood', async (_naam, md, genoemd) => {
-    const k = { oud: { 'docs/framework.md': 50_000 }, nieuw: { 'docs/framework.md': 30_000 } };
-    const v = await krimp({ ...k, markdown: { 'docs/notities.md': md } });
+    ['zonder kop voor het document', `${LIJST_KOP}\n## AGENTS.md\n\n- regel over X → R-DOC-01\n`, 'docs/dod.md'],
+    ['met de kop maar zonder regels', `${LIJST_KOP}\n## docs/dod.md\n`, 'docs/dod.md'],
+    [
+      'met een R-id die niet in het regelboek staat',
+      `${LIJST_KOP}\n## docs/dod.md\n\n- regel X → R-DOC-99\n`,
+      'R-DOC-99',
+    ],
+    ['met "geschrapt:" zonder reden', `${LIJST_KOP}\n## docs/dod.md\n\n- regel X → geschrapt:\n`, 'drie woorden'],
+  ])('leesbudget/AC-6 inventaris %s: rood', async (_naam, lijst, genoemd) => {
+    const k = { oud: { 'docs/dod.md': 50_000 }, nieuw: { 'docs/dod.md': 30_000 } };
+    const v = await krimp({ ...k, lijst });
     expect(v.length).toBeGreaterThan(0);
-    if (genoemd !== undefined) expect(v.map(({ message }) => message).join('\n')).toContain(genoemd);
+    expect(v.map(({ message }) => message).join('\n')).toContain(genoemd);
   });
 });
 
@@ -505,9 +518,10 @@ describe(
   { timeout: 60_000 },
   () => {
     const BOEK = (opvulling: number) => `# Framework\n\n## 9. Docs\n\n- **R-DOC-01** Een norm.\n\n${tekst(opvulling)}`;
+    const LOKAAL = { GITHUB_ACTIONS: '' };
 
     function gekrompen(): string {
-      const dir = repo({ 'docs/framework.md': BOEK(10_000) });
+      const dir = repo({ 'docs/framework.md': BOEK(10_000), 'docs/normen-vervallen.md': LIJST_KOP });
       git(dir, 'commit', '-qm', 'basis');
       git(dir, 'update-ref', 'refs/remotes/origin/main', 'HEAD');
       expect(node(dir, ['scripts/kit/ratchet.mjs', '--update']).status).toBe(0);
@@ -526,9 +540,9 @@ describe(
       expect(node(dir, ['scripts/kit/ratchet.mjs']).status).toBe(1);
     });
 
-    test('leesbudget/AC-6 ratchet: krimp met een inventaris in de diff is groen', () => {
+    test('leesbudget/AC-6 ratchet: krimp met een nieuwe regel in de lijst is groen', () => {
       const dir = gekrompen();
-      schrijf(dir, { 'docs/normeninventaris.md': INVENTARIS });
+      schrijf(dir, { 'docs/normen-vervallen.md': INVENTARIS('docs/framework.md') });
       git(dir, 'add', '-A');
       git(dir, 'commit', '-qm', 'inventaris');
       const r = node(dir, ['scripts/kit/ratchet.mjs']);
@@ -536,38 +550,34 @@ describe(
       expect(r.status).toBe(0);
     });
 
-    test('leesbudget/AC-6 ratchet: een inventaris uit een eerdere PR dekt geen nieuwe krimp', () => {
-      const dir = repo({ 'docs/framework.md': BOEK(10_000), 'docs/normeninventaris.md': INVENTARIS });
+    test('leesbudget/AC-6 ratchet: een regel uit een eerdere PR dekt geen nieuwe krimp', () => {
+      const dir = repo({
+        'docs/framework.md': BOEK(10_000),
+        'docs/normen-vervallen.md': INVENTARIS('docs/framework.md'),
+      });
       git(dir, 'commit', '-qm', 'basis met oude inventaris');
       git(dir, 'update-ref', 'refs/remotes/origin/main', 'HEAD');
       expect(node(dir, ['scripts/kit/ratchet.mjs', '--update']).status).toBe(0);
       git(dir, 'commit', '-qam', 'baseline');
       writeFileSync(path.join(dir, 'docs/framework.md'), BOEK(4000));
-      writeFileSync(path.join(dir, 'docs/normeninventaris.md'), `${INVENTARIS}\nKleine wijziging.\n`);
-      git(dir, 'commit', '-qam', 'krimp met triviale wijziging aan de oude inventaris');
+      git(dir, 'commit', '-qam', 'krimp zonder nieuwe regel');
       expect(node(dir, ['scripts/kit/ratchet.mjs']).status).toBe(1);
     });
 
-    test('leesbudget/AC-6 ratchet: een toegevoegde regel onder een bestaande andere kop telt niet als inventaris', () => {
-      const oud = '# PR\n\n## Andere sectie\n\n- bestaande regel\n';
-      const dir = repo({ 'docs/framework.md': BOEK(10_000), 'docs/notities.md': oud });
-      git(dir, 'commit', '-qm', 'basis');
-      git(dir, 'update-ref', 'refs/remotes/origin/main', 'HEAD');
-      expect(node(dir, ['scripts/kit/ratchet.mjs', '--update']).status).toBe(0);
-      git(dir, 'commit', '-qam', 'baseline');
-      writeFileSync(path.join(dir, 'docs/framework.md'), BOEK(4000));
-      const nieuw = '# PR\n\n## Normeninventaris\n\n## Andere sectie\n\n- bestaande regel\n- regel over X → R-DOC-01\n';
-      writeFileSync(path.join(dir, 'docs/notities.md'), nieuw);
-      git(dir, 'commit', '-qam', 'krimp met lege inventaris');
+    test('leesbudget/AC-6 ratchet: een Normeninventaris in een ander bestand telt niet meer', () => {
+      const dir = gekrompen();
+      schrijf(dir, { 'docs/notities.md': '# PR\n\n## Normeninventaris\n\n- regel over X → R-DOC-01\n' });
+      git(dir, 'add', '-A');
+      git(dir, 'commit', '-qm', 'inventaris op de oude plek');
       expect(node(dir, ['scripts/kit/ratchet.mjs']).status).toBe(1);
     });
 
-    test('leesbudget/AC-6 zonder origin/main: melding, geen overtreding', () => {
+    test('leesbudget/AC-6 zonder origin/main: lokaal een melding, geen overtreding', () => {
       const dir = repo({ 'docs/framework.md': BOEK(10_000) });
       git(dir, 'commit', '-qm', 'basis');
-      const r = node(dir, ['scripts/kit/ratchet.mjs']);
+      const r = node(dir, ['scripts/kit/ratchet.mjs'], LOKAAL);
       expect(r.status).toBe(0);
-      expect(r.stdout).toContain('geen origin/main');
+      expect(r.stdout).toContain('geen merge-base met origin/main');
     });
   },
 );

@@ -484,6 +484,13 @@ describe("compacte-kennisbasis-rails/AC-8: R-id's in .claude/rules/* en het rege
     );
   });
 
+  test("compacte-kennisbasis-rails/AC-8 R-id's met een lettersuffix zijn niet dubbel", async () => {
+    // krimp-op-normen/AC-1 staat `R-DOC-03a` en `R-DOC-03b` toe; ze zijn verschillende normen.
+    expect(
+      await toegevoegd({}, boek('- **R-DB-03a** Een regel (0042)', '- **R-DB-03b** Andere regel (0042)')),
+    ).toStrictEqual([]);
+  });
+
   test("compacte-kennisbasis-rails/AC-8 zonder R-id's: groen", async () => {
     expect(
       await toegevoegd({}, { ...boek('Een gewone regel zonder id.'), ...padregel('Een padregel zonder id.') }),

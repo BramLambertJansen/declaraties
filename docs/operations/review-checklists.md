@@ -41,3 +41,4 @@ De reviewer bepaalt de klasse(n) van de diff en loopt alleen die lijsten af. Elk
 
 - Gedrag, API of conventies gewijzigd: doc in dezelfde PR (R-WERK-15); Codex vraagt hier steeds naar.
 - Een omgezette test noemt reden en regel in de PR; verwijderen of skippen vraagt eigenaarakkoord.
+- Wijzigt of verdwijnt een definitie `- **R-…**`: is de norm niet uitgehold, staat een verplaatste norm inhoudelijk bij de nieuwe R-id, is de schrapreden aanvaardbaar (`docs/normen-vervallen.md`, ADR 0067)? Mist er een norm zonder R-id? Die vangt geen check.

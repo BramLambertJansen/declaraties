@@ -3,13 +3,12 @@
 //  - Grens: `AGENTS.md` <= 9 KB en 100 regels, `CLAUDE.md` <= 50 regels. Sleutels `docs:AGENTS.md:budget:<bytes>` en
 //    `docs:<bestand>:regels:<n>` (met waarde, zodat de ratchet groei en krimp ziet). Gelijk aan de grens is geen overtreding.
 //  - Melding vanaf ceil(0,85 × grens): "let op: … op <n> % van de grens; verplaats naar een lagere laag"; nooit rood.
-//  - Krimp (AC-6): een bindend document dat meer dan 20 % én minstens 1 KB krimpt tegenover `git merge-base origin/main
-//    HEAD` vraagt een Markdown-bestand in de diff met een kop `Normeninventaris` (regels `oud → R-id` of
-//    `oud → geschrapt: <reden>`). Zonder `origin/main` alleen een melding (`krimpZonderBasis`). Deze overtreding komt nooit in de baseline.
+//  - Krimp: de controle op normen en bytes van spec krimp-op-normen (`normen.mjs`, ADR 0067); hier alleen de git-kant.
 import { Buffer } from 'node:buffer';
 import { spawnSync } from 'node:child_process';
 import { existsSync, readFileSync, statSync } from 'node:fs';
 import path from 'node:path';
+import { LIJST, REGELBOEK, bindend, normMeldingen, normViolations } from './normen.mjs';
 
 /** @typedef {{ key: string, message: string }} Violation */
 /** @typedef {(file: string) => string | null} Lezer null: het bestand bestaat niet */
@@ -65,79 +64,6 @@ export function grensMeldingen(lees) {
     );
 }
 
-/** Een bindend document (ADR 0065 punt 6). @param {string} file */
-export function bindend(file) {
-  return (
-    ['docs/framework.md', 'AGENTS.md', 'CLAUDE.md', 'docs/dod.md'].includes(file) || file.startsWith('.claude/rules/')
-  );
-}
-
-const R_ID_REGEL = /^(R-[A-Z]+-\d+)\b[.,;:]?$/;
-
-/**
- * Problemen in één inventarisregel, of [] als hij geldig is.
- * @param {string} regel @param {ReadonlySet<string>} rIds
- */
-function regelProblemen(regel, rIds) {
-  const pijl = regel.indexOf('→');
-  if (pijl === -1) return [`"${regel}" heeft geen "→"`];
-  const doel = regel.slice(pijl + 1).trim();
-  const rId = R_ID_REGEL.exec(doel)?.[1];
-  if (rId !== undefined) return rIds.has(rId) ? [] : [`${rId} staat niet in het regelboek`];
-  if (/^geschrapt:\s*\S/.test(doel)) return [];
-  return [`"${regel}" noemt geen R-id en geen "geschrapt: <reden>"`];
-}
-
-/**
- * De Normeninventarissen in de Markdown-bestanden: per bestand de lijstregels onder de kop.
- * @param {Record<string, string>} markdown
- */
-function inventarissen(markdown) {
-  return Object.entries(markdown).flatMap(([file, tekst]) => {
-    const kop = /^(#{1,6})\s+Normeninventaris\s*$/m.exec(tekst);
-    if (kop === null) return [];
-    const rest = tekst.slice(kop.index + kop[0].length);
-    const einde = /^#{1,6}\s/m.exec(rest);
-    const sectie = einde === null ? rest : rest.slice(0, einde.index);
-    const regels = [...sectie.matchAll(/^\s*[-*]\s+(.+?)\s*$/gm)].map(([, r = '']) => r);
-    return [{ file, regels }];
-  });
-}
-
-/**
- * Waarom de inventaris niet volstaat, of [] als hij geldig is.
- * @param {Record<string, string>} markdown @param {ReadonlySet<string>} rIds
- */
-function inventarisProblemen(markdown, rIds) {
-  const lijsten = inventarissen(markdown);
-  if (lijsten.length === 0) return ['geen Markdown-bestand in de diff heeft een kop "Normeninventaris"'];
-  const problemen = lijsten.flatMap(({ file, regels }) => [
-    ...(regels.length === 0 ? [`${file}: de Normeninventaris heeft geen regels "oud → R-id"`] : []),
-    ...regels.flatMap((r) => regelProblemen(r, rIds).map((p) => `${file}: ${p}`)),
-  ]);
-  return problemen;
-}
-
-/**
- * Krimp van bindende documenten (leesbudget/AC-6), puur: `oud` en `nieuw` zijn bytes per pad; een pad dat in `nieuw`
- * ontbreekt is verwijderd (100 % krimp, ook bij een rename); een nieuw document telt niet.
- * @param {{ oud: Record<string, number>, nieuw: Record<string, number>, markdown: Record<string, string>, rIds: readonly string[] }} invoer
- * @returns {Violation[]}
- */
-export function krimpViolations({ oud, nieuw, markdown, rIds }) {
-  const gekrompen = Object.entries(oud).filter(([file, voor]) => {
-    const weg = voor - (nieuw[file] ?? 0);
-    return bindend(file) && weg * 5 > voor && weg >= KB;
-  });
-  if (gekrompen.length === 0) return [];
-  const problemen = inventarisProblemen(markdown, new Set(rIds));
-  if (problemen.length === 0) return [];
-  return gekrompen.map(([file, voor]) => ({
-    key: `docs:krimp:${file}`,
-    message: `${file}: krimpt van ${String(voor)} naar ${String(nieuw[file] ?? 0)} bytes (meer dan 20 % en 1 KB) zonder geldige Normeninventaris: ${problemen.join('; ')} (ADR 0065 punt 6)`,
-  }));
-}
-
 /** @param {string} root @param {readonly string[]} args */
 function git(root, args) {
   const r = spawnSync('git', args, { cwd: root, encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 });
@@ -157,55 +83,58 @@ function grootteIn(root, ref) {
   return grootte;
 }
 
+/** De merge-base met `origin/main`, of null. @param {string} root */
+function basisVan(root) {
+  const basis = git(root, ['merge-base', 'origin/main', 'HEAD'])?.trim();
+  return basis === undefined || basis === '' ? null : basis;
+}
+
+/** @param {string} root @param {string} file */
+function nu(root, file) {
+  return existsSync(path.join(root, file)) ? readFileSync(path.join(root, file), 'utf8') : null;
+}
+
+/** @param {string} root @param {string} basis @param {string} file */
+const toen = (root, basis, file) => git(root, ['show', `${basis}:${file}`]);
+
 /**
- * Het huidige bestand met alle koppen (zodat sectiegrenzen blijven) maar van de overige regels alleen wat sinds `basis` is
- * toegevoegd (`git diff -U0`): een inventaris uit een eerdere PR dekt zo geen nieuwe krimp.
- * @param {string} root @param {string} basis @param {string} file
+ * Zonder basis (geen `origin/main` of een ondiepe checkout) toetst de krimpcontrole niets: in CI is dat rood, lokaal een
+ * melding (krimp-op-normen/AC-5).
+ * @param {string} root @param {boolean} inCi
+ * @returns {{ meldingen: string[], violations: Violation[] }}
  */
-function toegevoegd(root, basis, file) {
-  const diff = git(root, ['diff', '-U0', '--no-color', basis, '--', file]) ?? '';
-  /** @type {Map<string, number>} */
-  const nieuw = new Map();
-  for (const regel of diff.split('\n'))
-    if (regel.startsWith('+') && !regel.startsWith('+++'))
-      nieuw.set(regel.slice(1), (nieuw.get(regel.slice(1)) ?? 0) + 1);
-  const huidig = readFileSync(path.join(root, file), 'utf8').split('\n');
-  return huidig
-    .filter((regel) => {
-      if (/^#{1,6}\s/.test(regel)) return true;
-      const over = nieuw.get(regel) ?? 0;
-      if (over > 0) nieuw.set(regel, over - 1);
-      return over > 0;
-    })
-    .join('\n');
+export function zonderBasis(root, inCi) {
+  if (basisVan(root) !== null) return { meldingen: [], violations: [] };
+  const tekst = 'geen merge-base met origin/main; de krimpcontrole (krimp-op-normen) toetst niets';
+  return inCi
+    ? { meldingen: [], violations: [{ key: 'docs:normen:geen-basis', message: `${tekst} (ADR 0067)` }] }
+    : { meldingen: [`let op: ${tekst}`], violations: [] };
 }
 
 /**
- * Melding als de krimpcheck geen basis heeft (geen `origin/main`): dan toetst hij niets (leesbudget/AC-6).
- * @param {string} root
+ * De krimpcontrole tegenover `git merge-base origin/main HEAD`, met de werkmap als nieuwe stand (krimp-op-normen/AC-1 t/m
+ * AC-4); nooit in de baseline.
+ * @param {string} root @returns {Violation[]}
  */
-export function krimpZonderBasis(root) {
-  const basis = git(root, ['merge-base', 'origin/main', 'HEAD'])?.trim();
-  return basis === undefined || basis === ''
-    ? ['let op: geen origin/main; de krimpcheck (leesbudget/AC-6) toetst niets']
-    : [];
-}
-
-/**
- * Krimp tegenover `git merge-base origin/main HEAD`, met de werkmap als nieuwe stand; zonder `origin/main` niets.
- * @param {string} root @param {readonly string[]} rIds
- * @returns {Violation[]}
- */
-export function krimpUitGit(root, rIds) {
-  const basis = git(root, ['merge-base', 'origin/main', 'HEAD'])?.trim();
-  if (basis === undefined || basis === '') return [];
-  const bestaat = (/** @type {string} */ file) => existsSync(path.join(root, file));
-  const getrackt = (git(root, ['ls-files', '-z']) ?? '').split('\0').filter((f) => bindend(f) && bestaat(f));
+export function normenUitGit(root) {
+  const basis = basisVan(root);
+  // Zonder basis alleen wat geen vergelijking vraagt: de vorm van definities en lijst (AC-1, AC-4).
+  if (basis === null) {
+    const boek = nu(root, REGELBOEK);
+    const bytes = { oud: {}, nieuw: {} };
+    return normViolations({ boek: { oud: boek, nieuw: boek }, lijst: { oud: null, nieuw: nu(root, LIJST) }, bytes });
+  }
+  const getrackt = (git(root, ['ls-files', '-z']) ?? '').split('\0').filter((f) => bindend(f) && nu(root, f) !== null);
   const nieuw = Object.fromEntries(getrackt.map((f) => [f, statSync(path.join(root, f)).size]));
-  const gewijzigd = (git(root, ['diff', '--name-only', '-z', basis]) ?? '').split('\0');
-  // Alleen de toegevoegde regels tellen: een inventaris uit een eerdere PR dekt geen nieuwe krimp.
-  const markdown = Object.fromEntries(
-    gewijzigd.filter((f) => f.endsWith('.md') && bestaat(f)).map((f) => [f, toegevoegd(root, basis, f)]),
-  );
-  return krimpViolations({ oud: grootteIn(root, basis), nieuw, markdown, rIds });
+  return normViolations({
+    boek: { oud: toen(root, basis, REGELBOEK), nieuw: nu(root, REGELBOEK) },
+    lijst: { oud: toen(root, basis, LIJST), nieuw: nu(root, LIJST) },
+    bytes: { oud: grootteIn(root, basis), nieuw },
+  });
+}
+
+/** De meldingen van krimp-op-normen/AC-6. @param {string} root @returns {string[]} */
+export function normenMeldingenUitGit(root) {
+  const basis = basisVan(root);
+  return basis === null ? [] : normMeldingen({ oud: toen(root, basis, REGELBOEK), nieuw: nu(root, REGELBOEK) });
 }

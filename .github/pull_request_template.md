@@ -21,6 +21,7 @@
 - Checkuitslag per exact commando (`gate:fast`, `gate:slow`, osv-scanner, CodeQL; wat nog niet bestaat: "niet beschikbaar"):
 - Bij schermwerk: `ui:check` gedaan voor:
 - Gewijzigde bestaande tests, met reden:
+- R-id's die vervielen of waarvan de tekst veranderde (`docs/normen-vervallen.md`), of "geen":
 
 ## Checklist
 

@@ -104,11 +104,13 @@ test('CODEOWNERS blijft gates + jsonGates: een gate buiten voorReview moet er we
   expect(await keys(root)).toStrictEqual(['docs:spiegel:codeowners-gates:src/core/**']);
 });
 
-// De echte lijst, letterlijk uit de lijst uit ADR 0046 punt 27, plus `rails/**` (ADR 0045 punt 3: de hookbroncode).
+// De echte lijst, letterlijk uit de lijst uit ADR 0046 punt 27, plus `rails/**` (ADR 0045 punt 3: de hookbroncode) en
+// `docs/normen-vervallen.md` (ADR 0067, krimp-op-normen/AC-4).
 const VOOR_REVIEW = [
   'AGENTS.md',
   'CLAUDE.md',
   'docs/framework.md',
+  'docs/normen-vervallen.md',
   'docs/dod.md',
   '.claude/**',
   'scripts/**',

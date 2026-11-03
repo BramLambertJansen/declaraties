@@ -139,7 +139,12 @@ describe('compacte-kennisbasis-rails/AC-9: budgetten in bytes (1 KB = 1024)', ()
 
 describe('compacte-kennisbasis-rails/AC-9: de ratchet is strikt in twee richtingen', { timeout: 60_000 }, () => {
   function ratchet(root: string, ...args: string[]): { status: number | null; stderr: string; stdout: string } {
-    const { status, stderr, stdout } = spawnSync(process.execPath, [RATCHET, ...args], { cwd: root, encoding: 'utf8' });
+    // Een tijdelijke repo zonder origin/main is lokaal: in CI zou de krimpcontrole daar rood zijn (krimp-op-normen/AC-5).
+    const { status, stderr, stdout } = spawnSync(process.execPath, [RATCHET, ...args], {
+      cwd: root,
+      encoding: 'utf8',
+      env: { ...process.env, GITHUB_ACTIONS: '' },
+    });
     return { status, stderr, stdout };
   }
 
