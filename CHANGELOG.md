@@ -372,6 +372,13 @@ Hier staan wijzigingen die van belang zijn bij het gebruiken of bijwerken van de
 
 ### Opgelost
 
+- `scripts/cloud-setup.sh` werkt in een cloudsessie (review 3 november, P6): `mise install` faalde daar op pnpm, dbmate,
+  betterleaks en osv-scanner, omdat de proxy de GitHub-API weigert. Een terugval haalt elke ontbrekende tool op exact de versie
+  uit `mise.toml` (node van nodejs.org met `SHASUMS256.txt`, pnpm en dbmate via npm, betterleaks en osv-scanner als
+  release-download met het checksumbestand van de release) en registreert hem met `mise link`; de setup eindigt met de
+  voorcontrole uit `scripts/kit/toolchain.mjs`. Zie `docs/ENVIRONMENT.md`, Terugval. Wat verandert voor een app: niets lokaal of
+  in CI. Wat de eigenaar moet doen: niets; een bestaande cloudomgeving pakt het op bij de volgende setup.
+
 - Een lijst geeft geen cursor meer terug die haar eigen invoer weigert (leerpunt #411, spec `lijstpagina` AC-9 t/m AC-12). Een naam
   van 100 tekens met stuurtekens gaf bij naamsortering een cursor van 852 tekens, terwijl de invoer er 500 toeliet: "Meer laden" liep
   vast. Eén grens `MAX_CURSOR_LENGTH` (4096, `src/core/shared/limits.ts`) geldt nu voor `pageQuery`, `defineListSearch` en
