@@ -1,7 +1,7 @@
 ---
 name: opleveren
 description: Een gereviewde branch opleveren (push, PR, CI-lus tot groen) en na de merge opruimen. Alleen de hoofdsessie, pas na de review.
-allowed-tools: Bash(node scripts/kit/feiten.mjs *), Bash(pnpm pr:verify *), Bash(gh pr view *), Bash(gh run view *), Bash(pnpm meting --trend)
+allowed-tools: Bash(node scripts/kit/feiten.mjs *), Bash(pnpm pr:verify *), Bash(gh pr view *), Bash(gh run view *), Bash(pnpm meting --trend), Bash(pnpm leespad), Bash(pnpm leespad *)
 ---
 
 # Opleveren
@@ -36,8 +36,9 @@ Feiten nu:
    tussen backticks (dan kan `--roadmap` het niet afvinken), dan komt de roadmapwijziging in de implementatie, niet in de
    statuscommit; een commit na de statuscommit maakt `document-status`
    rood (leerpunt #314; `docs/operations/agent-doorloop.md`, "PR en statussen afronden").
-8. Draai `pnpm meting --trend`. Meldt het "let op" (reviewrondes, CI-rood of Codex-bevindingen hoger dan over de tien PR's
-   daarvoor), noem dat in de PR en in de oplevermelding aan de eigenaar; de eigenaar beslist (R-DOC-08). "onbekend" meld je als onbekend.
+8. Draai `pnpm meting --trend` en `pnpm leespad`. Zet elke "let op"-regel (de trend: een echte stap omhoog in reviewrondes,
+   CI-rood of Codex-bevindingen; het leespad: groei tegenover de basis) in de PR-beschrijving en noem hem in de oplevermelding
+   aan de eigenaar; de eigenaar beslist (R-DOC-08, ADR 0070). "onbekend" meld je als onbekend.
 
 ## Mergen
 

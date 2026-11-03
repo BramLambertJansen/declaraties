@@ -63,7 +63,11 @@ describe('adr', () => {
     const overzicht = adrOverzicht(ADRS, false);
 
     expect(overzicht.lijst.map((adr) => adr.titel)).toStrictEqual(['Stack', 'Geparkeerd', 'Kapot']);
-    expect(overzicht).toHaveProperty('overig', '2 vervangen/vervallen (feiten adr --alle)');
+    // GEWIJZIGD (meting-stuurt/AC-5): de telregel telt ook de oudere geaccepteerde ADR's buiten de tien nieuwste.
+    expect(overzicht).toHaveProperty(
+      'overig',
+      '0 oudere geaccepteerd, 2 vervangen/vervallen (feiten adr --alle, ook voor een geldig ADR buiten de tien)',
+    );
   });
 
   test('--alle: de volledige lijst, zonder telregel', () => {
@@ -90,7 +94,8 @@ describe('adr', () => {
 
     expect([standaard.status, alles.status]).toStrictEqual([0, 0]);
     expect(standaard.stdout).not.toMatch(/· (vervallen|vervangen door \d{4})$/m);
-    expect(standaard.stdout).toMatch(/^overig: \d+ vervangen\/vervallen \(feiten adr --alle\)$/m);
+    // GEWIJZIGD (meting-stuurt/AC-5): de telregel noemt ook de oudere geaccepteerde ADR's.
+    expect(standaard.stdout).toMatch(/^overig: \d+ oudere geaccepteerd, \d+ vervangen\/vervallen \(feiten adr --alle/m);
     expect(alles.stdout).not.toContain('overig: ');
     expect(telling(alles.stdout)).toBeGreaterThan(telling(standaard.stdout));
     expect(volgende(standaard.stdout)).toBe(volgende(alles.stdout));

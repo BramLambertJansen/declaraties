@@ -12,6 +12,14 @@ Hier staan wijzigingen die van belang zijn bij het gebruiken of bijwerken van de
   toegestaan voorbeeld raakt. Bestaande gevallen staan in `eslint-suppressions.json`. Wat verandert voor een app: een
   nieuwe `.not.toMatch` in een test wordt rood; noem in `recognizes` elke vorm en taalvariant die in de bron kan staan.
 
+- Meting die stuurt (ADR 0070, spec `meting-stuurt`): "let op" van `pnpm leespad` komt alleen uit het verschil met de basis
+  (`git merge-base origin/main HEAD`; scenario bij 1 KB groei, eenheid nieuw boven of 1 KB erboven gegroeid), het leespad
+  telt de voorgeschreven `feiten.mjs`-aanroepen en bij `nieuwe-feature` de padregels, `pnpm meting --trend` meldt alleen een
+  echte stap (0,5 en 25 %), `ratchet` en `leespad` schrijven naar de samenvatting van de CI-job, en `check:roadmap` eist een
+  herijkingsregel in `docs/roadmap-archief.md` als een PR een fase sluit. Bij een update: `feiten.mjs specs --json` is
+  standaard `{ lijst, overig }` met alleen open specs (`--alle` geeft de volledige lijst, zoals vroeger), `adr` toont de tien
+  nieuwste geaccepteerde, `fase` vijf items onder "Volgende" plus `overig`; "uit fase N" en `doorlopend` geven geen fase meer.
+
 - `check-docs` regel 12 (leerpunt #393): onder "Hoe (geen norm)" in `.claude/rules/*.md` staat geen normwoord (`nooit`,
   `alleen`, `moet`, `altijd`, `verboden`, `verplicht`, `mag niet` en Engelse tegenhangers; codespans en codeblokken tellen
   niet). Wat verandert voor een app: een eigen rule met zo'n woord onder "Hoe" wordt rood; zet de norm met R-id in het

@@ -1,4 +1,5 @@
-// Pure delen van scripts/kit/feiten.mjs: ADR-filter, volgende nummers, fase uit de roadmap en de tekstweergave.
+// Pure delen van scripts/kit/feiten.mjs: plafonds voor ADR's, specs en fase, volgende nummers, fase uit de roadmap en de
+// tekstweergave.
 // Geen bestandstoegang, zodat test/scripts/feiten.test.ts ze met invoer als tekst kan toetsen.
 
 const TEMPLATE_ADR_MAX = 99;
@@ -23,8 +24,13 @@ export function nextAdr(list) {
   return `${String(template).padStart(4, '0')} (template, tot 0099) · ${String(app).padStart(4, '0')} (app, vanaf 0100)`;
 }
 
+const ADR_GETOOND = 10;
+const SPEC_OPEN = ['voorstel', 'goedgekeurd'];
+const VOLGENDE_GETOOND = 5;
+
 /**
- * Standaard alleen geldende en voorgestelde ADR's plus een telling; `alle` toont ook de vervangen en vervallen.
+ * Standaard de voorgestelde (en onbekende) ADR's en de tien geaccepteerde met het hoogste nummer, plus één telregel; `alle` toont
+ * de volledige lijst (meting-stuurt/AC-5). Zo groeit de uitvoer niet met elk nieuw ADR (R-DOC-09).
  * @param {readonly Adr[]} list
  * @param {boolean} alle
  * @param {readonly string[]} [gereserveerd]
@@ -32,11 +38,32 @@ export function nextAdr(list) {
 export function adrOverzicht(list, alle, gereserveerd = []) {
   const volgende = nextAdr([...list, ...gereserveerd.map((nummer) => ({ nummer }))]);
   if (alle) return { lijst: list, volgende };
+  const geaccepteerd = list.filter((adr) => adr.status === 'geaccepteerd');
+  const nieuwste = new Set([...geaccepteerd].sort((a, b) => Number(b.nummer) - Number(a.nummer)).slice(0, ADR_GETOOND));
   const historisch = list.filter((adr) => isHistorisch(adr.status)).length;
+  const ouder = geaccepteerd.length - nieuwste.size;
   return {
-    lijst: list.filter((adr) => !isHistorisch(adr.status)),
-    overig: `${historisch} vervangen/vervallen (feiten adr --alle)`,
+    lijst: list.filter((adr) => nieuwste.has(adr) || (adr.status !== 'geaccepteerd' && !isHistorisch(adr.status))),
+    overig: `${String(ouder)} oudere geaccepteerd, ${String(historisch)} vervangen/vervallen (feiten adr --alle, ook voor een geldig ADR buiten de tien)`,
     volgende,
+  };
+}
+
+/**
+ * Standaard alleen specs op `voorstel` en `goedgekeurd`, plus één regel met het aantal per andere status; `alle` toont de
+ * volledige lijst (meting-stuurt/AC-5).
+ * @param {readonly Spec[]} list
+ * @param {boolean} alle
+ */
+export function specsOverzicht(list, alle) {
+  if (alle) return list;
+  /** @type {Map<string, number>} */
+  const anders = new Map();
+  for (const { status } of list) if (!SPEC_OPEN.includes(status)) anders.set(status, (anders.get(status) ?? 0) + 1);
+  const telling = [...anders].map(([status, aantal]) => `${String(aantal)} ${status}`).join(', ');
+  return {
+    lijst: list.filter(({ status }) => SPEC_OPEN.includes(status)),
+    overig: `${telling === '' ? 'geen andere' : telling} (feiten specs --alle of docs/specs/)`,
   };
 }
 
@@ -71,13 +98,26 @@ function sectionLines(lines, heading) {
   return (end === -1 ? rest : rest.slice(0, end)).map((text, index) => ({ text, regel: start + 2 + index }));
 }
 
-/** @param {string} first */
-function faseVan(first) {
-  const fase = /\bfase (\d)\b(?:,? stuk (\d+[a-z]?))?/.exec(first);
-  if (fase !== null) return fase[2] === undefined ? `fase ${fase[1]}` : `fase ${fase[1]} (stuk ${fase[2]})`;
+/**
+ * De fase van een roadmap-item uit zijn eerste regel (ook voor check:roadmap, meting-stuurt/AC-7). "uit fase N" noemt een
+ * herkomst, geen fase; `doorlopend` heeft geen fase en wint van een nummer; een kale `stuk X` is fase 1.
+ * @param {string} first
+ * @returns {{ nummer: number, label: string } | null}
+ */
+export function faseVan(first) {
+  if (/\bdoorlopend\b/.test(first)) return null;
+  const tekst = first.replace(/\buit fase \d\b(?:,? stuk \d+[a-z]?\b)?/g, ' ');
+  const fase = /\bfase (\d)\b(?:,? stuk (\d+[a-z]?))?/.exec(tekst);
+  if (fase !== null) {
+    const nummer = Number(fase[1]);
+    return {
+      nummer,
+      label: fase[2] === undefined ? `fase ${String(nummer)}` : `fase ${String(nummer)} (stuk ${fase[2]})`,
+    };
+  }
   // De stukken staan onder "### Fase 1 — Fundament" in de roadmap.
-  const stuk = /\bstuk (\d+[a-z]?)\b/.exec(first);
-  return stuk === null ? null : `fase 1 (stuk ${stuk[1]})`;
+  const stuk = /\bstuk (\d+[a-z]?)\b/.exec(tekst);
+  return stuk === null ? null : { nummer: 1, label: `fase 1 (stuk ${stuk[1] ?? ''})` };
 }
 
 /**
@@ -108,7 +148,7 @@ function openItems(lines, { sectie, specs }) {
       .map((line) => line.text)
       .join('\n');
     const titel = /\*\*(.+?)\*\*/.exec(text)?.[1] ?? text.slice(6, 86);
-    const fase = faseVan(text);
+    const fase = faseVan(text)?.label;
     const waar = `${ROADMAP}:${regel}`;
     return [
       [sectie, titel, fase ?? `fase onbekend → lees ${waar}`, ...specsIn(block, specs), ...(fase ? [waar] : [])].join(
@@ -119,10 +159,11 @@ function openItems(lines, { sectie, specs }) {
 }
 
 /**
- * Wat de reviewer nodig heeft om de fase te kiezen (docs/dod.md:3) zonder de hele roadmap te lezen.
- * @param {{ roadmap: string | null, dod: string | null, specs: readonly Spec[] }} input
+ * Wat de reviewer nodig heeft om de fase te kiezen (docs/dod.md:3) zonder de hele roadmap te lezen: alles onder "Nu", de eerste
+ * vijf onder "Volgende" en een telregel; `alle` toont alles (meting-stuurt/AC-5).
+ * @param {{ roadmap: string | null, dod: string | null, specs: readonly Spec[], alle?: boolean }} input
  */
-export function faseOverzicht({ roadmap, dod, specs }) {
+export function faseOverzicht({ roadmap, dod, specs, alle = false }) {
   const lines = roadmap?.split('\n') ?? [];
   const nu = sectionLines(lines, 'Nu');
   const volgende = sectionLines(lines, 'Volgende');
@@ -131,11 +172,16 @@ export function faseOverzicht({ roadmap, dod, specs }) {
     .split('\n')
     .filter((line) => line.startsWith('## '))
     .map((line) => line.slice(3));
+  const later = openItems(volgende, { sectie: 'Volgende', specs });
+  const getoond = alle ? later : later.slice(0, VOLGENDE_GETOOND);
   return {
     regel:
       'fase van de roadmap-items die de PR aanvinkt of raakt; meer fases: loop ze alle af; twijfel: de eigenaar (docs/dod.md:3)',
     dod: kopjes.length > 0 ? kopjes.join(' · ') : 'onbekend → lees docs/dod.md',
-    open: [...openItems(nu, { sectie: 'Nu', specs }), ...openItems(volgende, { sectie: 'Volgende', specs })],
+    open: [...openItems(nu, { sectie: 'Nu', specs }), ...getoond],
+    ...(alle
+      ? {}
+      : { overig: `${String(later.length - getoond.length)} meer open onder Volgende (feiten fase --alle)` }),
     anders: `staat het item niet in deze lijst (afgevinkt, Geparkeerd, Gebouwd) of is de fase onbekend → lees ${ROADMAP}`,
   };
 }

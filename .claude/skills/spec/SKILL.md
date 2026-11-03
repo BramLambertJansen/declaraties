@@ -7,7 +7,9 @@ allowed-tools: Bash(node scripts/kit/feiten.mjs *)
 # Spec schrijven
 
 Wanneer: nieuwe feature, pagina, interactie, migratie, route of permissie (volledige straat, framework §8); een lichte fix
-krijgt geen spec. Hergebruik een passende bestaande feature-spec; een ADR is alleen nodig bij de bestaande beslisdrempels.
+krijgt geen spec. Hergebruik een passende bestaande feature-spec; de feiten hieronder tonen alleen open specs, zoek een
+gebouwde op aanvraag met `node scripts/kit/feiten.mjs specs --alle` of in `docs/specs/`. Een ADR is alleen nodig bij de
+bestaande beslisdrempels.
 
 Spec en bouw gaan in één PR (feature-lane, ADR 0062): na de spec-review (stap 7) schrijft de tester de tests en bouwt de
 developer verder op dezelfde branch; de eigenaarmerge is het besluit (ADR 0046). Alleen kritiek werk (ADR 0062 punt 2) bouwt

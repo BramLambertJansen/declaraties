@@ -34,6 +34,10 @@ jobs:
       - run: pnpm build
       # Waarschuwing, geen blokkade: src/ zonder docs/ of CHANGELOG.md (AGENTS.md "Docs in dezelfde PR").
       - run: pnpm check:docs-drift
+      # Meting, nooit rood: het leespad tegenover de basis in de samenvatting van de job, ook als gate:fast rood is
+      # (ADR 0070 punt 3, meting-stuurt/AC-3). Geen extra rechten.
+      - if: always()
+        run: pnpm leespad
 
   # pgTAP, integratie, e2e met axe en de schema-snapshot tegen een verse database, in de runner van ADR 0044 (compose op de
   # Docker van de GitHub-runner). Zo zijn de RLS-invarianten een harde grens in CI, niet alleen lokaal (framework §1.2).
