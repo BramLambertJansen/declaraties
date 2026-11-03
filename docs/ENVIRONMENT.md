@@ -24,7 +24,7 @@ Het script is idempotent: opnieuw draaien verandert niets als alles er al staat.
 
 | Stap | Waarom |
 |---|---|
-| `bubblewrap` en `socat` installeren via `apt-get`, alleen als ze ontbreken | De Bash-sandbox van Claude Code (`sandbox` in `.claude/settings.json`) heeft ze nodig. Zonder falen sessies met `Sandbox required but unavailable: bubblewrap and socat not installed`. |
+| `bubblewrap` en `socat` installeren via `apt-get`, alleen als ze ontbreken | De Bash-sandbox van Claude Code (`sandbox` in `.claude/settings.json`) heeft ze nodig. Zonder falen sessies met `Sandbox required but unavailable: bubblewrap and socat not installed`. `gate:fast` heeft bubblewrap ook nodig: de kooi (`scripts/kit/kooi.mjs`, ADR 0072) draait overgenomen commando's in tests en valt zonder bubblewrap dicht. |
 | `mise` ophalen als release-binary van github.com (gepinde versie) | `mise.run` staat niet op de allowlist van netwerktoegang Trusted. |
 | `~/.bashrc` een PATH-regel voor de mise-shims geven | Latere shells (Bash-tool, hooks) vinden `node`, `pnpm` en `dbmate`. |
 | `mise install` | Toolchain uit `mise.toml`. |

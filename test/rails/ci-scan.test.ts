@@ -1,8 +1,8 @@
-import { execFileSync } from 'node:child_process';
 import { chmodSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { expect, test } from 'vitest';
+import { inKooi } from '../../scripts/kit/kooi.mjs';
 
 // De job `secrets` leest op een PR alleen de commits van die PR (`origin/main..HEAD`) en op main alle gefetchte refs.
 // Alle refs scannen op een PR liet één valse melding op één branch elke open PR rood maken (#97, #99); de scan op main houdt
@@ -26,10 +26,13 @@ function scan(event: string): string {
   writeFileSync(path.join(bin, 'betterleaks'), '#!/bin/sh\necho "ARGS: $*"\n');
   chmodSync(path.join(bin, 'betterleaks'), 0o755);
   try {
-    return execFileSync('bash', ['-eu', '-c', runBlock()], {
-      encoding: 'utf8',
+    // Een fragment uit ci.yml: in de kooi (ADR 0072).
+    const result = inKooi(`set -eu\n${runBlock()}`, {
+      werkmap: bin,
       env: { PATH: `${bin}:${process.env['PATH'] ?? ''}`, EVENT: event },
     });
+    if (result.status !== 0) throw new Error(result.stderr);
+    return result.stdout;
   } finally {
     rmSync(bin, { recursive: true, force: true });
   }

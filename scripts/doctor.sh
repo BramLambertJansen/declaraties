@@ -90,6 +90,12 @@ elif bwrap --ro-bind / / --unshare-all true 2>/dev/null; then
 else
   fail "bubblewrap start geen sandbox" "docs/nieuwe-app.md, probleemtabel"
 fi
+# De kooi voor destructieve en overgenomen commando's (ADR 0072): dezelfde proef als vóór elk kooicommando.
+if mise exec -- node scripts/kit/kooi.mjs --proef >/dev/null 2>&1; then
+  ok "de kooi schermt af (node scripts/kit/kooi.mjs --proef)"
+else
+  fail "de kooi schermt niet af" "node scripts/kit/kooi.mjs --proef toont de oorzaak (docs/ENVIRONMENT.md)"
+fi
 
 # Minimale Claude Code-versie (ADR 0045 punt 3): vanaf daar valt het rolhek dicht bij storing (`onFailure: "block"`). Dezelfde
 # grens staat als MIN_CLAUDE_VERSIE in rails/hooks/lib/claude-versie.mjs (test/scripts/doctor-claude-versie.test.ts).

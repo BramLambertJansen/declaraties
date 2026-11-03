@@ -123,9 +123,8 @@ interface Uitkomst {
 }
 
 function run(omgeving: Omgeving, opties: { ci?: boolean; flag?: string; cwd?: string } = {}): Uitkomst {
-  const args = ['scripts/runner.sh', 'ui', ...(opties.flag === undefined ? [] : [opties.flag])];
   const cwd = opties.cwd ?? omgeving.repo;
-  const result = spawnSync('bash', args, {
+  const result = spawnSync('bash', ['scripts/runner.sh', 'ui', ...(opties.flag === undefined ? [] : [opties.flag])], {
     cwd,
     encoding: 'utf8',
     env: {

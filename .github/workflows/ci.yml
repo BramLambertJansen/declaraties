@@ -29,6 +29,14 @@ jobs:
         with:
           version: 2026.9.18
           install_args: node pnpm
+      # De kooi voor overgenomen commando's (ADR 0072, spec kooi AC-7): bubblewrap, en alleen /usr/bin/bwrap krijgt een
+      # user-namespace (Ubuntu 24.04 beperkt die via AppArmor); de proef maakt deze job rood als de kooi niet afschermt.
+      - run: |
+          sudo apt-get update -q
+          sudo apt-get install -y -q bubblewrap
+          printf 'abi <abi/4.0>,\ninclude <tunables/global>\nprofile bwrap /usr/bin/bwrap flags=(unconfined) {\n  userns,\n}\n' | sudo tee /etc/apparmor.d/bwrap > /dev/null
+          sudo apparmor_parser -r /etc/apparmor.d/bwrap
+          node scripts/kit/kooi.mjs --proef
       - run: pnpm install --frozen-lockfile
       - run: pnpm gate:fast
       - run: pnpm build
@@ -156,5 +164,13 @@ jobs:
         with:
           version: 2026.9.18
           install_args: node pnpm
+      # De kooi voor overgenomen commando's (ADR 0072, spec kooi AC-7): bubblewrap, en alleen /usr/bin/bwrap krijgt een
+      # user-namespace (Ubuntu 24.04 beperkt die via AppArmor); de proef maakt deze job rood als de kooi niet afschermt.
+      - run: |
+          sudo apt-get update -q
+          sudo apt-get install -y -q bubblewrap
+          printf 'abi <abi/4.0>,\ninclude <tunables/global>\nprofile bwrap /usr/bin/bwrap flags=(unconfined) {\n  userns,\n}\n' | sudo tee /etc/apparmor.d/bwrap > /dev/null
+          sudo apparmor_parser -r /etc/apparmor.d/bwrap
+          node scripts/kit/kooi.mjs --proef
       - run: pnpm install --frozen-lockfile
       - run: pnpm check:new-resource

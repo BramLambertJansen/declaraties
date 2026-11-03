@@ -90,9 +90,8 @@ function run(
   env: Record<string, string> = {},
   opties: { flag?: string | undefined; pad?: string; zonderGlobaal?: boolean } = {},
 ) {
-  const args = ['scripts/runner.sh', 'ui', ...(opties.flag === undefined ? [] : [opties.flag])];
   const gitEnvZonderGlobaal = Object.fromEntries(Object.entries(GIT_ENV).filter(([k]) => k !== 'GIT_CONFIG_GLOBAL'));
-  const result = spawnSync('bash', args, {
+  const result = spawnSync('bash', ['scripts/runner.sh', 'ui', ...(opties.flag === undefined ? [] : [opties.flag])], {
     cwd: omgeving.repo,
     encoding: 'utf8',
     env: {

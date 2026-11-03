@@ -55,8 +55,7 @@ function makeRepo(remote: boolean) {
 }
 
 function run({ repo, stubs }: { repo: string; stubs: string }, env: Record<string, string> = {}, flag?: string) {
-  const args = ['scripts/runner.sh', 'ui', ...(flag === undefined ? [] : [flag])];
-  const result = spawnSync('bash', args, {
+  const result = spawnSync('bash', ['scripts/runner.sh', 'ui', ...(flag === undefined ? [] : [flag])], {
     cwd: repo,
     encoding: 'utf8',
     env: { HOME: stubs, TMPDIR: tmpdir(), PATH: `${stubs}:/usr/bin:/bin`, STUB_DIR: stubs, ...GIT_ENV, ...env },

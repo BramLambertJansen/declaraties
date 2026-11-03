@@ -229,7 +229,7 @@ Afgedwongen door: ruleset op `main`, `guard.yml` (`document-status`, `check-core
 - **R-REPO-03** Beschermde paden in `.claude/gates.json`, eigenaarakkoord; developer: `voorReview`-pad volgens R-WERK-10; `src/api/app.ts` en `src/shared/permissions.ts` geen gate; geen gegenereerde bestanden of `.env*` bewerken (0046)
 - **R-REPO-04** App koppelt eenmalig met `git merge --allow-unrelated-histories -s ours template/main` (alleen bij gelijke trees); koppeling en template-update als merge-commit, nooit squash; gewone PR's squash (0040)
 - **R-REPO-05** Eén onderwerp per PR, korte branches, conventional commits; push nooit naar `main`, nooit `--no-verify`, merge alleen via `pnpm pr:merge` (R-REPO-01); eigenaar pusht de twee setup-commits (nieuwe-app)
-- **R-CI-05** A4: geaccepteerd ADR herschrijven (met `Herzien: JJJJ-MM-DD (#NNN): wat`) of verwijderen alleen in besluit-PR; vervallen ADR verandert niet; ADR nooit terug naar `voorgesteld` (0046, 0045)
+- **R-CI-05** A4: geaccepteerd ADR herschrijven (met `Herzien: JJJJ-MM-DD (#NNN): wat`) of verwijderen alleen in besluit-PR; vervallen ADR verandert niet; ADR nooit terug naar `voorgesteld`; wijzigt een ADR een ander geaccepteerd ADR (`Wijzigt`, `Herziet`, `Vervangt` in de kop), dan krijgt dat ADR in dezelfde PR een herzieningsregel die het wijzigende ADR en zijn puntnummers noemt (`check-docs`) (0046, 0045, 0074)
 - **R-CI-06** Alleen vervangen of vervallen ADR byte-gelijk naar `docs/adr/archief/`, spec naar `docs/template/specs/` (nog niet gebouwd); ADR-nummer nooit hergebruiken (0053, 0063)
 - **R-CI-07** Diff-guard (`pull_request_target`, scripts van `main`; PR-code alleen als git-data, nooit installeren of uitvoeren; `persist-credentials: false`): PR met gate-pad, `scripts` in `package.json` of bestaande test faalt zonder APPROVED van goedkeurder (niet auteur) op head-SHA; een label telt niet (0045, 0063)
 - **R-CI-08** Volledige CI op elke PR, geen oude uitslag of cache; na fix opnieuw; bouwbewijs = merge met alle verplichte checks groen op head-SHA (0054, 0057, 0062)
@@ -247,10 +247,11 @@ Afgedwongen door: ruleset op `main`, `guard.yml` (`document-status`, `check-core
 
 ## 11. Lokaal ontwikkelen
 
-Afgedwongen door: `scripts/doctor.sh`, `test/rails/excluded-commands.test.ts`.
+Afgedwongen door: `scripts/doctor.sh`, `test/rails/excluded-commands.test.ts`, `test/scripts/kooi.test.ts`, lintregel `rails/kooi` (`eslint.config.js`).
 
 - **R-TOOL-01** Ubuntu 24.04 of 26.04 (andere versie: stop en vraag), code op ext4; eigenaar installeert toolchain met `scripts/bootstrap.sh`; Compose alleen `127.0.0.1`; devcontainer nooit met host-socket (0039)
 - **R-TOOL-02** Agent gebruikt `docker` niet; stack is van eigenaar (`pnpm dev`); alleen `pnpm test:db`, `pnpm ui:check`, `pnpm gate:slow`, `pnpm db:generate`, `pnpm check:snapshot` draaien buiten sandbox, elk na goedkeuring (0044)
+- **R-TOOL-03** Een commando dat buiten zijn werkmap kan verwijderen of overschrijven en dat niet letterlijk voor dit moment is geschreven (corpusrij, fragment uit een bestand, gegenereerd), of een destructief experiment, draait alleen via de kooi (`inKooi` of `node scripts/kit/kooi.mjs`); een werkmap als afscherming telt niet; ook buiten de repository en in een cloudsessie (0072)
 
 ## 11a. Repo-structuur
 

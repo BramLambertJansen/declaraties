@@ -7,6 +7,7 @@ import { handle, nacontrole } from '../../rails/hooks/lib/effect-hooks.mjs';
 import { gitIn } from '../../rails/hooks/lib/effect-snapshot.mjs';
 import { opslag, overtredingen } from '../../rails/hooks/lib/effect.mjs';
 import { decide, loadConfig } from '../../rails/hooks/lib/rolhek.mjs';
+import { inKooi } from '../../scripts/kit/kooi.mjs';
 import { neemOver } from '../../scripts/kit/rolhek-overnemen.mjs';
 
 // docs/specs/rolhek-effect.md (ADR 0066): na een Bash-commando van een subagent krijgt elk pad dat echt veranderde de
@@ -28,12 +29,9 @@ afterEach(() => {
   for (const dir of dirs.splice(0)) rmSync(dir, { recursive: true, force: true });
 });
 
+// Het commando draait in de kooi (ADR 0072): buiten de tijdelijke repository kan het niets veranderen.
 function sh(root: string, command: string): void {
-  const result = spawnSync('bash', ['-c', command], {
-    cwd: root,
-    encoding: 'utf8',
-    env: { ...process.env, ...GIT_ENV },
-  });
+  const result = inKooi(command, { werkmap: root, env: GIT_ENV });
   if (result.status !== 0) throw new Error(`${command}: ${result.stderr}`);
 }
 
