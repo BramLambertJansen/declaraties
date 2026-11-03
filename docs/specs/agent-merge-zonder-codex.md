@@ -1,5 +1,5 @@
 ---
-status: goedgekeurd
+status: gebouwd # #464
 namespace: agent-merge-zonder-codex
 model: opus
 ---
