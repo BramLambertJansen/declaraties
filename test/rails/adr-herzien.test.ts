@@ -765,3 +765,41 @@ describe('de repo zelf', () => {
     expect(readFileSync(path.join(ROOT, '.kit/baseline.json'), 'utf8')).not.toContain(PREFIX);
   });
 });
+
+// Reviewbevindingen #485: een kopzin direct onder een herzieningsregel, een ongeldige datum en een link met anker.
+describe('adr-herzien: randen uit de review', () => {
+  test('adr-herzien/AC-1: een clausule direct onder een herzieningsregel (zonder lege regel) telt', () => {
+    const b = lines(
+      'Status: geaccepteerd',
+      '',
+      'Herzien: 2026-11-01 (#1): punt 3 aangepast',
+      'Wijzigt [0046](0046-x.md) punt 5.',
+    );
+    expect(clausules(b)).toStrictEqual([{ doel: '0046-x.md', punten: [5] }]);
+  });
+
+  test('adr-herzien/AC-1: basis, dezelfde clausule na een lege regel telt ook', () => {
+    const b = lines(
+      'Status: geaccepteerd',
+      '',
+      'Herzien: 2026-11-01 (#1): punt 3 aangepast',
+      '',
+      'Wijzigt [0046](0046-x.md) punt 5.',
+    );
+    expect(clausules(b)).toStrictEqual([{ doel: '0046-x.md', punten: [5] }]);
+  });
+
+  test('adr-herzien/AC-1: een herzieningsregel met een niet-bestaande datum telt niet (zelfde vorm als de A4-guard)', () => {
+    const a = lines('Status: geaccepteerd', '', 'Herzien: 2026-02-31 (#1): gewijzigd door [0020](0020-b.md) punt 3');
+    expect(herzieningsPunten(a, '0020-b.md')).toStrictEqual({ genoemd: false, punten: [] });
+  });
+
+  test('adr-herzien/AC-1: basis, dezelfde regel met een bestaande datum telt', () => {
+    const a = lines('Status: geaccepteerd', '', 'Herzien: 2026-02-28 (#1): gewijzigd door [0020](0020-b.md) punt 3');
+    expect(herzieningsPunten(a, '0020-b.md')).toStrictEqual({ genoemd: true, punten: [3] });
+  });
+
+  test('adr-herzien/AC-3: een link met anker telt als link naar het ADR', () => {
+    expect(clausules('Wijzigt [0046](0046-x.md#punt-5) punt 5.')).toStrictEqual([{ doel: '0046-x.md', punten: [5] }]);
+  });
+});

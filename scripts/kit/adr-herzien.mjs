@@ -2,14 +2,17 @@
 // kop (`Wijzigt`, `Herziet`, `Vervangt`) een ander geaccepteerd ADR A, dan heeft A een herzieningsregel die B noemt, met de
 // puntnummers die B noemt. Puur; `check-docs` roept `adrHerzienViolations` aan in `docsKrimp`, nooit via de baseline.
 
+import { nieuweHerzieningsregels } from '../../rails/hooks/lib/document-state.mjs';
+
 /** @typedef {{ key: string, message: string }} Violation */
 /** @typedef {{ doel: string, punten: number[] }} Clausule */
 
 const ADR_PAD = /^docs\/adr\/(\d{4})-[^/]+\.md$/;
 const GEACCEPTEERD = /^Status:\s*geaccepteerd\b/m;
-const LINK = /\[[^\]]*\]\((\d{4}-[^)\s/]+\.md)\)/g;
-const HERZIEN = /^Herzien: \d{4}-\d{2}-\d{2} \(#[1-9]\d*\): /;
+const LINK = /\[[^\]]*\]\((\d{4}-[^)\s/#]+\.md)(?:#[^)\s]*)?\)/g;
 const CLAUSULE_START = /\b(?:Wijzigt|Herziet|Vervangt)\b/g;
+// Een herzieningsblok eindigt ook bij een regel die een nieuwe kopzin begint (geen lege regel ertussen, zoals in 0069).
+const KOPZIN = /^(?:Wijzigt|Herziet|Vervangt|Vult|Drempel)\b/;
 
 /** Alles vóór de eerste `## `-kop. @param {string} text */
 export function kop(text) {
@@ -20,15 +23,17 @@ export function kop(text) {
 
 /** De herzieningsblokken van een kop: een `Herzien:`-regel met vervolgregels. @param {string} kopTekst */
 function herzieningsblokken(kopTekst) {
+  // De vorm en de datum van een herzieningsregel komen uit document-state (dezelfde regel als de A4-guard).
+  const geldig = new Set(nieuweHerzieningsregels('', kopTekst));
   /** @type {string[][]} */
   const blokken = [];
   /** @type {string[] | null} */
   let huidig = null;
   for (const regel of kopTekst.split('\n')) {
-    if (HERZIEN.test(regel)) {
+    if (geldig.has(regel)) {
       huidig = [regel];
       blokken.push(huidig);
-    } else if (regel.trim() === '') huidig = null;
+    } else if (regel.trim() === '' || KOPZIN.test(regel) || regel.startsWith('Herzien:')) huidig = null;
     else if (huidig !== null) huidig.push(regel);
   }
   return blokken.map((blok) => blok.join(' '));
@@ -40,8 +45,8 @@ function zonderHerzieningen(kopTekst) {
   const rest = [];
   let inBlok = false;
   for (const regel of kopTekst.split('\n')) {
-    if (HERZIEN.test(regel)) inBlok = true;
-    else if (regel.trim() === '') inBlok = false;
+    if (regel.startsWith('Herzien:')) inBlok = true;
+    else if (regel.trim() === '' || KOPZIN.test(regel)) inBlok = false;
     if (!inBlok) rest.push(regel);
   }
   return rest.join('\n');
