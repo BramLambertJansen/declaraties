@@ -19,10 +19,13 @@
 //     meting in `pnpm leespad`, nooit een overtreding. `docsMeldingen` geeft "let op" vanaf 85 % van een grens;
 //     `docsKrimp` de krimpcheck (AC-6), die de ratchet buiten de baseline houdt.
 //  12. Geen normwoord onder "Hoe (geen norm)" in .claude/rules/*.md (leerpunt #393, sleutel `docs:<bestand>:hoe-norm:<woord>`).
+//  13. Een geaccepteerd ADR dat door een later ADR wordt gewijzigd, noemt dat in een herzieningsregel met de punten
+//      (`docsKrimp`, sleutel `docs:adr-herzien:<A>:<B>`, scripts/kit/adr-herzien.mjs, ADR 0074).
 import { execFileSync, spawnSync } from 'node:child_process';
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { globMatch, onderhoudVan } from '../../rails/hooks/lib/rolhek.mjs';
+import { adrHerzienViolations } from './adr-herzien.mjs';
 import { adrNumber, duplicateAdrNumbers, invalidAdrNames } from './adr-numbers.mjs';
 import { geheelVanaf, leesMergeConfig, padReden } from './agent-merge.mjs';
 import { grensMeldingen, grensViolations, normenMeldingenUitGit, normenUitGit, zonderBasis } from './leesbudget.mjs';
@@ -78,15 +81,18 @@ export async function docsMeldingen(root = '.') {
 }
 
 /**
- * De krimpcontrole op normen tegenover `git merge-base origin/main HEAD` (spec krimp-op-normen); nooit in de baseline.
+ * De krimpcontrole op normen tegenover `git merge-base origin/main HEAD` (spec krimp-op-normen) en de herzieningsregels van
+ * gewijzigde ADR's (ADR 0074, spec adr-herzien-markering); nooit in de baseline.
  * Zonder basis is ze in CI rood (AC-5).
  * @param {string} root
  * @returns {Promise<Violation[]>}
  */
 export async function docsKrimp(root = '.') {
+  const read = (/** @type {string} */ file) => readFileSync(path.join(root, file), 'utf8');
   return Promise.resolve([
     ...zonderBasis(root, process.env['GITHUB_ACTIONS'] === 'true').violations,
     ...normenUitGit(root),
+    ...adrHerzienViolations(trackedFiles(root), read),
   ]);
 }
 
