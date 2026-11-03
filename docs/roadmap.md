@@ -325,6 +325,22 @@ Bewust nog niet, tot de genoemde aanleiding er is (P1). Niets verdwijnt: elk ite
   en voegt zonder activatie geen tabellen, dependencies of externe dienst toe; SaaS-tests bewijzen tenant-isolatie over API én database;
   PWA-tests bewijzen updates en uitloggen zonder achterblijvende privé-cache.
   terug als: de eigenaar een concrete app en pakket kiest
+- [ ] **E-mailconnector en e-mailtemplates.** Nu heeft elke mail een eigen bestand op het basissjabloon (`src/core/api/mail/layout.ts`) en
+  verstuurt core alleen via SMTP (`src/core/api/mail/smtp.ts`). **Werk:** een provider-neutrale poort voor uitgaande mail met SMTP als standaard
+  en een adapter voor een HTTP-maildienst per app-ADR (bezorgbaarheid, bounces); een registratie van mailsoorten (onderwerp, variabelen,
+  Nederlandse tekst) op het basissjabloon, met voorbeeldweergave in Mailpit en een snapshottest per mailsoort. **Afhankelijkheden:** ST-03
+  (verzenden alleen via de outbox, ADR 0050); het algemene plan voor externe koppelingen (uitgaande client met rail, machineroute en inbox
+  voor bounce- en klachtmeldingen, app-brede sleutel in env): de adapter bouwt geen eigen HTTP- of geheimenpad; provider-ADR en dependencyakkoord
+  (R-PROV-01, R-SEC-06). Mailsoorten met een inloglink raken auth (R-AUTH-05, R-AUTH-06) en gaan via een besluit-PR.
+  terug als: ST-03 gebouwd en het koppelingsplan besloten is, of een app meer dan de basismails nodig heeft
+- [ ] **SSO-module.** Inloggen via een externe identiteitsprovider (OIDC eerst, SAML alleen op aanleiding), per organisatie in te schakelen;
+  koppelen aan een bestaand account alleen op geverifieerd e-mailadres; rol-, MFA- en sessieregels blijven gelijk (R-AUTH-02, R-AUTH-03,
+  R-AUTH-08); intrekken bij de provider sluit de toegang. **Afhankelijkheden:** kritiek pad, eerst besluit-PR met ADR: R-AUTH-01 staat nu
+  alleen de plugins two-factor en magic link toe en ADR 0041 wees een externe OIDC-provider als standaard af; tenantmodel uit ST-13 als SSO per
+  organisatie gaat; het clientgeheim van de provider in env via het koppelingsplan, niet in de database; dependencyakkoord (R-SEC-06); integratietests tegen een
+  lokale provider (R-TEST-01). Bouwt een app het eerder, dan gaat dat als `leerpunt` naar de template en wordt het hier algemeen herbouwd
+  (R-WERK-13).
+  terug als: een concrete app zakelijke klanten met een eigen identiteitsprovider heeft
 - [ ] **Feature flags, onderhoudsmodus en waarschuwing bij niet-opgeslagen formulieren.** Niet in de basis (besluit eigenaar 2026-10-10).
   terug als: een app het nodig heeft
 - [ ] **sonarjs, better-tailwindcss en squawk** (stuk 4): de eerste twee vragen een nieuwe dependency, squawk een nieuwe tool (voor `gate:slow`).
