@@ -1,5 +1,5 @@
 ---
-status: goedgekeurd
+status: gebouwd # #474; gevalideerd: d00c5efa833ca4cfd38c99a17348bdc47366a2f9
 namespace: kooi
 ---
 
