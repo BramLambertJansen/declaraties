@@ -2,7 +2,8 @@
 // Per maat het gemiddelde over de nieuwste tien tegenover de tien daarvoor; hoger is "let op: <maat> steeg". Maten:
 // CI-rood (`gh run list` per head-branch, conclusion failure), Codex-bevindingen (reviewreacties van CODEX_LOGIN via
 // `gh api .../pulls/<nr>/comments`) en reviewrondes (lokale meetdata; zonder data "onbekend", nooit 0). Een gh-fout geeft
-// "onbekend" voor die PR. Minder dan twintig PR's: "te weinig data". Leest nooit meer dan twintig PR's; geen exitcode.
+// "onbekend" voor die PR. De PR-lijst komt via REST (`gh api .../pulls?state=closed`), zodat het ook in cloudsessies werkt.
+// Minder dan twintig PR's: "te weinig data". Meet nooit meer dan twintig PR's; geen exitcode.
 import { execFileSync } from 'node:child_process';
 
 /** De login van de Codex-reviewbot op GitHub (vastgelegd met een test). */
@@ -84,39 +85,41 @@ function ciRood(opties, branch) {
 
 /** Codex-bevindingen op een PR. @param {GhOpties} opties @param {number} nummer @returns {Waarde} */
 function codex(opties, nummer) {
-  const reacties = gh(opties, ['api', `repos/{owner}/{repo}/pulls/${String(nummer)}/comments?per_page=100`]);
+  const reacties = gh(opties, [
+    'api',
+    `repos/{owner}/{repo}/pulls/${String(nummer)}/comments?per_page=100`,
+    '--jq',
+    '[.[] | {user: {login: .user.login}}]',
+  ]);
   return Array.isArray(reacties) ? telCodex(reacties) : 'onbekend';
 }
 
 /**
- * De nieuwste twintig gemergde PR's met hun maten; null als `gh pr list` faalt. `gh pr list` sorteert standaard op
- * aanmaakdatum; `sort:updated-desc` benadert de mergevolgorde (een merge werkt `updated` bij), daarna sorteren op `mergedAt`. Bij minder dan twintig volgen geen
+ * De nieuwste twintig gemergde PR's met hun maten; null als de lijst faalt. Via REST (`gh api`), niet `gh pr list`:
+ * dat loopt via GraphQL en wordt in cloudsessies geweigerd. Eén aanroep haalt de honderd laatst bijgewerkte gesloten
+ * PR's, met `--jq` teruggebracht tot de velden die tellen (de volle lijst is groter dan de buffer van execFileSync);
+ * daarvan tellen de twintig nieuwste merges, gesorteerd op `merged_at`. Een merge werkt `updated_at` bij; alleen als na de
+ * twintigste merge meer dan tachtig andere gesloten PR's zijn bijgewerkt (bulklabels, bots), vallen er merges buiten het venster. Bij minder dan twintig volgen geen
  * verdere gh-aanroepen.
  * @param {GhOpties} opties
  * @param {(branch: string) => Waarde} reviewrondes
  * @returns {Pr[] | null}
  */
 export function prsUitGh(opties, reviewrondes) {
-  const velden = 'number,headRefName,mergedAt';
   const lijst = gh(opties, [
-    'pr',
-    'list',
-    '--state',
-    'merged',
-    '--search',
-    'sort:updated-desc',
-    '--limit',
-    String(AANTAL),
-    '--json',
-    velden,
+    'api',
+    'repos/{owner}/{repo}/pulls?state=closed&sort=updated&direction=desc&per_page=100',
+    '--jq',
+    '[.[] | {number, head: {ref: .head.ref}, merged_at}]',
   ]);
   if (!Array.isArray(lijst)) return null;
   const prs = lijst
     .map((p) => ({
       nummer: Number(veld(p, 'number')),
-      branch: String(veld(p, 'headRefName') ?? ''),
-      t: veld(p, 'mergedAt'),
+      branch: String(veld(veld(p, 'head'), 'ref') ?? ''),
+      t: veld(p, 'merged_at'),
     }))
+    .filter(({ t }) => typeof t === 'string')
     .sort((a, b) => String(b.t).localeCompare(String(a.t)))
     .slice(0, AANTAL);
   if (prs.length < AANTAL)
@@ -131,7 +134,7 @@ export function prsUitGh(opties, reviewrondes) {
 
 /** @param {ReturnType<typeof trend> | null} t */
 export function trendTekst(t) {
-  if (t === null) return 'meting --trend: gh pr list gaf geen bruikbare uitvoer; trend onbekend\n';
+  if (t === null) return 'meting --trend: de PR-lijst via gh api gaf geen bruikbare uitvoer; trend onbekend\n';
   if (t.teWeinigData)
     return `te weinig data: ${String(t.aantal)} gemergde PR's, de trend vraagt er ${String(AANTAL)}\n`;
   const regels = MATEN.map(({ sleutel, naam }) => {

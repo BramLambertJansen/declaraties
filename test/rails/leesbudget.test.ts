@@ -659,23 +659,29 @@ describe("leesbudget/AC-7: meting --trend over twintig gemergde PR's", () => {
   });
 });
 
-/** Nep-gh (node): logt elke aanroep; `pr list` geeft `aantal` PR's, `run list` twee rode runs voor de nieuwste tien. */
+/**
+ * Nep-gh (node): logt elke aanroep; `api …/pulls?state=closed` geeft `aantal` gemergde PR's plus één gesloten zonder
+ * merge, `run list` twee rode runs voor de nieuwste tien.
+ */
 function nepGh(aantal: number): { gh: string; log: string } {
   const dir = mkdtempSync(path.join(tmpdir(), 'leesbudget-gh-'));
   dirs.push(dir);
   const log = path.join(dir, 'log');
-  const prLijst = Array.from({ length: aantal }, (_x, i) => ({
-    number: 500 - i,
-    headRefName: `b${String(500 - i)}`,
-    mergedAt: '2026-10-20T10:00:00Z',
-  }));
+  const prLijst = [
+    ...Array.from({ length: aantal }, (_x, i) => ({
+      number: 500 - i,
+      head: { ref: `b${String(500 - i)}` },
+      merged_at: '2026-10-20T10:00:00Z',
+    })),
+    { number: 400, head: { ref: 'dicht' }, merged_at: null },
+  ];
   const body = `const a = process.argv.slice(2); require('node:fs').appendFileSync(${JSON.stringify(log)}, a.join(' ') + '\\n');
 const prs = ${JSON.stringify(prLijst)};
 const b = (a.find((x) => x.startsWith('--branch=')) ?? '').slice(9) || a[a.indexOf('--branch') + 1] || a[a.indexOf('-b') + 1] || '';
-const nieuw = prs.slice(0, 10).some((p) => p.headRefName === b);
+const nieuw = prs.slice(0, 10).some((p) => p.head.ref === b);
 const run = (c) => ({ databaseId: 1, conclusion: c, status: 'completed', headBranch: b, createdAt: '2026-10-20T09:00:00Z' });
 let uit = '[]';
-if (a[0] === 'pr' && a[1] === 'list') uit = JSON.stringify(prs);
+if (a[0] === 'api' && a[1].includes('/pulls?')) uit = JSON.stringify(prs);
 else if (a[0] === 'run' && a[1] === 'list') uit = JSON.stringify(nieuw ? [run('failure'), run('failure'), run('success')] : [run('success')]);
 process.stdout.write(uit);`;
   const gh = path.join(dir, 'gh');
@@ -701,13 +707,20 @@ describe('leesbudget/AC-7: pnpm meting --trend als proces', { timeout: 60_000 },
     expect(r.stdout).not.toMatch(/let op: reviewrondes steeg/);
   });
 
-  test("leesbudget/AC-7 leest nooit meer dan twintig PR's", () => {
+  test("leesbudget/AC-7 meet nooit meer dan twintig PR's", () => {
     const r = trendCli(20);
-    const prList = r.aanroepen.filter((a) => a.startsWith('pr list'));
+    // GEWIJZIGD (L4): de lijst komt via REST in plaats van `gh pr list` (GraphQL, geweigerd in cloudsessies).
+    expect(r.aanroepen.filter((a) => a.startsWith('pr '))).toStrictEqual([]);
+    const prList = r.aanroepen.filter((a) => a.startsWith('api ') && a.includes('/pulls?'));
     expect(prList).toHaveLength(1);
-    expect(prList[0]).toMatch(/--state[= ]merged/);
-    expect(prList[0]).toMatch(/--limit[= ]20(\s|$)/);
-    expect(prList[0]).toContain('sort:updated-desc');
+    expect(prList[0]).toContain('state=closed');
+    expect(prList[0]).toContain('sort=updated');
+    expect(prList[0]).toContain('--jq');
+    expect(prList[0]).toContain('per_page=100');
+    expect(prList[0]).not.toContain('--paginate');
+    const comments = r.aanroepen.filter((a) => a.startsWith('api ') && a.includes('/comments'));
+    expect(comments.length).toBeGreaterThan(0);
+    expect(comments.length).toBeLessThanOrEqual(20);
     const runList = r.aanroepen.filter((a) => a.startsWith('run list'));
     expect(runList.length).toBeGreaterThan(0);
     expect(runList.length).toBeLessThanOrEqual(20);

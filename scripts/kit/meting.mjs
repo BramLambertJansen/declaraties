@@ -30,7 +30,7 @@ const HELP = `Gebruik: pnpm meting [--json] [--sessie <id>] [--branch <naam>] [-
   --branch <naam>  Alleen deze branch binnen elke sessie.
   --pr-tabel       Kerncijfers van één branch (--branch) als markdowntabel voor de PR-beschrijving: leespad (zie pnpm leespad),
                    doorlooptijd, reviewrondes, CI-rood, weigeringen (bovengrens) en Codex-bevindingen (handmatig).
-  --trend          Kwaliteitstrend over de laatste twintig gemergde PR's (gh pr list --state merged --limit 20): "let op:
+  --trend          Kwaliteitstrend over de laatste twintig gemergde PR's (één gh api …/pulls?state=closed, REST): "let op:
                    <maat> steeg" als CI-rood, Codex-bevindingen of reviewrondes (lokale meetdata; zonder data onbekend)
                    gemiddeld hoger liggen over de laatste tien dan over de tien daarvoor. Minder dan twintig: te weinig data.
   --help           Deze uitleg, zonder meetbestanden te lezen of gh aan te roepen.
