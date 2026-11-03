@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { ROLES } from '#core/shared/can.ts';
 import { pageSchema } from '#core/shared/cursor.ts';
+import { MAX_ID_LENGTH } from '#core/shared/limits.ts';
 import { defineListSearch } from '#core/shared/list-search.ts';
 import { MAX_EMAIL_LENGTH, MAX_NAME_LENGTH } from '../limits.ts';
 import { defineContract } from './kit.ts';
@@ -66,14 +67,14 @@ export const inviteContract = defineContract({
 export const reinviteContract = defineContract({
   method: 'POST',
   path: '/accounts/:id/reinvite',
-  input: z.object({ id: z.string().min(1).max(200) }).strict(),
+  input: z.object({ id: z.string().min(1).max(MAX_ID_LENGTH) }).strict(),
   output: z.null(),
   permission: 'accounts:invite',
   // Verstuurt mail (spec rate-limit).
   rateLimit: 'duur',
 });
 
-const accountIdInput = z.object({ id: z.string().min(1).max(200) }).strict();
+const accountIdInput = z.object({ id: z.string().min(1).max(MAX_ID_LENGTH) }).strict();
 
 // Blokkeren en deblokkeren (spec accountbeheer-uitbreiding, ADR 0043); idempotent.
 export const blockContract = defineContract({

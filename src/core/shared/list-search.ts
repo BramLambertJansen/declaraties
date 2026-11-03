@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { MAX_SEARCH_LENGTH } from './limits.ts';
+import { MAX_CURSOR_LENGTH, MAX_SEARCH_LENGTH } from './limits.ts';
 import { unsafeCast } from './unsafe-cast.ts';
 
 // Gedeeld zoekschema voor lijstpagina's (spec lijstpagina): één definitie, strict voor de API (ongeldig → VALIDATION) en
@@ -36,7 +36,6 @@ export interface ListSearch<Config extends ListSearchConfig> {
   readonly defaultSort: Config['sorts'][number];
 }
 
-const MAX_CURSOR_LENGTH = 500;
 const RESERVED_KEYS = ['q', 'sort', 'cursor'];
 
 function withoutUndefined<Values extends Record<string, unknown>>(values: Values): Values {

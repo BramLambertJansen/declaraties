@@ -61,6 +61,7 @@ Een rij van een ander bestaat voor de gebruiker niet: `NOT_FOUND`, niet `FORBIDD
 
 Zoeken en sorteren (spec lijstpagina): `GET` neemt `/api/__naam__?q=&sort=&cursor=` (`q` zoekt, `sort` is `nieuwste` of `oudste`).
 De cursor is aan de sortering gebonden: een cursor van een andere sortering, een vreemde cursor of een ongeldige `sort` geeft `VALIDATION`.
+Sorteert de lijst op een tekstveld, dan bewijst een test met `maxCursorLength` dat de sleutel binnen `MAX_CURSOR_LENGTH` past (spec lijstpagina, cursorbudget).
 In `q` worden `%`, `_` en `\` ge-escaped, zodat ze letterlijk worden gezocht. Velden en filters: zie "Open vragen", vraag "Zoeken en filters".
 
 ## Kopieer de vorm van

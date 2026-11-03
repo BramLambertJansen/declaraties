@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { ROLES } from '#core/shared/can.ts';
+import { MAX_ID_LENGTH } from '#core/shared/limits.ts';
 import { MAX_NAME_LENGTH } from '../limits.ts';
 import { defineContract } from './kit.ts';
 
@@ -57,7 +58,7 @@ export const sessionsListContract = defineContract({
 export const revokeSessionContract = defineContract({
   method: 'DELETE',
   path: '/me/sessions/:id',
-  input: z.object({ id: z.string().min(1).max(200) }).strict(),
+  input: z.object({ id: z.string().min(1).max(MAX_ID_LENGTH) }).strict(),
   output: z.null(),
   permission: 'me:update',
 });

@@ -1,5 +1,5 @@
 ---
-status: gebouwd
+status: gebouwd # #440
 namespace: lijstpagina
 ---
 
@@ -49,6 +49,13 @@ cursor-contract (`src/core/shared/cursor.ts`) en `Table`; eerst op `/admin/accou
 - **Cursor aan de sortering gebonden:** de cursor is `encodeCursor([sort, …sleutel])`; `decodeCursor` met een tuple per sortering. Een cursor van een
   andere sortering of met een ander sleuteltype geeft `VALIDATION`. Zoek- en filterwaarden zitten in de query key van TanStack Query: elke wijziging
   begint bij de eerste pagina. De paginagrootte blijft `ACCOUNTS_PAGE_SIZE`.
+- **Cursorbudget** (leerpunt #411): een cursor is nooit langer dan `MAX_CURSOR_LENGTH` (4096, `src/core/shared/limits.ts`). `pageQuery` en
+  `defineListSearch` weigeren een langere (`VALIDATION`); `encodeCursor` eist met `assert()` dat hij erbinnen valt (anders `INTERNAL_ERROR`, gelogd).
+  Zo geeft de server nooit stil een `nextCursor` terug die zijn eigen invoer weigert. `maxCursorLength(maxLengths)` rekent de langst mogelijke cursor
+  uit de maximale UTF-16-lengte per sleuteldeel: elke eenheid wordt in JSON hooguit 6 bytes (`\u0001`, losse surrogaat), base64url maakt het ×4/3.
+  Per lijst bewijst een test dat zijn sleutel binnen de grens past. Accounts: `[sort, lower(naam), id]` met `MAX_NAME_LENGTH` (100) en `MAX_ID_LENGTH`
+  (200, ook de grens van `brandedId`) geeft hooguit 2478 tekens. Waarom 4096: ruim boven elke sleutel uit de template en ver onder de headergrens
+  van Node (16 KiB); de grens blijft dus begrensd, en een losse waarde per lijst (zoals de eerdere 500) kan niet meer afwijken van de sleutel.
 - **Ontdubbelen:** keyset-paginering garandeert niets als een rij tussen twee pagina's van sorteersleutel verandert (bijv. hernoemd): hij kan
   dan op een volgende pagina terugkomen of worden overgeslagen. `useInfiniteQuery` voegt de pagina's daarom samen met ontdubbelen op `id`
   (eerste voorkomen wint); een overgeslagen rij verschijnt pas na herladen. Geldt ook voor de generator.
@@ -95,6 +102,15 @@ cursor-contract (`src/core/shared/cursor.ts`) en `Table`; eerst op `/admin/accou
   dezelfde waarden rechtstreeks naar `/api/accounts` geven `VALIDATION`.
 - **lijstpagina/AC-7** — Gegeven een cursor die bij "nieuwste" hoort, wanneer iemand hem met `sort=naam-az` naar de API stuurt, dan `VALIDATION`.
 - **lijstpagina/AC-8** — Gegeven `pnpm new:resource notities`, dan heeft de gemaakte lijst zoeken en sorteren in de search params, compileert alles en slaagt `check:new-resource`.
+- **lijstpagina/AC-9** — Gegeven een naam van `MAX_NAME_LENGTH` tekens uit de slechtste tekens (U+0001, `"`, `\`, een teken van 3 UTF-8-bytes, een
+  surrogaatpaar, een losse surrogaat) en een id van `MAX_ID_LENGTH` tekens, wanneer de lijst er een cursor van maakt voor `naam-az` of `naam-za`, dan
+  accepteert `accountsSearch.api` die cursor weer (de reproductie uit #411 geeft dan `true`).
+- **lijstpagina/AC-10** — Gegeven een cursor van `MAX_CURSOR_LENGTH + 1` tekens, wanneer hij naar de API gaat (`defineListSearch` of `pageQuery`),
+  dan `VALIDATION`; een cursor van precies `MAX_CURSOR_LENGTH` tekens wordt op lengte niet geweigerd.
+- **lijstpagina/AC-11** — Gegeven een sleutel waarvan de cursor langer dan `MAX_CURSOR_LENGTH` wordt, wanneer de server `encodeCursor` aanroept, dan
+  gooit die een `AssertionError` in plaats van de cursor terug te geven.
+- **lijstpagina/AC-12** — Gegeven per sleuteldeel een maximale lengte, dan is de echte lengte van `encodeCursor` voor elk slechtste teken hooguit
+  `maxCursorLength`, en bij uitsluitend U+0001 precies gelijk.
 
 ## Randgevallen
 
@@ -105,6 +121,9 @@ cursor-contract (`src/core/shared/cursor.ts`) en `Table`; eerst op `/admin/accou
 | `q` langer dan `MAX_SEARCH_LENGTH` (100) | web: afgekapt in het veld (`maxLength`); API: geweigerd | `VALIDATION` |
 | Onbekende sleutel in de search params | web: genegeerd; API: geweigerd (`.strict()`) | `VALIDATION` |
 | Gemanipuleerde of vreemde cursor | geweigerd, geen SQL-fout | `VALIDATION` |
+| Cursor langer dan `MAX_CURSOR_LENGTH` | geweigerd | `VALIDATION` |
+| Naam van 100 tekens met stuurtekens of aanhalingstekens als sorteersleutel | de cursor past in het budget; "Meer laden" werkt (AC-9) | — |
+| Sleutel die buiten de contracten om te lang is opgeslagen (bijv. `pnpm admin:create --name`; de naamkolom heeft geen lengte-CHECK) | zichtbare fout op die sortering in plaats van een stil vastgelopen "Meer laden" (AC-11) | `INTERNAL_ERROR` |
 | Account wijzigt tussen twee pagina's (bijv. hernoemd) | kan op een volgende pagina terugkomen (ontdubbeld op `id`, dus één keer zichtbaar) of overgeslagen worden (zichtbaar na herladen) | — |
 | Snel typen | één request per 300 ms stilte; een oud antwoord overschrijft geen nieuw (query key) | — |
 | `user` opent `/admin/accounts?q=x` | geen toegang, zoals nu | `FORBIDDEN` |
@@ -117,19 +136,23 @@ cursor-contract (`src/core/shared/cursor.ts`) en `Table`; eerst op `/admin/accou
 - Generator: `scripts/kit/templates/` (`contract.ts.tmpl`, `route.ts.tmpl`, `queries.ts.tmpl`, `page.tsx.tmpl`, `web-route.tsx.tmpl`, `spec.md.tmpl`) en
   `scripts/kit/check-new-resource.mjs`: gate-paden (ADR 0016), dus een gate-wijziging door de eigenaar.
 - Framework §5 (Paginering, Routing) en `docs/gouden-pad.md` wijzen naar dit patroon; `/design-system` krijgt een voorbeeld van `ListToolbar`.
+- Cursorbudget (#411): `src/core/shared/cursor.ts` (`maxCursorLength`, assert in `encodeCursor`), `src/core/shared/limits.ts` (`MAX_CURSOR_LENGTH`,
+  `MAX_ID_LENGTH`), `src/core/shared/ids.ts`, `src/core/shared/list-search.ts` (core, gate-pad); `src/shared/contracts/accounts.ts` (test op het budget).
 - `src/core/shared/cursor.ts`: het commentaar zegt "cursor in de URL"; dat wordt "cursor alleen in de query van TanStack Query" (OV-1).
 
 ## Buiten scope
 
 Totaal aantal resultaten, paginanummers, kolomkoppen als sorteerknop, opgeslagen weergaven, full-text search of `pg_trgm`, filters op datum,
-meerdere waarden per filter, zoeken op `/design-system`-voorbeelddata.
+meerdere waarden per filter, zoeken op `/design-system`-voorbeelddata. Bij het cursorbudget (#411): een lengte-CHECK op de naam in de database
+(`better_auth."user"` is auth, dus eerst een besluit-PR) en stuurtekens in namen weigeren (een aparte keuze, met bestaande gegevens).
 
 ## Testplan
 
 - **Unit:** `defineListSearch`: strict voor de API, `.catch()` voor de web, `q` trim en leeg, grenzen gelijk aan `limits.ts`; cursor per sortering
   (goed, andere sortering, verkeerd type); escapen van `%`, `_`, `\`; `useListSearch` (debounce, `replace` bij zoeken, push bij filter);
   `ListToolbar` (labels, "Filters wissen" alleen bij actieve filters, sortering blijft, focus na wissen); samenvoegen van pagina's met een dubbele
-  `id` (één rij); copy-woordenlijst.
+  `id` (één rij); copy-woordenlijst. Cursorbudget: `maxCursorLength` als bovengrens per slechtste teken (AC-12), lengtegrens op de invoer (AC-10),
+  assert bij emissie (AC-11), roundtrip van de accountsleutel op maximale lengte per naamsortering (AC-9).
 - **pgTAP:** n.v.t. (geen migratie); de bestaande test "`app.accounts` alleen voor admin met MFA" blijft groen, nu ook met een zoekfilter.
 - **Integratie (`pnpm test:db`):** `GET /api/accounts` per filter, per sortering en met zoeken; paginering over 3 pagina's zonder dubbele of ontbrekende
   rijen per sortering; ongeldige `sort`, `rol`, `status`, `q` en cursor → `VALIDATION`; `user` → `FORBIDDEN`, admin zonder MFA → `MFA_REQUIRED`.

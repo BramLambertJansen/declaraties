@@ -19,6 +19,12 @@ export const MAX_AUDIT_TARGET_ID_LENGTH = 128;
 // Paginering (framework §5): een app mag kleiner, nooit groter dan MAX_PAGE_SIZE.
 export const DEFAULT_PAGE_SIZE = 25;
 export const MAX_PAGE_SIZE = 100;
+// Een cursor is nooit langer (spec lijstpagina, cursorbudget, leerpunt #411): de invoer weigert een langere en `encodeCursor` eist
+// hem bij emissie. Ruim boven elke sleutel van de template, ver onder de headergrens van Node (16 KiB).
+export const MAX_CURSOR_LENGTH = 4096;
+
+// Branded IDs (`brandedId`) en id-velden in contracten; ook een sleuteldeel van een cursor.
+export const MAX_ID_LENGTH = 200;
 
 // Rate limit van app-routes (spec rate-limit, framework §6 Verharding): vast venster per gebruiker per categorie. Een app
 // kiest per contract een categorie (`rateLimit` in defineContract; zonder: GET → lezen, anders schrijven) en mag de

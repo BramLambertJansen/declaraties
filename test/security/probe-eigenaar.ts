@@ -7,7 +7,12 @@ import type { Tx } from '../../src/core/api/db/types.ts';
 import { AppError } from '../../src/core/api/errors.ts';
 import { createApp, type App, type AppConfig } from '../../src/core/api/http/create-app.ts';
 import { decodeCursor, encodeCursor, pageSchema } from '../../src/core/shared/cursor.ts';
-import { DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE, MAX_SEARCH_LENGTH } from '../../src/core/shared/limits.ts';
+import {
+  DEFAULT_PAGE_SIZE,
+  MAX_CURSOR_LENGTH,
+  MAX_PAGE_SIZE,
+  MAX_SEARCH_LENGTH,
+} from '../../src/core/shared/limits.ts';
 import { defineContract } from '../../src/shared/contracts/kit.ts';
 import { errors } from '../../src/shared/errors.ts';
 import { APP_ORIGIN } from '../auth/harness.ts';
@@ -79,7 +84,7 @@ const lijstContract = defineContract({
   input: z
     .object({
       q: z.string().trim().max(MAX_SEARCH_LENGTH).optional(),
-      cursor: z.string().max(500).optional(),
+      cursor: z.string().max(MAX_CURSOR_LENGTH).optional(),
       limit: z.coerce.number().int().min(1).max(MAX_PAGE_SIZE).default(DEFAULT_PAGE_SIZE),
     })
     .strict(),

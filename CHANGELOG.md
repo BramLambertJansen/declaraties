@@ -353,6 +353,12 @@ Hier staan wijzigingen die van belang zijn bij het gebruiken of bijwerken van de
 
 ### Opgelost
 
+- Een lijst geeft geen cursor meer terug die haar eigen invoer weigert (leerpunt #411, spec `lijstpagina` AC-9 t/m AC-12). Een naam
+  van 100 tekens met stuurtekens gaf bij naamsortering een cursor van 852 tekens, terwijl de invoer er 500 toeliet: "Meer laden" liep
+  vast. Eén grens `MAX_CURSOR_LENGTH` (4096, `src/core/shared/limits.ts`) geldt nu voor `pageQuery`, `defineListSearch` en
+  `encodeCursor`; `encodeCursor` gooit een `AssertionError` (→ `INTERNAL_ERROR`) bij een langere cursor. `maxCursorLength(maxLengths)`
+  rekent de langst mogelijke cursor van een sleutel uit; ook nieuw: `MAX_ID_LENGTH` (200, gebruikt door `brandedId`).
+
 - `check:new-resource` is niet langer rood op een verse app (leerpunt #363): de tijdelijke kopie uit
   `scripts/kit/proef-kopie.mjs` zet `basis` op de HEAD van de bron (objecten via alternates, shallow-grens mee), zodat
   `test/scripts/app-init-template.test.ts` de templatestand in de geschiedenis vindt. De CI-jobs `check:new-resource` en `check:app-init` checken daarvoor met
@@ -432,6 +438,9 @@ Hier staan wijzigingen die van belang zijn bij het gebruiken of bijwerken van de
 Account-lifecycle vereist de nieuwe migratie vóór de nieuwe API-code. Bestaande accounts krijgen geen verzonnen
 loginhistorie: de lijst toont "Onbekend" tot de volgende volledig geslaagde login. Zie
 [de spec](docs/specs/accountstatus-en-laatste-login.md) voor gedrag en tests.
+
+Een app met een eigen lijst die op een lang tekstveld sorteert: toets met `maxCursorLength` dat de sleutel binnen
+`MAX_CURSOR_LENGTH` past (zie `src/shared/contracts/accounts-cursor.test.ts`); anders geeft die sortering `INTERNAL_ERROR`.
 
 De template heeft nog geen releaseversies. Controleer bij een update de gewijzigde migraties, architectuurbesluiten en instellingen. Een volledige upgradecontrole staat op de roadmap.
 
