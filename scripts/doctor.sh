@@ -90,6 +90,12 @@ elif bwrap --ro-bind / / --unshare-all true 2>/dev/null; then
 else
   fail "bubblewrap start geen sandbox" "docs/nieuwe-app.md, probleemtabel"
 fi
+# De kooi voor destructieve en overgenomen commando's (ADR 0072): dezelfde proef als vóór elk kooicommando.
+if mise exec -- node scripts/kit/kooi.mjs --proef >/dev/null 2>&1; then
+  ok "de kooi schermt af (node scripts/kit/kooi.mjs --proef)"
+else
+  fail "de kooi schermt niet af" "node scripts/kit/kooi.mjs --proef toont de oorzaak (docs/ENVIRONMENT.md)"
+fi
 
 if docker info >/dev/null 2>&1; then ok "Docker draait"; else fail "Docker draait niet of je zit niet in de groep docker" "sudo systemctl start docker (docs/nieuwe-app.md)"; fi
 

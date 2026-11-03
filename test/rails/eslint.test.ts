@@ -439,6 +439,45 @@ const fixtures: Fixture[] = [
     code: "declare function ok(n: number): boolean; test.each([1])('r', (n) => { expect(ok(n)).toBe(false); });",
     rule: null,
   })),
+  // kooi (ADR 0072, spec kooi AC-5): een shell met een commandotekst alleen via inKooi.
+  ...[
+    "import { spawnSync } from 'node:child_process'; declare const c: string; spawnSync('bash', ['-c', c]);",
+    "import { spawnSync } from 'node:child_process'; declare const c: string; spawnSync('/bin/sh', ['-eu', '-c', c]);",
+    "import { execFileSync } from 'child_process'; declare const c: string; execFileSync('bash', ['-ec', c]);",
+    "import { spawn } from 'node:child_process'; declare const a: string[]; spawn('zsh', a);",
+    "import { execFile } from 'node:child_process'; execFile('git', ['status'], { shell: true });",
+    "import { spawnSync } from 'node:child_process'; spawnSync('ls', [], { shell: '/bin/bash' });",
+    "import { exec } from 'node:child_process'; exec('ls');",
+    "import { execSync as x } from 'child_process'; x('ls');",
+    "import * as cp from 'node:child_process'; cp.spawnSync('ls');",
+    "import cp from 'node:child_process'; cp.spawnSync('ls');",
+    "const cp = await import('node:child_process'); cp.spawnSync('ls');",
+    "const { execSync } = require('child_process'); execSync('ls');",
+    "import { spawnSync as s } from 'node:child_process'; declare const c: string; s('bash', ['-c', c]);",
+    "import { spawn as spawnSync } from 'node:child_process'; spawnSync('ls');",
+    "import { spawnSync } from 'node:child_process'; spawnSync('ls', [], { 'shell': true });",
+    "const cp = await import(`node:child_process`); cp.spawnSync('ls');",
+  ].map((code) => ({ name: `kooi: ${code}`, file: 'test/x.test.ts', code, rule: 'rails/kooi' })),
+  ...['scripts/kit/x.mjs', 'rails/hooks/lib/x.mjs', 'src/api/x.ts', 'e2e/x.spec.ts', 'deploy/x/x.ts', 'x.mjs'].map(
+    (file) => ({
+      name: 'kooi: elk codepad valt eronder',
+      file,
+      code: "import { spawnSync } from 'node:child_process'; declare const c: string; spawnSync('bash', ['-c', c]);",
+      rule: 'rails/kooi',
+    }),
+  ),
+  ...[
+    "import { execFileSync } from 'node:child_process'; execFileSync('git', ['-c', 'user.name=t', 'status']);",
+    "import { spawnSync } from 'node:child_process'; spawnSync('bash', ['scripts/runner.sh', 'ui']);",
+    "import { spawnSync } from 'node:child_process'; spawnSync('ls', [], { shell: false });",
+    "export const m = /a/.exec('a');",
+  ].map((code) => ({ name: `kooi: mag: ${code}`, file: 'test/x.test.ts', code, rule: null })),
+  {
+    name: 'kooi: de kooi zelf mag',
+    file: 'scripts/kit/kooi.mjs',
+    code: "import { spawnSync } from 'node:child_process'; spawnSync('bwrap', ['--', 'bash', '-c', 'x']);",
+    rule: null,
+  },
 ];
 
 describe('rails in eslint.config.js', () => {

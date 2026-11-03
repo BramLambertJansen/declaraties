@@ -247,10 +247,11 @@ Afgedwongen door: ruleset op `main`, `guard.yml` (`document-status`, `check-core
 
 ## 11. Lokaal ontwikkelen
 
-Afgedwongen door: `scripts/doctor.sh`, `test/rails/excluded-commands.test.ts`.
+Afgedwongen door: `scripts/doctor.sh`, `test/rails/excluded-commands.test.ts`, `test/scripts/kooi.test.ts`, lintregel `rails/kooi` (`eslint.config.js`).
 
 - **R-TOOL-01** Ubuntu 24.04 of 26.04 (andere versie: stop en vraag), code op ext4; eigenaar installeert toolchain met `scripts/bootstrap.sh`; Compose alleen `127.0.0.1`; devcontainer nooit met host-socket (0039)
 - **R-TOOL-02** Agent gebruikt `docker` niet; stack is van eigenaar (`pnpm dev`); alleen `pnpm test:db`, `pnpm ui:check`, `pnpm gate:slow`, `pnpm db:generate`, `pnpm check:snapshot` draaien buiten sandbox, elk na goedkeuring (0044)
+- **R-TOOL-03** Een commando dat buiten zijn werkmap kan verwijderen of overschrijven en dat niet letterlijk voor dit moment is geschreven (corpusrij, fragment uit een bestand, gegenereerd), of een destructief experiment, draait alleen via de kooi (`inKooi` of `node scripts/kit/kooi.mjs`); een werkmap als afscherming telt niet; ook buiten de repository en in een cloudsessie (0072)
 
 ## 11a. Repo-structuur
 

@@ -1,9 +1,23 @@
 import { spawnSync } from 'node:child_process';
-import { chmodSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { accessSync, chmodSync, constants, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, test } from 'vitest';
 import { poorten, statusregel } from '../../rails/hooks/lib/statusregel.mjs';
+
+/** Het eerste uitvoerbare `naam` op PATH, zonder shell (ADR 0072). */
+function opPad(naam: string): string {
+  for (const map of (process.env['PATH'] ?? '').split(path.delimiter)) {
+    const kandidaat = path.join(map, naam);
+    try {
+      accessSync(kandidaat, constants.X_OK);
+      return kandidaat;
+    } catch {
+      // volgende map
+    }
+  }
+  throw new Error(`${naam} niet op PATH`);
+}
 
 // Ontwikkelgemak 7: de statusregel van Claude Code toont branch, achterstand, wijzigingen, de lokale stack en het model.
 
@@ -85,7 +99,7 @@ function fixture() {
   mkdirSync(bin);
   const log = path.join(basis, 'git.log');
   writeFileSync(log, '');
-  const echteGit = spawnSync('sh', ['-c', 'command -v git'], { encoding: 'utf8' }).stdout.trim();
+  const echteGit = opPad('git');
   writeFileSync(path.join(bin, 'git'), `#!/bin/sh\nprintf '%s\\n' "$*" >> '${log}'\nexec '${echteGit}' "$@"\n`);
   chmodSync(path.join(bin, 'git'), 0o755);
   return { repo, bin, log };

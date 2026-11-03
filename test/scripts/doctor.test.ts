@@ -89,6 +89,12 @@ test.each(['node', 'docker', 'bwrap'])('machinecontrole blijft falen op ontbreke
   expect(result.stdout).toContain('✗');
 });
 
+test('machinecontrole faalt als de kooi niet afschermt (ADR 0072)', () => {
+  const result = run('doctor.sh', ['--machine'], { fail: '--proef' });
+  expect(result.status).toBe(1);
+  expect(result.stdout).toContain('de kooi schermt niet af');
+});
+
 test('ontbrekende git-hooks blijven een installatiefout', () => {
   const result = run('doctor.sh', ['--machine'], { hooks: false });
   expect(result.status).toBe(1);
