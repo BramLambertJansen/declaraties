@@ -20,7 +20,9 @@ tegelijk 422 s. De nieuwe planning is op de echte configuratie getest; uitvoerin
 `playwright.config.ts` hostcode is (ADR 0044). Een nieuwe planning maakt de oude rode run niet groen.
 
 Vraag bij `node scripts/kit/feiten.mjs` alleen de secties die de taak nodig heeft. De UI-catalogus en TypeScript-compiler
-worden pas geladen bij `componenten` of bij een aanroep zonder secties; tekst- en JSON-uitvoer blijven gelijk.
+worden pas geladen bij `componenten` of bij een aanroep zonder secties; tekst- en JSON-uitvoer blijven gelijk. De secties staan
+in `scripts/kit/feiten-secties.mjs`; `specs`, `adr` en `fase` zijn pure functies over een lezer, zodat `pnpm leespad` ze ook
+op de basis kan meten.
 
 Lokale vergelijking op 25 oktober 2026 (Node 26.11.1, vijf losse processen per versie, `gates --json`): mediaan 426 ms
 vóór en 32 ms na uitgesteld laden. Dit is een momentopname. `test/scripts/feiten-lazy.test.ts` bewaakt de vermeden import;
@@ -51,13 +53,30 @@ modus `onbekend`. Nul prompts en een lege modusverdeling bewijzen geen permissie
 eigenaarberichten waren. Een classifierbeslissing in auto mode is geen bewijs van een klik van de eigenaar.
 
 Kerncijfers per PR: `pnpm meting --pr-tabel --branch <naam>` geeft een markdowntabel voor de PR-beschrijving (doorlooptijd,
-reviewrondes, CI-rood, weigeringen als bovengrens, Codex-bevindingen handmatig via `gh api`); `pnpm leespad [--ref <ref>]` telt
-de bytes van het verplichte leespad per scenario (meting-kerncijfers/AC-1 t/m AC-4), van `docs/framework.md` alleen de tekst vóór de
-eerste kop plus §8 met 8a, 8b (`node scripts/kit/feiten.mjs hoofdstuk 8`), met streefdoel en waarschuwingsdrempel per scenario, de
-"let op"-meldingen vanaf 85 % van de grens van `AGENTS.md` en `CLAUDE.md`, en de metingen van hoofdstukken, regelboek, specs, ADR's,
-rules, skills en operations-docs tegenover hun streefwaarde (ADR 0065; nooit rood). `pnpm meting --trend` vergelijkt CI-rood,
-Codex-bevindingen en reviewrondes over de laatste tien gemergde PR's met de tien daarvoor en meldt "let op: <maat> steeg"
-(`scripts/kit/meting-trend.mjs`; leesbudget/AC-7).
+reviewrondes, CI-rood, weigeringen als bovengrens, Codex-bevindingen handmatig via `gh api`); `pnpm leespad [--ref <ref>]
+[--basis <ref>]` telt de bytes van het verplichte leespad per scenario (meting-kerncijfers/AC-1 t/m AC-4), van
+`docs/framework.md` alleen de tekst vóór de eerste kop plus §8 met 8a, 8b (`node scripts/kit/feiten.mjs hoofdstuk 8`), met
+streefdoel en waarschuwingsdrempel per scenario, de "let op"-meldingen vanaf 85 % van de grens van `AGENTS.md` en `CLAUDE.md`,
+en de metingen van hoofdstukken, regelboek, specs, ADR's, rules, skills en operations-docs tegenover hun streefwaarde (ADR 0065;
+nooit rood). `pnpm meting --trend` vergelijkt CI-rood, Codex-bevindingen en reviewrondes over de laatste tien gemergde PR's met
+de tien daarvoor (`scripts/kit/meting-trend.mjs`; leesbudget/AC-7).
+
+Wanneer een meting "let op" zegt (ADR 0070, spec `meting-stuurt`):
+
+- **Tegenover de basis.** `pnpm leespad` meet ook de basis, standaard `git merge-base origin/main HEAD`
+  (`scripts/kit/leespad.mjs:basisVan`), met de huidige code op de bestanden van de basis (`git show`). Een scenario krijgt
+  "let op" bij minstens 1 KB groei, een eenheid (spec, ADR, hoofdstuk, rule, skill) als hij nieuw boven zijn streefwaarde
+  komt of erboven 1 KB (5 regels) groeit (`eenheidMeldingen`). Verder staat er "gelijk aan de basis" of "was M".
+- **Echte stap in de trend.** "let op: <maat> steeg" alleen bij minstens 0,5 en 25 % hoger (`meting-trend.mjs:echteStap`).
+- **Afgeleide feiten-aanroepen.** Per scenario telt de uitvoer van de `feiten.mjs`-aanroepen die de scenariobestanden
+  voorschrijven: injecties en de stap "Begin met de feiten" (`scripts/kit/leespad-feiten.mjs`); bij `nieuwe-feature` ook de
+  padregels `api.md`, `web.md` en `database.md` (`PADREGELS`). Een nieuwe aanroep in een agentbestand telt dus vanzelf.
+- **Plafonds in `feiten.mjs`.** `specs` toont open specs, `adr` de voorgestelde en de tien nieuwste geaccepteerde, `fase` alles
+  onder "Nu" en vijf onder "Volgende", elk met een telregel (`scripts/kit/feiten-tekst.mjs`); `--alle` toont alles.
+- **Op de PR.** `ratchet` en `leespad` schrijven naar de samenvatting van de CI-job (`scripts/kit/samenvatting.mjs`); de
+  skill `opleveren` zet de "let op"-regels in de PR-beschrijving.
+- **Herijken.** Sluit een PR een fase, dan eist `check:roadmap` onder `### Fase <n>` in `docs/roadmap-archief.md` een regel
+  `Herijking fase <n>: <datum>, leespad <n> KB, trend <uitslag>` (`scripts/kit/roadmap-herijking.mjs`, R-DOC-08).
 
 `weigeringen` is een bovengrens: een ontvangen `PermissionDenied` telt, evenals een `PreToolUse` met ID waarvoor nog
 geen `PostToolUse` of `PostToolUseFailure` met hetzelfde ID geregistreerd is. Beide voor dezelfde ID tellen samen één

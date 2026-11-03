@@ -843,7 +843,7 @@ const REVIEWER_READS = {
   'gh issue list': { flags: [], values: ['--label', '--state', '--limit', '--json', '--jq'], positional: 0 },
   'gh run view': { flags: ['--log', '--log-failed'], values: ['--json', '--jq', '--job'], positional: 1 },
   'gh run list': { flags: [], values: ['--branch', '--workflow', '--limit', '--json', '--jq'], positional: 0 },
-  'pnpm leespad': { flags: ['--json'], values: ['--ref'], positional: 0 },
+  'pnpm leespad': { flags: ['--json'], values: ['--ref', '--basis'], positional: 0 },
   'pnpm meting': { flags: ['--json', '--pr-tabel', '--trend', '--help'], values: ['--branch', '--sessie'], positional: 0 },
 };
 // Geen `$`, backtick, `;`, spatie of aanhalingsteken: de shell van pnpm voert niets uit een waarde uit.

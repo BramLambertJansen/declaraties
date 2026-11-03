@@ -275,20 +275,23 @@ describe('leesbudget/AC-3: leespad telt §8 en toont metingen', { timeout: 60_00
     const r = node(repo({ 'docs/framework.md': FRAMEWORK }), ['scripts/kit/leespad.mjs', '--json']);
     expect(r.status).toBe(0);
     const data: unknown = JSON.parse(r.stdout);
-    expect(veld(data, 'scenarios', 'nieuwe-feature', 'streefdoel')).toBe(25 * KB);
-    expect(veld(data, 'scenarios', 'nieuwe-feature', 'drempel')).toBe(56 * KB);
-    expect(veld(data, 'scenarios', 'lichte-fix', 'drempel')).toBe(16 * KB);
-    expect(veld(data, 'scenarios', 'review', 'drempel')).toBe(28 * KB);
+    // GEWIJZIGD (ADR 0070 punt 4): de bouw van meting-stuurt herijkt de waarden op de eerlijke meting.
+    expect(veld(data, 'scenarios', 'nieuwe-feature', 'streefdoel')).toBe(50 * KB);
+    expect(veld(data, 'scenarios', 'nieuwe-feature', 'drempel')).toBe(88 * KB);
+    expect(veld(data, 'scenarios', 'lichte-fix', 'drempel')).toBe(22 * KB);
+    expect(veld(data, 'scenarios', 'review', 'drempel')).toBe(34 * KB);
     expect(veld(data, 'scenarios', 'review', 'bytes')).toBe(Buffer.byteLength(VERWACHT_8));
   });
 
-  test('leesbudget/AC-3 CLI-tekst: streefdoel en drempels; boven de drempel "let op" op de scenarioregel', () => {
-    const r = node(repo({ 'docs/gouden-pad.md': tekst(57 * KB) }), ['scripts/kit/leespad.mjs']);
+  // GEWIJZIGD (meting-stuurt/AC-1, ADR 0070 punt 1): "let op" komt alleen uit het verschil met de basis; zonder basis staat
+  // de drempel erbij zonder "let op". Het geval met basis staat in test/rails/meting-stuurt-leespad.test.ts.
+  test('leesbudget/AC-3 CLI-tekst: streefdoel en drempels; boven de drempel zonder basis geen "let op"', () => {
+    const r = node(repo({ 'docs/gouden-pad.md': tekst(89 * KB) }), ['scripts/kit/leespad.mjs']);
     expect(r.status).toBe(0);
-    for (const kb of ['25 KB', '56 KB', '28 KB', '16 KB']) expect(r.stdout).toContain(kb);
-    const regels = r.stdout.split('\n');
-    expect(regels.some((l) => l.includes('nieuwe-feature') && l.includes('let op'))).toBe(true);
-    expect(regels.some((l) => l.includes('lichte-fix') && l.includes('let op'))).toBe(false);
+    // GEWIJZIGD (ADR 0070 punt 4): herijkte waarden.
+    for (const kb of ['50 KB', '88 KB', '34 KB', '22 KB']) expect(r.stdout).toContain(kb);
+    expect(r.stdout).toContain('basis niet te meten');
+    expect(r.stdout).not.toContain('let op');
   });
 });
 
@@ -357,10 +360,11 @@ describe('leesbudget/AC-3: metingen tegenover streefwaarden', () => {
     expect(veld(uit, 'operations', 'aantal')).toBe(1);
   });
 
-  test('leesbudget/AC-3 CLI: metingen met "let op", begrensde uitvoer, exit 0 en nooit een overtreding', () => {
+  // GEWIJZIGD (meting-stuurt/AC-1): zonder basis "N erboven" in plaats van "let op".
+  test('leesbudget/AC-3 CLI: metingen met het aantal erboven, begrensde uitvoer, exit 0 en nooit een overtreding', () => {
     const r = node(repo(metingFixture()), ['scripts/kit/leespad.mjs']);
     expect(r.status).toBe(0);
-    expect(r.stdout).toContain('let op');
+    expect(r.stdout).toContain('7 erboven');
     expect(r.stdout).toContain('docs/specs/s7.md');
     for (const klein of ['docs/specs/s1.md', 'docs/specs/s2.md']) expect(r.stdout).not.toContain(klein);
     expect(r.uit).not.toMatch(/overtreding/i);
@@ -405,15 +409,26 @@ describe('leesbudget/AC-5: groeiproef', { timeout: 60_000 }, () => {
     expect(keys.filter((k) => /:(budget|regels|paragraaf):/.test(k))).toStrictEqual([]);
   });
 
-  test('leesbudget/AC-5 leespad: "let op" bij hoofdstuk, regelboek, spec en ADR; exit 0', () => {
+  // GEWIJZIGD (meting-stuurt/AC-1): "let op" komt uit het verschil met de basis, dus de groei staat nu tegenover een basis
+  // (een lege commit als origin/main) in plaats van alleen in de werkmap.
+  test('leesbudget/AC-5 leespad: "let op" bij hoofdstuk, regelboek, spec en ADR tegenover de basis; exit 0', () => {
     const r = node(repo(GROEI), ['scripts/kit/leespad.mjs', '--json']);
     expect(r.status).toBe(0);
     const data: unknown = JSON.parse(r.stdout || '{}');
     for (const soort of ['hoofdstukken', 'regelboek', 'specs', 'adrs'])
       expect(veld(data, 'metingen', soort, 'boven')).toBe(1);
-    const tekstUit = node(repo(GROEI), ['scripts/kit/leespad.mjs']);
+    const dir = mkdtempSync(path.join(tmpdir(), 'leesbudget-basis-'));
+    dirs.push(dir);
+    git(dir, 'init', '-q');
+    git(dir, 'commit', '-q', '--allow-empty', '-m', 'basis');
+    git(dir, 'update-ref', 'refs/remotes/origin/main', 'HEAD');
+    schrijf(dir, GROEI);
+    git(dir, 'add', '-A');
+    git(dir, 'commit', '-qm', 'groei');
+    const tekstUit = node(dir, ['scripts/kit/leespad.mjs']);
     expect(tekstUit.status).toBe(0);
-    expect(tekstUit.stdout.match(/let op/g)?.length ?? 0).toBeGreaterThanOrEqual(4);
+    for (const soort of ['hoofdstukken', 'regelboek', 'specs', 'adrs'])
+      expect(tekstUit.stdout).toMatch(new RegExp(`^let op: ${soort}: .+ nieuw boven de streefwaarde`, 'm'));
   });
 
   test.each([

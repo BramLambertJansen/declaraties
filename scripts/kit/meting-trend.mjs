@@ -1,5 +1,6 @@
 // Kwaliteitstrend over de laatste twintig gemergde PR's (ADR 0065 punt 4, leesbudget/AC-7): `pnpm meting --trend`.
-// Per maat het gemiddelde over de nieuwste tien tegenover de tien daarvoor; hoger is "let op: <maat> steeg". Maten:
+// Per maat het gemiddelde over de nieuwste tien tegenover de tien daarvoor; alleen een echte stap is "let op: <maat> steeg"
+// (`echteStap`, ADR 0070 punt 2, meting-stuurt/AC-2). Maten:
 // CI-rood (`gh run list` per head-branch, conclusion failure), Codex-bevindingen (reviewreacties van CODEX_LOGIN via
 // `gh api .../pulls/<nr>/comments`) en reviewrondes (lokale meetdata; zonder data "onbekend", nooit 0). Een gh-fout geeft
 // "onbekend" voor die PR. De PR-lijst komt via REST (`gh api .../pulls?state=closed`), zodat het ook in cloudsessies werkt.
@@ -44,6 +45,17 @@ function getal(w) {
 }
 
 /**
+ * Een echte stap omhoog (meting-stuurt/AC-2): op twee decimalen afgerond en in honderdsten vergeleken minstens 0,5 hoger en, bij
+ * een vorig gemiddelde boven 0, ook minstens 25 % hoger. Absoluut en relatief samen negeren ruis bij kleine en grote gemiddelden.
+ * @param {number} laatste @param {number} vorige
+ */
+export function echteStap(laatste, vorige) {
+  const nu = Math.round(laatste * 100);
+  const was = Math.round(vorige * 100);
+  return nu - was >= 50 && (was <= 0 || nu * 4 >= was * 5);
+}
+
+/**
  * De trend over de nieuwste twintig PR's (nieuwste eerst).
  * @param {readonly Pr[]} prs
  */
@@ -54,7 +66,8 @@ export function trend(prs) {
     MATEN.map(({ sleutel }) => {
       const laatste = gemiddelde(lijst.slice(0, HELFT).map((p) => p[sleutel]));
       const vorige = gemiddelde(lijst.slice(HELFT).map((p) => p[sleutel]));
-      const steeg = !teWeinigData && typeof laatste === 'number' && typeof vorige === 'number' && laatste > vorige;
+      const steeg =
+        !teWeinigData && typeof laatste === 'number' && typeof vorige === 'number' && echteStap(laatste, vorige);
       return [sleutel, { laatste, vorige, steeg }];
     }),
   );

@@ -3,7 +3,8 @@
 // bewijsvorm die `pnpm docs:status` schrijft (spec taakmandaat-vervolg, B2). Het vergelijkt met het punt waar de branch van
 // origin/main afsplitste, niet met de kop van main. Is origin/main niet te lezen, dan faalt de check: onleesbaar telt als fout
 // (zoals check:migrations).
-// Heeft de head-roadmap een kop `## Nu`, dan gelden ook de structuurregels van ADR 0046 (`structuurMeldingen`).
+// Heeft de head-roadmap een kop `## Nu`, dan gelden ook de structuurregels van ADR 0046 (`structuurMeldingen`). Sluit de PR
+// een fase, dan eist het een herijkingsregel in docs/roadmap-archief.md (roadmap-herijking.mjs, ADR 0070 punt 5).
 import { execFileSync } from 'node:child_process';
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
@@ -12,6 +13,7 @@ import { builtReference, documentInfo } from '../../rails/hooks/lib/document-sta
 import { globMatch } from '../../rails/hooks/lib/rolhek.mjs';
 import { doelPad, looksLikePath, packageScripts, pathExists, SPEC_STATUS } from './check-docs.mjs';
 import { gates } from './gates.mjs';
+import { herijkingMeldingen } from './roadmap-herijking.mjs';
 
 /** @typedef {{ key: string, message: string }} Violation */
 /** @typedef {{ lees: (pad: string) => string | null, bestanden: readonly string[] }} Bron */
@@ -21,6 +23,7 @@ import { gates } from './gates.mjs';
 
 const BASE = 'origin/main';
 const ROADMAP = 'docs/roadmap.md';
+const ARCHIEF = 'docs/roadmap-archief.md';
 const SPEC_PAD = /^docs\/specs\/[^_/][^/]*\.md$/;
 const ITEM = /^(\s*)- \[([ xX])\] (.*)$/;
 // `#`, cijfers, niet direct na een woordteken en niet gevolgd door een woordteken of `-` (dus geen kopanker als `(#4-rails)`).
@@ -321,6 +324,12 @@ export function roadmapMeldingen({ basis, head, scripts, testpaden }) {
     ...nieuw.flatMap((item) => itemMeldingen(item, kader)),
     ...specMeldingen({ basis, head }),
     ...structuurMeldingen({ basis, head }),
+    ...herijkingMeldingen({
+      basisRoadmap: basis.lees(ROADMAP),
+      roadmap: head.lees(ROADMAP),
+      basisArchief: basis.lees(ARCHIEF),
+      archief: head.lees(ARCHIEF),
+    }),
   ];
 }
 

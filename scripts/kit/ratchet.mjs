@@ -2,11 +2,12 @@
 // een opgeloste die nog in de baseline staat ook, tot `pnpm ratchet:update` hem weghaalt. Zo daalt schuld alleen.
 // De baseline laten groeien is een gate-wijziging (.kit/ is beschermd). ESLint heeft een eigen ratchet:
 // eslint-suppressions.json met `pnpm lint:prune`. Twee kanalen naast de baseline (ADR 0065): `meldingen` ("let op",
-// stdout, nooit een andere exitcode) en `strikt` (altijd rood, komt nooit in de baseline, ook niet met --update).
+// stdout en de samenvatting van de CI-job, nooit een andere exitcode) en `strikt` (altijd rood, komt nooit in de baseline, ook niet met --update).
 import { readFileSync, writeFileSync } from 'node:fs';
 import { format, resolveConfig } from 'prettier';
 import { docsKrimp, docsMeldingen, docsViolations } from './check-docs.mjs';
 import { dependencyViolations } from './depcruise.mjs';
+import { naarSamenvatting } from './samenvatting.mjs';
 
 const BASELINE = '.kit/baseline.json';
 
@@ -67,10 +68,14 @@ async function update() {
   console.info(`${BASELINE} bijgewerkt. Groeit hij, dan is dit een gate-wijziging (akkoord eigenaar).`);
 }
 
-/** Drukt de meldingen af op stdout; de exitcode blijft. */
+/** Drukt de meldingen af op stdout en in de samenvatting van de CI-job (meting-stuurt/AC-3); de exitcode blijft. */
 async function meld() {
+  /** @type {string[]} */
+  const regels = [];
   for (const [name, run] of Object.entries(meldingen))
-    for (const melding of await run()) console.info(`${name}: ${melding}`);
+    for (const melding of await run()) regels.push(`${name}: ${melding}`);
+  for (const regel of regels) console.info(regel);
+  naarSamenvatting('ratchet: meldingen', regels);
 }
 
 /** Strikte overtredingen; true als er één is. */

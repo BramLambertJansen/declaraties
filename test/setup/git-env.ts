@@ -14,3 +14,7 @@ function repoVariables(): string[] {
 }
 
 for (const name of repoVariables()) Reflect.deleteProperty(process.env, name);
+
+// Ook de samenvatting van de CI-job (meting-stuurt/AC-3): een test die `leespad` of `ratchet` start, zou anders de uitvoer van
+// zijn fixture op de PR zetten. Een test die de samenvatting toetst, zet de variabele zelf.
+Reflect.deleteProperty(process.env, 'GITHUB_STEP_SUMMARY');
