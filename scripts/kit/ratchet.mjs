@@ -1,12 +1,14 @@
 // Ratchet (framework §4, ADR 0045): bestaande overtredingen staan in .kit/baseline.json. Een nieuwe overtreding faalt;
 // een opgeloste die nog in de baseline staat ook, tot `pnpm ratchet:update` hem weghaalt. Zo daalt schuld alleen.
 // De baseline laten groeien is een gate-wijziging (.kit/ is beschermd). ESLint heeft een eigen ratchet:
-// eslint-suppressions.json met `pnpm lint:prune`. Twee kanalen naast de baseline (ADR 0065): `meldingen` ("let op",
+// eslint-suppressions.json met `pnpm lint:prune`, waarin geen paar (bestand, lintregel) mag stijgen (strikt,
+// spec onderdrukkingen-ratchet). Twee kanalen naast de baseline (ADR 0065): `meldingen` ("let op",
 // stdout en de samenvatting van de CI-job, nooit een andere exitcode) en `strikt` (altijd rood, komt nooit in de baseline, ook niet met --update).
 import { readFileSync, writeFileSync } from 'node:fs';
 import { format, resolveConfig } from 'prettier';
 import { docsKrimp, docsMeldingen, docsViolations } from './check-docs.mjs';
 import { dependencyViolations } from './depcruise.mjs';
+import { onderdrukkingMeldingenUitGit, onderdrukkingenUitGit } from './onderdrukkingen.mjs';
 import { naarSamenvatting } from './samenvatting.mjs';
 
 const BASELINE = '.kit/baseline.json';
@@ -14,19 +16,23 @@ const BASELINE = '.kit/baseline.json';
 /** @typedef {{ key: string, message: string }} Violation */
 
 /** @type {Record<string, () => Promise<Violation[]>>} */
-const checks = {
+export const checks = {
   'dependency-cruiser': () => dependencyViolations(process.cwd()),
   'check-docs': () => docsViolations(process.cwd()),
 };
 
 /** Overtredingen die nooit in de baseline komen (leesbudget/AC-6). @type {Record<string, () => Promise<Violation[]>>} */
-const strikt = {
+export const strikt = {
   'check-docs (krimp)': () => docsKrimp(process.cwd()),
+  // Geen onderdrukking in eslint-suppressions.json stijgt (spec onderdrukkingen-ratchet).
+  'eslint-onderdrukkingen': () =>
+    Promise.resolve(onderdrukkingenUitGit(process.cwd(), process.env['GITHUB_ACTIONS'] === 'true')),
 };
 
 /** Meldingen zonder overtreding (leesbudget/AC-2). @type {Record<string, () => Promise<string[]>>} */
-const meldingen = {
+export const meldingen = {
   'check-docs': () => docsMeldingen(process.cwd()),
+  'eslint-onderdrukkingen': () => Promise.resolve(onderdrukkingMeldingenUitGit(process.cwd())),
 };
 
 /**
