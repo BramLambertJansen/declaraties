@@ -34,6 +34,18 @@ function kanarie(basis: string): string {
   return pad;
 }
 
+function processenMet(merk: string): string[] {
+  return readdirSync('/proc')
+    .filter((p) => /^\d+$/.test(p))
+    .filter((p) => {
+      try {
+        return readFileSync(`/proc/${p}/cmdline`, 'utf8').includes(merk);
+      } catch {
+        return false;
+      }
+    });
+}
+
 afterEach(() => {
   for (const pad of mappen.splice(0)) rmSync(pad, { recursive: true, force: true });
 });
@@ -190,21 +202,13 @@ describe('kooi/AC-4: de kooi schermt af', () => {
     expect(r.stdout.trim()).toBe('ENOENT');
   });
 
-  test('de timeout stopt het commando met zijn kindprocessen', () => {
+  test('de timeout stopt het commando met zijn kindprocessen', async () => {
     const werkmap = map(tmpdir(), 'kooi-werk-');
     const merk = `600.${String(process.pid)}`;
     const start = Date.now();
     expect(() => inKooi(`sleep ${merk} & sleep ${merk}`, { werkmap, timeout: 1000 })).toThrow();
     expect(Date.now() - start).toBeLessThan(10_000);
-    const overig = readdirSync('/proc')
-      .filter((p) => /^\d+$/.test(p))
-      .filter((p) => {
-        try {
-          return readFileSync(`/proc/${p}/cmdline`, 'utf8').includes(merk);
-        } catch {
-          return false;
-        }
-      });
-    expect(overig).toStrictEqual([]);
+    // De kernel stopt de processen in de namespace asynchroon nadat bubblewrap is gestopt; wacht daar kort op.
+    await expect.poll(() => processenMet(merk), { timeout: 5000 }).toStrictEqual([]);
   });
 });
