@@ -1,6 +1,7 @@
 import { describe, expect, test } from 'vitest';
 import {
   CODEX,
+  CODEX_LOOPT,
   STEEKPROEF_UIT,
   STEEKPROEF_VERVIEL,
   beoordeelMerge,
@@ -183,10 +184,6 @@ describe('agent-merge-zonder-codex/AC-3 pr:merge telt de omvang via REST', () =>
 describe('agent-merge-zonder-codex/AC-4 Codex-voorwaarde bij indien-aanwezig', () => {
   test.each([
     ['geen spoor', () => {}],
-    [
-      'alleen 👀',
-      zet(['issues/7/reactions', [{ user: { login: CODEX }, content: 'eyes', created_at: '2026-11-03T10:01:00Z' }]]),
-    ],
     ['samenvatting failed plus limietmelding (tegoed op)', zet(['issues/7/comments', [REVIEW, ...TEGOED_OP]])],
     [
       'spoor alleen op een gemergde PR van dezelfde branch',
@@ -208,6 +205,12 @@ describe('agent-merge-zonder-codex/AC-4 Codex-voorwaarde bij indien-aanwezig', (
   });
 
   test.each([
+    // Was "geen Codex-reden": spec agent-merge-codex-wachten AC-5 verandert dit gedrag (een 👀 van Codex is een spoor).
+    [
+      'alleen 👀',
+      zet(['issues/7/reactions', [{ user: { login: CODEX }, content: 'eyes', created_at: '2026-11-03T10:01:00Z' }]]),
+      /Codex-review loopt nog op deze PR/,
+    ],
     [
       'samenvatting completed op een oudere SHA',
       zet([
@@ -337,5 +340,232 @@ describe('agent-merge-zonder-codex/AC-5 steekproefregel na de merge', () => {
     expect(STEEKPROEF_UIT).toBe(
       'Geen Codex-voorwaarde (agentMerge.codex: false). Meld deze merge als steekproef (ADR 0069 punt 5).',
     );
+  });
+});
+
+// Spec agent-merge-codex-wachten: een lopende Codex-review is een spoor en geeft een wachtreden.
+const LOOPT = 'Codex-review loopt nog op deze PR: wacht of laat de eigenaar mergen';
+const oog = (login = CODEX) => ({ user: { login }, content: 'eyes', created_at: '2026-11-03T10:01:00Z' });
+const duim = (login = CODEX) => ({ user: { login }, content: '+1', created_at: '2026-11-03T10:05:00Z' });
+const VRAAG = (rollup: Record<string, number>) => ({
+  id: 101,
+  user: { login: 'BramLambertJansen' },
+  body: '@codex review',
+  reactions: rollup,
+});
+const metModus = (codex: unknown) =>
+  zet([`contents/.claude/gates.json?ref=${MAIN}`, gatesMet({ codex, maxRegels: 400 })]);
+const AFGEROND = samenvatting({ status: 'completed', commit_sha: HEAD, has_unresolved_findings: false });
+
+describe('agent-merge-codex-wachten/AC-1 Codex is bezig', () => {
+  test('de wachtreden is letterlijk die uit de spec', () => {
+    expect(CODEX_LOOPT).toBe(LOOPT);
+  });
+
+  test.each([
+    ['running', { status: 'running' }],
+    ['pending', { status: 'pending' }],
+    ['in_progress op de head', { status: 'in_progress', commit_sha: HEAD }],
+    ['leeg', { status: '' }],
+    ['onbekend', { status: 'iets-nieuws' }],
+  ])('marker met status %s → wachtreden', (_naam, stand) => {
+    const u = uitslag(zet(['issues/7/comments', [REVIEW, samenvatting({ commit_sha: OUD, ...stand })]]));
+    expect(u.redenen).toContain(LOOPT);
+    expect(u.codex).toBe('voldaan');
+  });
+
+  test('marker in_progress, daarna bijgewerkt tot completed op de head: alleen de nieuwste telt', () => {
+    const u = uitslag(
+      zet(['issues/7/comments', [REVIEW, samenvatting({ status: 'in_progress', commit_sha: HEAD }), AFGEROND]]),
+    );
+    expect(u).toEqual({ redenen: [], codex: 'voldaan' });
+  });
+
+  test('een 👀 van Codex op een commentaar zonder rollup wordt niet gelezen (OV-4)', () => {
+    expect(
+      uitslag(
+        zet(
+          ['issues/7/comments', [REVIEW, { id: 101, user: { login: 'x' }, body: '@codex review' }]],
+          ['issues/comments/101/reactions', [oog()]],
+        ),
+      ),
+    ).toEqual({ redenen: [], codex: 'verviel' });
+  });
+
+  test.each([
+    ['zonder code_review', '{"version":1}'],
+    ['met code_review null', '{"code_review":null}'],
+    ['met code_review als tekst', '{"code_review":"running"}'],
+    ['met onleesbare JSON', '{"code_review":'],
+  ])('marker %s telt als bezig → wachtreden (OV-3)', (_naam, json) => {
+    const kapot = { user: { login: CODEX }, body: `<!-- codex-review-state:v1 ${json} -->` };
+    const u = uitslag(zet(['issues/7/comments', [REVIEW, AFGEROND, kapot]]));
+    expect(u.redenen).toContain(LOOPT);
+    expect(u.codex).toBe('voldaan');
+  });
+
+  test('marker running, daarna alleen een limietmelding zonder marker → wachtreden (hangend, faalt dicht)', () => {
+    const u = uitslag(
+      zet(['issues/7/comments', [REVIEW, samenvatting({ status: 'running', commit_sha: HEAD }), TEGOED_OP[1]]]),
+    );
+    expect(u.redenen).toContain(LOOPT);
+  });
+
+  test.each([
+    [
+      'marker running, daarna bijgewerkt tot failed: alleen de nieuwste telt',
+      [REVIEW, samenvatting({ status: 'running', commit_sha: HEAD }), TEGOED_OP[0]],
+    ],
+    ['marker running van een ander account', [REVIEW, samenvatting({ status: 'running' }, 'BramLambertJansen')]],
+  ])('%s → niet bezig: verviel, geen reden', (_naam, comments) => {
+    expect(uitslag(zet(['issues/7/comments', comments]))).toEqual({ redenen: [], codex: 'verviel' });
+  });
+
+  test('commentaar met rollup eyes 1 zonder geldig id: fout, geen merge', () => {
+    expect(() =>
+      redenen(
+        zet(['issues/7/comments', [REVIEW, { user: { login: 'x' }, body: '@codex review', reactions: { eyes: 1 } }]]),
+      ),
+    ).toThrow('zonder geldig id');
+  });
+
+  test('de reactielijst van een commentaar wordt één keer gelezen per beoordeling', () => {
+    const wereld = goed();
+    zet(
+      ['issues/7/comments', [REVIEW, VRAAG({ eyes: 1 })]],
+      ['issues/comments/101/reactions', [oog('BramLambertJansen')]],
+    )(wereld);
+    const lees = api(wereld);
+    let keren = 0;
+    const u = beoordeelMerge(
+      (endpoint: string) => {
+        if (endpoint.includes('issues/comments/101/reactions')) keren += 1;
+        return lees(endpoint);
+      },
+      { repo: REPO, nummer: 7, head: HEAD },
+    );
+    expect(u).toEqual({ redenen: [], codex: 'verviel' });
+    expect(keren).toBe(1);
+  });
+});
+
+describe('agent-merge-codex-wachten/AC-2 een lopende review op een andere PR van de branch is een spoor', () => {
+  test('👀 alleen op een niet-gemergde andere PR: voldaan, reden niet afgerond, geen wachtreden', () => {
+    const u = uitslag(anderePr(null, { 'issues/8/reactions': [oog()] }));
+    expect(u.codex).toBe('voldaan');
+    expect(u.redenen).toEqual(['Codex heeft deze head niet afgerond beoordeeld zonder open punten']);
+  });
+
+  test('marker running alleen op een niet-gemergde andere PR: voldaan, geen wachtreden', () => {
+    const u = uitslag(anderePr(null, { 'issues/8/comments': [samenvatting({ status: 'running', commit_sha: OUD })] }));
+    expect(u.codex).toBe('voldaan');
+    expect(u.redenen).not.toContain(LOOPT);
+  });
+
+  test('👀 alleen op een gemergde PR van de branch: verviel', () => {
+    expect(uitslag(anderePr('2026-11-02T10:00:00Z', { 'issues/8/reactions': [oog()] }))).toEqual({
+      redenen: [],
+      codex: 'verviel',
+    });
+  });
+});
+
+describe('agent-merge-codex-wachten/AC-3 wachtreden bij true en indien-aanwezig, niet bij false', () => {
+  test('codex true, head afgerond zonder open punten, plus 👀 op de PR → alleen de wachtreden', () => {
+    const u = uitslag((w) => {
+      metModus(true)(w);
+      zet(['issues/7/comments', [REVIEW, AFGEROND]], ['issues/7/reactions', [oog()]])(w);
+    });
+    expect(u).toEqual({ redenen: [LOOPT], codex: 'voldaan' });
+  });
+
+  test('codex true, 👍 na ontvangst plus een nieuwe @codex review met 👀 → wachtreden', () => {
+    const u = uitslag((w) => {
+      metModus(true)(w);
+      zet(
+        ['issues/7/reactions', [duim()]],
+        ['issues/7/comments', [REVIEW, VRAAG({ eyes: 1 })]],
+        ['issues/comments/101/reactions', [oog()]],
+      )(w);
+    });
+    expect(u).toEqual({ redenen: [LOOPT], codex: 'voldaan' });
+  });
+
+  test('indien-aanwezig: marker running op de head → wachtreden naast de reden van codexRedenen()', () => {
+    const u = uitslag(zet(['issues/7/comments', [REVIEW, samenvatting({ status: 'running', commit_sha: HEAD })]]));
+    expect(u).toEqual({
+      redenen: ['Codex heeft deze head niet afgerond beoordeeld zonder open punten', LOOPT],
+      codex: 'voldaan',
+    });
+  });
+
+  test('codex false met 👀 → stand uit, geen reden', () => {
+    const u = uitslag((w) => {
+      metModus(false)(w);
+      zet(['issues/7/reactions', [oog()]])(w);
+    });
+    expect(u).toEqual({ redenen: [], codex: 'uit' });
+  });
+});
+
+describe('agent-merge-codex-wachten/AC-4 bij tegoed op verandert niets', () => {
+  test.each([
+    ['#447–#453: marker failed plus limietmelding, geen reactie', [REVIEW, ...TEGOED_OP]],
+    ['#460: alleen een limietmelding', [REVIEW, TEGOED_OP[1]]],
+  ])('%s → verviel, geen reden, steekproefregel', (_naam, comments) => {
+    const u = uitslag(zet(['issues/7/comments', comments]));
+    expect(u).toEqual({ redenen: [], codex: 'verviel' });
+    expect(slotRegels(7, HEAD, u.codex)).toContain(STEEKPROEF_VERVIEL);
+  });
+});
+
+describe('agent-merge-codex-wachten/AC-5 tabel via beoordeelMerge()', () => {
+  test.each([
+    ['alleen 👀 op de PR', zet(['issues/7/reactions', [oog()]])],
+    [
+      'marker in_progress op een oudere SHA',
+      zet(['issues/7/comments', [REVIEW, samenvatting({ status: 'in_progress', commit_sha: OUD })]]),
+    ],
+    [
+      'marker zonder status',
+      zet(['issues/7/comments', [REVIEW, samenvatting({ commit_sha: HEAD, has_unresolved_findings: false })]]),
+    ],
+    [
+      '👀 van Codex op het commentaar @codex review',
+      zet(['issues/7/comments', [REVIEW, VRAAG({ eyes: 1 })]], ['issues/comments/101/reactions', [oog()]]),
+    ],
+  ])('%s → wachtreden, voldaan', (_naam, aanpassing) => {
+    const u = uitslag(aanpassing);
+    expect(u.redenen).toContain(LOOPT);
+    expect(u.codex).toBe('voldaan');
+  });
+
+  test.each([
+    ['👀 van een ander account op de PR', zet(['issues/7/reactions', [oog('BramLambertJansen')]])],
+    [
+      'reactions.eyes 1 maar alleen 👀 van een ander account',
+      zet(
+        ['issues/7/comments', [REVIEW, VRAAG({ eyes: 1 })]],
+        ['issues/comments/101/reactions', [oog('BramLambertJansen')]],
+      ),
+    ],
+    ['👍 van Codex op het commentaar @codex review', zet(['issues/7/comments', [REVIEW, VRAAG({ '+1': 1, eyes: 0 })]])],
+    [
+      'rollup eyes 1 maar in de reactielijst alleen een 👍 van Codex',
+      zet(['issues/7/comments', [REVIEW, VRAAG({ eyes: 1 })]], ['issues/comments/101/reactions', [duim()]]),
+    ],
+  ])('%s → verviel, geen reden', (_naam, aanpassing) => {
+    expect(uitslag(aanpassing)).toEqual({ redenen: [], codex: 'verviel' });
+  });
+
+  test('reactielijst van een commentaar geeft HTTP 500: fout, geen merge', () => {
+    expect(() =>
+      redenen(
+        zet(
+          ['issues/7/comments', [REVIEW, VRAAG({ eyes: 1 })]],
+          ['issues/comments/101/reactions', new Error('HTTP 500')],
+        ),
+      ),
+    ).toThrow('HTTP 500');
   });
 });

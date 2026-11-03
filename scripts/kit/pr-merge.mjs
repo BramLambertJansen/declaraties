@@ -2,7 +2,8 @@
 // zelf merget. Alles wordt via de REST-API van GitHub gelezen, niet uit de lokale `origin/main`; elke ontbrekende voorwaarde
 // geeft een eigen regel en exit 1 zonder schrijfactie. Pas als alles klopt: squash-merge met de head-SHA als voorwaarde.
 // Onopgeloste review-threads houdt de ruleset op main tegen (`required_review_thread_resolution`); REST kent hun stand niet.
-// Omvang en Codex-spoor: spec agent-merge-zonder-codex AC-3 tot en met AC-5.
+// Omvang en Codex-spoor: spec agent-merge-zonder-codex AC-3 tot en met AC-5; wachten op een lopende Codex-review: spec
+// agent-merge-codex-wachten.
 import { Buffer } from 'node:buffer';
 import { execFileSync } from 'node:child_process';
 import { gitText, readAuthority } from '../../rails/hooks/lib/authority-context.mjs';
@@ -175,11 +176,13 @@ export function reviewRedenen(comments, head) {
     : [`geen commentaar "${regel}" (verse review op deze head)`];
 }
 
+/** De marker `codex-review-state:v1` als regex-treffer, of null. @param {string} body */
+const marker = (body) =>
+  /<!-- codex-review-state:v1 (.+?) -->/s.exec(body.replaceAll('&#123;', '{').replaceAll('&#125;', '}'));
+
 /** De machineleesbare stand uit de Codex-samenvatting, of null. @param {string} body */
 export function codexStand(body) {
-  const gevonden = /<!-- codex-review-state:v1 (.+?) -->/s.exec(
-    body.replaceAll('&#123;', '{').replaceAll('&#125;', '}'),
-  );
+  const gevonden = marker(body);
   if (gevonden === null) return null;
   try {
     return veld(JSON.parse(gevonden[1] ?? ''), 'code_review');
@@ -188,17 +191,24 @@ export function codexStand(body) {
   }
 }
 
-/**
- * Codex beoordeelde precies de head en heeft geen open punten: de samenvatting zegt `completed` op de head zonder onopgeloste
- * bevindingen (de nieuwste samenvatting telt), of Codex gaf een 👍 op de PR nadat GitHub de head ontving. 👀 of een lopende review telt niet.
- * @param {{ comments: unknown[], reactions: unknown[], suites: unknown[] }} bronnen @param {string} head
- */
-export function codexRedenen({ comments, reactions, suites }, head) {
-  const stand = comments
+/** De stand uit de nieuwste Codex-samenvatting met marker, of undefined. @param {unknown[]} comments */
+function nieuwsteStand(comments) {
+  return comments
     .filter((c) => pad(c, 'user', 'login') === CODEX)
     .map((c) => codexStand(tekst(veld(c, 'body'))))
     .filter((s) => s !== null && s !== undefined)
     .at(-1);
+}
+
+/**
+ * Codex beoordeelde precies de head en heeft geen open punten: de samenvatting zegt `completed` op de head zonder onopgeloste
+ * bevindingen (de nieuwste samenvatting telt), of Codex gaf een 👍 op de PR nadat GitHub de head ontving. Een 👀 of een
+ * lopende review is geen afronding; die geeft in `codexVoorwaarde()` de wachtreden `CODEX_LOOPT` (spec
+ * agent-merge-codex-wachten AC-3).
+ * @param {{ comments: unknown[], reactions: unknown[], suites: unknown[] }} bronnen @param {string} head
+ */
+export function codexRedenen({ comments, reactions, suites }, head) {
+  const stand = nieuwsteStand(comments);
   if (
     veld(stand, 'status') === 'completed' &&
     veld(stand, 'commit_sha') === head &&
@@ -245,23 +255,52 @@ export function omvangRedenen(pull, files, maxRegels) {
 /** @param {unknown} item */
 const vanCodex = (item) => pad(item, 'user', 'login') === CODEX;
 
+export const CODEX_LOOPT = 'Codex-review loopt nog op deze PR: wacht of laat de eigenaar mergen';
+
+/** @param {unknown} item */
+const codexOog = (item) => vanCodex(item) && veld(item, 'content') === 'eyes';
+
 /**
- * Een spoor van een afgeronde Codex-review op PR `nummer` (spec agent-merge-zonder-codex AC-4): een samenvatting met
- * `code_review.status` `completed`, een PR-review, een inline-reviewcommentaar of een 👍, op welke SHA ook. Een andere status,
- * een commentaar zonder marker, een 👀 en alles van een ander account tellen niet. Een onleesbare lijst gooit (geen merge).
- * @param {Api} api @param {{ repo: string, nummer: number, comments?: unknown[], reactions?: unknown[] }} doel
+ * Codex is bezig op een PR (spec agent-merge-codex-wachten AC-1), op welke SHA of welk moment ook: een 👀 van Codex op de PR,
+ * een 👀 van Codex op een issue-commentaar (alleen gelezen als de rollup `reactions.eyes` een geheel getal ≥ 1 is, OV-4), of
+ * de nieuwste samenvatting met marker heeft een status anders dan `completed` of `failed`, ook leeg, ontbrekend of onbekend
+ * (OV-3; een marker met onleesbare JSON of zonder `code_review` ook). Een onleesbare reactielijst of een commentaar met een
+ * 👀-rollup zonder geldig `id` gooit (geen merge).
+ * @param {Api} api @param {{ repo: string, comments: unknown[], reactions: unknown[] }} bronnen
  */
-export function codexSpoorOp(api, { repo, nummer, comments, reactions }) {
+export function codexBezig(api, { repo, comments, reactions }) {
+  // Elke Codex-body met marker telt mee, ook met onleesbare JSON of zonder `code_review`: dan is de status onbekend (OV-3).
+  const laatste = comments.filter((c) => vanCodex(c) && marker(tekst(veld(c, 'body'))) !== null).at(-1);
+  const status = veld(codexStand(tekst(veld(laatste, 'body'))), 'status');
+  if (laatste !== undefined && status !== 'completed' && status !== 'failed') return true;
+  if (reactions.some(codexOog)) return true;
+  return comments.some((c) => {
+    const ogen = pad(c, 'reactions', 'eyes');
+    if (!(Number.isInteger(ogen) && Number(ogen) >= 1)) return false;
+    const id = veld(c, 'id');
+    if (!(Number.isInteger(id) && Number(id) > 0)) throw new Error('issue-commentaar met 👀 zonder geldig id');
+    return alle(api, `repos/${repo}/issues/comments/${String(id)}/reactions`).some(codexOog);
+  });
+}
+
+/**
+ * Een spoor van Codex op PR `nummer` (spec agent-merge-zonder-codex AC-4, agent-merge-codex-wachten AC-2): een samenvatting
+ * met `code_review.status` `completed`, een PR-review, een inline-reviewcommentaar of een 👍, op welke SHA ook, of Codex is
+ * bezig (`codexBezig()`: een 👀 van Codex of een samenvatting die nog bezig is). Een marker `failed`, een commentaar zonder
+ * marker, een 👍 op een commentaar en alles van een ander account tellen niet. Een onleesbare lijst gooit (geen merge). Met
+ * `bezig` (al bepaald door de aanroeper) leest het `codexBezig()` niet opnieuw.
+ * @param {Api} api @param {{ repo: string, nummer: number, comments?: unknown[], reactions?: unknown[], bezig?: boolean }} doel
+ */
+export function codexSpoorOp(api, { repo, nummer, comments, reactions, bezig }) {
   const nr = String(nummer);
+  const lijst = comments ?? alle(api, `repos/${repo}/issues/${nr}/comments`);
+  const reacties = reactions ?? alle(api, `repos/${repo}/issues/${nr}/reactions`);
   return (
-    (comments ?? alle(api, `repos/${repo}/issues/${nr}/comments`)).some(
-      (c) => vanCodex(c) && veld(codexStand(tekst(veld(c, 'body'))), 'status') === 'completed',
-    ) ||
-    (reactions ?? alle(api, `repos/${repo}/issues/${nr}/reactions`)).some(
-      (r) => vanCodex(r) && veld(r, 'content') === '+1',
-    ) ||
+    lijst.some((c) => vanCodex(c) && veld(codexStand(tekst(veld(c, 'body'))), 'status') === 'completed') ||
+    reacties.some((r) => vanCodex(r) && veld(r, 'content') === '+1') ||
     alle(api, `repos/${repo}/pulls/${nr}/reviews`).some(vanCodex) ||
-    alle(api, `repos/${repo}/pulls/${nr}/comments`).some(vanCodex)
+    alle(api, `repos/${repo}/pulls/${nr}/comments`).some(vanCodex) ||
+    (bezig ?? codexBezig(api, { repo, comments: lijst, reactions: reacties }))
   );
 }
 
@@ -284,7 +323,8 @@ function branchPrs(api, { repo, nummer, pull }) {
 /**
  * De Codex-voorwaarde (spec agent-merge-zonder-codex AC-4, AC-5): `uit` bij `codex: false`; bij `true` geldt `codexRedenen()`
  * (`voldaan` betekent: de voorwaarde geldt, de redenen zeggen of ze vervuld is); bij `"indien-aanwezig"` alleen met een spoor
- * op deze PR of een niet-gemergde PR van dezelfde branch, anders `verviel`.
+ * op deze PR of een niet-gemergde PR van dezelfde branch, anders `verviel`. Is Codex bezig op deze PR, dan komt daar de
+ * wachtreden `CODEX_LOOPT` bij (spec agent-merge-codex-wachten AC-3); bezig op alleen een andere PR geeft geen wachtreden.
  * @param {Api} api
  * @param {{ repo: string, nummer: number, head: string, pull: unknown, comments: unknown[], codex: import('./agent-merge.mjs').CodexModus }} doel
  * @returns {{ stand: 'voldaan' | 'verviel' | 'uit', redenen: string[] }}
@@ -292,13 +332,18 @@ function branchPrs(api, { repo, nummer, pull }) {
 export function codexVoorwaarde(api, { repo, nummer, head, pull, comments, codex }) {
   if (codex === false) return { stand: 'uit', redenen: [] };
   const reactions = alle(api, `repos/${repo}/issues/${String(nummer)}/reactions`);
+  const bezig = codexBezig(api, { repo, comments, reactions });
   const spoor =
     codex === true ||
-    codexSpoorOp(api, { repo, nummer, comments, reactions }) ||
+    bezig ||
+    codexSpoorOp(api, { repo, nummer, comments, reactions, bezig }) ||
     branchPrs(api, { repo, nummer, pull }).some((n) => codexSpoorOp(api, { repo, nummer: n }));
   if (!spoor) return { stand: 'verviel', redenen: [] };
   const suites = alle(api, `repos/${repo}/commits/${head}/check-suites`, 'check_suites');
-  return { stand: 'voldaan', redenen: codexRedenen({ comments, reactions, suites }, head) };
+  return {
+    stand: 'voldaan',
+    redenen: [...codexRedenen({ comments, reactions, suites }, head), ...(bezig ? [CODEX_LOOPT] : [])],
+  };
 }
 
 /**
