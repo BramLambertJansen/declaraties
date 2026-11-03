@@ -1,7 +1,7 @@
 # 0069 — De hoofdsessie merget niet-kritiek werk zelf
 
 Status: geaccepteerd
-Herzien: 2026-11-03 (#NNN): punt 3 (Codex-voorwaarde drieledig, omvanggrens `agentMerge.maxRegels`), punt 5
+Herzien: 2026-11-03 (#456): punt 3 (Codex-voorwaarde drieledig, omvanggrens `agentMerge.maxRegels`), punt 5
 (steekproef, terugval, overgang), Gevolgen en Meten; versoepelt de Codex-voorwaarde; uitwerking in
 [spec](../specs/agent-merge-zonder-codex.md)
 
