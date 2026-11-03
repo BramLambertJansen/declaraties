@@ -112,7 +112,8 @@ function boomVan(sha, naam) {
 
 /**
  * Het anker; zonder anker, als de hook er niet in staat of bij de start van een sessie ververst. Het rolhek gebruikt nooit het
- * netwerk: zijn timeout van 10 s verstrijken is voor Claude Code fail-open. Zijn anker legt `werkstraat session-start` vast.
+ * netwerk: verstrijkt zijn timeout van 10 s, dan houdt `onFailure: "block"` de aanroep tegen (ADR 0045 punt 3).
+ * Zijn anker legt `werkstraat session-start` vast.
  * @param {string} naam @param {boolean} sessieStart
  */
 function bron(naam, sessieStart) {

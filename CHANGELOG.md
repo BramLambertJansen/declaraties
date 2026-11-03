@@ -268,6 +268,12 @@ Hier staan wijzigingen die van belang zijn bij het gebruiken of bijwerken van de
 
 ### Gewijzigd
 
+- Het rolhek valt dicht bij elke storing (ADR 0045 punt 3, spec `rolhek-dicht-bij-storing`): `onFailure: "block"` op zijn
+  PreToolUse-hook in `.claude/settings.json`, dus ook een crash, een timeout of ongeldige uitvoer houdt de aanroep tegen.
+  Vereist Claude Code 2.1.295 of nieuwer; `scripts/doctor.sh` en `werkstraat session-start` melden een oudere versie. Wat
+  verandert voor een app: werk Claude Code bij; hapert het rolhek, dan staan schrijven, Bash en MCP stil tot het weer werkt
+  (`docs/operations/agent-doorloop.md`).
+
 - Tijdelijke testmappen (leerpunt #396): elke Vitest-run krijgt één hoofdmap `vitest-run-*` onder de tmpdir van de
   aanroeper (`test/setup/tmp-root.ts`); `os.tmpdir()` in tests en kindprocessen wijst daarheen en de map gaat na de run
   weg. Een test die zijn eigen map vergeet op te ruimen laat `/tmp` niet meer vollopen.

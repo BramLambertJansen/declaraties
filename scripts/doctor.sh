@@ -91,6 +91,22 @@ else
   fail "bubblewrap start geen sandbox" "docs/nieuwe-app.md, probleemtabel"
 fi
 
+# Minimale Claude Code-versie (ADR 0045 punt 3): vanaf daar valt het rolhek dicht bij storing (`onFailure: "block"`). Dezelfde
+# grens staat als MIN_CLAUDE_VERSIE in rails/hooks/lib/claude-versie.mjs (test/scripts/doctor-claude-versie.test.ts).
+min_claude=2.1.295
+if ! command -v claude >/dev/null; then
+  printf '· Claude Code niet gevonden: versiecontrole overgeslagen\n'
+else
+  claude_versie="$(claude --version 2>/dev/null | sed -nE '1s/^([0-9]+\.[0-9]+\.[0-9]+).*/\1/p' || true)"
+  if [[ -z "$claude_versie" ]]; then
+    fail "Claude Code-versie onleesbaar: het rolhek valt pas vanaf $min_claude dicht bij storing" "werk Claude Code bij"
+  elif [[ "$(printf '%s\n%s\n' "$min_claude" "$claude_versie" | sort -V | head -1)" != "$min_claude" ]]; then
+    fail "Claude Code $claude_versie is te oud: het rolhek valt pas vanaf $min_claude dicht bij storing" "werk Claude Code bij"
+  else
+    ok "Claude Code $claude_versie"
+  fi
+fi
+
 if docker info >/dev/null 2>&1; then ok "Docker draait"; else fail "Docker draait niet of je zit niet in de groep docker" "sudo systemctl start docker (docs/nieuwe-app.md)"; fi
 
 if [[ -x .git/hooks/pre-commit ]] && grep -q lefthook .git/hooks/pre-commit; then ok "git-hooks (lefthook) geïnstalleerd"; else fail "git-hooks ontbreken" "pnpm exec lefthook install"; fi

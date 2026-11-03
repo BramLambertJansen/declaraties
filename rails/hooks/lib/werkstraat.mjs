@@ -3,6 +3,7 @@
 // gaat via `deps.run`, zodat test/hooks/werkstraat.test.ts elke beslissing zonder echte pnpm of git bewijst.
 // Nooit database. Netwerk alleen voor de fetch van session-start (harde timeout, nooit om credentials vragen); de rest is
 // lint, typecheck, gerelateerde unit-tests en git. De volledige gate:fast blijft in pre-push en CI.
+import { claudeVersieMelding } from './claude-versie.mjs';
 
 /**
  * @typedef {{ code: number, output: string }} RunResult
@@ -355,6 +356,8 @@ export function sessionStart(deps) {
   const e2e = lastRun === null ? undefined : (/"status":\s*"(\w+)"/.exec(lastRun)?.[1] ?? 'onbekend');
   const status = e2e === undefined || e2e === 'passed' ? '' : `laatste e2e: ${e2e}`;
   const doctor = doctorKort(deps.run('scripts/doctor.sh', ['--quick']).output.trim());
+  const versie = deps.run('claude', ['--version'], { timeout: 5000 });
+  const claude = claudeVersieMelding(versie.code === 0 ? versie.output : null).join('\n');
   return {
     stdout: [
       `Branch: ${branch}${branch === 'main' ? ' (begin nieuw werk met `git fetch origin main && git switch -c <naam> origin/main`)' : ''}`,
@@ -363,6 +366,7 @@ export function sessionStart(deps) {
       `Gewijzigde bestanden: ${changed.length === 0 ? 'geen' : changed.slice(0, 20).join(', ')}`,
       status,
       doctor,
+      claude,
       'Vraag alleen taakrelevante feiten: node scripts/kit/feiten.mjs gates specs fase; componenten alleen bij UI (framework §8).',
     ]
       .filter((line) => line !== '')

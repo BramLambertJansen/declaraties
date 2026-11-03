@@ -274,6 +274,13 @@ lopen. Tests en bewaking houden hun bestaande bescherming.
 Bij een weigering meldt de developer commando/bestand en werkelijke rolhekreden als onvoltooid. De hoofdsessie
 verwerkt de grens of vraagt een concrete scope-uitbreiding. Een blokkadetekst schakelt de groen-eis niet uit.
 
+Blokkeert het rolhek door een storing (ADR 0045 punt 3), dan meldt Claude Code een hookfout of timeout van
+`.claude/hooks/rolhek.mjs` die de aanroep tegenhoudt omdat `onFailure` op `"block"` staat; er staat dan geen
+`rolhek:`-reden bij. Lezen (Read, Grep, Glob), een subagent starten en de eigenaar vragen werken nog; elk Bash-commando
+(ook `git status`), elke MCP-tool (ook uit `mcpLezen`) en elke schrijfactie niet, ook in subagents. De sessie meldt de
+foutregel als leerpunt (`gh issue create … --label leerpunt`, zodra Bash weer werkt; anders aan de eigenaar), vraagt de
+eigenaar en zet de hook nooit uit en omzeilt hem niet (R-PRINC-09). Bij het derde leerpunt hierover beslist de eigenaar.
+
 De bestaande runner start zijn eigen verse teststack; hiervoor hoeft de eigenaar geen dev-stack te starten.
 Zo draait hij (ADR 0044): `scripts/runner.sh` roept compose aan met vaste argumenten: alleen `compose.yaml`, een eigen
 projectnaam, `--env-file db/test.env` en `--profile test` (`scripts/runner.sh:91`), nooit `.env`, `.env.local` of een
