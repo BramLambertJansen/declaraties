@@ -1,5 +1,5 @@
 ---
-status: gebouwd # door de agent onder mandaat van de eigenaar (2026-10-11), open vragen volgens de aanbeveling; ter herziening
+status: gebouwd # #484
 namespace: eigen-account
 ---
 
@@ -70,8 +70,8 @@ bevestiging via het oude én het nieuwe adres (roadmap stuk 3e).
   `ctx.services.profile.confirmEmail` roept server-side `auth.api.verifyEmail({ query: { token }, headers })` aan, zonder `callbackURL` (geen
   redirect). `TOKEN_EXPIRED`, `INVALID_TOKEN`, `USER_NOT_FOUND`, `INVALID_USER` en een 23505 uit `updateUserByEmail` worden expliciet
   `EMAIL_LINK_INVALID` (niet `ALREADY_EXISTS`). Na stap 2 trekt de service de andere sessies in en mailt het oude adres (OV-7).
-- **Links zijn stateless JWT's** (HS256, geheim van Better Auth): binnen de geldigheid herbruikbaar en niet in te trekken. Link 1 opnieuw
-  openen stuurt mail 2 opnieuw; link 2 werkt na gebruik niet meer (het oude adres bestaat dan niet). Daarom een korte TTL (OV-5).
+- **Links zijn JWT's** (HS256, geheim van Better Auth) die elk één keer werken (spec `inloggat-dichten`, ADR 0075): een tweede bevestiging
+  van dezelfde link geeft `EMAIL_LINK_INVALID`, dus link 1 stuurt mail 2 één keer. Intrekken kan niet; daarom een korte TTL (OV-5).
 
 ## Hergebruik en UX
 
@@ -141,7 +141,7 @@ bevestiging via het oude én het nieuwe adres (roadmap stuk 3e).
 | De eigen huidige sessie beëindigen via `DELETE` | geweigerd: daarvoor is "Uitloggen" | `VALIDATION` |
 | Nieuw adres gelijk aan het huidige (ook met andere hoofdletters) | client-side "Dit is al je e-mailadres."; de server weigert het ook | `VALIDATION` |
 | Bevestigingslink verlopen, vervalst of van een ander account; link 2 al gebruikt | één melding | `EMAIL_LINK_INVALID` |
-| Link 1 nogmaals geopend binnen de geldigheid | mail 2 gaat opnieuw weg (stateless token, niet in te trekken) | — |
+| Link 1 nogmaals geopend binnen de geldigheid | geweigerd, één melding; mail 2 ging al één keer weg (spec `inloggat-dichten`) | `EMAIL_LINK_INVALID` |
 | Nieuw adres wordt tussen aanvraag en bevestiging door een ander account bezet | 23505 bij bijwerken; niets gewijzigd | `EMAIL_LINK_INVALID` |
 | Mail versturen mislukt (aanvraag of stap 1) | niets gewijzigd; melding, opnieuw aanvragen kan | `INTERNAL_ERROR` |
 | Uitgenodigd account (nog geen wachtwoord) | kan niet inloggen, dus n.v.t. | — |
@@ -156,13 +156,12 @@ bevestiging via het oude én het nieuwe adres (roadmap stuk 3e).
 - Mutaties invalideren `me` en `me/sessions`; na een e-mailwijziging ook `accounts`.
 - **Beschermde paden:** nieuwe ADR (nummer via `feiten.mjs`) als aanvulling op ADR 0013 voor `changeEmail`, `disabledPaths` en hooks; framework §6:
   `session_strength` wordt niet meer "alleen in de after-hook op 2FA-verificatie" gezet, maar ook overgenomen bij `/change-password`.
-- **Aparte core-taak (buiten deze spec):** `/sign-in/email` en `/two-factor/verify-totp` geven ook `token` in de JSON terug; strippen in een
-  after-hook of in `authGateway.handler` voor alle paden.
+- **Sessietoken in JSON:** `authGateway.handler` haalt elke `token` uit JSON-antwoorden van `/api/auth/*` (spec `inloggat-dichten`, ADR 0075).
 
 ## Buiten scope
 
 Profielfoto (`image`), account zelf verwijderen (`/delete-user` blijft dicht), TOTP zelf aan- of uitzetten voor `user`, "wachtwoord vergeten",
-IP per sessie (OV-3), mail bij een nieuwe login, het token-lek bij inloggen (core-taak hierboven).
+IP per sessie (OV-3), mail bij een nieuwe login.
 
 ## Testplan
 
