@@ -1,5 +1,5 @@
 ---
-status: goedgekeurd
+status: gebouwd # #483
 namespace: agent-merge-codex-wachten
 ---
 
@@ -136,7 +136,7 @@ wacht `pr:merge`), `test/scripts/pr-merge-zonder-codex.test.ts` (één bestaande
 `.github/workflows/guard.yml`, `docs/framework.md`, `.claude/skills/opleveren/SKILL.md` en `AGENTS.md`. Afweging bij de skill:
 stap 3 van "Mergen" (`.claude/skills/opleveren/SKILL.md:50`, "Codex telt als het een afgeronde review … liet") wordt
 onvolledig, want Codex telt nu ook (wacht) als het bezig is; de zin blijft toch staan, omdat `pr:merge` het wachten zelf meldt
-met de reden uit "Hergebruik en UX" en de skill onder leesbudget staat (agent-merge-zonder-codex AC-7). Geen migratie, route, permissie of resource: `check:migrations`,
+met de reden uit "Hergebruik en UX" en de skill onder leesbudget staat (agent-merge-zonder-codex/AC-7). Geen migratie, route, permissie of resource: `check:migrations`,
 `check:secdef`, `test:db` en `test/security/resources.ts` n.v.t.
 
 ## Buiten scope
