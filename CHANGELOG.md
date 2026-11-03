@@ -492,7 +492,7 @@ De template heeft nog geen releaseversies. Controleer bij een update de gewijzig
 
 - **`check:app-init` niet meer verplicht (ADR 0073).** Wat de eigenaar moet doen: draai na deze update
   `scripts/github-ruleset.sh <owner>/<slug>` opnieuw (`docs/nieuwe-app.md`), anders blijft de ruleset `check:app-init`
-  eisen en blokkeert elke PR zodra een latere update de job weghaalt. Conflicten: alleen als de app `requiredChecks` in
+  eisen; die job bestaat niet meer, dus dan blokkeert elke PR. Conflicten: alleen als de app `requiredChecks` in
   `.claude/decisions.json` zelf aanpaste.
 - **Taakmandaat weg.** Records in `.claude/decisions.json` worden genegeerd; de eigenaar maakt `decisions` leeg (`[]`)
   en haalt de bewerkweigering op dat bestand in `.claude/settings.json` weg als hij wil. De stap in `guard.yml` heet nu
