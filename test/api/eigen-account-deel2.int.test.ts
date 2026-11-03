@@ -467,7 +467,8 @@ describe('POST /api/auth/change-email en /api/me/email/bevestigen', () => {
     expect(await countMails(email, SUBJECT_CHANGED)).toBe(0);
   });
 
-  test('link 1 nogmaals geopend binnen de geldigheid: mail 2 gaat opnieuw weg', async () => {
+  // Gewijzigd door spec inloggat-dichten/AC-6 (ADR 0075): een link werkt één keer; vroeger stuurde link 1 mail 2 opnieuw.
+  test('inloggat-dichten/AC-6: link 1 nogmaals geopend binnen de geldigheid: 409 EMAIL_LINK_INVALID en één mail 2', async () => {
     const { browser, email } = await t.account('user');
     const nieuw = uniqueEmail('nieuw');
     await requestChange(browser, nieuw);
@@ -476,8 +477,9 @@ describe('POST /api/auth/change-email en /api/me/email/bevestigen', () => {
     const once = await confirm(browser, token);
     const twice = await confirm(browser, token);
 
-    expect([await json(once), await json(twice)]).toStrictEqual([{ stap: 'oud' }, { stap: 'oud' }]);
-    expect(await countMails(nieuw, SUBJECT_NEW)).toBe(2);
+    expect([once.status, await json(once)]).toStrictEqual([200, { stap: 'oud' }]);
+    expect([twice.status, await json(twice)]).toMatchObject([409, { code: 'EMAIL_LINK_INVALID' }]);
+    expect(await countMails(nieuw, SUBJECT_NEW)).toBe(1);
   });
 
   test('link 2 werkt na gebruik niet meer: 409 EMAIL_LINK_INVALID', async () => {

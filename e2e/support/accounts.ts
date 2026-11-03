@@ -64,6 +64,22 @@ export function totpFor(secret: Buffer | string, at = Date.now()): string {
   return String((hmac.readUInt32BE(offset) & 0x7f_ff_ff_ff) % 1_000_000).padStart(6, '0');
 }
 
+// Een code werkt één keer (spec inloggat-dichten AC-1): per geheim geeft deze hulp elke tijdstap hooguit één keer (eerst de
+// huidige, dan de volgende, die de server ook nog accepteert) en gooit daarna in plaats van te wachten.
+const usedSteps = new Map<string, Set<number>>();
+export function freshTotpFor(secret: Buffer | string, at = Date.now()): string {
+  const id = typeof secret === 'string' ? secret : secret.toString('hex');
+  const step = Math.floor(at / 30_000);
+  const used = usedSteps.get(id) ?? new Set<number>();
+  usedSteps.set(id, used);
+  for (const candidate of [step, step + 1]) {
+    if (used.has(candidate)) continue;
+    used.add(candidate);
+    return totpFor(secret, candidate * 30_000);
+  }
+  throw new Error('freshTotpFor: huidige en volgende tijdstap al gebruikt voor dit geheim; gebruik een eigen account');
+}
+
 // De sleutel op het scherm "Tweestapsverificatie instellen" is base32 (zoals in de otpauth-URI).
 export function base32Decode(input: string): Buffer {
   const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';

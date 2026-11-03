@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { clientIpHeaders, createAccount, PASSWORD, totpFor } from './support/accounts.ts';
+import { clientIpHeaders, createAccount, PASSWORD, freshTotpFor } from './support/accounts.ts';
 
 // Schil toegankelijk (roadmap 3f) tegen de echte stack: paginatitel per scherm (WCAG 2.4.2), skip-link als eerste
 // Tab-stop (2.4.1) en de focus naar de h1 na een routewissel (2.4.3).
@@ -16,7 +16,7 @@ test('titel per scherm, skip-link en focus na navigeren', async ({ page }) => {
   await page.getByLabel('E-mailadres').fill(admin.email);
   await page.getByLabel('Wachtwoord').fill(PASSWORD);
   await page.getByRole('button', { name: 'Inloggen' }).click();
-  await page.getByLabel('Code', { exact: true }).fill(totpFor(admin.totpSecret ?? ''));
+  await page.getByLabel('Code', { exact: true }).fill(freshTotpFor(admin.totpSecret ?? ''));
   await page.getByRole('button', { name: 'Bevestigen' }).click();
   await expect(page.getByRole('heading', { level: 1, name: 'Dashboard' })).toBeVisible();
   await expect(page).toHaveTitle(/^Dashboard · /);

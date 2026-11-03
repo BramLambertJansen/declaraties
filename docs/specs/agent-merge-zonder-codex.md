@@ -1,5 +1,5 @@
 ---
-status: gebouwd # #464
+status: gebouwd # #483
 namespace: agent-merge-zonder-codex
 model: opus
 ---
@@ -62,8 +62,8 @@ met punten). De samenvatting is één commentaar dat Codex bijwerkt; een latere 
 of de PR-review van een eerdere afgeronde ronde blijft staan. Niet nagegaan is of een afronding zonder punten altijd ook een
 👍 geeft (`codexRedenen()` behandelt de samenvatting `completed` en de 👍 als alternatieven); zo niet, dan kan een latere
 `failed` het spoor van een ronde zonder punten wissen (randgeval, restrisico). AC-4 telt daarom alleen afgeronde reviews als
-spoor. Een 👀 is bij tegoed op niet gezien; dat een 👀 geen spoor is, volgt dus niet uit deze bevinding maar uit het ontwerp
-van de eigenaar (OV-1).
+spoor. Een 👀 is bij tegoed op niet gezien. Een 👀 van Codex of een samenvatting die nog bezig is, is wel een spoor: op deze
+PR wacht de agent-merge dan met een wachtreden (besluit van de eigenaar, OV-1, [agent-merge-codex-wachten](agent-merge-codex-wachten.md)).
 
 ## Acceptatiecriteria
 
@@ -95,14 +95,16 @@ van de eigenaar (OV-1).
   `patch`: geen reden), en `agentMerge` zonder `maxRegels`.
 - **agent-merge-zonder-codex/AC-4** — Codex-voorwaarde in `pr-merge.mjs`: bij `codex: true` (ook ontbrekend of onleesbaar)
   geldt `codexRedenen()` zoals nu; bij `false` geen Codex-voorwaarde; bij `"indien-aanwezig"` geldt `codexRedenen()` volledig
-  als `chatgpt-codex-connector[bot]` een spoor van een afgeronde review heeft: een samenvatting met marker waarin
+  als `chatgpt-codex-connector[bot]` een spoor heeft (van een afgeronde review, of Codex is bezig: agent-merge-codex-wachten/AC-2): een samenvatting met marker waarin
   `code_review.status` `"completed"` is, een PR-review, een inline-reviewcommentaar (`pulls/<nr>/comments`) of een reactie
   `+1`, op welke SHA of welk moment ook. Dat geldt op deze PR en op elke andere PR met dezelfde head-branch
   (`GET …/pulls?head=<owner>:<branch>&state=all`) die open is of gesloten zonder merge (`merged_at` is `null`); een gemergde
   PR van dezelfde branch telt niet. Anders vervalt de voorwaarde. Geen spoor zijn: een samenvatting met een andere `status`
-  (`"failed"`, leeg, bezig), een commentaar zonder marker (zoals de limietmelding), een reactie `eyes`, en alles van een ander
-  account. Een lijst die niet leesbaar is, geeft een reden of een fout met exit 1 (`gh()` gooit bij een HTTP-fout): in beide
-  gevallen geen merge. Unittest (tabel): geen spoor → geen Codex-reden; alleen 👀 → geen Codex-reden; de twee commentaren van
+  (`"failed"`), een commentaar zonder marker (zoals de limietmelding), en alles van een ander account. Een 👀 van Codex of
+  een samenvatting met een andere status dan `"completed"` of `"failed"` (ook leeg of ontbrekend) is wel een spoor (stand
+  `voldaan`); op deze PR geeft het bovendien de wachtreden, op een andere PR van de branch niet ([agent-merge-codex-wachten](agent-merge-codex-wachten.md)
+  AC-1 tot en met AC-3). Een lijst die niet leesbaar is, geeft een reden of een fout met exit 1 (`gh()` gooit bij een HTTP-fout): in beide
+  gevallen geen merge. Unittest (tabel): geen spoor → geen Codex-reden; alleen 👀 → wachtreden; de twee commentaren van
   "Wat Codex achterlaat" (marker met `"failed"` plus limietmelding) → geen Codex-reden; samenvatting `completed` op een oudere
   SHA → reden "niet afgerond beoordeeld"; samenvatting `completed` op de head met open punten → reden "open punten"; 👍 van
   vóór de push van de head → reden; 👍 van een eerdere ronde en daarna een samenvatting `failed` op de head → reden; alleen
@@ -141,7 +143,7 @@ van de eigenaar (OV-1).
 |---|---|---|
 | Codex-tegoed op, Codex reageert niet, PR van 120 regels, review-commentaar op de head | merge; steekproefregel (AC-4, AC-5) | n.v.t. |
 | Codex-tegoed op: samenvatting met marker `"status":"failed"` en een limietmelding (zoals #447–#453) | geen spoor: voorwaarde vervalt; merge met steekproefregel (AC-4, AC-5) | n.v.t. |
-| Codex gaf 👀 en daarna niets, of de samenvatting staat nog op bezig | geen spoor: voorwaarde vervalt (AC-4); ook met tegoed kan de merge zo vallen vóór Codex afrondt (aanvaard venster); zie OV-1 | n.v.t. |
+| Codex gaf 👀 en daarna niets, of de samenvatting staat nog op bezig | spoor: geen merge met wachtreden; een hangende 👀 faalt dicht, de eigenaar merget (AC-4, OV-1) | n.v.t. |
 | Codex rondde een eerdere ronde af met alleen een samenvatting `completed` (geen 👍), daarna overschreven door `failed` | spoor verdwenen: voorwaarde vervalt; restrisico, die ronde had geen punten (AC-4) | n.v.t. |
 | Hernoemd én gewijzigd binair bestand | REST: als zuivere hernoeming; diff-guard: numstat `-`, `nee`, dus `pr:merge` weigert via de job `agent-merge` (AC-2, AC-3) | n.v.t. |
 | Codex rondde een eerdere head af (👍 of PR-review), daarna een push en een mislukte ronde (`failed`) op de head | spoor aanwezig: voorwaarde geldt, geen merge; de eigenaar merget of Codex rondt de head alsnog af (AC-4) | n.v.t. |
@@ -196,15 +198,16 @@ op de huidige code (R-PRINC-04): nu kent het oordeel geen omvang of binair besta
 
 ## Open vragen
 
-- **OV-1** — Telt een 👀 van Codex of een samenvatting die nog bezig is, op deze PR, als spoor? (a) Ja: dan wacht de agent
+- **OV-1 ✅ besloten: (a)** — Telt een 👀 van Codex of een samenvatting die nog bezig is, op deze PR, als spoor? (a) Ja: dan wacht de agent
   tot Codex de head afrondt, of de eigenaar merget. Dat sluit het venster waarin de agent mergt terwijl Codex met tegoed nog
   bezig is, en blokkeert bij tegoed op niet, want daar komt geen reactie (#447–#453). Prijs: blijft een 👀 hangen na een
   mislukte ronde met tegoed, dan faalt het dicht en merget de eigenaar. Te wijzigen: AC-4 (👀 en bezig als spoor, tabelrij
   "alleen 👀" naar reden), de randgevalrij over 👀, ADR 0069 punt 3 en Gevolgen. (b) Nee, zoals het ontwerp van de opdracht
-  ("een 👀 alleen is geen signaal") en zoals deze spec nu: dan wordt Codex ook mét tegoed in de praktijk optioneel voor een
+  ("een 👀 alleen is geen signaal") en zoals deze spec vóór dit besluit: dan wordt Codex ook mét tegoed in de praktijk optioneel voor een
   snelle agent (checks groen en verse review vóór de afronding van Codex). Dat venster is dan een aanvaard restrisico, niet
-  omdat Codex bij tegoed op alleen een 👀 zou laten staan (dat is niet gezien, zie "Wat Codex achterlaat"). De spec volgt (b)
-  omdat de opdracht het zo beslist; aanbeveling na de bevinding: (a).
+  omdat Codex bij tegoed op alleen een 👀 zou laten staan (dat is niet gezien, zie "Wat Codex achterlaat"). De spec volgde (b)
+  omdat de opdracht het zo beslist; aanbeveling na de bevinding: (a). Besluit van de eigenaar, 3 november 2026: (a) "Ja,
+  wachten op Codex", uitgewerkt in [agent-merge-codex-wachten](agent-merge-codex-wachten.md).
 - **OV-2** — Grens 400 regels of ruimer (Ona: < 1.000)? Aanbeveling: 400, omdat hier geen mens meekijkt; na de steekproef van
   tien kan de eigenaar de waarde in `.claude/gates.json` met één regel verruimen.
 - **OV-3** — Telt de steekproef ook merges mét Codex-spoor? Aanbeveling: nee, alleen zonder; daar valt het vangnet weg.

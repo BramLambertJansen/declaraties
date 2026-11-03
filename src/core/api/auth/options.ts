@@ -5,6 +5,7 @@ import type { SendMail } from '../mail/smtp.ts';
 import { createHooks } from './hooks.ts';
 import { createAccountLifecycle, type AccountLifecycle } from './account-lifecycle.ts';
 import { createMailing, type Mailing } from './mailing.ts';
+import { createClaimOnce } from './one-time-use.ts';
 import {
   EMAIL_CHANGE_TTL_SECONDS,
   INVITATION_TTL_SECONDS,
@@ -170,7 +171,7 @@ export function createAuthOptions(config: AuthConfig, database: Pool) {
       cookies,
       ipAddress: { ipAddressHeaders: [config.clientIpHeader ?? NO_TRUSTED_IP_HEADER] },
     },
-    hooks: createHooks(mailing, Date.now, lifecycle),
+    hooks: createHooks(mailing, Date.now, { lifecycle, claimOnce: createClaimOnce(database) }),
     databaseHooks: createDatabaseHooks(lifecycle),
     plugins: [twoFactor({ issuer: new URL(config.origin).hostname })],
     telemetry: { enabled: false },

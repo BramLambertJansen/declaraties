@@ -5,6 +5,7 @@ import path from 'node:path';
 import { afterEach, describe, expect, test } from 'vitest';
 import { feitenAanroepen, feitenBytes, scenarioFeiten } from '../../scripts/kit/leespad-feiten.mjs';
 import { eenheidMeldingen, PADREGELS, SCENARIOS } from '../../scripts/kit/leespad.mjs';
+import { expectAbsent } from '../support/absence';
 import { werkmap } from '../../scripts/kit/feiten-secties.mjs';
 
 // Spec meting-stuurt (ADR 0070): het leespad tegenover de basis (AC-1), in de samenvatting van de CI-job (AC-3), met de
@@ -104,13 +105,20 @@ describe('meting-stuurt/AC-1: "let op" alleen tegenover de basis', { timeout: 60
   ])('meting-stuurt/AC-1 per eenheid: $naam', ({ voor, na, verwacht }) => {
     const r = leespad(repo({ 'docs/specs/a.md': voor }, { 'docs/specs/a.md': na }));
     expect(r.status).toBe(0);
-    if (verwacht === null) expect(r.stdout).not.toMatch(/let op: specs/);
-    else expect(r.stdout).toMatch(verwacht);
+    if (verwacht === null) {
+      expectAbsent(r.stdout, /let op: specs/, {
+        recognizes: ['let op: specs: docs/specs/a.md 12 KB, boven de streefwaarde gegroeid'],
+        allows: ['let op: rules: .claude/rules/a.md 66 regels'],
+      });
+    } else expect(r.stdout).toMatch(verwacht);
   });
 
   test('meting-stuurt/AC-1 per eenheid in regels: 5 regels groei boven de streefwaarde', () => {
     const vier = leespad(repo({ '.claude/rules/a.md': regels(61) }, { '.claude/rules/a.md': regels(65) }));
-    expect(vier.stdout).not.toMatch(/let op: rules/);
+    expectAbsent(vier.stdout, /let op: rules/, {
+      recognizes: ['let op: rules: .claude/rules/a.md 66 regels, boven de streefwaarde gegroeid'],
+      allows: ['let op: specs: docs/specs/a.md 12 KB'],
+    });
     const vijf = leespad(repo({ '.claude/rules/a.md': regels(61) }, { '.claude/rules/a.md': regels(66) }));
     expect(vijf.stdout).toMatch(
       /let op: rules: \.claude\/rules\/a\.md 66 regels, boven de streefwaarde gegroeid \(was 61 regels\)/,

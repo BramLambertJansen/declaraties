@@ -3,6 +3,8 @@ import { z } from 'zod';
 import { SESSION_FRESH_SECONDS } from '../../shared/limits.ts';
 import type { Mailing } from './mailing.ts';
 import type { AccountLifecycle } from './account-lifecycle.ts';
+import type { ClaimOnce } from './one-time-use.ts';
+import { claimTotpCode } from './totp-claim.ts';
 import { dropRejectedSession, SESSION_RECOVERY_PATHS } from './session-guard.ts';
 
 // Hooks rond Better Auth (ADR 0043, ADR 0051; spec eigen-account). Elke regel heeft een integratietest
@@ -78,7 +80,14 @@ async function answerTakenAddress(ctx: HookContext, facts: SessionFacts, mailing
   return ctx.json({ status: true });
 }
 
-export function createHooks(mailing: Mailing | null, now: () => number = Date.now, lifecycle?: AccountLifecycle) {
+// lifecycle: login- en sessieregels (ADR 0052); claimOnce: eenmalige TOTP-codes (ADR 0075). createAuthOptions geeft ze altijd mee.
+export interface HookParts {
+  readonly lifecycle?: AccountLifecycle | undefined;
+  readonly claimOnce: ClaimOnce;
+}
+
+export function createHooks(mailing: Mailing | null, now: () => number = Date.now, parts: HookParts) {
+  const { lifecycle, claimOnce } = parts;
   const before = createAuthMiddleware(async (ctx) => {
     if (ctx.path !== '/get-session' && !SESSION_RECOVERY_PATHS.has(ctx.path)) {
       if (await dropRejectedSession(ctx, now())) {
@@ -90,6 +99,7 @@ export function createHooks(mailing: Mailing | null, now: () => number = Date.no
     if (ctx.path === '/two-factor/verify-totp' && isTrustDeviceRequested(ctx.body)) {
       fail('BAD_REQUEST', 'TRUST_DEVICE_DISABLED', 'trustDevice staat uit (ADR 0043)');
     }
+    await claimTotpCode(ctx, claimOnce);
     if (ctx.path === '/verify-email') {
       // Vangnet naast disabledPaths: zonder sessie maakt Better Auth bij stap 2 zelf een sessie.
       if ((await currentSession(ctx)) === null) fail('UNAUTHORIZED', 'UNAUTHENTICATED', 'Geen sessie');
