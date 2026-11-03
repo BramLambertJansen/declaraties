@@ -125,6 +125,7 @@ Open werk dat niet geparkeerd is, grofweg in volgorde. Wat nog een spec of eigen
   **Klaar als:** twee runners claimen dezelfde rij niet tegelijk; crash, lease-verval en SMTP-uitval getest; definitief mislukte mail blijft
   herstelbaar; alleen verlopen rijen verdwijnen; stoppen wacht op de lopende batch vóór het sluiten van pools. Documenteer at-least-once-verzending
   (geen exactly-once-claim).
+  **Eisen uit het regelboek** (R-DOC-10: tot de bouw staan ze hier; de bouw-PR zet ze terug in het regelboek): `startJobs()` draait taken op interval vanuit `src/api/server.ts`, batch = één transactie met advisory lock; nul-schalende host: adapter roept `runJobsOnce()`; HTTP-cronpad alleen met hostgeheim, als §3-uitzondering (was R-JOB-01). `withJob()` gebruikt een eigen pool als rol `app_jobs` (`JOBS_DATABASE_URL`, execute alleen klasse `job`, niets op `better_auth`) (was in R-JOB-02). `app.mail_outbox`: RLS geforceerd, geen link of token in payload, foutcode zonder adressen; erin alleen via `app.enqueue_mail` (security definer, definer per mailsoort); at-least-once met lease, link pas bij verzenden (was R-JOB-03). `GET /api/ready` pingt ook als `app_jobs`, tenzij OV-C4 anders beslist (was in R-DEPLOY-01).
   aanleiding: `docs/adr/0050-achtergrondtaken-en-mail-outbox.md`
 - [ ] **ST-05 (P0) — AVG: privacymechanisme, export en verwijderen** ([ADR 0051](adr/0051-audit-log-en-avg.md), ter herziening). Mechanisme in core, inhoud per app.
   **Werk:** bewaarcatalogus, FK-invarianten, eigen export, admin-verwijdering en app-registratie van exporters en erasers, in de volgorde van
@@ -135,6 +136,7 @@ Open werk dat niet geparkeerd is, grofweg in volgorde. Wat nog een spec of eigen
   **Klaar als:** gedeelde data van anderen ontbreekt in de export; accountverwijdering ruimt ook tokens en outbox op; laatste-admin en
   eigen-admin-verwijdering geweigerd; terugrollen herstelt actie en audit samen; negatieve pgTAP-fixtures voor cascades, nullable SET NULL en
   catalogusregistratie; een app-exporter en -eraser werkt zonder core-aanpassing. Retention is techniek, geen claim van AVG-conformiteit.
+  **Eisen uit het regelboek** (R-DOC-10: tot de bouw staan ze hier; de bouw-PR zet ze terug in het regelboek): inzage `GET /api/me/export` (permissie `app.use`, alleen eigen data, andere actor gemaskeerd, geen sessietoken); de app registreert exporters via `createApp({ privacy })` die expliciet op eigenaar filteren (was R-PRIV-01). Verwijderen via `app.delete_account(id)`; de app registreert verwijderaars (was in R-PRIV-02). `app_definer` krijgt voor `app.delete_account` ook delete op `"user"`, `verification`, select `verification."value"` (was in R-DB-14).
   aanleiding: `docs/adr/0051-audit-log-en-avg.md`
 - [ ] **ST-01 (P0) — GitHub-bescherming daadwerkelijk activeren** (stuk 6, diff-guard uit stuk 4). Een agent kan beschermd werk niet zonder de
   juiste eigenaarreview samenvoegen. Gebouwd: `scripts/github-ruleset.sh` met `test/scripts/github-ruleset.test.ts` (#104), de diff-guard met
@@ -148,6 +150,7 @@ Open werk dat niet geparkeerd is, grofweg in volgorde. Wat nog een spec of eigen
   **Afhankelijkheden:** ADR 0039, 0040 en 0045; beschikbaarheid van de vereiste CI-checks.
   **Klaar als:** negatieve fixtures voor ontbrekende of bypassbare instellingen; bewijs dat een directe push naar main wordt geweigerd en een
   bot-PR zonder vereiste review niet mergebaar is. Geen actieve bescherming claimen op basis van alleen JSON-bestanden. Voorwaarde voor ADR 0030 PR 2.
+  **Eisen uit het regelboek** (R-DOC-10: tot de bouw staan ze hier; de bouw-PR zet ze terug in het regelboek): `.github/settings/main-protection.json` en `scripts/check-github.mjs` volgen de ruleset van R-REPO-02 (was in R-REPO-02).
   aanleiding: `scripts/github-ruleset.sh`
 - [ ] **Versie en build-SHA** (stuk 3f) in `GET /api/health` en onderaan in de app (publieke buildmetadata, geen secrets); vraagt een spec
   voor de healthcontractwijziging. De versiestrategie zelf hoort bij ST-12 (Geparkeerd).
@@ -178,6 +181,7 @@ Open werk dat niet geparkeerd is, grofweg in volgorde. Wat nog een spec of eigen
   providerbesluit, ST-01, ST-08, privacyregister. **Klaar als:** preview tegen productie faalt; vereiste CI en staging horen bij exact het
   releasecommit; de smoketest bewijst login, lezen en gesloten browser-datatoegang; een back-up is in een aparte omgeving teruggezet met gemeten
   dataverlies en hersteltijd. Productiegoedkeuring blijft bij de eigenaar.
+  **Eisen uit het regelboek** (R-DOC-10: tot de bouw staan ze hier; de bouw-PR zet ze terug in het regelboek): `check-release-ci` vóór én na de build: commit is kop van `main` met groene CI, productie ook staging; `check-deployment-schema`: productieschema dekt code; beide falen dicht (was in R-REL-02). Met CAPTCHA krijgen `script-src` en `frame-src` het CAPTCHA-domein (was in R-SEC-04).
   aanleiding: `docs/reviews/2026-10-15-principes-inventaris.md` (B-6: niet geparkeerd besloten)
 - [x] **ADR 0029 stap 7: agent-merge van niet-kritiek werk** (#448; ADR 0069, vervangt ADR 0046 punt 30; onder het account van de eigenaar).
   Spec: `docs/specs/agent-merge-niet-kritiek.md` (de oude spec `agent-merge` is vervallen): oordeel `agent-merge` in de diff-guard,
@@ -231,9 +235,10 @@ Open werk dat niet geparkeerd is, grofweg in volgorde. Wat nog een spec of eigen
   Voor de eigenaar zelf (beschermde bestanden): `.claude/decisions.json` leegmaken (`decisions: []`), in `.claude/settings.json` de labelregel
   (`--add-label*gate-wijziging*`), de bewerkweigering op `decisions.json` en de verouderde allow voor `chore/mandate-adr-statusregel` weghalen,
   `gateMarker` uit `.claude/gates.json`, en de release-reset bij v1.0 (#384).
+  **Eisen uit het regelboek** (R-DOC-10: tot de bouw staan ze hier; de bouw-PR zet ze terug in het regelboek): alleen-templatedocs komen in `docs/template/` (was in R-CI-06).
   aanleiding: #404 (laatste PR van het traject; plan en eigenaarbesluiten staan in #385, #394 en #400)
-- [ ] **Geclaimde checks die niet bestaan** (R-DOC-02). Het regelboek eist ze, maar geen check dwingt ze af: het verschil in aantal
-  `unsafeCast` op de PR (R-CODE-04; nu alleen een vinkje in `.github/pull_request_template.md`), en de lintregels op een route zonder
+- [ ] **Geclaimde checks die niet bestaan** (R-DOC-02). Het regelboek eiste ze, maar geen check dwingt ze af: het verschil in aantal
+  `unsafeCast` op de PR ("CI zet het verschil in aantal op de PR", was in R-CODE-04, tot de bouw alleen hier; nu alleen een vinkje in `.github/pull_request_template.md`), en de lintregels op een route zonder
   `can()`-guard, op store-libraries en op `.isLoading`/`.isError` in `features/` (R-WEB-01, R-WEB-04; het oude framework noemde ze als
   afgedwongen, `eslint.config.js` heeft ze niet). Per check bouwen met falende fixtures, of de regel met eigenaarakkoord als proza laten staan.
   aanleiding: verliescontrole van het regelboek na #385–#404 (eigenaarvraag 2026-11-02; herstel-PR van de normen)
@@ -245,6 +250,19 @@ Open werk dat niet geparkeerd is, grofweg in volgorde. Wat nog een spec of eigen
   `git merge-base origin/main HEAD` (`scripts/kit/leesbudget.mjs`); een reeks PR's die elk minder krimpt, valt erdoorheen. Bijvoorbeeld een
   cumulatieve meting over de laatste twintig gemergde PR's naast `pnpm meting --trend`, of een norm-telling (R-id's) in plaats van bytes.
   aanleiding: `docs/specs/leesbudget.md`, randgeval "Krimp in stappen onder 20 %" (bekend gat, ADR 0065 punt 6)
+- [ ] **Regelboek zonder niet-gebouwde onderdelen als check** (R-DOC-10). `check-docs` regel 9 laat achter een niet-bestaand pad
+  `(nog niet gebouwd)` toe; daarmee kan een clausule over een niet-gebouwd onderdeel terugkomen. Aanscherping: de markering alleen voor een
+  doelmap die een gebouwde check al kent (nu alleen `docs/template/specs/` in R-CI-06), elders rood; plus een melding voor een functie of
+  tabel in backticks die in `src/`, `db/` en `scripts/` niet voorkomt. Eerst een spec (de AC's van `compacte-kennisbasis-rails` pinnen regel 9).
+  aanleiding: `scripts/kit/check-docs.mjs` (regel 9; review 2026-11-03, bevinding P5: 17 regels bonden iets dat niet bestond)
+- [ ] **ESLint-onderdrukkingen afbouwen tot nul** (R-CI-02, spec onderdrukkingen-ratchet). Geen paar (bestand, lintregel) mag stijgen (`pnpm ratchet`,
+  strikt) en `pnpm ratchet` meldt per PR de stand en de onderdrukkingen in de bestanden die de PR raakt. Stand bij de bouw en doel per lintregel:
+  `rails/afwezigheid` 89 in 46 bestanden → 0 en `rails/negatieve-tabel` 51 in 29 bestanden → 0, elk in een eigen PR per testmap (`test/rails`,
+  `test/scripts`, `test/hooks`, de rest), want het herschrijven is mechanisch; `complexity` 30 in 16 bestanden → 0, per bestand in de PR die het
+  raakt, `rails/hooks/lib/rolhek.mjs` (10) samen met het krimpen van het rolhek; `max-params` 3 en
+  `@typescript-eslint/no-unnecessary-type-parameters` 1 → 0 in één kleine PR. Een onderdrukking die echt nodig blijft, krijgt een eigen
+  eigenaarbesluit met reden. **Klaar als:** `eslint-suppressions.json` is leeg en `pnpm lint:prune` verandert niets.
+  aanleiding: `eslint-suppressions.json` (review 2026-11-03, bevinding P5: 123 onderdrukkingen zonder doel, een dag later 174)
 
 ## Geparkeerd
 
@@ -279,6 +297,7 @@ Bewust nog niet, tot de genoemde aanleiding er is (P1). Niets verdwijnt: elk ite
   eigenaarbesluit. Core levert contracten en uitbreidingspunten; de app kiest bij release monitor en alarmering. **Afhankelijkheden:** ST-03 en
   ST-05 voor jobstatus en retention, ST-12 voor buildidentiteit; spec voor clientfouten. **Klaar als:** een geforceerde fout is traceerbaar zonder
   PII, tokens, body of query; dedupe en opruimen getest; een alert en herstel zijn in staging bewezen. Geen telemetry-provider verplicht in core.
+  **Eisen uit het regelboek** (R-DOC-10: tot de bouw staan ze hier; de bouw-PR zet ze terug in het regelboek): fouttracking standaard in een eigen tabel via `reportClientError()`, externe dienst optioneel (was in R-PROV-01). De clientfouten-route wordt de enige data-route zonder login: maximale grootte per melding, limiet per IP per minuut, geen onnodige vrije tekst; de bouw-PR zet hem als uitzondering terug in R-UIT-02 (was in R-UIT-02). `assert()` meldt in productie aan de fouttracking (was in R-CODE-04).
   terug als: de eerste app naar staging gaat
 - [ ] **ST-11 (P2) — notificaties en storage (optioneel).** Notificaties: registratiecontract voor berichtsoorten, ontvangers en autorisatie,
   voorkeuren en kanalen, met hergebruik van mail-layout en outbox; in-app inbox en push vragen eigen specs. Storage: provider-neutrale grens
@@ -287,6 +306,7 @@ Bewust nog niet, tot de genoemde aanleiding er is (P1). Niets verdwijnt: elk ite
   **Klaar als:** ontvangstrechten en voorkeuren getest; herhaalde jobs veroorzaken geen dubbele inboxregels; twee gebruikers benaderen elkaars
   bestanden niet; verlopen links en ongeldige uploads geweigerd; accountverwijdering en retention behandelen bestanden. Zonder activering voegt het
   geen service of runtimeverplichting toe.
+  **Eisen uit het regelboek** (R-DOC-10: tot de bouw staan ze hier; de bouw-PR zet ze terug in het regelboek): core levert poort `FileStorage` met contracttestsuite (was in R-OPSL-01, ADR 0060).
   terug als: een concrete app notificaties of bestanden nodig heeft
 - [ ] **ST-12 (P2) — templateversies en upgradecontrole** (stuk 6 template-versie; ADR 0040). Nu: `CHANGELOG.md` met "Bij een update"-notities en
   `scripts/kit/app-init.mjs` die de template-SHA vastlegt; nog geen tags of versieschema. **Werk:** onderscheid releaseversie, opgenomen
