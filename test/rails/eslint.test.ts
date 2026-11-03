@@ -345,6 +345,58 @@ const fixtures: Fixture[] = [
     code: 'export const x = <div className="text-sm" style={{}} />;',
     rule: null,
   })),
+  // afwezigheid (leerpunt #402): een negatieve regex-assertie bewijst alleen iets als het patroon de vormen in de bron
+  // herkent; dat bewijs levert expectAbsent uit test/support/absence.ts.
+  ...[
+    'expect(x).not.toMatch(/mandat/i);',
+    "expect(x).not['toMatch'](/mandat/i);",
+    "expect(x)['not'].toMatch(/mandat/i);",
+    "expect(x)['not']['toMatch'](/mandat/i);",
+    'expect.soft(x).not.toMatch(/mandat/i);',
+    'expect(x).toEqual(expect.not.stringMatching(/mandat/i));',
+    "import assert from 'node:assert'; assert.doesNotMatch(x, /mandat/i);",
+    "import assert from 'node:assert'; assert['doesNotMatch'](x, /mandat/i);",
+    'const n = expect(x).not; n.toMatch(/mandat/i);',
+    'const { not } = expect(x); not.toMatch(/mandat/i);',
+    'expect(/mandat/i.test(x)).toBe(false);',
+    'expect(/mandat/i.exec(x)).toBeNull();',
+    'expect(x.match(/mandat/i)).toBeNull();',
+    'expect(x.search(/mandat/i)).toBe(-1);',
+    "import assert from 'node:assert'; assert.ok(!/mandat/i.test(x));",
+  ].map((code) => ({
+    name: `afwezigheid/#402: ${code}`,
+    file: 'test/x.test.ts',
+    code: `declare const x: string; ${code}`,
+    rule: 'rails/afwezigheid',
+  })),
+  ...['src/web/x.test.tsx', 'src/core/api/x.test.ts', 'e2e/x.spec.ts', 'test/hooks/kit.ts'].map((file) => ({
+    name: 'afwezigheid/#402: elk testbestand valt eronder',
+    file,
+    code: 'declare const x: string; expect(x).not.toMatch(/mandat/i);',
+    rule: 'rails/afwezigheid',
+  })),
+  ...[
+    'expect(x).toMatch(/mandaat/i);',
+    "expect(x).not.toContain('mandaat');",
+    'expect(x).not.toBe(1);',
+    'expect(x).not.toMatchObject({});',
+    "expectAbsent(x, /manda+te?/i, { recognizes: ['mandaat', 'mandate'] });",
+    'const { not } = { not: 1 }; expect(not).toBe(1);',
+    "expect(x.match('mandaat')).toBeNull();",
+    'const ok = !/mandat/i.test(x); export { ok };',
+    'expect(x.match(/mandat/g)).toHaveLength(1);',
+  ].map((code) => ({
+    name: `afwezigheid/#402: mag: ${code}`,
+    file: 'test/x.test.ts',
+    code: `declare const x: string; ${code}`,
+    rule: null,
+  })),
+  ...['src/api/x.ts', 'test/support/absence.ts'].map((file) => ({
+    name: 'afwezigheid/#402: buiten het bereik mag',
+    file,
+    code: 'declare const x: string; expect(x).not.toMatch(/mandat/i);',
+    rule: null,
+  })),
 ];
 
 describe('rails in eslint.config.js', () => {

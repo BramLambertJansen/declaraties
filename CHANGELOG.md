@@ -6,6 +6,12 @@ Hier staan wijzigingen die van belang zijn bij het gebruiken of bijwerken van de
 
 ### Toegevoegd
 
+- Lintregel `rails/afwezigheid` en helper `expectAbsent` (`test/support/absence.ts`, leerpunt #402): een negatieve
+  regex-assertie in een test (`.not.toMatch`, `expect.not.stringMatching`, `assert.doesNotMatch`) loopt via
+  `expectAbsent(tekst, patroon, { recognizes, allows })`, die eerst bewijst dat het patroon elk voorbeeld herkent en geen
+  toegestaan voorbeeld raakt. Bestaande gevallen staan in `eslint-suppressions.json`. Wat verandert voor een app: een
+  nieuwe `.not.toMatch` in een test wordt rood; noem in `recognizes` elke vorm en taalvariant die in de bron kan staan.
+
 - Meting die stuurt (ADR 0070, spec `meting-stuurt`): "let op" van `pnpm leespad` komt alleen uit het verschil met de basis
   (`git merge-base origin/main HEAD`; scenario bij 1 KB groei, eenheid nieuw boven of 1 KB erboven gegroeid), het leespad
   telt de voorgeschreven `feiten.mjs`-aanroepen en bij `nieuwe-feature` de padregels, `pnpm meting --trend` meldt alleen een
