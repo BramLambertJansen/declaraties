@@ -1,5 +1,5 @@
 ---
-status: voorstel
+status: goedgekeurd
 namespace: rolhek-vooraf-krimp
 ---
 
