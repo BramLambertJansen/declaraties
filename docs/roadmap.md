@@ -188,6 +188,7 @@ Open werk dat niet geparkeerd is, grofweg in volgorde. Wat nog een spec of eigen
   Spec: `docs/specs/agent-merge-niet-kritiek.md` (de oude spec `agent-merge` is vervallen): oordeel `agent-merge` in de diff-guard,
   job in `guard.yml`, `pnpm pr:merge`, rolhek en `merge: "niet-kritiek"` in `.claude/gates.json`. Herzien (#456, #460, #464):
   Codex-voorwaarde `"indien-aanwezig"` en omvanggrens `agentMerge.maxRegels`, spec `docs/specs/agent-merge-zonder-codex.md`.
+  Herzien (#468, #476, #483): een 👀 of lopende Codex-review laat `pr:merge` wachten, spec `docs/specs/agent-merge-codex-wachten.md`.
   aanleiding: `docs/adr/0069-agent-merge-niet-kritiek.md`
 - [x] **Volledig pad naar `gh` in het rolhek** (V-13): `/usr/bin/gh pr merge …` viel buiten het rolhek (`program === "gh"`) en de settings-patronen.
   Weigeringen en schrijfdoelen kijken nu naar de naam zonder pad (`programName` in `rails/hooks/lib/shell.mjs`), ook voor `git`, `rm` en `sed`;
