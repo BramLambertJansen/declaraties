@@ -18,8 +18,9 @@ export interface OutboundLogEntry {
   // null zonder antwoord (netwerkfout of time-out vóór de headers).
   readonly status: number | null;
   readonly durationMs: number;
+  // 0 bij DISABLED: de schakelaar staat uit, er is geen poging gedaan (spec koppelingsregister).
   readonly attempt: number;
-  readonly outcome: 'OK' | 'EXPECTED' | UpstreamCode;
+  readonly outcome: 'OK' | 'EXPECTED' | 'DISABLED' | UpstreamCode;
   // Er volgt nog een poging.
   readonly retry: boolean;
 }

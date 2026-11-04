@@ -26,6 +26,7 @@ import { csrf } from './csrf.ts';
 import type { Readiness } from './readiness.ts';
 import { createRouteEffects } from './route-effects.ts';
 import { guardWithUser } from '../outbound/index.ts';
+import type { Integrations } from '../integrations/index.ts';
 
 // Dev-login (spec accountbeheer, framework §3: limitatieve uitzondering, ADR 0043): logt echt in als het seed-account van de
 // rol en geeft de set-cookie-regels terug. Alleen meegeven bij APP_ENV=local; zonder bestaat /api/dev/login-as niet (404).
@@ -49,6 +50,9 @@ interface BaseConfig<Services> {
   // Maximum per categorie per venster (spec rate-limit): standaard de harde grens uit core; de app geeft die uit
   // src/shared/limits.ts mee, een integratietest een lagere. Boven de harde grens weigert createApp bij opstart.
   readonly rateLimits?: RateLimits;
+  // Het koppelingsregister van de app (spec koppelingsregister); buildApp geeft het mee. Nog ongebruikt: voor de partnerstap
+  // (M2) en het beheer (M7).
+  readonly integrations?: Integrations;
 }
 
 // Wat handlers via ctx.services krijgen (bijv. uitnodigen via Better Auth): verplicht zodra de app een Services-type kiest

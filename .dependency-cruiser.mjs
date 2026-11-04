@@ -67,10 +67,21 @@ const config = {
     {
       name: 'db-alleen-via-index',
       comment:
-        'Buiten src/core/api/db alleen withUser(), pingDatabase() en closeDatabase() uit index.ts, createAuditFn() uit audit.ts (schrijft alleen app.audit in de tx; geen pool) en testing.ts in tests: geen pool of driver.',
+        'Buiten src/core/api/db alleen withUser(), pingDatabase() en closeDatabase() uit index.ts, createAuditFn() uit audit.ts (schrijft alleen app.audit in de tx; geen pool), readIntegrationSwitch() uit integration-switch.ts (leest alleen de schakelaar in de tx; spec koppelingsregister) en testing.ts in tests: geen pool of driver.',
       severity: 'error',
       from: { pathNot: '^src/core/api/db/' },
-      to: { path: '^src/core/api/db/', pathNot: '^src/core/api/db/(index|testing|types|audit)\\.ts$' },
+      to: {
+        path: '^src/core/api/db/',
+        pathNot: '^src/core/api/db/(index|testing|types|audit|integration-switch)\\.ts$',
+      },
+    },
+    {
+      name: 'uitgaande-client-alleen-in-core',
+      comment:
+        'De bouwstenen van de uitgaande client (outbound/create.ts, client.ts, config.ts) en van de registerclient (integrations/client.ts, reading.ts) alleen binnen src/core/api: de app maakt een client via het register (integrations.client), zodat hosts één bron hebben en de schakelaar altijd geldt (spec koppelingsregister).',
+      severity: 'error',
+      from: { pathNot: '^src/core/api/' },
+      to: { path: '^src/core/api/(outbound/(create|client|config)|integrations/(client|reading))\\.ts$' },
     },
     {
       name: 'testing-alleen-in-tests',

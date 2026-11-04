@@ -67,3 +67,9 @@ export const OUTBOUND_BACKOFF_BASE_MS = 200;
 export const OUTBOUND_BACKOFF_MAX_MS = 2000;
 // Geteld op gedecodeerde bytes; ook de harde grens.
 export const OUTBOUND_MAX_RESPONSE_BYTES = 1_048_576;
+
+// Koppelingsregister (spec koppelingsregister): de naam van een koppeling, gelijk aan de CHECK op
+// app.integration_switches.name (test in src/core/api/integrations/register.test.ts), en hoe lang een lezing van de
+// schakelaar geldt (OV-3: langer dan één aanroep, OUTBOUND_BUDGET_MAX_MS).
+export const INTEGRATION_NAME_MAX_LENGTH = 63;
+export const INTEGRATION_SWITCH_MAX_AGE_MS = 30_000;

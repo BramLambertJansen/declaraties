@@ -386,7 +386,7 @@ test.each([
     file: API,
     code: "export const r = await fetch('x');\n",
     rule: NETWERK,
-    teksten: ['createOutboundClient', 'R-CODE-12'],
+    teksten: ['integrations.client', 'R-CODE-12'],
   },
   {
     name: 'AC-14: melding van rails/geheim',

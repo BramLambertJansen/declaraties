@@ -35,6 +35,15 @@ const cases: [file: string, rules: string[]][] = [
   ['src/api/audit-toegestaan.ts', []],
   ['src/api/testing-in-code.ts', ['testing-alleen-in-tests']],
   ['src/api/testing.int.test.ts', []],
+  // Spec koppelingsregister: createOutboundClient (outbound/create.ts) alleen binnen src/core/api; de app gaat via het register.
+  ['src/api/uitgaande-client.ts', ['uitgaande-client-alleen-in-core']],
+  // Ook de bouwstenen achter create.ts en de registerclient: elk pad een eigen fixture, met precies deze ene regel.
+  ['src/api/uitgaande-client-client.ts', ['uitgaande-client-alleen-in-core']],
+  ['src/api/uitgaande-client-config.ts', ['uitgaande-client-alleen-in-core']],
+  ['src/api/register-client.ts', ['uitgaande-client-alleen-in-core']],
+  ['src/api/register-reading.ts', ['uitgaande-client-alleen-in-core']],
+  // Het register (src/core/api/integrations) maakt de client en leest de schakelaar via db/integration-switch.ts.
+  ['src/core/api/integrations/register.ts', []],
 ];
 
 describe('lagenregels in .dependency-cruiser.mjs', () => {

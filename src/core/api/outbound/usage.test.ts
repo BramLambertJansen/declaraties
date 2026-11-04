@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, test } from 'vitest';
 import { z } from 'zod';
-import { createOutboundClient, OutboundUsageError, type OutboundRequest } from './index.ts';
+import { createOutboundClient } from './create.ts';
+import { OutboundUsageError, type OutboundRequest } from './index.ts';
 import { startFakePartner, type FakePartner } from './testing.ts';
 
 // Spec uitgaande-client AC-10: de URL wordt uit sjabloon en parameters gebouwd; een verkeerde aanroep gaat niet het net op

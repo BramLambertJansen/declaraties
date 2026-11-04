@@ -1,5 +1,6 @@
 import { describe, expect, test } from 'vitest';
-import { createOutboundClient, OutboundConfigError, type OutboundConfig } from './index.ts';
+import { createOutboundClient } from './create.ts';
+import { OutboundConfigError, type OutboundConfig } from './index.ts';
 
 // Spec uitgaande-client AC-8: opstartfouten. Geen netwerk: createOutboundClient controleert alleen de configuratie.
 // Harde grenzen uit de spec: timeoutMs 10 000, budgetMs 20 000, maxAttempts 5.

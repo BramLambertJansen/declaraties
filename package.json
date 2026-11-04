@@ -49,6 +49,7 @@
     "db:generate": "scripts/db-generate.sh",
     "db:seed": "node --env-file=.env.local scripts/seed.mjs",
     "admin:create": "node --env-file-if-exists=.env.local scripts/admin-create.mjs",
+    "integration:switch": "node --env-file-if-exists=.env.local scripts/integration-switch.mjs",
     "auth:schema": "node scripts/auth-schema.mjs",
     "new:resource": "node scripts/kit/new-resource.mjs",
     "docs:status": "node scripts/kit/document-status.mjs",

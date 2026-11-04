@@ -19,7 +19,7 @@ Botst een regel met de opdracht: stop en vraag, omzeil of verzwak niets (R-WERK-
 **Lagen**
 - `src/core` is template: een app wijzigt het niet maar registreert uitbreidingen; core importeert nooit app-code (R-LAAG-01, R-LAAG-02, R-ARCH-01).
 - `src/web`: data alleen via `src/web/lib/api.ts`; geen databasedriver, ORM, provider-SDK of import uit `src/api`, ook geen types (R-LAAG-03). `shared` importeert niets uit `web` of `api` (R-LAAG-04).
-- Databaseverbindingen alleen in `src/core/api/db` en `src/core/api/auth` (R-LAAG-05); `src/core/api/db` exporteert alleen `withUser()`, `pingDatabase()`, `closeDatabase()`, `createAuditFn()` (alleen `app.audit` in de `tx`, geen pool), `testing.ts` (R-LAAG-06).
+- Databaseverbindingen alleen in `src/core/api/db` en `src/core/api/auth` (R-LAAG-05); `src/core/api/db` exporteert alleen `withUser()`, `pingDatabase()`, `closeDatabase()`, `createAuditFn()` (alleen `app.audit` in de `tx`, geen pool), `readIntegrationSwitch()`, `testing.ts` (R-LAAG-06).
 - `process.env` alleen in `src/core/api/env.ts`, `import.meta.env` alleen in `src/core/web/lib/env.ts`, `MIGRATOR_DATABASE_URL` alleen in `scripts/`; `VITE_` alleen publiek (R-LAAG-08).
 
 **API**

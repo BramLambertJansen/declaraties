@@ -235,6 +235,31 @@ CREATE FUNCTION app.current_user_id() RETURNS text
 ALTER FUNCTION app.current_user_id() OWNER TO app_migrator;
 
 --
+-- Name: integration_enabled(text); Type: FUNCTION; Schema: app; Owner: app_definer
+--
+
+CREATE FUNCTION app.integration_enabled(p_name text) RETURNS boolean
+    LANGUAGE plpgsql STABLE SECURITY DEFINER
+    SET search_path TO ''
+    AS $_$
+  declare
+    v_enabled boolean;
+  begin
+    if app.current_user_id() is null then
+      raise exception 'FORBIDDEN' using errcode = '42501';
+    end if;
+    if p_name is null or pg_catalog.length(p_name) > 63 or p_name !~ '^[a-z][a-z0-9-]*$' then
+      raise exception 'ongeldige koppelingsnaam' using errcode = '22023';
+    end if;
+    select s.enabled into v_enabled from app.integration_switches s where s.name = p_name;
+    return coalesce(v_enabled, false);
+  end
+  $_$;
+
+
+ALTER FUNCTION app.integration_enabled(p_name text) OWNER TO app_definer;
+
+--
 -- Name: is_mfa_admin(); Type: FUNCTION; Schema: app; Owner: app_definer
 --
 
@@ -421,6 +446,48 @@ CREATE FUNCTION app.set_account_deactivated(p_user_id text, p_deactivated boolea
 ALTER FUNCTION app.set_account_deactivated(p_user_id text, p_deactivated boolean) OWNER TO app_definer;
 
 --
+-- Name: set_integration_enabled(text, boolean); Type: FUNCTION; Schema: app; Owner: app_definer
+--
+
+CREATE FUNCTION app.set_integration_enabled(p_name text, p_enabled boolean) RETURNS void
+    LANGUAGE plpgsql SECURITY DEFINER
+    SET search_path TO ''
+    AS $_$
+  declare
+    v_current boolean;
+  begin
+    if not app.is_mfa_admin()
+       and not (session_user = 'app_migrator' and app.current_user_id() is null) then
+      raise exception 'FORBIDDEN' using errcode = '42501';
+    end if;
+    if p_name is null or pg_catalog.length(p_name) > 63 or p_name !~ '^[a-z][a-z0-9-]*$' then
+      raise exception 'ongeldige koppelingsnaam' using errcode = '22023';
+    end if;
+    if p_enabled is null then
+      raise exception 'ongeldige stand' using errcode = '22023';
+    end if;
+    perform pg_catalog.pg_advisory_xact_lock(pg_catalog.hashtext('app.integration_switches:' || p_name));
+    select s.enabled into v_current from app.integration_switches s where s.name = p_name;
+    if coalesce(v_current, false) = p_enabled then
+      return;
+    end if;
+    insert into app.integration_switches (name, enabled, updated_at)
+      values (p_name, p_enabled, pg_catalog.now())
+      on conflict (name) do update
+        set enabled = excluded.enabled, updated_at = excluded.updated_at;
+    insert into app.audit_log (actor_id, action, target_type, target_id, request_id, details)
+      values (
+        app.current_user_id(),
+        case when p_enabled then 'core.integration.enable' else 'core.integration.disable' end,
+        'integration', p_name, app.request_id(), '{}'::jsonb
+      );
+  end
+  $_$;
+
+
+ALTER FUNCTION app.set_integration_enabled(p_name text, p_enabled boolean) OWNER TO app_definer;
+
+--
 -- Name: user_roles_keep_one_admin(); Type: FUNCTION; Schema: app; Owner: app_definer
 --
 
@@ -583,6 +650,22 @@ ALTER TABLE app.audit_log ALTER COLUMN id ADD GENERATED ALWAYS AS IDENTITY (
 
 
 --
+-- Name: integration_switches; Type: TABLE; Schema: app; Owner: app_migrator
+--
+
+CREATE TABLE app.integration_switches (
+    name text NOT NULL,
+    enabled boolean NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT integration_switches_name_check CHECK (((name ~ '^[a-z][a-z0-9-]*$'::text) AND (length(name) <= 63)))
+);
+
+ALTER TABLE ONLY app.integration_switches FORCE ROW LEVEL SECURITY;
+
+
+ALTER TABLE app.integration_switches OWNER TO app_migrator;
+
+--
 -- Name: one_time_use; Type: TABLE; Schema: app; Owner: app_migrator
 --
 
@@ -718,6 +801,14 @@ ALTER TABLE public.schema_migrations OWNER TO app_migrator;
 
 ALTER TABLE ONLY app.audit_log
     ADD CONSTRAINT audit_log_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: integration_switches integration_switches_pkey; Type: CONSTRAINT; Schema: app; Owner: app_migrator
+--
+
+ALTER TABLE ONLY app.integration_switches
+    ADD CONSTRAINT integration_switches_pkey PRIMARY KEY (name);
 
 
 --
@@ -976,6 +1067,33 @@ CREATE POLICY audit_log_select_admin ON app.audit_log FOR SELECT TO app_authenti
 
 
 --
+-- Name: integration_switches; Type: ROW SECURITY; Schema: app; Owner: app_migrator
+--
+
+ALTER TABLE app.integration_switches ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: integration_switches integration_switches_definer_insert; Type: POLICY; Schema: app; Owner: app_migrator
+--
+
+CREATE POLICY integration_switches_definer_insert ON app.integration_switches FOR INSERT TO app_definer WITH CHECK (true);
+
+
+--
+-- Name: integration_switches integration_switches_definer_select; Type: POLICY; Schema: app; Owner: app_migrator
+--
+
+CREATE POLICY integration_switches_definer_select ON app.integration_switches FOR SELECT TO app_definer USING (true);
+
+
+--
+-- Name: integration_switches integration_switches_definer_update; Type: POLICY; Schema: app; Owner: app_migrator
+--
+
+CREATE POLICY integration_switches_definer_update ON app.integration_switches FOR UPDATE TO app_definer USING (true) WITH CHECK (true);
+
+
+--
 -- Name: one_time_use; Type: ROW SECURITY; Schema: app; Owner: app_migrator
 --
 
@@ -1146,6 +1264,14 @@ GRANT ALL ON FUNCTION app.current_user_id() TO app_definer;
 
 
 --
+-- Name: FUNCTION integration_enabled(p_name text); Type: ACL; Schema: app; Owner: app_definer
+--
+
+REVOKE ALL ON FUNCTION app.integration_enabled(p_name text) FROM PUBLIC;
+GRANT ALL ON FUNCTION app.integration_enabled(p_name text) TO app_authenticated;
+
+
+--
 -- Name: FUNCTION is_mfa_admin(); Type: ACL; Schema: app; Owner: app_definer
 --
 
@@ -1191,6 +1317,15 @@ GRANT ALL ON FUNCTION app.set_account_blocked(p_user_id text, p_blocked boolean)
 
 REVOKE ALL ON FUNCTION app.set_account_deactivated(p_user_id text, p_deactivated boolean) FROM PUBLIC;
 GRANT ALL ON FUNCTION app.set_account_deactivated(p_user_id text, p_deactivated boolean) TO app_authenticated;
+
+
+--
+-- Name: FUNCTION set_integration_enabled(p_name text, p_enabled boolean); Type: ACL; Schema: app; Owner: app_definer
+--
+
+REVOKE ALL ON FUNCTION app.set_integration_enabled(p_name text, p_enabled boolean) FROM PUBLIC;
+GRANT ALL ON FUNCTION app.set_integration_enabled(p_name text, p_enabled boolean) TO app_authenticated;
+GRANT ALL ON FUNCTION app.set_integration_enabled(p_name text, p_enabled boolean) TO app_migrator;
 
 
 --
@@ -1347,6 +1482,13 @@ GRANT INSERT(request_id) ON TABLE app.audit_log TO app_definer;
 --
 
 GRANT INSERT(details) ON TABLE app.audit_log TO app_definer;
+
+
+--
+-- Name: TABLE integration_switches; Type: ACL; Schema: app; Owner: app_migrator
+--
+
+GRANT SELECT,INSERT,UPDATE ON TABLE app.integration_switches TO app_definer;
 
 
 --

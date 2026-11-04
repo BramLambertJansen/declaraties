@@ -1,5 +1,5 @@
 // GEGENEREERD door `pnpm db:generate` (scripts/db-introspect.mjs) uit de gemigreerde database. Niet bewerken.
-import { bigint, integer, interval, jsonb, pgSchema, pgTable, text, timestamp } from 'drizzle-orm/pg-core';
+import { bigint, boolean, integer, interval, jsonb, pgSchema, pgTable, text, timestamp } from 'drizzle-orm/pg-core';
 import { sql } from 'drizzle-orm';
 import type { UserId } from '#core/shared/ids.ts';
 
@@ -35,6 +35,14 @@ export const appAuditLog = appSchema.table('audit_log', {
   details: jsonb('details')
     .notNull()
     .default(sql`'{}'::jsonb`),
+});
+
+export const appIntegrationSwitches = appSchema.table('integration_switches', {
+  name: text('name').primaryKey(),
+  enabled: boolean('enabled').notNull(),
+  updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'string' })
+    .notNull()
+    .default(sql`now()`),
 });
 
 export const appOneTimeUse = appSchema.table('one_time_use', {

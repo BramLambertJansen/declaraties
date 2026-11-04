@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, test } from 'vitest';
 import { z } from 'zod';
-import { createOutboundClient, type OutboundConfig, type OutboundLogEntry } from './index.ts';
+import { createOutboundClient } from './create.ts';
+import type { OutboundConfig, OutboundLogEntry } from './index.ts';
 import { startFakePartner, type FakePartner, type FakeRoutes } from './testing.ts';
 
 // Spec uitgaande-client AC-14: één logregel per poging met precies de velden uit de spec, nooit headers, body, query of

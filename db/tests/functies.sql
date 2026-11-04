@@ -25,7 +25,10 @@ insert into catalogus values
   ('app.retention_cutoff(regclass)', 'intern', 'gelezen door policies en triggers met een termijn'),
   ('app.audit_log_guard_delete()', 'intern', 'triggerfunctie van app.audit_log'),
   -- Eenmalig gebruik (ADR 0075, spec inloggat-dichten).
-  ('app.claim_one_time_use(text, integer)', 'auth', 'claim van een TOTP-code of e-maillink door Better Auth');
+  ('app.claim_one_time_use(text, integer)', 'auth', 'claim van een TOTP-code of e-maillink door Better Auth'),
+  -- Register en schakelaar per koppeling (spec koppelingsregister, AC-8).
+  ('app.integration_enabled(text)', 'client', null),
+  ('app.set_integration_enabled(text, boolean)', 'client', null);
 
 -- Functies van extensies tellen niet mee (pgTAP staat in schema tap).
 create temp view functies as

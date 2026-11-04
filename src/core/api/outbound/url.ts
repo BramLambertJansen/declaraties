@@ -17,7 +17,8 @@ const fail = (message: string): never => {
   throw new OutboundUsageError(`client.call: ${message}`);
 };
 
-function checkTemplate(path: string): readonly string[] {
+// Ook gebruikt door de koppelingsclient bij stand uit, vóór de logregel (spec koppelingsregister, Volgorde stap 3).
+export function checkTemplate(path: string): readonly string[] {
   if (!TEMPLATE.test(path)) fail('het sjabloon begint niet met / of bevat een teken buiten [A-Za-z0-9-._~/:]');
   const segments = path.split('/').slice(1);
   if (path.includes('//') || segments.includes('..')) fail('het sjabloon bevat // of een ..-segment');

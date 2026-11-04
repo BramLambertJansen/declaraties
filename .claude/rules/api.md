@@ -24,7 +24,7 @@ Letterlijk uit `docs/framework.md`; bij verschil wint het regelboek.
 - **R-SEC-03** Rate limit op elke `defineRoute`-route (`lezen`, `schrijven`, `duur` via `rateLimit`; mail of duur rekenwerk: `rateLimit: 'duur'`, nooit eigen getal per route) en op inloggen/reset, opslag in database, IP alleen uit `CLIENT_IP_HEADER`; `bodyLimit` en paginagrootte uit `limits.ts`; health en ready zonder limiet (0041, 0049)
 - **R-ARCH-05** Browser praat alleen met API, same-origin via `/api`; geen server-rendering; per host één adapter in `deploy/<host>/`, zonder logica (fw)
 - **R-DB-15** `app.audit_log` append-only, RLS geforceerd, regel in dezelfde transactie, details alleen ID's en enums, termijn minstens 1 jaar, lezen alleen admin met MFA. Bekend gat: faalt route-commit na uitnodigen, dan account zonder rol en zonder auditregel (0051)
-- **R-DB-16** App-acties in `src/shared/audit.ts` (nooit `core.`) via `ctx.audit()`; core-accountacties via `app.assign_role`, `app.set_account_blocked`, `app.audit_account_action` (0051)
+- **R-DB-16** App-acties in `src/shared/audit.ts` (nooit `core.`) via `ctx.audit()`; core-accountacties via `app.assign_role`, `app.set_account_blocked`, `app.audit_account_action` (0051); koppelingsschakelaar via `app.set_integration_enabled` (`core.integration.enable`/`disable`, 0077)
 - **R-TEST-03** Per permissie en policy negatieve test (een per verboden rol, `FORBIDDEN`), test voor ongeldige input, racetest met twee gelijktijdige requests bij uniekheid of geld (fw)
 - `process.env`: **R-LAAG-08** (framework §2); app-variabelen komen als schema in src/api/env.ts zodra de app eigen variabelen heeft.
 - CSRF-middleware vóór alle routes, geen `cors()`: **R-SEC-01** (framework §6).

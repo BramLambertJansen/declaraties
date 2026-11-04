@@ -6,6 +6,7 @@ import type { RequestLog } from '#core/api/obs/request-log.ts';
 import type { RateLimits } from '#core/shared/limits.ts';
 import { errors } from '#shared/errors.ts';
 import { RATE_LIMITS } from '#shared/limits.ts';
+import { integrations } from './integrations/index.ts';
 import {
   accountsListRoute,
   activateRoute,
@@ -58,5 +59,11 @@ export interface BuildAppConfig {
 }
 
 export function buildApp(config: BuildAppConfig) {
-  return createApp<AppServices>({ ...config, routes, errors, rateLimits: config.rateLimits ?? RATE_LIMITS });
+  return createApp<AppServices>({
+    ...config,
+    routes,
+    errors,
+    integrations,
+    rateLimits: config.rateLimits ?? RATE_LIMITS,
+  });
 }

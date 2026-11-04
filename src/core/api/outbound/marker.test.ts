@@ -4,7 +4,8 @@ import { UserId } from '../../shared/ids.ts';
 import { unsafeCast } from '../../shared/unsafe-cast.ts';
 import type { Tx, WithUser } from '../db/types.ts';
 import { createRouteEffects } from '../http/route-effects.ts';
-import { createOutboundClient, guardWithUser, OutboundForbiddenError, type OutboundClient } from './index.ts';
+import { createOutboundClient } from './create.ts';
+import { guardWithUser, OutboundForbiddenError, type OutboundClient } from './index.ts';
 import { startFakePartner, type FakePartner } from './testing.ts';
 
 // Spec uitgaande-client, de markering zonder database (AC-15 in het klein): een nep-withUser met dezelfde signatuur,
