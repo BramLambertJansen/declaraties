@@ -1,5 +1,5 @@
 ---
-status: goedgekeurd
+status: gebouwd # #538
 namespace: leerlus
 ---
 

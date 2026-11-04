@@ -23,7 +23,7 @@ Ook wanneer je een bestaande test mag wijzigen: framework §8.
 - Lees en zoek met de Read-, Grep- en Glob-tools, niet met Bash; het rolhek weigert veel shellvormen (R-WERK-21).
 - Besteed onderzoek uit als dat zelfstandig nuttig werk oplevert; overdracht volgens R-WERK-14, vraag een compacte conclusie.
 - Lees `db/schema.snapshot.sql` in plaats van alle migraties.
-- Externe diensten via hun CLI (`gh`); MCP alleen read-only. Geen `docker`.
+- Externe diensten via hun CLI (`gh`); MCP alleen read-only, behalve een leerpunt-issue in de cloud (ADR 0078). Geen `docker`.
 
 Subagents (`.claude/agents/`), skills en hooks staan er (R-WERK-17, R-ROL-01): gebruik voor vereiste rollen de bijbehorende
 agents, of een ad-hoc subagent met dezelfde schone, afgebakende context (die mag alleen lezen, R-ROL-02). Wanneer die als onafhankelijk telt en wanneer

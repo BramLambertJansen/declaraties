@@ -1,0 +1,77 @@
+# Sluitbewijs voor een PR die een leerpunt sluit (ADR 0078 punt 1, spec leerlus-bewijs AC-1 t/m AC-4, AC-7). Eigen workflow
+# met eigen concurrency, zodat `edited` (een bewerkte beschrijving) niet de hele CI herstart. Onder `pull_request`, nooit
+# `pull_request_target`: code uit de PR draait zonder token of geheim. Het script komt van de basis (main, map `kit`); alleen
+# de stap "voorbereiden" heeft een token, alleen-lezend. Een PR die dit bestand wijzigt, draait zijn eigen versie: dat vangen
+# de diff-guard (`.github/**` is een gate-pad, agent-merge nee) en de eigenaarreview.
+name: leerpunt-bewijs
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, edited]
+
+permissions:
+  contents: read
+  pull-requests: read
+  issues: read
+
+concurrency:
+  group: leerpunt-bewijs-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  leerpunt-bewijs:
+    name: leerpunt-bewijs
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.pull_request.base.sha }}
+          path: kit
+          persist-credentials: false
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          path: head
+          persist-credentials: false
+          fetch-depth: 0
+      # Alleen de bouw-PR van ADR 0078 zelf: dan staat het script nog niet op de basis. Een PR kan het niet van de basis halen.
+      - name: kit
+        id: kit
+        run: |
+          if [ -f kit/scripts/kit/leerpunt-bewijs.mjs ]; then
+            echo "aanwezig=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "::notice title=leerpunt-bewijs::het script staat nog niet op de basis: niets te toetsen"
+            echo "aanwezig=false" >> "$GITHUB_OUTPUT"
+          fi
+      - uses: jdx/mise-action@7a4e45a543138629540c9a1616d08632b893e492 # v5.0.1
+        if: steps.kit.outputs.aanwezig == 'true'
+        with:
+          version: 2026.9.18
+          install_args: node pnpm
+          working_directory: kit
+      - name: voorbereiden
+        if: steps.kit.outputs.aanwezig == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: node kit/scripts/kit/leerpunt-bewijs.mjs voorbereiden "$RUNNER_TEMP/leerpunt.json"
+      - name: plan
+        if: steps.kit.outputs.aanwezig == 'true'
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: node kit/scripts/kit/leerpunt-bewijs.mjs plan "$RUNNER_TEMP/leerpunt.json" head "$BASE_SHA" "$RUNNER_TEMP/plan.json"
+      - name: basis
+        id: basis
+        if: steps.kit.outputs.aanwezig == 'true'
+        run: node kit/scripts/kit/leerpunt-bewijs.mjs basis "$RUNNER_TEMP/plan.json" head "$RUNNER_TEMP/basis"
+      - name: install
+        if: steps.basis.outputs.runs == 'true'
+        run: |
+          (cd head && pnpm install --frozen-lockfile --ignore-scripts)
+          (cd "$RUNNER_TEMP/basis" && pnpm install --frozen-lockfile --ignore-scripts)
+      - name: draai
+        if: steps.basis.outputs.runs == 'true'
+        run: node kit/scripts/kit/leerpunt-bewijs.mjs draai "$RUNNER_TEMP/plan.json" "$GITHUB_WORKSPACE/head" "$RUNNER_TEMP/basis"

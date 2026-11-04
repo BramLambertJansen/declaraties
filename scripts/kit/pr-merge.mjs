@@ -20,6 +20,7 @@ import {
   teGrootBytes,
 } from './agent-merge.mjs';
 import { parseCheckRun } from './github-evidence.mjs';
+import { leerpuntMergeRedenen } from './leerpunt.mjs';
 import { checkProgress, verifyEffect } from './pr-verify.mjs';
 
 export const CODEX = 'chatgpt-codex-connector[bot]';
@@ -409,6 +410,9 @@ export function beoordeelMerge(api, { repo, nummer, head }) {
     }),
     ...reviewRedenen(comments, head),
     ...codex.redenen,
+    // Leest de beschrijving op het moment van mergen: een later gewijzigd bewijs glipt zo niet langs de eigenaar, ook
+    // als het oordeel van de diff-guard (die niet op `edited` draait) nog `ja` was (ADR 0078 punt 1, leerlus-bewijs AC-4).
+    ...leerpuntMergeRedenen(tekst(veld(pull, 'body'))).map((reden) => `${reden}: de eigenaar merget`),
   ];
   return { redenen, codex: codex.stand };
 }

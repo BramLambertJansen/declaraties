@@ -1,5 +1,6 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { describe, expect, test } from 'vitest';
+import { expectAbsent } from '../support/absence.ts';
 
 // ADR 0046 punt 16, 25 en 26: de skill `opleveren`, framework §8 stap 6 en CLAUDE.md.
 const SKILL = '.claude/skills/opleveren/SKILL.md';
@@ -197,5 +198,55 @@ describe('leerlus: framework en ST-09-protocol', () => {
     expect(rapport).toMatch(/opgepakt/i);
     expect(rapport).toMatch(/herhaling/i);
     expect(rapport).toMatch(/nulmeting\D{0,30}\b(?:0|nul)\b/i);
+  });
+});
+
+describe('leerlus-bewijs/AC-8 MCP in de cloud en de sectie Leerpunt', () => {
+  test('leerlus-bewijs/AC-8: de slotstap noemt de MCP-schrijfweg en de sectie ## Leerpunt', () => {
+    const stap = flat(skill).slice(flat(skill).indexOf('Loop de signaalmomenten'));
+    expect(stap).toMatch(
+      /MCP-tool voor issues, alleen aanmaken, alleen naar onderhoud\.repository, met label leerpunt/,
+    );
+    expect(stap).toContain('## Leerpunt');
+    expect(stap).toContain('- #<nr>: trede <trede>; bewijs <testpad>');
+    expect(stap).toContain('bewijs geen test: <reden>');
+  });
+
+  test('leerlus-bewijs/AC-8: het PR-sjabloon heeft de sectie ## Leerpunt met de regelvorm', () => {
+    const sjabloon = readFileSync('.github/pull_request_template.md', 'utf8');
+    expect(sjabloon).toMatch(/^## Leerpunt$/m);
+    expect(sjabloon).toContain(
+      '- #<nr>: trede <Type|Check|Gouden pad of generator|Skill|Padregel|AGENTS.md>; bewijs <testpad>',
+    );
+  });
+});
+
+describe('leerlus-bewijs/AC-8 de MCP-uitzondering in de regels', () => {
+  const regel = (id: string) =>
+    readFileSync('docs/framework.md', 'utf8')
+      .split('\n')
+      .find((r) => r.startsWith(`- **${id}**`)) ?? '';
+
+  test.each(['R-SEC-09', 'R-ROL-12', 'R-WERK-13'])(
+    'leerlus-bewijs/AC-8: %s noemt de uitzondering met ADR 0078',
+    (id) => {
+      expect(regel(id)).toMatch(/leerpunt/);
+      expect(regel(id)).toMatch(/\b0078\b|R-WERK-13/);
+    },
+  );
+
+  test.each(['AGENTS.md', 'CLAUDE.md'])('leerlus-bewijs/AC-8: %s noemt de uitzondering met ADR 0078', (bestand) => {
+    expect(readFileSync(bestand, 'utf8')).toMatch(
+      /MCP alleen read-only[^.\n]*behalve een leerpunt-issue in de cloud \(ADR 0078\)/,
+    );
+  });
+
+  test('leerlus-bewijs/AC-8: mcpLezen bevat geen schrijvende issuetool', () => {
+    const gates: unknown = JSON.parse(readFileSync('.claude/gates.json', 'utf8'));
+    const lezen = typeof gates === 'object' && gates !== null && 'mcpLezen' in gates ? gates.mcpLezen : [];
+    expectAbsent(JSON.stringify(lezen), /issue_write|create_issue/, {
+      recognizes: ['mcp__github__issue_write', 'mcp__github__create_issue'],
+      allows: ['mcp__github__issue_read'],
+    });
   });
 });

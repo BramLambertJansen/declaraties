@@ -102,3 +102,8 @@ Alleen nadat de PR is gemerged, ook als de eigenaar zelf mergde.
 
    Zet de body in een tijdelijk bestand en geef het mee met `--body-file`: backticks of `$(` in het commando zelf geven een vraag.
    Bestaat het label nog niet, dan meld je dat; het label maakt de eigenaar. Triage en oppakken zijn van de eigenaar.
+   Cloud, waar `gh` niet kan schrijven (ADR 0078 punt 4): de MCP-tool voor issues, alleen aanmaken, alleen naar
+   `onderhoud.repository`, met label `leerpunt` en dezelfde titel en body. Geen andere MCP-schrijfactie.
+   Sluit een PR een leerpunt (sluitwoord of koppeling), dan krijgt de beschrijving de sectie `## Leerpunt` met per issue
+   `- #<nr>: trede <trede>; bewijs <testpad>`; de job `leerpunt-bewijs` draait die test rood op de basis en groen op de head.
+   Alleen bij Skill, Padregel, AGENTS.md of een integratie- of e2e-test: `bewijs geen test: <reden>`, en dan merget de eigenaar.

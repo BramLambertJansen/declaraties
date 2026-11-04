@@ -482,7 +482,7 @@ Zet de korte beschrijving uit de intake met `gh repo edit "$R" --description "<k
 
 **Ruleset op `main` (overdracht).** `scripts/github-ruleset.sh` zet de ruleset `main` volgens framework §10: geen delete of force push,
 PR-plicht, opgeloste reviewgesprekken, merge en squash, en de verplichte checks uit `.github/workflows/` (`gate:fast`, `gate:slow`,
-`secrets`, `image`, `check:new-resource`, `check-core`, `document-status`, `codeql (actions)`, `codeql (javascript-typescript)`, `osv-scanner`, alle van GitHub Actions). Dat is `main-dicht` van de template plus opgeloste gesprekken en `codeql (javascript-typescript)`.
+`secrets`, `image`, `check:new-resource`, `check-core`, `document-status`, `leerpunt-bewijs`, `codeql (actions)`, `codeql (javascript-typescript)`, `osv-scanner`, alle van GitHub Actions). Dat is `main-dicht` van de template plus opgeloste gesprekken en `codeql (javascript-typescript)`.
 `check-core` bewaakt in een app de grens rond `src/core` (ADR 0040); in de template is die check altijd groen.
 `test/scripts/github-ruleset.test.ts` houdt de ruleset gelijk aan de workflows en deze playbooklijst gelijk aan de rulesetpayload.
 Opnieuw draaien werkt de bestaande ruleset bij.
@@ -749,7 +749,7 @@ template-updates staan in de naslag hieronder; laat die de overdracht niet onder
 > Draait: Postgres 17 + pgTAP op 127.0.0.1:<pg>, Mailpit op http://127.0.0.1:<mailui>. Migraties toegepast, rollen bewezen.
 > API: http://localhost:<api>; web en beide origins: http://localhost:<web>.
 > Afgedwongen zoals in de template: git-hooks (pre-commit: format, lint, secrets; commit-msg: conventional commits; pre-push: `pnpm gate:fast`, een waarschuwing bij achterstand op `origin/main` en `document-status`, dat blokkeert op de volgorde spec vóór code), de hooks, sandbox en
-> permissies van Claude Code (`.claude/`), CI (`gate:fast`, `gate:slow`, `secrets`, `image`, `check:new-resource`, `check-core`, `document-status`, CodeQL, osv-scanner)
+> permissies van Claude Code (`.claude/`), CI (`gate:fast`, `gate:slow`, `secrets`, `image`, `check:new-resource`, `check-core`, `document-status`, `leerpunt-bewijs`, CodeQL, osv-scanner)
 > en de ruleset op `main` met die checks verplicht, uitsluitend voor zover hierboven werkelijk gecontroleerd.
 > Browser/login/MFA: <uitvoerder en uitslag, of niet uitgevoerd met reden>.
 >

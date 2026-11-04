@@ -13,7 +13,8 @@ const WORKFLOWS = path.join(ROOT, '.github/workflows');
 // app-ruleset. GEWIJZIGD (spec-en-bouw/AC-12, ADR 0062): `document-status` staat voortaan in de ruleset.
 // `agent-merge` (ADR 0069): verplicht zou hij elke kritieke PR ook voor de eigenaar blokkeren.
 // GEWIJZIGD (ADR 0073, bouw-PR 2): de job `check:app-init` bestaat niet meer, dus ook niet in deze lijst.
-const NIET_VERPLICHT = ['diff-guard', 'agent-merge'];
+// leerpunt-check (leerpunt.yml, ADR 0078 punt 3) draait op issues, niet op een PR: nooit een verplichte check.
+const NIET_VERPLICHT = ['diff-guard', 'agent-merge', 'leerpunt-check'];
 // De matrixdelen van een verplichte check met een samenvattende job zijn bewust geen verplichte check; de samenvattende job
 // is dat wel. GEWIJZIGD (ADR 0076, ci-in-delen/AC-8): niet meer alleen gate:slow, ook gate:fast en check:new-resource.
 // Exact deze namen: een andere nieuwe matrixnaam blijft letterlijk staan en laat de test falen.
@@ -31,6 +32,7 @@ const OPDRACHT = [
   'check:new-resource',
   'check-core',
   'document-status',
+  'leerpunt-bewijs',
   'codeql (actions)',
   'codeql (javascript-typescript)',
   'osv-scanner',

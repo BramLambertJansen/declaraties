@@ -1,5 +1,6 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { describe, expect, test } from 'vitest';
+import { expectAbsent } from '../support/absence.ts';
 
 // Spec leerlus (docs/specs/leerlus.md), ADR 0059: het issue form `leerpunt`, de CLI-koppen in de skill `opleveren`
 // en de reviewermelding houden dezelfde velden, labels en soorten.
@@ -270,5 +271,27 @@ describe('leerpunt-sjabloon: gelijk aan skill en reviewer', () => {
     const start = spans.indexOf(opties[0] ?? '');
     expect(start, 'reviewer.md noemt de eerste soort niet als backtick-span').toBeGreaterThanOrEqual(0);
     expect(spans.slice(start, start + opties.length)).toStrictEqual(opties);
+  });
+});
+
+describe('leerlus-bewijs/AC-9 en AC-10 voorsortering, meting en status', () => {
+  const VOORSORTEREN = 'docs/operations/leerpunten-voorsorteren.md';
+
+  test('leerlus-bewijs/AC-9: de voorsortering staat in de repo, zonder uitbreidingsstop, met de twee labels als eigen bak', () => {
+    const tekst = read(VOORSORTEREN);
+    expect(tekst).toMatch(/^## Prompt$/m);
+    expectAbsent(tekst, /uitbreiding(s)?stop/i, {
+      recognizes: ['uitbreidingsstop', 'Uitbreidingstop', 'UITBREIDINGSSTOP'],
+    });
+    const bak = tekst.split('\n').find((regel) => regel.includes('**Sjabloon of bewijs ontbreekt**')) ?? '';
+    expect(bak).toContain('`leerpunt-onvolledig`');
+    expect(tekst).toContain('`leerpunt-zonder-bewijs`');
+  });
+
+  test('leerlus-bewijs/AC-10: spec leerlus is gebouwd en het protocol telt opgepakt met sluitbewijs of achterhaald', () => {
+    // De spec noemt #312; document-status eist het nummer van de bouw-PR (ADR 0062), dus #538.
+    expect(read('docs/specs/leerlus.md')).toMatch(/^status: gebouwd # #538$/m);
+    const protocol = read('docs/operations/st-09-praktijkproef.md').replace(/\s+/g, ' ');
+    expect(protocol).toMatch(/opgepakte leerpunten \(gesloten met sluitbewijs of als achterhaald/);
   });
 });
