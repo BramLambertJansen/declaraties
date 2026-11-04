@@ -6,6 +6,8 @@ export { IntegrationConfigError } from './errors.ts';
 export { readSwitch } from './reading.ts';
 export { registerIntegrations } from './register.ts';
 export type {
+  Adapter,
+  AdapterCall,
   IntegrationClient,
   IntegrationClientConfig,
   IntegrationDef,

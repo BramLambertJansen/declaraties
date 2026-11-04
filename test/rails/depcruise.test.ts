@@ -46,6 +46,28 @@ const cases: [file: string, rules: string[]][] = [
   ['src/core/api/integrations/register.ts', []],
 ];
 
+// Spec koppelingsvorm (AC-12): een route kent alleen de poort, een poort geen HTTP of adapter, en de contracttestfabriek
+// (integrations/testing.ts) alleen in tests; de fabriek zelf mag vitest, de nep-partner en het register gebruiken.
+const koppelingCases: [file: string, rules: string[]][] = [
+  ['src/api/routes/koppeling-adapter.ts', ['koppeling-via-poort']],
+  ['src/api/routes/koppeling-schemas.ts', ['koppeling-via-poort']],
+  ['src/api/routes/koppeling-poort.ts', []],
+  ['src/api/integrations/poort-http/port.ts', ['poort-zonder-http']],
+  ['src/api/integrations/poort-register/port.ts', ['poort-zonder-http']],
+  ['src/api/integrations/poort-adapter/port.ts', ['poort-zonder-http']],
+  ['src/api/integrations/proef/port.ts', []],
+  ['src/api/integrations/proef/adapter.ts', []],
+  ['src/api/integrations/proef/contract.test.ts', []],
+  ['src/api/integratie-testing-in-code.ts', ['testing-alleen-in-tests']],
+  ['src/core/api/integrations/testing.ts', []],
+];
+
+describe('koppelingsvorm/AC-12: koppelingsregels in .dependency-cruiser.mjs', () => {
+  test.each(koppelingCases)('koppelingsvorm/AC-12: %s → %j', (file, rules) => {
+    expect(rulesFor(file)).toStrictEqual(rules);
+  });
+});
+
 describe('lagenregels in .dependency-cruiser.mjs', () => {
   test.each(cases)('%s → %j', (file, rules) => {
     expect(rulesFor(file)).toStrictEqual(rules);

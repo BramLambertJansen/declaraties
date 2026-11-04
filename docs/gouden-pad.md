@@ -94,6 +94,12 @@ netwerkaanroep tussen twee databasestappen zonder een open transactie of vastgeh
 expliciet kitmechanisme vast in de spec en controleer of de kit het al ondersteunt. Het `prepare`-ontwerp uit
 [ADR 0060](adr/0060-bestandsopslag-als-poort.md) is geen beschikbare handler-API zolang de route kit het niet implementeert.
 
+Een koppeling met een externe dienst volgt de vaste vorm uit spec [koppelingsvorm](specs/koppelingsvorm.md):
+`src/api/integrations/<naam>/` met `port.ts`, `adapter.ts`, `schemas.ts`, `contract.test.ts` en `fixtures/`. De adapter krijgt
+zijn client van de compositie-root (`integrations.client(naam, config)`); de route kent alleen de poort, via `ctx.services`, en
+roept die aan in de `call` van de partnerstap (`definePartnerRoute`) met `{ reading, requestId }`. Het volledige hoofdstuk volgt
+met de skill `nieuwe-koppeling`.
+
 `ctx.afterCommit` en `ctx.afterRollback` plannen externe gevolgen of compensatie na de transactie; ze splitsen de handler
 niet in twee transacties (`src/core/api/http/route-effects.ts`). Een fout na commit draait gecommitteerde data niet terug.
 Een partner aanroepen kan daarom niet vanuit de handler of `afterCommit`: de uitgaande client (`src/core/api/outbound`) weigert

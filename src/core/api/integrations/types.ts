@@ -45,3 +45,12 @@ export interface Integrations {
   // Gooit IntegrationConfigError bij een onbekende naam, OutboundConfigError bij een configuratie die niet klopt.
   readonly client: (name: string, config: IntegrationClientConfig) => IntegrationClient;
 }
+
+// Wat een adapter per aanroep krijgt (spec koppelingsvorm): de lezing uit readSwitch en de requestId van de route.
+export interface AdapterCall {
+  readonly reading: SwitchReading;
+  readonly requestId: string;
+}
+
+// De vaste vorm van adapter.ts: de client komt van de compositie-root, per aanroep ontstaat de poort.
+export type Adapter<Port> = (client: IntegrationClient) => (call: AdapterCall) => Port;
