@@ -8,6 +8,8 @@ Herzien: 2026-11-03 (#468): punt 3 (een 👀 van Codex of een review die nog bez
 punt 5 (overgang) en Gevolgen; verscherpt de Codex-voorwaarde; uitwerking in [spec](../specs/agent-merge-codex-wachten.md)
 Herzien: 2026-11-03 (#473): punt 3, bytegrens `agentMerge.maxBytes` naast `maxRegels`; verscherpt de omvanggrens;
 uitwerking in [spec](../specs/agent-merge-bytegrens.md)
+Herzien: 2026-11-04 (#535): gewijzigd door [0079](0079-een-padtabel.md) punt 1, `agentMerge.toegestaan` en
+`agentMerge.kritiek` worden de kolom `besluit` van de padtabel (`agent` of strenger); de uitslag per pad blijft gelijk
 
 Wijzigt [0046](0046-werkstraat-en-beslisroute.md) punt 30, 31, 33, 34 en 35, de zin "automatische agent-merges vallen af" uit
 [0057](0057-risicogestuurde-werkstraat.md), in [0064](0064-leesbudget-per-laag.md) "zodra de GitHub App er is" (R-DOC-09) en in
