@@ -269,6 +269,12 @@ Hier staan wijzigingen die van belang zijn bij het gebruiken of bijwerken van de
 
 ### Gewijzigd
 
+- CI draait `gate:fast`, `check:new-resource` en `gate:slow (ui:check)` in delen naast elkaar (ADR 0076, spec
+  `ci-in-delen`): de snelle suite in `checks`, `test-1` en `test-2`, de e2e-suite in twee helften. Samenvattende jobs houden
+  de verplichte namen, dus de ruleset verandert niet. Nieuw: `pnpm gate:fast --deel <naam>`, `pnpm check:new-resource --deel
+  <naam>` en `UI_DEEL` voor `ui:check`; zonder deelkeuze draait alles. Wat verandert voor een app: niets aan de ruleset; een
+  rode uitslag staat in het deel waar hij optrad.
+
 - Agent-merge kent naast de regelgrens een bytegrens (ADR 0069 punt 3, spec `docs/specs/agent-merge-bytegrens.md`):
   boven `agentMerge.maxBytes` gewijzigde bytes (40000) is het oordeel `nee`, zodat een paar zeer lange regels de
   omvanggrens niet omzeilen. De diff-guard telt met `git diff -U0`, `pnpm pr:merge` op de REST-patch; beide vallen dicht

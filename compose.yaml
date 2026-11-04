@@ -30,6 +30,8 @@ x-runner: &runner
     RUNNER: "1"
     RUNNER_CACHE_DIR: /tmp/cache
     RUNNER_OUTPUT_DIR: /output
+    # Deel van de e2e-suite in CI (ADR 0076 punt 4); leeg draait alles.
+    UI_DEEL: ${UI_DEEL:-}
     RUNNER_PRIVATE_CANARY: /repo/${RUNNER_PRIVATE_CANARY_NAME:-missing-canary}
     APP_ENV: ${APP_ENV}
     APP_ORIGIN: ${APP_ORIGIN}

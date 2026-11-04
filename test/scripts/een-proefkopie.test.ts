@@ -262,15 +262,16 @@ describe('AC-10: de job en het script check:app-init bestaan niet meer (bouw-PR 
   test('ci.yml heeft geen job check:app-init; check:new-resource draait altijd en voert pnpm check:new-resource uit', () => {
     expect(jobBlok('check:app-init')).toBe('');
     expect(ci).not.toContain('pnpm check:app-init');
-    const job = jobBlok('check:new-resource');
-    expect(job).toContain('- run: pnpm check:new-resource');
+    // GEWIJZIGD (ADR 0076, ci-in-delen/AC-6): de run-stap staat in de matrixjob; `check:new-resource` is de samenvatting.
+    const job = jobBlok('check:new-resource (${{ matrix.deel }})');
+    expect(job).toContain('- run: pnpm check:new-resource --deel "$DEEL"');
     const zonderCommentaar = job
       .split('\n')
       .filter((regel) => !regel.trim().startsWith('#'))
       .join('\n');
     expectAbsent(zonderCommentaar, /^\s+(if|paths|paths-ignore):/m, {
       recognizes: ['    if: github.event_name', '      paths:', '    paths-ignore:'],
-      allows: ['      - run: pnpm check:new-resource'],
+      allows: ['      - run: pnpm check:new-resource --deel "$DEEL"'],
     });
     expect(ci).toMatch(/^on:\n {2}push:\n {4}branches: \[main\]\n {2}pull_request:/m);
     expectAbsent(ci.split(/^jobs:/m)[0] ?? '', /paths/, { recognizes: ['paths:', 'paths-ignore:'] });

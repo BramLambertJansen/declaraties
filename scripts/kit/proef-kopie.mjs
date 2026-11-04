@@ -102,21 +102,27 @@ export function git(cwd, args) {
 }
 
 /**
- * Een script uit package.json, zonder pnpm: pnpm wil in de kopie (node_modules als link) eerst installeren.
+ * Een script uit package.json, zonder pnpm: pnpm wil in de kopie (node_modules als link) eerst installeren. Extra
+ * argumenten (zoals `--shard=1/2`, ADR 0076) gaan als losse argumenten naar een script van één stap, zoals pnpm dat doet.
  * @param {string} root
  * @param {string} naam
+ * @param {readonly string[]} [args]
  * @returns {Promise<void>}
  */
-export async function script(root, naam) {
+export async function script(root, naam, args = []) {
   /** @type {{ scripts: Record<string, string> }} */
   const pkg = JSON.parse(readFileSync(path.join(root, 'package.json'), 'utf8'));
   const regel = pkg.scripts[naam];
   if (regel === undefined) throw new Error(`package.json: geen script ${naam}`);
   const bin = path.join(root, 'node_modules/.bin');
   const env = { ...schoneEnv(), PATH: `${bin}${path.delimiter}${process.env['PATH'] ?? ''}` };
-  for (const stap of regel.split(' && ')) {
-    if (stap.startsWith('pnpm ')) await script(root, stap.slice('pnpm '.length));
-    else if ((await startMetEnv(root, ['sh', '-c', stap], env)) !== 0) throw new Error(`${naam}: "${stap}" faalde`);
+  const stappen = regel.split(' && ');
+  if (args.length > 0 && stappen.length > 1)
+    throw new Error(`${naam}: extra argumenten alleen bij een script van één stap`);
+  for (const stap of stappen) {
+    if (stap.startsWith('pnpm ')) await script(root, stap.slice('pnpm '.length), args);
+    else if ((await startMetEnv(root, ['sh', '-c', `${stap} "$@"`, 'sh', ...args], env)) !== 0)
+      throw new Error(`${naam}: "${stap}" faalde`);
   }
 }
 

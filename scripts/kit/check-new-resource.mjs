@@ -5,7 +5,7 @@
 // gate:fast. gate:slow hoort er bewust niet bij: check-policies faalt tot de tester de pgTAP-tests schrijft.
 import { readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
-import { snelleGates } from './gate-fast.mjs';
+import { DELEN, deelUitArgs, snelleGates } from './gate-fast.mjs';
 import { pasToe, plan, schrijf } from './new-resource.mjs';
 import { draaiProef } from './check-app-init.mjs';
 import { start } from './proef-kopie.mjs';
@@ -40,10 +40,19 @@ export async function genereer(root) {
 }
 
 if (import.meta.main) {
-  process.exitCode = await draaiProef(process.cwd(), snelleGates(), {
+  // `--deel` (ADR 0076): elk deel maakt een eigen kopie met init en generator, en draait zijn deel van de suite.
+  const keuze = deelUitArgs(process.argv.slice(2));
+  if (keuze !== null && keuze.deel === null) {
+    console.error(
+      `✗ check:new-resource: onbekend deel ${keuze.naam}; kies ${DELEN.join(', ').replace(/, (?=[^,]*$)/, ' of ')}`,
+    );
+    process.exit(1);
+  }
+  process.exitCode = await draaiProef(process.cwd(), keuze?.deel?.scripts ?? snelleGates(), {
     bewaar: process.argv.includes('--bewaar'),
     genereer,
-    naam: 'check:new-resource',
+    naam: keuze === null ? 'check:new-resource' : `check:new-resource (${keuze.naam})`,
     onderwerp: NAAM,
+    ...(keuze === null || keuze.deel === null ? {} : { deel: keuze.naam, args: keuze.deel.args }),
   });
 }

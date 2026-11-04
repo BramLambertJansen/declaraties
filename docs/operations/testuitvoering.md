@@ -9,6 +9,15 @@ De eerdere seriële unitgroep verwees in zijn commentaar naar database-isolatie,
 het aparte `int`-project staan en uit `unit` worden uitgesloten. Unitfixtures maken eigen tijdelijke mappen;
 de lintfixtures werken in het geheugen en de bundeltest schrijft geen bundel naar de projectmap.
 
+## In CI: de suite in delen
+
+In CI draaien `gate:fast`, `check:new-resource` en `ui:check` in delen naast elkaar (ADR 0076, spec `ci-in-delen`).
+`pnpm gate:fast --deel checks` draait alles behalve `test:unit`; `--deel test-1` en `test-2` draaien elk de helft van
+`test:unit` via `vitest --shard` (`scripts/kit/gate-fast.mjs`, `deel()`). `pnpm check:new-resource --deel <naam>` doet
+hetzelfde in een eigen kopie. `UI_DEEL=1/2` of `2/2` geeft `ui:check` de helft van de e2e-suite (`playwright.config.ts`,
+`shard`). Zonder deelkeuze draait alles, zoals lokaal en in de pre-push-hook. `test/rails/ci-in-delen.test.ts` bewijst dat de
+delen samen precies het geheel dekken, zonder overlap. Een rood deel speel je lokaal na met dezelfde `--deel` of `UI_DEEL`.
+
 ## Tijdelijke mappen per run
 
 Elke Vitest-run krijgt één eigen hoofdmap `vitest-run-*` onder de tmpdir van de aanroeper (`vitest.config.ts:20`,

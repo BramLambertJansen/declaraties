@@ -9,6 +9,10 @@ const webPort = process.env['WEB_PORT'] ?? '5173';
 const baseURL = process.env['APP_ORIGIN'] ?? `http://localhost:${webPort}`;
 const inRunner = process.env['RUNNER'] === '1';
 const outputDir = process.env['RUNNER_OUTPUT_DIR'];
+// Een deel van de e2e-suite in CI (ADR 0076 punt 4): `UI_DEEL=1/2` of `2/2`; leeg of afwezig draait alles.
+const uiDeel = process.env['UI_DEEL'] ?? '';
+const shard = /^([12])\/2$/.exec(uiDeel)?.[1];
+if (uiDeel !== '' && shard === undefined) throw new Error(`UI_DEEL moet 1/2 of 2/2 zijn, niet ${uiDeel}`);
 
 export default defineConfig({
   testDir: 'e2e',
@@ -21,6 +25,7 @@ export default defineConfig({
   use: { baseURL, reducedMotion: 'reduce' },
   projects: [{ name: 'chromium', use: devices['Desktop Chrome'] }],
   ...(outputDir === undefined ? {} : { outputDir: `${outputDir}/test-results` }),
+  ...(shard === undefined ? {} : { shard: { current: Number(shard), total: 2 } }),
   ...(inRunner
     ? {
         webServer: [

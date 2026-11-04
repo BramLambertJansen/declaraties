@@ -48,8 +48,9 @@ describe('meting-stuurt/AC-2: de trend meldt alleen een echte stap', () => {
 describe('meting-stuurt/AC-3: workflow, skill en rolhek', () => {
   test('meting-stuurt/AC-3 gate:fast draait pnpm leespad in een eigen stap met if: always(), zonder extra rechten', () => {
     const ci = lees('.github/workflows/ci.yml');
-    const job = ci.slice(ci.indexOf('  gate-fast:'), ci.indexOf('\n  gate-slow'));
-    expect(job).toMatch(/- if: always\(\)\n\s+run: pnpm leespad\n/);
+    // GEWIJZIGD (ADR 0076): de stap staat in het deel `checks` van de matrixjob `gate-fast-part`, nog steeds met always().
+    const job = ci.slice(ci.indexOf('  gate-fast-part:'), ci.indexOf('\n  gate-fast:'));
+    expect(job).toMatch(/- if: always\(\) && matrix\.deel == 'checks'\n\s+run: pnpm leespad\n/);
     expect(job).not.toContain('permissions:');
     expect(ci).toMatch(/^permissions: read-all$/m);
   });

@@ -13,9 +13,14 @@ import { bijSignaal, git, kopie, ruimOp, script, start } from './proef-kopie.mjs
  * @property {(root: string) => Promise<void>} genereer de generatorstap
  * @property {string} [naam] de naam van de check in de meldingen
  * @property {string} [onderwerp] wat gate:fast haalt, in de slotregel
+ * @property {string} [deel] het deel van de suite (ADR 0076), voor de slotregel
+ * @property {Readonly<Record<string, readonly string[]>>} [args] extra argumenten per script, zoals `--shard=1/2`
  */
 
-/** @typedef {{ naam: string, onderwerp: string, stappen: string, genereer: Opties['genereer'] }} Vorm */
+/**
+ * @typedef {{ naam: string, onderwerp: string, wat: string, stappen: string, genereer: Opties['genereer'],
+ *   args: Readonly<Record<string, readonly string[]>> }} Vorm
+ */
 
 /** Het enige prefix van de kopie (spec een-proefkopie AC-8). */
 const PREFIX = 'new-resource-';
@@ -36,8 +41,10 @@ function vorm(opties, template) {
   return {
     naam: opties.naam ?? 'check:new-resource',
     onderwerp: opties.onderwerp ?? 'time-entries',
+    wat: opties.deel === undefined ? 'gate:fast' : `deel ${opties.deel} van gate:fast`,
     stappen: template ? 'app:init en new:resource (zie leerpunt #334)' : 'new:resource',
     genereer: opties.genereer,
+    args: opties.args ?? {},
   };
 }
 
@@ -86,14 +93,14 @@ async function proefIn(doel, scripts, { v, template }) {
   if (!(await genereerIn(doel, v))) return 1;
   for (const naam of scripts) {
     try {
-      await script(doel, naam);
+      await script(doel, naam, v.args[naam] ?? []);
     } catch (error) {
       if (error instanceof Error) console.error(error.message);
       console.error(`✗ ${v.naam}: ${naam} faalt na ${v.stappen}`);
       return 1;
     }
   }
-  console.log(`${v.naam}: ${v.onderwerp} haalt gate:fast${template ? ' na app:init' : ''}`);
+  console.log(`${v.naam}: ${v.onderwerp} haalt ${v.wat}${template ? ' na app:init' : ''}`);
   return 0;
 }
 

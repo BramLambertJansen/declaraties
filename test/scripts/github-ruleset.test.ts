@@ -14,9 +14,14 @@ const WORKFLOWS = path.join(ROOT, '.github/workflows');
 // `agent-merge` (ADR 0069): verplicht zou hij elke kritieke PR ook voor de eigenaar blokkeren.
 // GEWIJZIGD (ADR 0073, bouw-PR 2): de job `check:app-init` bestaat niet meer, dus ook niet in deze lijst.
 const NIET_VERPLICHT = ['diff-guard', 'agent-merge'];
-// De matrixdelen van gate:slow (job `gate-slow-part`) zijn bewust geen verplichte check; de aggregatiejob `gate:slow` is dat wel.
-// Exact deze ene naam: een andere nieuwe matrixnaam blijft letterlijk staan en laat de test falen.
-const GATE_SLOW_DEEL = 'gate:slow (${{ matrix.script }})';
+// De matrixdelen van een verplichte check met een samenvattende job zijn bewust geen verplichte check; de samenvattende job
+// is dat wel. GEWIJZIGD (ADR 0076, ci-in-delen/AC-8): niet meer alleen gate:slow, ook gate:fast en check:new-resource.
+// Exact deze namen: een andere nieuwe matrixnaam blijft letterlijk staan en laat de test falen.
+const DEELNAMEN = [
+  'gate:fast (${{ matrix.deel }})',
+  'gate:slow (${{ matrix.deel }})',
+  'check:new-resource (${{ matrix.deel }})',
+];
 const GITHUB_ACTIONS = 15368;
 const OPDRACHT = [
   'gate:fast',
@@ -80,7 +85,7 @@ function checksUitWorkflows(): string[] {
     const matrix = /language: \[([^\]]+)\]/.exec(source)?.[1] ?? '';
     const languages = matrix === '' ? [] : matrix.split(', ');
     for (const [, name = ''] of source.matchAll(/^ {4}name: (.+)$/gm)) {
-      if (name === GATE_SLOW_DEEL) continue;
+      if (DEELNAMEN.includes(name)) continue;
       if (!name.includes('${{ matrix.language }}')) {
         names.push(name);
         continue;
@@ -199,6 +204,16 @@ describe('samenhang-checks-rollen/AC-1: requiredChecks is de enige lijst', () =>
 
   test('samenhang-checks-rollen/AC-1 elke workflowjob staat in requiredChecks of is bewust niet verplicht, en omgekeerd', () => {
     expect(checksUitWorkflows()).toStrictEqual(requiredChecks().toSorted());
+  });
+
+  test('ci-in-delen/AC-8 elk matrixdeel hoort bij een verplichte check met een samenvattende job', () => {
+    const ci = readFileSync(path.join(WORKFLOWS, 'ci.yml'), 'utf8');
+    for (const deel of DEELNAMEN) {
+      const check = deel.slice(0, deel.indexOf(' ('));
+      expect(requiredChecks()).toContain(check);
+      expect(ci).toContain(`    name: ${deel}\n`);
+      expect(ci).toContain(`    name: ${check}\n`);
+    }
   });
 
   test('samenhang-checks-rollen/AC-1 R-CI-01 en dod.md verwijzen naar requiredChecks in plaats van op te sommen', () => {
