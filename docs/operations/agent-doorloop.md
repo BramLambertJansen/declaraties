@@ -61,6 +61,13 @@ en de metingen van hoofdstukken, regelboek, specs, ADR's, rules, skills en opera
 nooit rood). `pnpm meting --trend` vergelijkt CI-rood, Codex-bevindingen en reviewrondes over de laatste tien gemergde PR's met
 de tien daarvoor (`scripts/kit/meting-trend.mjs`; leesbudget/AC-7).
 
+De toets op effect telt mee (spec `rolhek-vooraf-krimp` AC-7): blokkades op effect (`EffectBlokkade`-regels uit
+`rails/hooks/lib/effect-meting.mjs`), overnames (`pnpm rolhek:overnemen`) en de schaduw van de hoofdsessie: met
+`rolhekEffectHoofdsessie: "schaduw"` in `.claude/gates.json` toetst de hook ook elk Bash-commando van de hoofdsessie op effect,
+geeft alleen een melding en legt per `tool_use_id` de uitkomst vooraf en achteraf vast (alleen uitkomst en paden,
+`rails/hooks/lib/effect-hooks.mjs:hoofdsessieAchteraf`). Zonder zulke regels staat er `onbekend`, nooit 0. Met `"aan"` geldt
+AC-4: een `deny` blokkeert en komt op de open lijst, een `ask` komt op de open lijst.
+
 Wanneer een meting "let op" zegt (ADR 0070, spec `meting-stuurt`):
 
 - **Tegenover de basis.** `pnpm leespad` meet ook de basis, standaard `git merge-base origin/main HEAD`

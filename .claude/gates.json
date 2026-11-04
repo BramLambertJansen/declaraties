@@ -122,6 +122,8 @@
   "jsonGates": { "package.json": ["scripts"] },
   "zelfladend": [".git/**", ".claude/hooks/**", "!.claude/hooks/.cache/**", ".claude/settings.json", "lefthook.yml", ".pnpmfile.cjs"],
   "gegenereerd": ["src/web/routeTree.gen.ts", "src/api/db/schema.ts", "db/schema.snapshot.sql"],
+  "generatoren": ["pnpm db:generate"],
+  "rolhekEffectHoofdsessie": "schaduw",
   "migraties": ["db/migrations/**"],
   "mcpLezen": [],
   "autoRunner": true,

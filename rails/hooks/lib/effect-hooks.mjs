@@ -8,12 +8,15 @@ import {
   overtredingen,
   ruimOp,
   toets,
+  toetsHoofdsessie,
   veranderdePaden,
   werkAgentBij,
   werkLijstBij,
   wisOpname,
 } from './effect.mjs';
 import { MAX_MS, momentopname } from './effect-snapshot.mjs';
+import { meet, uitkomstVan } from './effect-meting.mjs';
+import { decide } from './rolhek.mjs';
 
 /**
  * @typedef {import('./effect.mjs').Repo} Repo
@@ -78,6 +81,82 @@ function vergelijk(repo, basis, wie) {
 /** @param {string} reden @returns {Uitslag} */
 const blok = (reden) => ({ stdout: JSON.stringify({ decision: 'block', reason: reden }) });
 
+/** De vlag van AC-7: `uit`, `schaduw` of `aan`. @param {Repo} repo */
+const modus = (repo) => repo.ctx.config.rolhekEffectHoofdsessie ?? 'uit';
+
+/** Wat het rolhek vooraf over dit commando besliste, om naast de schaduwbeslissing te leggen (AC-7). @param {unknown} payload @param {Repo} repo */
+function voorafUitkomst(payload, repo) {
+  try {
+    return uitkomstVan(decide({ tool_name: 'Bash', tool_input: objectVeld(payload, 'tool_input') ?? {} }, repo.ctx));
+  } catch {
+    return 'onbekend';
+  }
+}
+
+/** Een blokkade op effect, geteld (AC-7). @param {Repo} repo @param {{ sessie: string, agentType: string }} wie @param {string} reden */
+function telBlok(repo, wie, reden) {
+  meet(repo, wie, { e: 'EffectBlokkade', n: 1 });
+  return blok(reden);
+}
+
+/**
+ * Haar venster altijd (AC-2); als dader alleen met de vlag `schaduw` of `aan` (AC-4, AC-7).
+ * @param {Repo} repo @param {{ opname: ReturnType<typeof leesOpname>, start: number }} basis
+ * @param {{ actor: string, agentType: string, sessie: string, commando: string, id: string, event: string, mislukt: boolean }} wie
+ * @returns {Uitslag}
+ */
+function hoofdsessiePost(repo, { opname, start }, wie) {
+  const voor = opname?.snap;
+  const begin = repo.now();
+  const na = momentopname(repo);
+  const paden = voor === undefined || voor === null ? [] : veranderdePaden(repo, { voor, na, start });
+  legVensterVast(repo, { actor: wie.actor, start, eind: repo.now(), paden });
+  if (modus(repo) === 'uit') return {};
+  const vooraf = voorafNaam(opname?.vooraf);
+  // Geen opname van vóór (pre faalde open), te groot of te traag (rolhek-effect AC-7): in schaduw een teller, met `aan` dicht.
+  if (voor === undefined || voor === null || na.teGroot || repo.now() - begin > MAX_MS) return hoofdsessieNietRond(repo, vooraf, wie);
+  return hoofdsessieAchteraf(repo, { voor, na, vooraf }, wie);
+}
+
+/** @param {unknown} waarde @returns {'deny' | 'ask' | 'melding' | 'door' | 'onbekend'} */
+const voorafNaam = (waarde) => (waarde === 'deny' || waarde === 'ask' || waarde === 'melding' || waarde === 'door' ? waarde : 'onbekend');
+
+/**
+ * De toets kwam niet rond voor de hoofdsessie: schaduw telt een `deny` zonder pad; `aan` zet een overtreding zonder pad op de
+ * lijst en blokkeert (na een geslaagd commando).
+ * @param {Repo} repo @param {'deny' | 'ask' | 'melding' | 'door' | 'onbekend'} vooraf
+ * @param {{ actor: string, agentType: string, sessie: string, commando: string, id: string, event: string, mislukt: boolean }} wie
+ * @returns {Uitslag}
+ */
+function hoofdsessieNietRond(repo, vooraf, wie) {
+  meet(repo, wie, { e: 'Schaduw', id: wie.id, vooraf, achteraf: 'deny', paden: [] });
+  const reden = `rolhek-effect: ${nietRond(wie).reden}`;
+  if (modus(repo) === 'schaduw') return context(wie.event, [`rolhek-effect (schaduw, AC-4): ${nietRond(wie).reden}`]);
+  werkLijstBij(repo, { nieuw: [nietRond(wie)], nu: null });
+  return wie.mislukt ? context(wie.event, [reden]) : telBlok(repo, wie, `${reden}\n${UITWEG}`);
+}
+
+/**
+ * De hoofdsessie na een Bash-commando (AC-4): in schaduwmodus alleen een melding en een teller; met `aan` een blokkade bij
+ * `deny`, de open lijst bij `deny` en `ask`, en meldingen als context.
+ * @param {Repo} repo @param {{ voor: Snapshot, na: Snapshot, vooraf: 'deny' | 'ask' | 'melding' | 'door' | 'onbekend' }} basis
+ * @param {{ actor: string, agentType: string, sessie: string, commando: string, id: string, event: string, mislukt: boolean }} wie
+ * @returns {Uitslag}
+ */
+function hoofdsessieAchteraf(repo, basis, wie) {
+  const na = basis.na;
+  const uitslag = toetsHoofdsessie(repo, { voor: basis.voor, na }, wie);
+  const achteraf = uitslag.nieuw.some((o) => o.blokkeer) ? 'deny' : uitslag.nieuw.length > 0 ? 'ask' : uitslag.meldingen.length > 0 ? 'melding' : 'door';
+  meet(repo, wie, { e: 'Schaduw', id: wie.id, vooraf: basis.vooraf, achteraf, paden: uitslag.nieuw.map((o) => o.rel ?? '') });
+  const tekst = lijstTekst(uitslag.nieuw);
+  if (modus(repo) === 'schaduw')
+    return context(wie.event, uitslag.nieuw.length === 0 ? [] : [`rolhek-effect (schaduw, AC-4): met de vlag aan zou dit commando op de open lijst komen:\n${tekst}`]);
+  werkLijstBij(repo, { nieuw: uitslag.nieuw.map((o) => ({ rel: o.rel, actor: o.actor, rol: o.rol, commando: o.commando, reden: o.reden, voor: o.voor })), nu: na });
+  if (uitslag.nieuw.length === 0) return context(wie.event, uitslag.meldingen);
+  const reden = `rolhek-effect: dit commando van de hoofdsessie veranderde paden buiten haar rol:\n${tekst}\n${UITWEG}`;
+  return achteraf === 'deny' && !wie.mislukt ? telBlok(repo, wie, reden) : context(wie.event, [reden, ...uitslag.meldingen]);
+}
+
 /** @param {string} event @param {readonly string[]} meldingen @returns {Uitslag} */
 function context(event, meldingen) {
   if (meldingen.length === 0) return {};
@@ -87,7 +166,8 @@ function context(event, meldingen) {
 /** PreToolUse (Bash): momentopname; de hoofdsessie krijgt de open lijst als context (AC-5). @param {unknown} payload @param {Repo} repo */
 function pre(payload, repo) {
   const wie = actorVan(payload);
-  legVast(repo, { soort: 'pre', id: veld(payload, 'tool_use_id') }, wie);
+  const vooraf = wie.agentType === '' && modus(repo) !== 'uit' ? voorafUitkomst(payload, repo) : undefined;
+  legVast(repo, { soort: 'pre', id: veld(payload, 'tool_use_id') }, vooraf === undefined ? wie : { ...wie, vooraf });
   const open = wie.agentType === '' ? overtredingen(repo) : [];
   return open.length === 0 ? {} : context('PreToolUse', [`rolhek-effect: open overtredingen van subagents:\n${lijstTekst(open)}\n${UITWEG}`]);
 }
@@ -103,19 +183,13 @@ function post(payload, { repo, mislukt }) {
   const opname = leesOpname(repo, 'pre', id);
   wisOpname(repo, id);
   const start = opname?.tijd ?? repo.now();
-  if (wie.agentType === '') {
-    // De hoofdsessie is geen dader (OV-1): alleen haar venster, niets op de lijst.
-    const voor = opname?.snap;
-    const paden = voor === undefined || voor === null ? [] : veranderdePaden(repo, { voor, na: momentopname(repo), start });
-    legVensterVast(repo, { actor: wie.actor, start, eind: repo.now(), paden });
-    return {};
-  }
+  const event = mislukt ? 'PostToolUseFailure' : 'PostToolUse';
+  if (wie.agentType === '') return hoofdsessiePost(repo, { opname, start }, { ...wie, id, event, mislukt });
   const uitslag = vergelijk(repo, { voor: opname === null ? undefined : opname.snap, start }, wie);
   legVensterVast(repo, { actor: wie.actor, start, eind: repo.now(), paden: uitslag.paden });
-  const event = mislukt ? 'PostToolUseFailure' : 'PostToolUse';
   if (uitslag.nieuw.length === 0) return context(event, uitslag.meldingen);
   const reden = `rolhek-effect: dit commando veranderde paden buiten je rol:\n${lijstTekst(uitslag.nieuw)}\n${UITWEG}`;
-  return mislukt ? context(event, [reden, ...uitslag.meldingen]) : blok(reden);
+  return mislukt ? context(event, [reden, ...uitslag.meldingen]) : telBlok(repo, wie, reden);
 }
 
 /** @param {unknown} value @param {string} key @returns {unknown} */
@@ -148,7 +222,7 @@ function subagentStop(payload, repo) {
   werkAgentBij(repo, wie.actor, { gestopt: repo.now() });
   const eigen = uitslag.lijst.filter((o) => o.actor === wie.actor);
   if (eigen.length === 0 || objectVeld(payload, 'stop_hook_active') === true) return {};
-  return blok(`rolhek-effect: je veranderde paden buiten je rol:\n${lijstTekst(eigen)}\n${UITWEG} Meld dit in je overdracht.`);
+  return telBlok(repo, wie, `rolhek-effect: je veranderde paden buiten je rol:\n${lijstTekst(eigen)}\n${UITWEG} Meld dit in je overdracht.`);
 }
 
 /**

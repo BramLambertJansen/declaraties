@@ -68,6 +68,9 @@ test('meting-volume AC-2: één sessie met 40.000 events wordt lineair verwerkt'
   expect(ms).toBeLessThan(3000);
 });
 
+// Spec rolhek-vooraf-krimp AC-7: zonder regels van de toets op effect zijn de effecttellers onbekend, nooit 0.
+const ONBEKEND = { blokkades: 'onbekend', overnames: 'onbekend', schaduw: 'onbekend', schaduwAnders: 'onbekend' };
+
 test('meting-volume AC-3: gemengde events geven ongewijzigde tellingen per sessie en branch', () => {
   const f = fixture();
   bestand(f, 'sessie', [
@@ -102,6 +105,7 @@ test('meting-volume AC-3: gemengde events geven ongewijzigde tellingen per sessi
     eigenaarberichten: 2,
     pushes: 2,
     ciRondes: 'onbekend',
+    effect: ONBEKEND,
     branches: {
       'feat/a': {
         prompts: 1,
@@ -113,6 +117,7 @@ test('meting-volume AC-3: gemengde events geven ongewijzigde tellingen per sessi
         eigenaarberichten: 1,
         pushes: 1,
         ciRondes: 'onbekend',
+        effect: ONBEKEND,
       },
       'feat/b': {
         prompts: 1,
@@ -124,6 +129,7 @@ test('meting-volume AC-3: gemengde events geven ongewijzigde tellingen per sessi
         eigenaarberichten: 1,
         pushes: 1,
         ciRondes: 'onbekend',
+        effect: ONBEKEND,
       },
     },
   });

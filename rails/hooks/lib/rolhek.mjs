@@ -13,7 +13,10 @@ import { zelfladend } from './zelfladend.mjs';
 /**
  * @typedef {{ gates: string[], testpaden: string[], jsonGates: Record<string, string[]>, gegenereerd: string[],
  *   migraties: string[], schrijfrecht: Record<string, string[]>, mcpLezen: string[], voorReview?: string[] | undefined,
- *   altijdVragen?: string[] | undefined, zelfladend?: string[] | undefined, onderhoud?: { repository: string } | undefined }} Config
+ *   altijdVragen?: string[] | undefined, zelfladend?: string[] | undefined, onderhoud?: { repository: string } | undefined,
+ *   rolhekEffectHoofdsessie?: 'uit' | 'schaduw' | 'aan', generatoren?: string[] | undefined }} Config
+ * `rolhekEffectHoofdsessie` (spec rolhek-vooraf-krimp AC-4, AC-7): ontbreekt → `uit`. `generatoren`: commando's die exact zo een
+ * pad onder `gegenereerd` mogen schrijven.
  * `voorReview` ontbreekt → elke gate telt als voorReview (faalt dicht). `altijdVragen` ontbreekt → in onderhoud blijft elk
  * voorReview-pad een gate (faalt dicht). `onderhoud`: de repository waarin de onderhoudsmodus geldt (ADR 0045 punt 8).
  * @typedef {{ root: string, cwd: string, config: Config, read: (rel: string) => string | null,
@@ -66,7 +69,16 @@ export function loadConfig(text) {
     altijdVragen: optionalList('altijdVragen'),
     zelfladend: optionalList('zelfladend'),
     onderhoud: onderhoudVan(value('onderhoud')),
+    rolhekEffectHoofdsessie: effectModus(value('rolhekEffectHoofdsessie')),
+    generatoren: optionalList('generatoren'),
   };
+}
+
+/** `uit`, `schaduw` of `aan`; ontbrekend is `uit`, elke andere waarde gooit (dicht falen). @param {unknown} found */
+function effectModus(found) {
+  if (found === undefined) return 'uit';
+  if (found === 'uit' || found === 'schaduw' || found === 'aan') return found;
+  throw new Error('.claude/gates.json: rolhekEffectHoofdsessie is geen "uit", "schaduw" of "aan"');
 }
 
 /** `{ "repository": "<owner>/<repo>" }` of ontbrekend; elke andere vorm gooit. @param {unknown} found */

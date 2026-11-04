@@ -13,8 +13,14 @@ import path from 'node:path';
 import { opslagmap } from '../../rails/hooks/lib/meting.mjs';
 import { prsUitGh, trend, trendTekst } from './meting-trend.mjs';
 
-/** @typedef {{ e: string, s: string, b: string, k: string, tool: string, m: string, id: string | undefined, t: number | undefined, opdracht?: boolean }} Regel */
-/** @typedef {{ prompts: number, promptsPerSleutel: Map<string, number>, promptsPerModus: Map<string, number>, weigeringen: number, weigeringenPerSleutel: Map<string, number>, beurten: number, eigenaarberichten: number, pushes: number }} Telling */
+/** @typedef {{ e: string, s: string, b: string, k: string, tool: string, m: string, id: string | undefined, t: number | undefined, opdracht?: boolean, anders?: boolean, achteraf?: string }} Regel */
+/**
+ * @typedef {{ prompts: number, promptsPerSleutel: Map<string, number>, promptsPerModus: Map<string, number>, weigeringen: number,
+ *   weigeringenPerSleutel: Map<string, number>, beurten: number, eigenaarberichten: number, pushes: number,
+ *   effect: { gemeten: boolean, blokkades: number, overnames: number, schaduw: number, schaduwAnders: number } }} Telling
+ * `effect` (spec rolhek-vooraf-krimp AC-7): `gemeten` is waar zodra de toets op effect in deze telling iets schreef; zonder
+ * dat tonen de uitvoer en de PR-tabel `onbekend`, nooit 0.
+ */
 /** @typedef {number | 'onbekend'} Ci */
 /** @typedef {{ van: number, tot: number } | null} Venster */
 /** @typedef {(branch: string, venster: Venster) => Ci} CiVoor */
@@ -29,7 +35,8 @@ const HELP = `Gebruik: pnpm meting [--json] [--sessie <id>] [--branch <naam>] [-
   --sessie <id>    Alleen deze sessie.
   --branch <naam>  Alleen deze branch binnen elke sessie.
   --pr-tabel       Kerncijfers van één branch (--branch) als markdowntabel voor de PR-beschrijving: leespad (zie pnpm leespad),
-                   doorlooptijd, reviewrondes, CI-rood, weigeringen (bovengrens) en Codex-bevindingen (handmatig).
+                   doorlooptijd, reviewrondes, CI-rood, weigeringen (bovengrens), blokkades op effect, overnames,
+                   schaduw van de hoofdsessie en Codex-bevindingen (handmatig).
   --trend          Kwaliteitstrend over de laatste twintig gemergde PR's (één gh api …/pulls?state=closed, REST): "let op:
                    <maat> steeg" als CI-rood, Codex-bevindingen of reviewrondes (lokale meetdata; zonder data onbekend)
                    gemiddeld hoger liggen over de laatste tien dan over de tien daarvoor. Minder dan twintig: te weinig data.
@@ -55,6 +62,12 @@ Teldefinities (alleen ontvangen en opgeslagen Claude Code-events):
   pushes: PostToolUse voor git push; een proefpush telt niet mee.
   ci-rondes: gh run list per branch, binnen eerste eventtijd tot laatste eventtijd + 60 minuten.
   Een gh-fout, timeout of ontbrekend tijdvenster geeft onbekend, geen nul.
+  blokkades op effect: PostToolUse- en SubagentStop-blokkades van de toets op effect (EffectBlokkade-regels).
+  overnames: PostToolUse voor pnpm rolhek:overnemen (per commando, niet per pad).
+  schaduw: commando's van de hoofdsessie waarop de toets op effect deny of ask zou geven (vlag rolhekEffectHoofdsessie);
+  anders dan vooraf: vooraf en achteraf vallen in een andere klasse (deny/ask tegen melding/door); vooraf onbekend telt
+  niet mee. Zonder regels van de toets op effect
+  (een PR van vóór spec rolhek-vooraf-krimp) staat er onbekend, nooit 0.
 
 Opslag: METING_DIR of <git common dir>/agent-meting/ (gedeeld door worktrees, buiten git-tracking).
 Meer uitleg: docs/operations/agent-doorloop.md, "Metingen lezen".
@@ -93,6 +106,11 @@ function parse(lijn, sessie) {
       id: typeof id === 'string' ? id : undefined,
       t: tijd(r.get('t')),
     };
+    if (e === 'Schaduw') {
+      const achteraf = tekst(r.get('achteraf'), 'door');
+      const vooraf = tekst(r.get('vooraf'), 'onbekend');
+      return { ...uit, achteraf, anders: vooraf !== 'onbekend' && streng(vooraf) !== streng(achteraf) };
+    }
     return uit;
   } catch {
     return null;
@@ -154,7 +172,25 @@ function leeg() {
     beurten: 0,
     eigenaarberichten: 0,
     pushes: 0,
+    effect: { gemeten: false, blokkades: 0, overnames: 0, schaduw: 0, schaduwAnders: 0 },
   };
+}
+
+// Regels die alleen de toets op effect schrijft (rails/hooks/lib/effect-meting.mjs).
+const EFFECT = new Set(['EffectBlokkade', 'Schaduw']);
+
+/** Strengheidsklasse van een uitkomst: deny en ask houden het commando tegen, melding en door niet. @param {string} uitkomst */
+function streng(uitkomst) {
+  return uitkomst === 'deny' || uitkomst === 'ask';
+}
+
+/** Blokkades op effect, overnames (`pnpm rolhek:overnemen`) en de schaduwbeslissing (AC-7). @param {Telling} t @param {Regel} r */
+function telEffect(t, r) {
+  if (EFFECT.has(r.e)) t.effect.gemeten = true;
+  if (r.e === 'EffectBlokkade') t.effect.blokkades += 1;
+  if (r.e === 'PostToolUse' && r.k === 'pnpm rolhek:overnemen') t.effect.overnames += 1;
+  if (r.e === 'Schaduw' && (r.achteraf === 'deny' || r.achteraf === 'ask')) t.effect.schaduw += 1;
+  if (r.e === 'Schaduw' && r.anders === true) t.effect.schaduwAnders += 1;
 }
 
 /** @param {Map<string, number>} teller @param {string} k */
@@ -191,6 +227,7 @@ function tel(t, r, geweigerd) {
   if (r.e === 'Stop') t.beurten += 1;
   if (r.e === 'UserPromptSubmit' && r.opdracht !== true) t.eigenaarberichten += 1;
   if (r.e === 'PostToolUse' && r.k === 'git push') t.pushes += 1;
+  telEffect(t, r);
 }
 
 /** Het eerste bericht van de sessie is de opdracht, geen correctie. @param {readonly Regel[]} regels */
@@ -322,6 +359,12 @@ function tellingJson(t) {
     promptsPerSleutel: object(t.promptsPerSleutel),
     promptsPerModus: object(t.promptsPerModus),
     weigeringenPerSleutel: object(t.weigeringenPerSleutel),
+    effect: {
+      blokkades: effectWaarde(t.effect, 'blokkades'),
+      overnames: effectWaarde(t.effect, 'overnames'),
+      schaduw: effectWaarde(t.effect, 'schaduw'),
+      schaduwAnders: effectWaarde(t.effect, 'schaduwAnders'),
+    },
   };
 }
 
@@ -340,8 +383,17 @@ function perSleutel(teller) {
 /** @param {Telling & { ciRondes: Ci }} t */
 function regelTekst(t) {
   const ci = `pushes ${String(t.pushes)} · ci-rondes ${String(t.ciRondes)}`;
-  return `beurten ${String(t.beurten)} · eigenaarberichten ${String(t.eigenaarberichten)} · ${ci}`;
+  return `beurten ${String(t.beurten)} · eigenaarberichten ${String(t.eigenaarberichten)} · ${ci} · ${effectTekst(t.effect)}`;
 }
+
+/** @param {Telling['effect']} e */
+function effectTekst(e) {
+  if (!e.gemeten) return 'blokkades op effect onbekend · overnames onbekend · schaduw onbekend';
+  return `blokkades op effect ${String(e.blokkades)} · overnames ${String(e.overnames)} · schaduw ${String(e.schaduw)} (anders dan vooraf ${String(e.schaduwAnders)})`;
+}
+
+/** Een effectteller voor JSON en de PR-tabel: `onbekend` zonder meting. @param {Telling['effect']} e @param {'blokkades' | 'overnames' | 'schaduw' | 'schaduwAnders'} naam @returns {number | 'onbekend'} */
+const effectWaarde = (e, naam) => (e.gemeten ? e[naam] : 'onbekend');
 
 /** @param {string} naam @param {Telling & { ciRondes: Ci }} b */
 function branchTekst(naam, b) {
@@ -415,7 +467,24 @@ export function prTabel(dir, branch, env) {
     reviewrondes: reviews.size,
     ciRood: lijst === null ? 'onbekend' : lijst.filter((r) => r.conclusie === 'failure').length,
     weigeringen: sessies.reduce((n, t) => n + t.weigeringen, 0),
+    ...effectTotaal(sessies),
     codexBevindingen: 'handmatig: gh api repos/{owner}/{repo}/pulls/<nr>/comments',
+  };
+}
+
+/**
+ * Effecttellers over de sessies van een branch (AC-7); `onbekend` als geen sessie gemeten is (een PR van vóór de spec).
+ * @param {readonly Telling[]} sessies
+ */
+function effectTotaal(sessies) {
+  const gemeten = sessies.filter((t) => t.effect.gemeten);
+  /** @param {'blokkades' | 'overnames' | 'schaduw' | 'schaduwAnders'} naam @returns {number | 'onbekend'} */
+  const totaal = (naam) => (gemeten.length === 0 ? 'onbekend' : sessies.reduce((n, t) => n + t.effect[naam], 0));
+  return {
+    blokkadesOpEffect: totaal('blokkades'),
+    overnames: totaal('overnames'),
+    schaduw: totaal('schaduw'),
+    schaduwAnders: totaal('schaduwAnders'),
   };
 }
 
@@ -428,6 +497,9 @@ function prTabelTekst(t) {
     ['Reviewrondes', String(t.reviewrondes)],
     ['CI-rood', String(t.ciRood)],
     ['Weigeringen (bovengrens)', String(t.weigeringen)],
+    ['Blokkades op effect', String(t.blokkadesOpEffect)],
+    ['Overnames', String(t.overnames)],
+    ['Schaduw hoofdsessie (anders dan vooraf)', `${String(t.schaduw)} (${String(t.schaduwAnders)})`],
     ['Codex-bevindingen', t.codexBevindingen],
   ];
   const lijnen = ['| Kerncijfer | Waarde |', '|---|---|', ...rijen.map(([naam, waarde]) => `| ${naam} | ${waarde} |`)];
