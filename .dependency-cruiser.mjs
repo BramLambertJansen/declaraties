@@ -74,10 +74,11 @@ const config = {
     },
     {
       name: 'testing-alleen-in-tests',
-      comment: 'src/core/api/db/testing.ts (eigen pools, geïnjecteerde transacties) alleen vanuit testbestanden.',
+      comment:
+        'src/core/api/db/testing.ts (eigen pools, geïnjecteerde transacties) en src/core/api/outbound/testing.ts (nep-partner, R-UIT-07) alleen vanuit testbestanden.',
       severity: 'error',
       from: { path: '^src/', pathNot: '\\.test\\.tsx?$' },
-      to: { path: '^src/core/api/db/testing\\.ts$' },
+      to: { path: '^src/core/api/(db|outbound)/testing\\.ts$' },
     },
     {
       name: 'niet-oplosbaar',

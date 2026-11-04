@@ -19,7 +19,7 @@ export class AppError extends Error {
   }
 }
 
-export type ErrorStatus = 400 | 401 | 403 | 404 | 409 | 413 | 429 | 500 | 501;
+export type ErrorStatus = 400 | 401 | 403 | 404 | 409 | 413 | 429 | 500 | 501 | 502 | 503 | 504;
 
 const STATUS = new Map<string, ErrorStatus>(
   Object.entries({
@@ -34,6 +34,9 @@ const STATUS = new Map<string, ErrorStatus>(
     ALREADY_EXISTS: 409,
     RATE_LIMITED: 429,
     NOT_IMPLEMENTED: 501,
+    UPSTREAM_INVALID: 502,
+    UPSTREAM_UNAVAILABLE: 503,
+    UPSTREAM_TIMEOUT: 504,
   } satisfies Record<CoreErrorCode, ErrorStatus>),
 );
 

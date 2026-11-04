@@ -1,4 +1,5 @@
 import { describe, expect, test } from 'vitest';
+import { coreErrorCodes } from '../shared/errors.ts';
 import { AppError, statusFor, translateDatabaseError } from './errors.ts';
 
 // Databasefouten op één plek (framework §6). Drizzle verpakt de pg-fout als `cause` (DrizzleQueryError).
@@ -42,5 +43,21 @@ describe('translateDatabaseError', () => {
   // ADR 0047 (OV-1): de generator maakt handlers die NOT_IMPLEMENTED gooien tot de developer ze bouwt.
   test('NOT_IMPLEMENTED is een basiscode met status 501', () => {
     expect(statusFor('NOT_IMPLEMENTED')).toBe(501);
+  });
+
+  // Spec uitgaande-client AC-16: partnerfouten krijgen eigen statussen; een app-code blijft 409.
+  test('uitgaande-client/AC-16: UPSTREAM_INVALID 502, UPSTREAM_UNAVAILABLE 503, UPSTREAM_TIMEOUT 504; LAST_ADMIN blijft 409', () => {
+    expect([
+      statusFor('UPSTREAM_INVALID'),
+      statusFor('UPSTREAM_UNAVAILABLE'),
+      statusFor('UPSTREAM_TIMEOUT'),
+      statusFor('LAST_ADMIN'),
+    ]).toStrictEqual([502, 503, 504, 409]);
+  });
+
+  test('uitgaande-client/AC-16: de UPSTREAM_*-codes zijn basiscodes', () => {
+    const core: readonly string[] = coreErrorCodes;
+
+    expect(core).toEqual(expect.arrayContaining(['UPSTREAM_INVALID', 'UPSTREAM_UNAVAILABLE', 'UPSTREAM_TIMEOUT']));
   });
 });

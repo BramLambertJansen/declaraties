@@ -14,4 +14,7 @@ export const coreErrorTexts = {
   ALREADY_EXISTS: 'Dit bestaat al.',
   RATE_LIMITED: 'Te veel pogingen. Probeer het over een paar minuten opnieuw.',
   NOT_IMPLEMENTED: 'Dit onderdeel is nog niet beschikbaar.',
+  UPSTREAM_INVALID: 'Een externe dienst gaf een onverwacht antwoord. Probeer het later opnieuw.',
+  UPSTREAM_UNAVAILABLE: 'Een externe dienst is nu niet bereikbaar. Probeer het later opnieuw.',
+  UPSTREAM_TIMEOUT: 'Een externe dienst reageerde niet op tijd. Probeer het later opnieuw.',
 } as const satisfies Record<CoreErrorCode, string>;

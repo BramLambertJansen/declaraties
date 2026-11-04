@@ -44,3 +44,16 @@ test('een expliciet geregistreerde foutcode constructor houdt zijn apptekst', ()
 
   expect(result.current({ code: 'constructor' })).toBe('Bekende appfout.');
 });
+
+// Spec uitgaande-client AC-16: de teksten bij de partnerfouten, letterlijk.
+test.each([
+  ['UPSTREAM_INVALID', 'Een externe dienst gaf een onverwacht antwoord. Probeer het later opnieuw.'],
+  ['UPSTREAM_UNAVAILABLE', 'Een externe dienst is nu niet bereikbaar. Probeer het later opnieuw.'],
+  ['UPSTREAM_TIMEOUT', 'Een externe dienst reageerde niet op tijd. Probeer het later opnieuw.'],
+])('uitgaande-client/AC-16: %s toont de tekst uit coreErrorTexts', (code, text) => {
+  const texts: Readonly<Record<string, string>> = coreErrorTexts;
+  const { result } = renderHook(useErrorText);
+
+  expect(texts[code]).toBe(text);
+  expect(result.current({ code })).toBe(text);
+});

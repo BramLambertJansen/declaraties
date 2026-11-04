@@ -1,12 +1,14 @@
 import { logUnexpectedError } from './safe-error-log.ts';
 import type { TransactionOutcome } from '../db/types.ts';
+import { allowOutbound, forbidOutbound } from '../outbound/marker.ts';
 
 type Effect = () => Promise<unknown>;
 type LogContext = Parameters<typeof logUnexpectedError>[0];
 
+// Rollback-cleanup mag een partner aanroepen (compensatie): buiten de markering, ook als hij vanuit de handler start.
 async function cleanUp(effect: Effect, context: LogContext): Promise<void> {
   try {
-    await effect();
+    await allowOutbound(effect);
   } catch (error) {
     logUnexpectedError({ ...context, label: 'route: cleanup na rollback mislukt' }, error);
   }
@@ -49,8 +51,9 @@ export function createRouteEffects(context: LogContext = {}) {
         throw error;
       }
       outcome = 'committed';
-      // Een fout na commit mag nooit rollback-compensatie uitvoeren op reeds gecommitteerde data.
-      const outcomes = await Promise.allSettled(committed.map(async (effect) => effect()));
+      // Een fout na commit mag nooit rollback-compensatie uitvoeren op reeds gecommitteerde data. afterCommit loopt onder
+      // de markering: de uitgaande client weigert daar (spec uitgaande-client, OV-3).
+      const outcomes = await Promise.allSettled(committed.map(async (effect) => forbidOutbound(effect)));
       const rejected = outcomes.find((outcome) => outcome.status === 'rejected');
       if (rejected?.status === 'rejected') throw rejected.reason;
       return result;

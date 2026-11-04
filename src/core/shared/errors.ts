@@ -12,6 +12,10 @@ export const coreErrorCodes = [
   'ALREADY_EXISTS',
   'RATE_LIMITED',
   'NOT_IMPLEMENTED',
+  // Partnerfouten van de uitgaande client (spec uitgaande-client, ADR 0077).
+  'UPSTREAM_INVALID',
+  'UPSTREAM_UNAVAILABLE',
+  'UPSTREAM_TIMEOUT',
 ] as const;
 
 export type CoreErrorCode = (typeof coreErrorCodes)[number];

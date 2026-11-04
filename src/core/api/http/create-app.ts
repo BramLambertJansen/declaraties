@@ -25,6 +25,7 @@ import { isRouteDef, type RouteDef } from '../route/kit.ts';
 import { csrf } from './csrf.ts';
 import type { Readiness } from './readiness.ts';
 import { createRouteEffects } from './route-effects.ts';
+import { guardWithUser } from '../outbound/index.ts';
 
 // Dev-login (spec accountbeheer, framework §3: limitatieve uitzondering, ADR 0043): logt echt in als het seed-account van de
 // rol en geeft de set-cookie-regels terug. Alleen meegeven bij APP_ENV=local; zonder bestaat /api/dev/login-as niet (404).
@@ -105,7 +106,9 @@ function routeHandler<Services>(
     });
     const output = await effects.run(() =>
       timeDatabase(facts, () =>
-        withUser(
+        // De markering om de withUser-callback van elke route (spec uitgaande-client): de uitgaande client weigert in de
+        // handler, ook als de app guardWithUser vergeet.
+        guardWithUser(withUser)(
           actor,
           async (tx, { role }) => {
             // Eerst de input (VALIDATION vóór FORBIDDEN), dan de rol: geen rol in user_roles = geen toegang (framework §6).

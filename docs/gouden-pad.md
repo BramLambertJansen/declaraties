@@ -94,6 +94,8 @@ expliciet kitmechanisme vast in de spec en controleer of de kit het al ondersteu
 
 `ctx.afterCommit` en `ctx.afterRollback` plannen externe gevolgen of compensatie na de transactie; ze splitsen de handler
 niet in twee transacties (`src/core/api/http/route-effects.ts`). Een fout na commit draait gecommitteerde data niet terug.
+Een partner aanroepen kan daarom niet vanuit de handler of `afterCommit`: de uitgaande client (`src/core/api/outbound`) weigert
+een aanroep in de `withUser` van een route of via `guardWithUser`, en in `afterCommit` (R-CODE-12, spec [uitgaande-client](specs/uitgaande-client.md)).
 
 ## Stappen
 

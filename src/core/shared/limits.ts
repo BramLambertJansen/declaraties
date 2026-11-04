@@ -54,3 +54,16 @@ export function invalidRateLimits(limits: RateLimits): RateLimitCategory[] {
 
 // Zoeken in lijstpagina's (spec lijstpagina).
 export const MAX_SEARCH_LENGTH = 100;
+
+// Uitgaande client (spec uitgaande-client, ADR 0077): standaard en harde grens. Een app mag per client lager, nooit hoger
+// (createOutboundClient weigert dan bij opstart). Backoff en antwoordgrootte zijn vast.
+export const OUTBOUND_TIMEOUT_MS = 3000;
+export const OUTBOUND_TIMEOUT_MAX_MS = 10_000;
+export const OUTBOUND_BUDGET_MS = 8000;
+export const OUTBOUND_BUDGET_MAX_MS = 20_000;
+export const OUTBOUND_MAX_ATTEMPTS = 3;
+export const OUTBOUND_MAX_ATTEMPTS_MAX = 5;
+export const OUTBOUND_BACKOFF_BASE_MS = 200;
+export const OUTBOUND_BACKOFF_MAX_MS = 2000;
+// Geteld op gedecodeerde bytes; ook de harde grens.
+export const OUTBOUND_MAX_RESPONSE_BYTES = 1_048_576;

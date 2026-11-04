@@ -1,10 +1,11 @@
 import { authGateway, createAuth } from '#core/api/auth/index.ts';
-import { closeDatabase, pingDatabase, withUser } from '#core/api/db/index.ts';
+import { closeDatabase, pingDatabase, withUser as withUserUnguarded } from '#core/api/db/index.ts';
 import { env } from '#core/api/env.ts';
 import { createReadiness } from '#core/api/http/readiness.ts';
 import { startServer } from '#core/api/http/serve.ts';
 import { createWebApp } from '#core/api/http/web.ts';
 import { writeJsonLine } from '#core/api/obs/request-log.ts';
+import { guardWithUser } from '#core/api/outbound/index.ts';
 import { createSmtpMailer } from '#core/api/mail/smtp.ts';
 import { createDevLogin, devAuthSteps } from '#core/api/dev/login-as.ts';
 import { APP_NAME } from '#shared/app.ts';
@@ -19,6 +20,8 @@ const READY_CACHE_MS = 1000;
 
 // env() controleert de hele omgeving bij opstart (framework §6) en faalt met alle fouten tegelijk.
 const config = env();
+// Ook buiten een route (de login-policy) weigert de uitgaande client binnen withUser (spec uitgaande-client).
+const withUser = guardWithUser(withUserUnguarded);
 const sendMail = createSmtpMailer(config.smtpUrl, `no-reply@${new URL(config.appOrigin).hostname}`);
 const auth = createAuth({
   origin: config.authBaseUrl,
