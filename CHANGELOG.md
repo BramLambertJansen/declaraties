@@ -6,6 +6,12 @@ Hier staan wijzigingen die van belang zijn bij het gebruiken of bijwerken van de
 
 ### Toegevoegd
 
+- Check op conflictmarkers (leerpunt #495): `pnpm ratchet` (dus `gate:fast`, pre-push en CI) faalt strikt op een regel in
+  een getrackt tekstbestand die in kolom 1 begint met `<<<<<<<` of `>>>>>>>`, of op `=======`/`|||||||` tussen zulke
+  markers (`scripts/kit/conflictmarkers.mjs`). Een losse `=======` (setext-kop) en ingesprongen markers tellen niet. Wat
+  verandert voor een app: een vergeten marker in Markdown, YAML of JSON wordt rood; wil een document markers tonen, spring
+  ze dan in.
+
 - Sleutelbudget per sortering (spec lijstpagina, leerpunt #444): `defineListSearch` vraagt verplicht `cursorKeys`, per
   sortering de maximale lengte van elk sleuteldeel na de sortering (`MAX_TIMESTAMP_LENGTH`, `MAX_ID_LENGTH` of een grens uit
   `limits.ts`), en gooit bij het laden als de cursor langer dan `MAX_CURSOR_LENGTH` kan worden. Routes maken de cursor met

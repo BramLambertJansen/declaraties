@@ -17,7 +17,7 @@ export const gates = [
   {
     script: 'ratchet',
     bewaakt:
-      'lagen en zones (dependency-cruiser) en docs (check-docs: paden, links, statussen, spiegeling) tegen .kit/baseline.json; strikt: geen onderdrukking in eslint-suppressions.json stijgt tegenover de merge-base',
+      'lagen en zones (dependency-cruiser) en docs (check-docs: paden, links, statussen, spiegeling) tegen .kit/baseline.json; strikt: geen onderdrukking in eslint-suppressions.json stijgt tegenover de merge-base en geen conflictmarker in een getrackt tekstbestand',
     snel: true,
   },
   {
