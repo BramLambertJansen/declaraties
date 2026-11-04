@@ -1,5 +1,5 @@
 ---
-status: goedgekeurd
+status: gebouwd # #529
 namespace: voorwaardelijke-tests
 ---
 

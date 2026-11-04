@@ -6,6 +6,12 @@ Hier staan wijzigingen die van belang zijn bij het gebruiken of bijwerken van de
 
 ### Toegevoegd
 
+- Voorwaardelijk geregistreerde tests tellen als skip (leerpunt #410, spec voorwaardelijke-tests): krijgt een bestaand
+  testbestand meer tests binnen `if`/`else`/`switch`/`catch`, na een vroege `return`/`throw`, na `&&`/`||`/`??` of een
+  ternary, of `test` als waarde (`ok ? test : test.skip`), dan geeft `testChangeRisk` `skip` (rolhek en
+  `check-document-status`: eigenaarakkoord). Lussen, nieuwe testbestanden en bestaande voorwaardelijke tests blijven vrij.
+  Wat verandert voor een app: niets te doen; een suite die je achter een voorwaarde zet, vraagt nu akkoord zoals een skip.
+
 - Bewaking zichtbaar (leerpunt #462, spec bewaking-zichtbaar): `node scripts/kit/feiten.mjs` meldt in een Claude
   Code-sessie op stderr `⚠ bewaking niet actief in deze sessie:` als de projecthooks niet draaien (geen recente meting van de
   meethook) of de Bash-sandbox niet afschermt (de map boven de repository is schrijfbaar), ook vóór een toolchainfout

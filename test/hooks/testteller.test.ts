@@ -1,6 +1,9 @@
 // Leerpunt #424: testgevallen en skips tellen via een lexer zonder dependency, niet via regexen over de bron (R-CODE-01).
+import { readFileSync } from 'node:fs';
 import { describe, expect, test } from 'vitest';
+import { decide, loadConfig } from '../../rails/hooks/lib/rolhek.mjs';
 import { testChangeRisk } from '../../rails/hooks/lib/functional-ui.mjs';
+import { telTests } from '../../rails/hooks/lib/testteller.mjs';
 
 const FILE = 'src/core/web/ui/knop.test.ts';
 const lines = (...regels: string[]) => `${regels.join('\n')}\n`;
@@ -363,4 +366,176 @@ describe('testteller: codex-bevindingen', () => {
       expect(testChangeRisk(before, lines(view, LOS_B, losC), file)).toBe('removed');
     },
   );
+});
+
+// Spec voorwaardelijke-tests (leerpunt #410): een bestaande test voorwaardelijk registreren telt als skip.
+describe('testteller: voorwaardelijk geregistreerde tests', () => {
+  const suite = (...regels: string[]) => lines("describe('s', () => {", ...regels.map((r) => `  ${r}`), '});');
+  const BASIS = suite(LOS_A, LOS_B);
+
+  test.each([
+    { naam: '#410: if om de suite', na: lines('if (process.env.X) {', BASIS, '}') },
+    { naam: 'if zonder accolades', na: suite(`if (x) ${LOS_A}`, LOS_B) },
+    { naam: 'else zonder accolades', na: suite('if (a) doe();', `else ${LOS_A}`, LOS_B) },
+    { naam: 'else-blok', na: suite('if (a) { doe(); } else {', LOS_A, '}', LOS_B) },
+    { naam: 'switch', na: suite('switch (modus) {', `case 'a': ${LOS_A}`, '}', LOS_B) },
+    { naam: 'catch-blok', na: suite('try { doe(); } catch (e) {', LOS_A, '}', LOS_B) },
+    { naam: 'vroege return', na: suite('if (!ok) return;', LOS_A, LOS_B) },
+    { naam: 'return in een if-blok', na: suite('if (!ok) { return; }', LOS_A, LOS_B) },
+    { naam: 'throw in de suite', na: suite('if (!ok) throw new Error("x");', LOS_A, LOS_B) },
+    {
+      naam: 'return in de omsluitende functie',
+      na: suite('if (!ok) return;', "describe('t', () => {", LOS_A, LOS_B, '});'),
+    },
+    { naam: '&&', na: suite(`ok && ${LOS_A}`, LOS_B) },
+    { naam: '||', na: suite(`uit || ${LOS_A}`, LOS_B) },
+    { naam: '??', na: suite(`x ?? ${LOS_A}`, LOS_B) },
+    { naam: 'ternary', na: suite(`ok ? ${LOS_A.slice(0, -1)} : null;`, LOS_B) },
+    { naam: 'kortsluiting om een describe', na: lines(`ok && ${BASIS.trimEnd().slice(0, -1)};`) },
+    {
+      naam: 'test als waarde in een ternary',
+      na: lines(
+        'const t = ok ? test : test.skip;',
+        "describe('s', () => {",
+        "  t('x', () => {});",
+        `  ${LOS_A}`,
+        `  ${LOS_B}`,
+        '});',
+      ),
+    },
+    { naam: 'test als waarde in een lijst', na: lines('[test, it].forEach((f) => f);', BASIS) },
+    { naam: 'kortsluiting met haakjes', na: suite(`ok && (${LOS_A.slice(0, -1)});`, LOS_B) },
+    { naam: 'if zonder accolades met haakjes', na: suite(`if (ok) (${LOS_A.slice(0, -1)});`, LOS_B) },
+    {
+      naam: 'if om een getypte describe.each',
+      na: lines("if (ok) describe.each<Thema>(rijen)('s', () => {", `  ${LOS_A}`, `  ${LOS_B}`, '});'),
+    },
+  ])('voorwaardelijke-tests/AC-1: $naam → skip', ({ na }) => {
+    expect(testChangeRisk(BASIS, na, FILE)).toBe('skip');
+  });
+
+  test.each([
+    { naam: 'lus (OV-2)', na: suite('for (const w of [1, 2]) test(`a${w}`, () => {});', LOS_A, LOS_B) },
+    { naam: 'while-lus', na: suite('while (meer()) volgende();', LOS_A, LOS_B) },
+    { naam: 'if alleen in een testlichaam', na: suite("test('a', () => { if (x) expect(1).toBe(1); });", LOS_B) },
+    { naam: 'return in een helper', na: lines('const maak = () => { return 1; };', BASIS) },
+    { naam: 'functie met returntype', na: lines('function f(): number { return 1; }', BASIS) },
+    {
+      naam: 'return en throw in een testlichaam',
+      na: suite("test('a', () => { if (x) return; throw new Error('y'); });", LOS_B),
+    },
+    { naam: 'try/finally', na: suite('try { doe(); } finally { klaar(); }', LOS_A, LOS_B) },
+    { naam: 'do-blok', na: suite('do { stap(); } while (meer());', LOS_A, LOS_B) },
+    { naam: 'for-of met de naam test', na: lines('for (const test of rows) gebruik(test.id);', BASIS) },
+    { naam: 'arrow-parameter it', na: lines('const ids = xs.map((it) => it.id);', BASIS) },
+    { naam: 'arrow-parameter zonder haakjes', na: lines('const ids = xs.map(it => it.id);', BASIS) },
+    { naam: 'export van een extend', na: lines('export const test = base.extend({});', BASIS) },
+    { naam: 'importlijst', na: lines("import { describe, expect, test } from 'vitest';", BASIS) },
+    { naam: 'objectsleutels', na: lines('const o = { test: 1, it: 2 };', BASIS) },
+    { naam: 'test in een objectwaarde', na: lines(`const geregistreerd = { a: ${LOS_A.slice(0, -1)} };`, LOS_B) },
+    { naam: 'arrow-parameter met returntype', na: lines('const ids = xs.map((it): string => it.id);', BASIS) },
+    { naam: 'ternary binnen een object', na: lines('const o = { a: ok ? 1 : 2 };', BASIS) },
+    { naam: 'parameterannotatie', na: lines('function f(a: number, test: string) { return a; }', BASIS) },
+    { naam: 'typeof', na: lines('type T = typeof test;', BASIS) },
+    { naam: 'standaardwaarde', na: lines('function f(test = 1) { return 1; }', BASIS) },
+    { naam: 'let', na: lines('let test;', BASIS) },
+    { naam: 'var', na: lines('var it;', BASIS) },
+    { naam: 'function', na: lines('function suite() { return 1; }', BASIS) },
+    { naam: 'export-lijst', na: lines('export { test };', BASIS) },
+    { naam: 'standaardimport', na: lines("import test from 'x';", BASIS) },
+    { naam: 'as', na: lines("import * as it from 'x';", BASIS) },
+    { naam: 'of', na: lines('for (const x of test) gebruik(x);', BASIS) },
+    { naam: 'in', na: lines('for (const k in describe) gebruik(k);', BASIS) },
+    { naam: 'parameterannotatie na (', na: lines('function f(test: string) { return 1; }', BASIS) },
+  ])('voorwaardelijke-tests/AC-1/AC-2: $naam → null', ({ na }) => {
+    expect(testChangeRisk(BASIS, na, FILE)).toBeNull();
+  });
+
+  test('== telt wel als waarde (AC-2)', () => {
+    expect(testChangeRisk(BASIS, lines('const gelijk = test == f;', BASIS), FILE)).toBe('skip');
+  });
+
+  test('if zonder accolades met await (AC-1a)', () => {
+    expect(testChangeRisk(BASIS, suite(`if (x) await ${LOS_A}`, LOS_B), FILE)).toBe('skip');
+  });
+
+  test('alleen een stijging telt: een bestaand voorwaardelijk geval blijft staan (OV-1)', () => {
+    const voor = suite(`if (isCi) ${LOS_A}`, LOS_B);
+    expect(testChangeRisk(voor, suite(`if (isCi) ${LOS_A}`, LOS_B, "test('c', () => {});"), FILE)).toBeNull();
+    expect(testChangeRisk(voor, suite(LOS_A, LOS_B), FILE)).toBeNull();
+    expect(testChangeRisk(voor, suite(`if (isCi) ${LOS_A}`, `if (isCi) ${LOS_B}`), FILE)).toBe('skip');
+  });
+
+  test('een nieuw testbestand valt er niet onder (AC-3)', () => {
+    expect(testChangeRisk('', lines('if (process.env.X) {', BASIS, '}'), FILE)).toBeNull();
+  });
+
+  test('skips gaan voor: een skip en een voorwaardelijk geval geven skip', () => {
+    expect(testChangeRisk(BASIS, suite(`if (x) ${LOS_A}`, LOS_B.replace('test(', 'test.skip(')), FILE)).toBe('skip');
+  });
+
+  test('voorwaardelijke-tests/AC-4: voorwaardelijk telt elk geval in het bereik', () => {
+    expect(telTests(lines('if (x) {', BASIS, '}'), FILE)).toStrictEqual({ cases: 2, skips: 0, voorwaardelijk: 2 });
+    expect(telTests(suite(`ok && ${LOS_A}`, LOS_B), FILE)).toStrictEqual({ cases: 2, skips: 0, voorwaardelijk: 1 });
+    expect(telTests(BASIS, FILE)).toStrictEqual({ cases: 2, skips: 0, voorwaardelijk: 0 });
+  });
+
+  test('in .tsx met JSX en in een template-literal', () => {
+    const file = 'src/core/web/ui/knop.test.tsx';
+    const tsx = suite('const view = <div>{ok && <span />}</div>;', `if (x) ${LOS_A}`, LOS_B);
+    expect(testChangeRisk(BASIS, tsx, file)).toBe('skip');
+    expect(testChangeRisk(BASIS, suite('const t = `if (x) { ${naam} }`;', LOS_A, LOS_B), FILE)).toBeNull();
+  });
+
+  test('pgTAP-bestanden houden de oude heuristiek: voorwaardelijk is 0 (AC-5)', () => {
+    const sql = "select plan(1);\nselect ok(true, 'a');\n";
+    expect(
+      testChangeRisk(sql, `do $$ begin if true then perform 1; end if; end $$;\n${sql}`, 'db/test/a.test.sql'),
+    ).toBeNull();
+  });
+});
+
+describe('voorwaardelijke-tests/AC-6: docs', () => {
+  test('voorwaardelijke-tests/AC-6: review-checklists noemt de telling en de grenzen', () => {
+    const regel = readFileSync('docs/operations/review-checklists.md', 'utf8')
+      .split('\n')
+      .find((r) => r.includes('testChangeRisk'));
+    for (const deel of ['#410', 'testvoorwaarde.mjs', '`test.extend`-alias', 'lus', 'netto gelijk', 'JSX', 'helper'])
+      expect(regel).toContain(deel);
+  });
+});
+
+describe('rolhek: een bestaande test voorwaardelijk maken vraagt akkoord (AC-3)', () => {
+  const config = loadConfig(readFileSync('.claude/gates.json', 'utf8'));
+  const pad = 'test/rails/example.test.ts';
+  const bestaand = lines("describe('s', () => {", `  ${LOS_A}`, `  ${LOS_B}`, '});');
+  const beslis = (content: string, agent?: string) =>
+    decide(
+      {
+        tool_name: 'Write',
+        tool_input: { file_path: `/repo/${pad}`, content },
+        ...(agent === undefined ? {} : { agent_type: agent }),
+      },
+      {
+        root: '/repo',
+        cwd: '/repo',
+        config,
+        read: (rel: string) => (rel === pad ? bestaand : null),
+        committed: (rel: string) => rel === pad,
+        isDir: () => false,
+        branch: 'feat/x',
+      },
+    );
+
+  test('if eromheen: hoofdsessie vraagt, tester wordt geweigerd', () => {
+    const na = lines('if (process.env.X) {', bestaand, '}');
+    const hoofd = beslis(na);
+    expect([...hoofd.ask, ...hoofd.deny].join('\n')).toContain('een test skippen alleen met akkoord van de eigenaar');
+    expect(beslis(na, 'tester').deny.join('\n')).toContain('een test skippen alleen met akkoord van de eigenaar');
+  });
+
+  test('een gewone test erbij: geen skip-gate', () => {
+    const decision = beslis(lines(bestaand, "test('c', () => {});"));
+    expect([...decision.ask, ...decision.deny].join('\n')).not.toContain('skippen');
+  });
 });

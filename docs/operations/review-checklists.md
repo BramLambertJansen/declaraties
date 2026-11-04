@@ -18,7 +18,7 @@ De reviewer bepaalt de klasse(n) van de diff en loopt alleen die lijsten af. Elk
 ## Tests
 
 - Een negatieve tabel loopt via `expectNegativeTable` (`rails/negatieve-tabel`, #401); een lus (`for … of`, `forEach`), een verwachtingskolom (`toBe(want)`), `null`, `[]`, `!x` of `assert` valt erbuiten: toets die zelf op een ware basis, en draai hem tegen de oude code.
-- `testChangeRisk` telt via een lexer (`rails/hooks/lib/testteller.mjs`, #424): `skipIf`, `runIf`, `only` en `fails` tellen als skip; een `if` rond een test of een `test.extend`-alias valt erbuiten (#410): zie die als skip.
+- `testChangeRisk` (#424, #410, `rails/hooks/lib/testvoorwaarde.mjs`): skip-modifiers en meer voorwaardelijke tests tellen als skip. Zelf als skip zien: `test.extend`-alias, lus, netto gelijk aantal, `${…}`/JSX, voorwaardelijk aangeroepen helper, `describe.each(ok ? rows : [])`.
 - Tests ruimen hun tmp-mappen op (#396); geen absolute milliseconden, wel een verhouding of ruime marge.
 
 ## Tekstchecks

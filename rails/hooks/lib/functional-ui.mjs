@@ -60,10 +60,10 @@ const SCRIPT = /\.(?:[cm]?[jt]s|[jt]sx)$/;
 const SQL_SKIP = /\.(?:skip|todo|fixme)\s*\(|\b(?:xit|xtest|xdescribe)\s*\(|\bskip\s*\(/g;
 const SQL_CASES = /\b(?:test|it)(?:\.each\b[^(]*\([^)]*\))?\s*\(/g;
 
-/** @param {string} text @param {string} file @returns {{ cases: number, skips: number }} */
+/** @param {string} text @param {string} file @returns {{ cases: number, skips: number, voorwaardelijk: number }} */
 function count(text, file) {
   if (SCRIPT.test(file)) return telTests(text, file);
-  return { cases: (text.match(SQL_CASES) ?? []).length, skips: (text.match(SQL_SKIP) ?? []).length };
+  return { cases: (text.match(SQL_CASES) ?? []).length, skips: (text.match(SQL_SKIP) ?? []).length, voorwaardelijk: 0 };
 }
 
 /** @param {string} before @param {string} after @param {string} file repo-pad; de extensie kiest de teller */
@@ -71,5 +71,7 @@ export function testChangeRisk(before, after, file) {
   const voor = count(before, file);
   const na = count(after, file);
   if (na.skips > voor.skips) return 'skip';
+  // Spec voorwaardelijke-tests AC-3: alleen een stijging, en alleen in een bestand dat al gevallen had.
+  if (voor.cases > 0 && na.voorwaardelijk > voor.voorwaardelijk) return 'skip';
   return na.cases < voor.cases ? 'removed' : null;
 }
