@@ -16,7 +16,7 @@ import {
 
 // check:new-resource als één proefkopie (docs/specs/een-proefkopie.md, ADR 0073). De echte generator duurt minuten; hier
 // is `genereer` een stap uit de fixture die vastlegt wat hij ziet en, per modus, een rood bestand schrijft of faalt.
-// Contract van scripts/kit/check-app-init.mjs voor deze tests:
+// Contract van scripts/kit/draai-proef.mjs voor deze tests:
 //   draaiProef(bron, scripts, { bewaar?, genereer, naam?, onderwerp? }): Promise<number>
 const PREFIX = 'new-resource-';
 const NAAM = 'check:new-resource';
@@ -284,8 +284,8 @@ describe('AC-10: de job en het script check:app-init bestaan niet meer (bouw-PR 
     expect(scripts).not.toHaveProperty(['check:app-init']);
   });
 
-  test('check-app-init.mjs heeft geen CLI-ingang meer', () => {
-    const tekst = readFileSync(path.join(ROOT, 'scripts/kit/check-app-init.mjs'), 'utf8');
+  test('draai-proef.mjs heeft geen CLI-ingang meer', () => {
+    const tekst = readFileSync(path.join(ROOT, 'scripts/kit/draai-proef.mjs'), 'utf8');
     expectAbsent(tekst, /import\.meta\.main/, { recognizes: ['if (import.meta.main) {'] });
   });
 });

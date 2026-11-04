@@ -1,5 +1,5 @@
 // check:new-resource (ADR 0047 punt 9, ADR 0073): code uit `pnpm new:resource` haalt gate:fast, in de template na
-// `app:init`. Eén tijdelijke kopie (draaiProef in check-app-init.mjs): in de template eerst app:init, dan beide fasen van de
+// `app:init`. Eén tijdelijke kopie (draaiProef in draai-proef.mjs): in de template eerst app:init, dan beide fasen van de
 // generator met een vaste naam en de gate-wijzigingen zoals de hoofdsessie dat met Edit doet, dan één keer de snelle suite.
 // Een volgende generator schuift hier aan, zonder eigen job (ADR 0073 punt 4). Duurt minuten: eigen job in CI, niet in
 // gate:fast. gate:slow hoort er bewust niet bij: check-policies faalt tot de tester de pgTAP-tests schrijft.
@@ -7,7 +7,7 @@ import { readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { DELEN, deelUitArgs, snelleGates } from './gate-fast.mjs';
 import { pasToe, plan, schrijf } from './new-resource.mjs';
-import { draaiProef } from './check-app-init.mjs';
+import { draaiProef } from './draai-proef.mjs';
 import { start } from './proef-kopie.mjs';
 
 // Met een streepje, zodat ook de afleiding van tabel-, camel- en PascalCase-namen door gate:fast gaat.

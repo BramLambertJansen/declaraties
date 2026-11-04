@@ -7,7 +7,7 @@ import path from 'node:path';
 // Een werkmap heeft `bron` (een git-repo met de app:init-invoer) en `tmp` (een eigen TMPDIR voor de kindprocessen,
 // zodat "de tijdelijke map bestaat niet meer" te toetsen is zonder andere runs te raken).
 export const ROOT = path.join(import.meta.dirname, '../..');
-export const CHECK = path.join(ROOT, 'scripts/kit/check-app-init.mjs');
+export const CHECK = path.join(ROOT, 'scripts/kit/draai-proef.mjs');
 export const MODULE = path.join(ROOT, 'scripts/kit/proef-kopie.mjs');
 
 export interface Werkmap {
@@ -100,7 +100,7 @@ export function draaiNode(args: string[], cwd: string, env: Record<string, strin
 }
 
 /**
- * Schrijft een driver die `draaiProef(bron, scripts, { bewaar, genereer })` uit check-app-init.mjs aanroept, met een
+ * Schrijft een driver die `draaiProef(bron, scripts, { bewaar, genereer })` uit draai-proef.mjs aanroept, met een
  * generatorstap die niets doet (de generator zelf toetst een-proefkopie.test.ts); de uitvoer en exitcode van dat proces
  * zijn die van de check. Argumenten: <bron> <json-scripts> [--bewaar].
  */

@@ -45,7 +45,7 @@ const escapeUnsafeJsLiteral = (str: string): string =>
 
 // De app:init-kant van de proefkopie (docs/specs/app-init-proef.md, sinds ADR 0073 onderdeel van check:new-resource,
 // docs/specs/een-proefkopie.md): app:init op een tijdelijke kopie, daarna de snelle suite in die kopie.
-// Contract van scripts/kit/check-app-init.mjs voor deze tests:
+// Contract van scripts/kit/draai-proef.mjs voor deze tests:
 //   export async function draaiProef(bron: string, scripts: readonly string[],
 //     opties: { bewaar?: boolean, genereer: (root: string) => Promise<void> }): Promise<number>
 //   - geeft de exitcode terug (0 = geslaagd), schrijft de teksten uit de spec naar stdout (✗-regels mogen naar stderr);
