@@ -29,7 +29,7 @@ null`, `updated_at timestamptz not null default now()`); geen persoonsgegevens. 
   `select, insert, update` aan `app_definer`; `app_authenticated`, `api_user`, `auth_service` en `PUBLIC` niets. Policies
   `integration_switches_definer_select`, `_insert`, `_update` (`to app_definer`, `true`); geen delete.
 - **`app.integration_enabled(p_name text) returns boolean`**: security definer, `stable`, `search_path = ''`, eigenaar
-  `app_definer`. Zonder `app.current_user_id()` 42501. Geen rij = `false`. Execute: `app_authenticated`. Catalogus: `client`.
+  `app_definer`. Zonder `app.current_user_id()` 42501; daarna ongeldige naam (patroon of > 63) 22023. Geen rij = `false`. Execute: `app_authenticated`. Catalogus: `client`.
 - **`app.set_integration_enabled(p_name text, p_enabled boolean)`**: security definer. Zonder toegang 42501: alleen
   `app.is_mfa_admin()`, of `session_user = 'app_migrator'` zonder actor (vorm `app.assign_role`). Ongeldige naam 22023. Eerst
   `pg_advisory_xact_lock(pg_catalog.hashtext('app.integration_switches:' || p_name))`, dan de huidige stand (geen rij = `false`).
@@ -69,7 +69,8 @@ integrationClient.call(reading: SwitchReading, request: OutboundRequest): Promis
 - **Lezen** (OV-1). `readIntegrationSwitch(tx, name)` in `src/core/api/db` (vorm `createAuditFn`) roept
   `app.integration_enabled` aan. `readSwitch` in het register gebruikt hem, alleen onder de markering (binnen `withUser`;
   anders `OutboundUsageError`), en geeft een `SwitchReading` (naam, stand, `performance.now()`). Een lezing is
-  alleen geldig als core haar maakte: een module-private `WeakSet`, dus `unsafeCast` werkt niet.
+  alleen geldig als core haar maakte: een module-private `WeakSet`, dus `unsafeCast` werkt niet. Dat de app
+  `readIntegrationSwitch` zelf kan aanroepen is onschadelijk: `call` eist een `SwitchReading`.
 - **Volgorde in `IntegrationClient.call`**, telkens zonder aanroep: 1) onder de markering `OutboundForbiddenError`; 2) lezing
   ongeldig, van een andere koppeling of ouder dan `INTEGRATION_SWITCH_MAX_AGE_MS` (30 000, `limits.ts`) `OutboundUsageError`;
   3) stand uit `UPSTREAM_UNAVAILABLE` met één logregel `outcome: 'DISABLED'`, `attempt` 0, `status` null. Dan de gewone client.
@@ -122,6 +123,9 @@ Tegen de nep-partner; "geen aanroep" = teller 0.
 - Code: `src/core/api/db/index.ts` (export erbij), `src/core/api/outbound/` (`create.ts`, outcome `DISABLED`),
   `src/core/api/http/create-app.ts` (optie), `src/core/shared/limits.ts` (twee grenzen, test gelijk aan de CHECK),
   `src/api/integrations/index.ts`, `src/api/app.ts`.
+- Bestaande tests, alleen het importpad (reden: verhuizing naar `create.ts`, deze spec; R-TEST-02, door de tester):
+  `test/outbound/timing.int.test.ts`, `test/outbound/route-guard.int.test.ts` en in `src/core/api/outbound/` `index.test.ts`,
+  `usage.test.ts`, `config.test.ts`, `marker.test.ts`, `log.test.ts`.
 - Hoofdsessie (gate-paden): `.dependency-cruiser.mjs`, `scripts/`, `package.json`, `eslint.config.js` (melding van
   `rails/netwerk-api` wijst naar `integrations.client` i.p.v. `createOutboundClient`) met `test/rails/eslint-netwerk.test.ts`;
   R-LAAG-06 in `docs/framework.md` en `AGENTS.md` (export `readIntegrationSwitch`); R-DB-16 (`core.integration.*`).
@@ -137,7 +141,7 @@ een eigen `job`-functie met migratie.
 ## Testplan
 
 - **Unit**: register (AC-1), lezing en volgorde in de client met nep-partner (AC-2, AC-5), grens gelijk aan de CHECK.
-- **Integratie** (`*.int.test.ts`): lezen in echte `withUser`, script (AC-4, AC-10), testroute via `createApp` (AC-2), race met
+- **Integratie** (`*.int.test.ts`): lezen in echte `withUser` via `guardWithUser` of `createApp` (onder de markering), script (AC-4, AC-10), testroute via `createApp` (AC-2), race met
   twee verbindingen (AC-9, R-TEST-03).
 - **pgTAP** `db/tests/integration_switches.sql`: AC-3, AC-6 t/m AC-8; fixture in `test/rails/depcruise.test.ts`.
 
@@ -145,7 +149,8 @@ een eigen `job`-functie met migratie.
 
 - **OV-1** — Waar lezen? Aanbeveling: `readIntegrationSwitch` in `src/core/api/db` (kritiek pad, past in deze besluit-PR);
   elders mag geen SQL (`database-alleen-in-core-db`). Geen cache: één indexlezing in een transactie die er al is, gelijk over processen.
-- **OV-2** — Ontbrekende rij? Aanbeveling: uit (fail-closed); een nieuwe koppeling gaat pas aan na een expliciete zet.
+- **OV-2** — Ontbrekende rij? Aanbeveling: uit (fail-closed); een nieuwe koppeling gaat pas aan na een expliciete zet. Wordt de standaard later
+  "aan", dan schrijft eerst een migratie rijen weg; anders gaan koppelingen zonder rij stil aan.
 - **OV-3** — Geldigheid van een lezing? Aanbeveling: 30 s; één aanroep duurt hooguit 20 s (`OUTBOUND_BUDGET_MAX_MS`).
 - **OV-4** — Audit door de core-functie zelf (vorm `set_account_blocked`) i.p.v. een registratiemechanisme (0077 punt 5)?
   Aanbeveling: ja, alleen voor deze actie; het algemene mechanisme blijft voor M7.
