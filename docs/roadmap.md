@@ -155,8 +155,7 @@ Open werk dat niet geparkeerd is, grofweg in volgorde. Wat nog een spec of eigen
   `MFA_REQUIRED`, nooit een `UPSTREAM_*`-code; time-out, 5xx en een ongeldig antwoord geven een vaste `UPSTREAM_*`-code zonder tekst van de partner
   (de spec legt per status de code vast); een partner-time-out houdt geen databaseverbinding vast; `fetch`, `node:http(s)`, `undici` en `net`
   buiten de client falen in de lint, ook via `globalThis.fetch` en een dynamische import; een uitgezette koppeling doet geen aanroep.
-  **Eisen uit het regelboek** (R-DOC-10: tot de bouw staan ze hier; de bouw-PR zet ze terug in het regelboek): een lintregel weigert netwerk
-  buiten de uitgaande client (R-CODE-12) en een geheim van een koppeling buiten `secret()` (R-SEC-05); de client weigert ook in een transactie van `withJob` (aanvulling R-CODE-12); de machineroute
+  **Eisen uit het regelboek** (R-DOC-10: tot de bouw staan ze hier; de bouw-PR zet ze terug in het regelboek): de client weigert ook in een transactie van `withJob` (aanvulling R-CODE-12); de machineroute
   zonder login onder één vast prefix met verifier, tijdvenster, groottegrens, rate limit per IP en inbox, en een check die elke route buiten
   `defineRoute` en buiten de lijst van §3 laat falen (uitzondering naast R-UIT-02, §3); foutvolgorde van de partnerstap: `FORBIDDEN`,
   `MFA_REQUIRED` en `NOT_FOUND` vóór elke `UPSTREAM_*`-fout; een route met partnerstap gebruikt `rateLimit: 'duur'`

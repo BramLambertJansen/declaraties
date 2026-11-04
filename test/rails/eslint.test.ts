@@ -20,6 +20,8 @@ interface Fixture {
   file: string;
   code: string;
   rule: string | null;
+  // Een tweede rail die op dezelfde code terecht ook meldt (bijv. rails/netwerk-api op globalThis of child_process in api-code).
+  also?: string[];
 }
 
 const fixtures: Fixture[] = [
@@ -37,6 +39,7 @@ const fixtures: Fixture[] = [
     file: 'src/api/x.ts',
     code: "export const a = globalThis['process'];",
     rule: 'rails/process-env',
+    also: ['rails/netwerk-api'],
   },
   {
     name: 'node:process',
@@ -464,6 +467,7 @@ const fixtures: Fixture[] = [
       file,
       code: "import { spawnSync } from 'node:child_process'; declare const c: string; spawnSync('bash', ['-c', c]);",
       rule: 'rails/kooi',
+      also: file === 'src/api/x.ts' ? ['rails/netwerk-api'] : [],
     }),
   ),
   ...[
@@ -481,9 +485,9 @@ const fixtures: Fixture[] = [
 ];
 
 describe('rails in eslint.config.js', () => {
-  test.each(fixtures)('$rule: $name ($file)', async ({ file, code, rule }) => {
+  test.each(fixtures)('$rule: $name ($file)', async ({ file, code, rule, also = [] }) => {
     const rules = await railsIn(file, code);
 
-    expect(rules).toStrictEqual(rule === null ? [] : [rule]);
+    expect(rules.toSorted()).toStrictEqual(rule === null ? [] : [rule, ...also].toSorted());
   });
 });

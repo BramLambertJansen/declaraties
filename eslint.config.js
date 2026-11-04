@@ -26,6 +26,8 @@ const ruleNames = [
   'afwezigheid',
   'negatieve-tabel',
   'kooi',
+  'netwerk-api',
+  'geheim',
 ];
 const rails = { rules: Object.fromEntries(ruleNames.map((name) => [name, restrictedSyntax])) };
 
@@ -107,7 +109,77 @@ const KOOI_SELECTORS = [
   `CallExpression[callee.name='require'][arguments.0.value=${CHILD}]`,
 ];
 
+// Netwerk vanuit api- en shared-code (R-CODE-12, ADR 0077, spec netwerk-en-geheim-rails): alleen de uitgaande client, de
+// SMTP-adapter en de eigen server mogen netwerkmodules laden. Type-imports laden niets; een inline `type` wel.
+// esquery kan geen `/` in een regex aan, ook niet geëscapet: daarom `[/]`.
+const NETWERK_MODULE =
+  '/^((node:)?(http|https|http2|net|tls|dgram|child_process|cluster|inspector|worker_threads|vm|module)$|undici($|[/])|nodemailer($|[/])|hono[/]client$|data:)/';
+const NETWERK_GLOBAAL = '/^(fetch|XMLHttpRequest|EventSource|WebSocket|globalThis|global|self|window|eval)$/';
+// Dezelfde naam als eigenschap, sleutel, methode, typeveld of in een typepositie is geen verwijzing naar de globale.
+const GEEN_VERWIJZING = [
+  'MemberExpression[computed=false] > Identifier.property',
+  'Property[shorthand=false] > Identifier.key',
+  ':matches(MethodDefinition, PropertyDefinition, TSAbstractMethodDefinition, TSAbstractPropertyDefinition, TSPropertySignature, TSMethodSignature) > Identifier.key',
+  'TSEnumMember > Identifier.id',
+  'TSTypeQuery Identifier',
+  'TSQualifiedName > Identifier.right',
+  'TSModuleDeclaration > Identifier.id',
+].join(', ');
+const NETWERK_SELECTORS = [
+  `:matches(ImportDeclaration[importKind!='type'], ExportNamedDeclaration[exportKind!='type'], ExportAllDeclaration[exportKind!='type'], ImportExpression)[source.value=${NETWERK_MODULE}]`,
+  `CallExpression[callee.name='require'][arguments.0.value=${NETWERK_MODULE}]`,
+  `TSImportEqualsDeclaration[importKind!='type'] > TSExternalModuleReference[expression.value=${NETWERK_MODULE}]`,
+  `Identifier[name=${NETWERK_GLOBAAL}]:not(${GEEN_VERWIJZING})`,
+  `MemberExpression[computed=true] > Literal.property[value=${NETWERK_GLOBAAL}]`,
+];
+
+// Geheim van een koppeling (R-SEC-05, ADR 0077): in src/api/env.ts een geheime sleutel alleen met secret(ctx, …) uit
+// core-env. Een eigen secret, een andere import of een verbreding van het schema zou die eis omzeilen.
+const GEHEIME_SLEUTEL = [
+  '(^|_)(SECRET|TOKEN|PASSWORD|PASSPHRASE|API_KEY|PRIVATE_KEY|SIGNING_KEY|SECRET_KEY|ACCESS_KEY)$',
+  '(^|_)(secret|token|password|passphrase|api_key|private_key|signing_key|secret_key|access_key)$',
+  '^[a-z][a-zA-Z0-9]*(Secret|Token|Password|Passphrase|ApiKey|PrivateKey|SigningKey|SecretKey|AccessKey)$',
+].join('|');
+const ZONDER_SECRET = ":not([value.type='CallExpression'][value.callee.name='secret'])";
+const GEHEIM_SELECTORS = [
+  ...['key.name', 'key.value', 'key.quasis.0.value.raw'].map(
+    (sleutel) => `ObjectExpression > Property[${sleutel}=/${GEHEIME_SLEUTEL}/]${ZONDER_SECRET}`,
+  ),
+  "Identifier[name='secret']:not(CallExpression > Identifier.callee, ImportDeclaration[source.value='#core/api/env.ts'] > ImportSpecifier[imported.name='secret'] > Identifier)",
+  `:matches(${IMPORTS})[source][source.value!=/^(zod|#core[/]api[/]env[.]ts)$/]`,
+  'CallExpression > MemberExpression.callee[property.name=/^(partial|deepPartial|or|and|catch|catchall|passthrough|loose|merge|record|union|discriminatedUnion|preprocess)$/]',
+];
+
 const railConfigs = [
+  restrict(
+    'netwerk-api',
+    [
+      'src/api/**/*.{ts,tsx}',
+      'src/core/api/**/*.{ts,tsx}',
+      'src/shared/**/*.{ts,tsx}',
+      'src/core/shared/**/*.{ts,tsx}',
+    ],
+    [
+      ...TESTS,
+      'src/core/api/outbound/client.ts',
+      'src/core/api/outbound/testing.ts',
+      'src/core/api/outbound/config.ts',
+      'src/core/api/mail/smtp.ts',
+      'src/core/api/http/serve.ts',
+    ],
+    "Netwerk vanuit api- en shared-code alleen via de uitgaande client: gebruik createOutboundClient uit '#core/api/outbound' " +
+      '(R-CODE-12, ADR 0077). Geen node:http(s), net, tls, undici, nodemailer, child_process, worker_threads, vm, ' +
+      'node:module, data:-import, eval, globale fetch/WebSocket of globalThis.',
+    NETWERK_SELECTORS,
+  ),
+  restrict(
+    'geheim',
+    ['src/api/env.ts'],
+    [],
+    "Een geheim van een koppeling alleen via secret(ctx, …) uit '#core/api/env.ts' in readEnv((ctx) => …) (R-SEC-05, " +
+      'ADR 0077); geen eigen secret, geen andere imports, geen .partial/.or/.catch/z.union.',
+    GEHEIM_SELECTORS,
+  ),
   restrict(
     'kooi',
     [...CODE, 'deploy/**/*.{ts,mjs,js}', '*.{mjs,js}'],
