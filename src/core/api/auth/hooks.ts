@@ -1,6 +1,6 @@
 import { APIError, createAuthMiddleware, getSessionFromCtx } from 'better-auth/api';
 import { z } from 'zod';
-import { SESSION_FRESH_SECONDS } from '../../shared/limits.ts';
+import { MAX_EMAIL_LENGTH, SESSION_FRESH_SECONDS } from '../../shared/limits.ts';
 import type { Mailing } from './mailing.ts';
 import type { AccountLifecycle } from './account-lifecycle.ts';
 import type { ClaimOnce } from './one-time-use.ts';
@@ -67,9 +67,20 @@ function requireFreshSession(facts: SessionFacts, now: number): void {
 }
 
 const changeEmailBody = z.object({ newEmail: z.email() });
+const changeEmailString = z.object({ newEmail: z.string() });
+
+// Better Auth begrenst de lengte van het nieuwe adres niet (spec e-maillengte). Alleen een te lange string weigert de hook;
+// een ontbrekende, niet-string of ongeldige waarde laat hij aan het endpoint (400).
+function rejectTooLongEmail(body: unknown): void {
+  const parsed = changeEmailString.safeParse(body);
+  if (parsed.success && parsed.data.newEmail.length > MAX_EMAIL_LENGTH) {
+    fail('BAD_REQUEST', 'VALIDATION', `Hooguit ${String(MAX_EMAIL_LENGTH)} tekens`);
+  }
+}
 
 // Bezet adres (OV-9): Better Auth antwoordt dan zonder mail, en dus meetbaar sneller. Hier gaat er een neutrale mail naar het
-// oude adres en volgt hetzelfde antwoord als bij een vrij adres. Een ongeldig of gelijk adres laat het endpoint zelf afwijzen.
+// oude adres en volgt hetzelfde antwoord als bij een vrij adres. Een ongeldig of gelijk adres laat het endpoint zelf afwijzen;
+// een te lang adres is dan al geweigerd (rejectTooLongEmail).
 async function answerTakenAddress(ctx: HookContext, facts: SessionFacts, mailing: Mailing | null) {
   const body = changeEmailBody.safeParse(ctx.body);
   if (!body.success || mailing === null) return undefined;
@@ -111,6 +122,7 @@ export function createHooks(mailing: Mailing | null, now: () => number = Date.no
     requireMfaWhenEnabled(facts);
     if (ctx.path === '/change-email') {
       requireFreshSession(facts, now());
+      rejectTooLongEmail(ctx.body);
       return answerTakenAddress(ctx, facts, mailing);
     }
     // Andere sessies intrekken is verplicht (framework §6); het veld komt uit de body.
