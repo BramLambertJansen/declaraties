@@ -115,6 +115,11 @@ const AC2: Fixture[] = [
   fixture('AC-2: const e = eval', 'export const e = eval;\n', NETWERK),
   fixture("AC-2: import c from 'node:cluster'", "import c from 'node:cluster';\nexport const x = c;\n", NETWERK),
   fixture("AC-2: import i from 'node:inspector'", "import i from 'node:inspector';\nexport const x = i;\n", NETWERK),
+  fixture(
+    "AC-2: import { Session } from 'node:inspector/promises'",
+    "import { Session } from 'node:inspector/promises';\nexport const x = Session;\n",
+    NETWERK,
+  ),
   fixture("AC-2: import h = require('node:http')", "import h = require('node:http');\nexport const x = h;\n", NETWERK),
 ];
 
@@ -197,6 +202,8 @@ const AC5: Fixture[] = [
     null,
   ),
   fixture('AC-5: abstracte methode fetch', 'export abstract class A {\n  abstract fetch(): void;\n}\n', null),
+  fixture('AC-5: type C = WebSocket', 'export type C = WebSocket;\n', null),
+  fixture('AC-5: interface W extends WebSocket', 'export interface W extends WebSocket {}\n', null),
   fixture('AC-5: enum-lid fetch', 'export enum E {\n  fetch = 1,\n}\n', null),
 ];
 
@@ -318,6 +325,7 @@ const AC11: Fixture[] = [
     'z.object({}).merge(s)',
     'z.object({}).and(s)',
     'z.record(k, s)',
+    'z.looseObject({})',
   ].map((expressie) =>
     fixture(`AC-11: verbreding ${expressie}`, schema(VELD, `${DECLS}export const v = ${expressie};\n`), [GEHEIM, ENV]),
   ),
