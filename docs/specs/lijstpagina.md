@@ -1,5 +1,5 @@
 ---
-status: gebouwd # #440
+status: gebouwd # #514
 namespace: lijstpagina
 ---
 
@@ -39,12 +39,12 @@ cursor-contract (`src/core/shared/cursor.ts`) en `Table`; eerst op `/admin/accou
 |---|---|---|---|
 | GET | `/api/accounts?q=&rol=&status=&sort=&cursor=` → `{ items, nextCursor }` | `accounts:read` (ongewijzigd) | `VALIDATION`, `FORBIDDEN`, `MFA_REQUIRED` |
 
-- **Gedeeld schema** in core: `defineListSearch({ sorts, filters })` (`src/core/shared/list-search.ts`) maakt één zod-object met `q`
+- **Gedeeld schema** in core: `defineListSearch({ sorts, filters, cursorKeys })` (`src/core/shared/list-search.ts`) maakt één zod-object met `q`
   (`trim`, 1..`MAX_SEARCH_LENGTH`, leeg = weg), de filters (elk een `z.enum` uit het contract) en `sort` (enum, met standaard). De contracten
   gebruiken het `.strict()` als input (ongeldig → `VALIDATION`); de webroute gebruikt het met `.catch()` per veld in `validateSearch` (ongeldig →
   standaardwaarde, geen foutpagina) en schrijft standaardwaarden niet in de URL.
-- **Accounts:** `accountsSearch = defineListSearch({ sorts: ['nieuwste', 'oudste', 'naam-az', 'naam-za'], filters: { rol: ROLLEN, status: STATUSSEN } })`,
-  standaard `nieuwste`. `q` zoekt hoofdletterongevoelig in naam en e-mailadres (`ilike`, `%`, `_` en `\` ge-escaped). Sortering `naam-*` op
+- **Accounts:** `accountsSearch = defineListSearch({ sorts: ['nieuwste', 'oudste', 'naam-az', 'naam-za'], filters: { rol: ROLLEN, status: STATUSSEN },
+  cursorKeys })`, standaard `nieuwste`. `q` zoekt hoofdletterongevoelig in naam en e-mailadres (`ilike`, `%`, `_` en `\` ge-escaped). Sortering `naam-*` op
   `(lower(naam), id)`, `nieuwste`/`oudste` op `(aangemaakt, id)`.
 - **Cursor aan de sortering gebonden:** de cursor is `encodeCursor([sort, …sleutel])`; `decodeCursor` met een tuple per sortering. Een cursor van een
   andere sortering of met een ander sleuteltype geeft `VALIDATION`. Zoek- en filterwaarden zitten in de query key van TanStack Query: elke wijziging
@@ -53,9 +53,21 @@ cursor-contract (`src/core/shared/cursor.ts`) en `Table`; eerst op `/admin/accou
   `defineListSearch` weigeren een langere (`VALIDATION`); `encodeCursor` eist met `assert()` dat hij erbinnen valt (anders `INTERNAL_ERROR`, gelogd).
   Zo geeft de server nooit stil een `nextCursor` terug die zijn eigen invoer weigert. `maxCursorLength(maxLengths)` rekent de langst mogelijke cursor
   uit de maximale UTF-16-lengte per sleuteldeel: elke eenheid wordt in JSON hooguit 6 bytes (`\u0001`, losse surrogaat), base64url maakt het ×4/3.
-  Per lijst bewijst een test dat zijn sleutel binnen de grens past. Accounts: `[sort, lower(naam), id]` met `MAX_NAME_LENGTH` (100) en `MAX_ID_LENGTH`
-  (200, ook de grens van `brandedId`) geeft hooguit 2478 tekens. Waarom 4096: ruim boven elke sleutel uit de template en ver onder de headergrens
-  van Node (16 KiB); de grens blijft dus begrensd, en een losse waarde per lijst (zoals de eerdere 500) kan niet meer afwijken van de sleutel.
+  Waarom 4096: ruim boven elke sleutel uit de template en ver onder de headergrens van Node (16 KiB); de grens blijft dus begrensd, en een losse
+  waarde per lijst (zoals de eerdere 500) kan niet meer afwijken van de sleutel.
+- **Sleutelbudget afgedwongen** (leerpunt #444): `cursorKeys` is verplicht en geeft per sortering een niet-lege tuple met de maximale UTF-16-lengte
+  van elk sleuteldeel na de sorteernaam, bv. `{ nieuwste: [MAX_TIMESTAMP_LENGTH, MAX_ID_LENGTH] }`. Het type eist precies één entry per sortering
+  (ontbrekend of extra = typefout). Bij definitie gooit `defineListSearch` een `Error` als `maxCursorLength([sort.length, ...lengtes])` groter is dan
+  `MAX_CURSOR_LENGTH` (melding noemt sortering en uitgerekende lengte; precies op de grens mag); ook zonder type (JS) gooit hij bij een ontbrekende
+  of extra entry en bij een lengte die geen geheel getal ≥ 0 is. Het resultaat krijgt `encodeCursor(sort, parts)`: `assert()` op het aantal delen
+  uit de declaratie (anders `AssertionError` → `INTERNAL_ERROR`), daarna de core-`encodeCursor([sort, ...parts])`. Routes gebruiken die in plaats van
+  de losse `encodeCursor`; de assert op `MAX_CURSOR_LENGTH` in core blijft het vangnet.
+- **Grens `MAX_TIMESTAMP_LENGTH` = 48** (`src/core/shared/limits.ts`): de ISO-tekst van een `timestamptz` uit Postgres (`to_json(...) #>> '{}'`) is in
+  het slechtste geval ~40 tekens (6-cijferig jaar, microseconden, offset met seconden, " BC"); 48 met marge.
+- **Accounts `cursorKeys`:** `nieuwste`/`oudste` `[MAX_TIMESTAMP_LENGTH, MAX_ID_LENGTH]`; `naam-az`/`naam-za` `[2 * MAX_NAME_LENGTH, MAX_ID_LENGTH]`,
+  omdat de sleutel `lower(naam)` is en lowercase een teken kan verlengen (İ → i + U+0307). Budget hooguit 3270 tekens (`maxCursorLength([7, 200, 200])`).
+  `src/api/routes/accounts.ts` gebruikt `accountsSearch.encodeCursor(sort, [...])`. Generator: `cursorKeys` voor `nieuwste` en `oudste` met
+  `[MAX_TIMESTAMP_LENGTH, MAX_ID_LENGTH]`; de route gebruikt `__naamCamel__Search.encodeCursor`.
 - **Ontdubbelen:** keyset-paginering garandeert niets als een rij tussen twee pagina's van sorteersleutel verandert (bijv. hernoemd): hij kan
   dan op een volgende pagina terugkomen of worden overgeslagen. `useInfiniteQuery` voegt de pagina's daarom samen met ontdubbelen op `id`
   (eerste voorkomen wint); een overgeslagen rij verschijnt pas na herladen. Geldt ook voor de generator.
@@ -111,6 +123,13 @@ cursor-contract (`src/core/shared/cursor.ts`) en `Table`; eerst op `/admin/accou
   gooit die een `AssertionError` in plaats van de cursor terug te geven.
 - **lijstpagina/AC-12** — Gegeven per sleuteldeel een maximale lengte, dan is de echte lengte van `encodeCursor` voor elk slechtste teken hooguit
   `maxCursorLength`, en bij uitsluitend U+0001 precies gelijk.
+- **lijstpagina/AC-13** — Gegeven een `cursorKeys`-declaratie waarvan `maxCursorLength([sort.length, ...lengtes])` groter is dan `MAX_CURSOR_LENGTH`,
+  dan gooit `defineListSearch` bij definitie een `Error` die de sortering noemt; een declaratie van precies `MAX_CURSOR_LENGTH` gooit niet.
+- **lijstpagina/AC-14** — Gegeven `cursorKeys` met een ontbrekende of extra sortering, dan is dat een typefout en gooit `defineListSearch` ook runtime
+  een `Error`; een lengte die geen geheel getal ≥ 0 is, geeft ook een `Error`.
+- **lijstpagina/AC-15** — Gegeven `search.encodeCursor(sort, parts)` met een ander aantal delen dan gedeclareerd, dan een `AssertionError`; met het
+  juiste aantal is de uitkomst gelijk aan `encodeCursor([sort, ...parts])`.
+- **lijstpagina/AC-16** — Gegeven `pnpm new:resource notities`, dan declareert het contract `cursorKeys` voor elke sortering en slaagt `check:new-resource`.
 
 ## Randgevallen
 
@@ -124,6 +143,7 @@ cursor-contract (`src/core/shared/cursor.ts`) en `Table`; eerst op `/admin/accou
 | Cursor langer dan `MAX_CURSOR_LENGTH` | geweigerd | `VALIDATION` |
 | Naam van 100 tekens met stuurtekens of aanhalingstekens als sorteersleutel | de cursor past in het budget; "Meer laden" werkt (AC-9) | — |
 | Sleutel die buiten de contracten om te lang is opgeslagen (bijv. `pnpm admin:create --name`; de naamkolom heeft geen lengte-CHECK) | zichtbare fout op die sortering in plaats van een stil vastgelopen "Meer laden" (AC-11) | `INTERNAL_ERROR` |
+| Sortering toegevoegd op een lang tekstveld zonder passend budget in `cursorKeys` | de app start en de tests draaien niet: fout bij het laden van het contract, geen `INTERNAL_ERROR` in productie (AC-13) | — |
 | Account wijzigt tussen twee pagina's (bijv. hernoemd) | kan op een volgende pagina terugkomen (ontdubbeld op `id`, dus één keer zichtbaar) of overgeslagen worden (zichtbaar na herladen) | — |
 | Snel typen | één request per 300 ms stilte; een oud antwoord overschrijft geen nieuw (query key) | — |
 | `user` opent `/admin/accounts?q=x` | geen toegang, zoals nu | `FORBIDDEN` |
@@ -138,13 +158,17 @@ cursor-contract (`src/core/shared/cursor.ts`) en `Table`; eerst op `/admin/accou
 - Framework §5 (Paginering, Routing) en `docs/gouden-pad.md` wijzen naar dit patroon; `/design-system` krijgt een voorbeeld van `ListToolbar`.
 - Cursorbudget (#411): `src/core/shared/cursor.ts` (`maxCursorLength`, assert in `encodeCursor`), `src/core/shared/limits.ts` (`MAX_CURSOR_LENGTH`,
   `MAX_ID_LENGTH`), `src/core/shared/ids.ts`, `src/core/shared/list-search.ts` (core, gate-pad); `src/shared/contracts/accounts.ts` (test op het budget).
+- Sleutelbudget (#444): `src/core/shared/list-search.ts` (`cursorKeys`, `encodeCursor`), `src/core/shared/limits.ts` (`MAX_TIMESTAMP_LENGTH`; core,
+  gate-pad); `src/shared/contracts/accounts.ts`, `src/api/routes/accounts.ts`; generator `contract.ts.tmpl`, `route.ts.tmpl`, `spec.md.tmpl` (gate-paden)
+  met `check:new-resource`; `docs/gouden-pad.md`, `CHANGELOG.md`. Geen migratie, route of permissie.
 - `src/core/shared/cursor.ts`: het commentaar zegt "cursor in de URL"; dat wordt "cursor alleen in de query van TanStack Query" (OV-1).
 
 ## Buiten scope
 
 Totaal aantal resultaten, paginanummers, kolomkoppen als sorteerknop, opgeslagen weergaven, full-text search of `pg_trgm`, filters op datum,
 meerdere waarden per filter, zoeken op `/design-system`-voorbeelddata. Bij het cursorbudget (#411): een lengte-CHECK op de naam in de database
-(`better_auth."user"` is auth, dus eerst een besluit-PR) en stuurtekens in namen weigeren (een aparte keuze, met bestaande gegevens).
+(`better_auth."user"` is auth, dus eerst een besluit-PR) en stuurtekens in namen weigeren (een aparte keuze, met bestaande gegevens). Bij het sleutelbudget (#444): een lintregel die de losse `encodeCursor` in
+app-routes verbiedt, en een lengte-CHECK in de database.
 
 ## Testplan
 
@@ -152,13 +176,15 @@ meerdere waarden per filter, zoeken op `/design-system`-voorbeelddata. Bij het c
   (goed, andere sortering, verkeerd type); escapen van `%`, `_`, `\`; `useListSearch` (debounce, `replace` bij zoeken, push bij filter);
   `ListToolbar` (labels, "Filters wissen" alleen bij actieve filters, sortering blijft, focus na wissen); samenvoegen van pagina's met een dubbele
   `id` (één rij); copy-woordenlijst. Cursorbudget: `maxCursorLength` als bovengrens per slechtste teken (AC-12), lengtegrens op de invoer (AC-10),
-  assert bij emissie (AC-11), roundtrip van de accountsleutel op maximale lengte per naamsortering (AC-9).
+  assert bij emissie (AC-11), roundtrip van de accountsleutel op maximale lengte per naamsortering (AC-9). Sleutelbudget: `defineListSearch` gooit
+  boven de grens en niet precies erop (AC-13); ontbrekende/extra entry als typefout (`@ts-expect-error`) en runtime-`Error`, lengte -1, 1.5, `NaN`
+  (AC-14); `search.encodeCursor` met te weinig/te veel delen en gelijk aan core bij het juiste aantal (AC-15); accounts-declaratie ≤ 3270.
 - **pgTAP:** n.v.t. (geen migratie); de bestaande test "`app.accounts` alleen voor admin met MFA" blijft groen, nu ook met een zoekfilter.
 - **Integratie (`pnpm test:db`):** `GET /api/accounts` per filter, per sortering en met zoeken; paginering over 3 pagina's zonder dubbele of ontbrekende
   rijen per sortering; ongeldige `sort`, `rol`, `status`, `q` en cursor → `VALIDATION`; `user` → `FORBIDDEN`, admin zonder MFA → `MFA_REQUIRED`.
   Volgorde op naam: exacte asserts alleen op ASCII-namen; namen met accenten of hoofdletters alleen op aanwezigheid en zonder dubbele rij, want de
   collatie verschilt per database (OV-3) en lokaal is niet gelijk aan de provider.
-- **Generator:** `check:new-resource` maakt een resource uit de nieuwe sjablonen en draait typecheck, lint en unit (AC-8).
+- **Generator:** `check:new-resource` maakt een resource uit de nieuwe sjablonen en draait typecheck, lint en unit (AC-8, AC-16).
 - **E2E (`pnpm ui:check`, echte stack, CSP aan):** AC-1 t/m AC-6 op `/admin/accounts` met seed-accounts; axe op 375 en 1280 px met lege lijst,
   gefilterde lijst en "verouderd"; op 375 px geen horizontale scroll buiten de tabel.
 

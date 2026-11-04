@@ -31,6 +31,10 @@ export const MAX_CURSOR_LENGTH = 4096;
 // Branded IDs (`brandedId`) en id-velden in contracten; ook een sleuteldeel van een cursor.
 export const MAX_ID_LENGTH = 200;
 
+// Een tijdstip als sleuteldeel van een cursor: de ISO-tekst van een `timestamptz` uit Postgres (`to_json(…) #>> '{}'`). Slechtste geval
+// ~40 tekens (6-cijferig jaar, microseconden, offset met seconden, " BC"); 48 met marge (spec lijstpagina, leerpunt #444).
+export const MAX_TIMESTAMP_LENGTH = 48;
+
 // Rate limit van app-routes (spec rate-limit, framework §6 Verharding): vast venster per gebruiker per categorie. Een app
 // kiest per contract een categorie (`rateLimit` in defineContract; zonder: GET → lezen, anders schrijven) en mag de
 // maxima in src/shared/limits.ts lager zetten, nooit hoger (createApp weigert dan bij opstart; test in limits.test.ts).

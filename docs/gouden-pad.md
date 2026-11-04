@@ -114,8 +114,9 @@ niet in twee transacties (`src/core/api/http/route-effects.ts`). Een fout na com
 8. **Queries** (key-factory met de search in de key, hooks, `placeholderData`, mutaties die invalideren): `src/web/features/accounts/queries.ts`.
 9. **Scherm** met kitcomponenten uit `src/web/ui` en teksten uit `src/web/copy/ui.ts`: `src/web/features/accounts/accounts-page.tsx`,
    `invite-dialog.tsx`. Een lijst met zoeken en sorteren in de search params (`defineListSearch`, `useListSearch`, `uniqueById`, `ListToolbar`;
-   spec [lijstpagina](specs/lijstpagina.md)); `new:resource` maakt die uit de sjablonen, met de sorteringen nieuwste en oudste. Sorteer je op een
-   tekstveld, toets dan met `maxCursorLength` dat de sleutel binnen `MAX_CURSOR_LENGTH` past (`src/shared/contracts/accounts-cursor.test.ts`).
+   spec [lijstpagina](specs/lijstpagina.md)); `new:resource` maakt die uit de sjablonen, met de sorteringen nieuwste en oudste. Elke sortering
+   noemt in `cursorKeys` de maximale lengte van haar sleuteldelen; `defineListSearch` weigert bij het laden een te lange sleutel en de route
+   maakt de cursor met `search.encodeCursor` (`src/shared/contracts/accounts.ts`).
 10. **Route** met guard: `src/web/routes/_app/admin/accounts.tsx`; menu-item per rol in `src/web/lib/nav.ts`.
 11. **E2E** per AC met axe op 375 en 1280 px: `e2e/accounts.spec.ts`.
 

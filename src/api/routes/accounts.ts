@@ -2,10 +2,11 @@ import { type SQL, and, asc, desc, eq, sql } from 'drizzle-orm';
 import { z } from 'zod';
 import { AppError } from '#core/api/errors.ts';
 import { ROLES } from '#core/shared/can.ts';
-import { decodeCursor, encodeCursor } from '#core/shared/cursor.ts';
+import { decodeCursor } from '#core/shared/cursor.ts';
 import {
   ACCOUNT_SORTS,
   accountsListContract,
+  accountsSearch,
   activateContract,
   blockContract,
   deactivateContract,
@@ -130,7 +131,7 @@ export const accountsListRoute = defineRoute(accountsListContract, async ({ inpu
     })),
     nextCursor:
       rows.length > ACCOUNTS_PAGE_SIZE && last !== undefined
-        ? encodeCursor([sort, byName ? last.naamKey : last.aangemaakt, last.id])
+        ? accountsSearch.encodeCursor(sort, [byName ? last.naamKey : last.aangemaakt, last.id])
         : null,
   };
 });

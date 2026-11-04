@@ -37,7 +37,7 @@ describe('maxCursorLength is een bovengrens (lijstpagina/AC-12)', () => {
 });
 
 describe('lengtegrens op de invoer (lijstpagina/AC-10)', () => {
-  const search = defineListSearch({ sorts: ['nieuwste'], filters: {} });
+  const search = defineListSearch({ sorts: ['nieuwste'], filters: {}, cursorKeys: { nieuwste: [1] } });
   const atLimit = 'a'.repeat(MAX_CURSOR_LENGTH);
   const overLimit = 'a'.repeat(MAX_CURSOR_LENGTH + 1);
 

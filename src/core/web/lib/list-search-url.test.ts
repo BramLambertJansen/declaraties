@@ -2,7 +2,7 @@ import { defaultParseSearch, defaultStringifySearch } from '@tanstack/react-rout
 import { describe, expect, test } from 'vitest';
 import { defineListSearch } from '../../shared/list-search.ts';
 
-const search = defineListSearch({ sorts: ['nieuwste'], filters: {} });
+const search = defineListSearch({ sorts: ['nieuwste'], filters: {}, cursorKeys: { nieuwste: [1] } });
 
 describe.each(['true', 'false'])('zoekterm %s in een gedeelde URL', (q) => {
   test('behoudt de zoekterm als de router hem als boolean leest', () => {

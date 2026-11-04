@@ -12,7 +12,8 @@ import { defineRoute } from '../kit.ts';
 // De tabel public.__tabel__ komt na pnpm db:generate in src/api/db/schema.ts. Lijsten hooguit __NAAM___PAGE_SIZE rijen
 // (limits.ts).
 // De lijst (spec lijstpagina): sorteer op (aangemaakt, id), houd de cursor per sortering, en escape `%`, `_` en `\` in `q`
-// voordat je zoekt met ilike.
+// voordat je zoekt met ilike. Maak de cursor met `__naamCamel__Search.encodeCursor(sort, [aangemaakt, id])`, niet met de losse
+// `encodeCursor`: die volgt `cursorKeys` uit het contract.
 function notImplemented(): never {
   throw new AppError('NOT_IMPLEMENTED');
 }

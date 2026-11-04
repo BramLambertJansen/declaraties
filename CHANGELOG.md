@@ -6,6 +6,12 @@ Hier staan wijzigingen die van belang zijn bij het gebruiken of bijwerken van de
 
 ### Toegevoegd
 
+- Sleutelbudget per sortering (spec lijstpagina, leerpunt #444): `defineListSearch` vraagt verplicht `cursorKeys`, per
+  sortering de maximale lengte van elk sleuteldeel na de sortering (`MAX_TIMESTAMP_LENGTH`, `MAX_ID_LENGTH` of een grens uit
+  `limits.ts`), en gooit bij het laden als de cursor langer dan `MAX_CURSOR_LENGTH` kan worden. Routes maken de cursor met
+  `search.encodeCursor(sort, parts)`. Wat verandert voor een app: elke eigen `defineListSearch` krijgt `cursorKeys` (typefout
+  tot dan) en een eigen lijst-route gebruikt `search.encodeCursor` in plaats van de losse `encodeCursor`.
+
 - Lintregel `rails/negatieve-tabel` en helper `expectNegativeTable` (`test/support/negative-table.ts`, leerpunt #401):
   een tabeltest die per rij onwaar eist (`test.each`/`it.each`/`describe.each`/`test.for`, ook als tagged template, met
   `toBe(false)`, `toBeFalsy()`, `not.toBe(true)` of `not.toBeTruthy()`) loopt via `expectNegativeTable({ base, check, cases })`. Die bewijst eerst dat de basis waar is en

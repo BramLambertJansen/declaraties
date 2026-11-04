@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { ROLES } from '#core/shared/can.ts';
 import { pageSchema } from '#core/shared/cursor.ts';
-import { MAX_ID_LENGTH } from '#core/shared/limits.ts';
+import { MAX_ID_LENGTH, MAX_TIMESTAMP_LENGTH } from '#core/shared/limits.ts';
 import { defineListSearch } from '#core/shared/list-search.ts';
 import { MAX_EMAIL_LENGTH, MAX_NAME_LENGTH } from '../limits.ts';
 import { defineContract } from './kit.ts';
@@ -14,9 +14,13 @@ export const STATUSSEN = ['actief', 'uitgenodigd', 'geblokkeerd', 'gedeactiveerd
 export const ACCOUNT_SORTS = ['nieuwste', 'oudste', 'naam-az', 'naam-za'] as const;
 
 // Zoeken, filteren en sorteren (spec lijstpagina): één schema voor de API (strict) en de webroute (validateSearch).
+// cursorKeys: de sleutel na de sortering is (aangemaakt, id) of (lower(naam), id); lower() kan een teken verlengen (İ → i + U+0307).
+const timeKey = [MAX_TIMESTAMP_LENGTH, MAX_ID_LENGTH] as const;
+const nameKey = [2 * MAX_NAME_LENGTH, MAX_ID_LENGTH] as const;
 export const accountsSearch = defineListSearch({
   sorts: ACCOUNT_SORTS,
   filters: { rol: ROLLEN, status: STATUSSEN },
+  cursorKeys: { nieuwste: timeKey, oudste: timeKey, 'naam-az': nameKey, 'naam-za': nameKey },
 });
 
 export const accountItem = z

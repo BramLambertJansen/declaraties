@@ -5,6 +5,7 @@ import { defineListSearch } from '../../shared/list-search.ts';
 const search = defineListSearch({
   sorts: ['nieuwste', '0', '1', 'true', 'false'],
   filters: { jaar: ['2025', '2026'], actief: ['true', 'false'], groep: ['0', '1'] },
+  cursorKeys: { nieuwste: [1], '0': [1], '1': [1], true: [1], false: [1] },
 });
 
 test.each([

@@ -9,6 +9,7 @@ import { defineListSearch } from './list-search.ts';
 const search = defineListSearch({
   sorts: ['nieuwste', 'oudste', 'naam-az'],
   filters: { rol: ['user', 'admin'], status: ['actief', 'uitgenodigd'] },
+  cursorKeys: { nieuwste: [48, 200], oudste: [48, 200], 'naam-az': [200, 200] },
 });
 
 describe('defineListSearch: grenzen', () => {
@@ -122,7 +123,7 @@ describe('defineListSearch: contract en gereserveerde sleutels', () => {
   });
 
   test.each(['q', 'sort', 'cursor'])('een filter met de sleutel %s laat defineListSearch gooien', (key) => {
-    expect(() => defineListSearch({ sorts: ['a'], filters: { [key]: ['x'] } })).toThrow(key);
+    expect(() => defineListSearch({ sorts: ['a'], filters: { [key]: ['x'] }, cursorKeys: { a: [1] } })).toThrow(key);
   });
 
   test('web: een getal als q (TanStack parset ?q=2026) wordt de string "2026"', () => {

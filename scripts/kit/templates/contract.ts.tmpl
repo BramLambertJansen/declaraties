@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { pageSchema } from '#core/shared/cursor.ts';
+import { MAX_ID_LENGTH, MAX_TIMESTAMP_LENGTH } from '#core/shared/limits.ts';
 import { defineListSearch } from '#core/shared/list-search.ts';
 import { __Naam__Id } from '../ids.ts';
 import { defineContract } from './kit.ts';
@@ -11,7 +12,14 @@ import { defineContract } from './kit.ts';
 // een route die mail verstuurt of iets anders duurs doet, krijgt `rateLimit: 'duur'`.
 // Zoeken en sorteren in de search params: één schema voor de API (strict) en de webroute (validateSearch). Filters per
 // resource komen uit de spec: voeg ze toe aan `filters`, met de kolommen in de handler.
-export const __naamCamel__Search = defineListSearch({ sorts: ['nieuwste', 'oudste'], filters: {} });
+// cursorKeys (spec lijstpagina, sleutelbudget): per sortering de maximale lengte van elk sleuteldeel na de sortering, hier
+// (aangemaakt, id). Een nieuwe sortering op een tekstveld noemt de grens uit limits.ts; past de cursor niet in MAX_CURSOR_LENGTH,
+// dan gooit defineListSearch al bij het laden.
+export const __naamCamel__Search = defineListSearch({
+  sorts: ['nieuwste', 'oudste'],
+  filters: {},
+  cursorKeys: { nieuwste: [MAX_TIMESTAMP_LENGTH, MAX_ID_LENGTH], oudste: [MAX_TIMESTAMP_LENGTH, MAX_ID_LENGTH] },
+});
 
 export const __naamCamel__Item = z
   .object({
