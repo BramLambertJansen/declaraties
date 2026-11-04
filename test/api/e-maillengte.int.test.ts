@@ -1,5 +1,4 @@
 import { afterAll, describe, expect, test } from 'vitest';
-import { inviteUser } from '../../src/core/api/auth/index.ts';
 import { MAX_EMAIL_LENGTH } from '../../src/core/shared/limits.ts';
 import { Browser } from '../auth/harness.ts';
 import { countMails, createAccountTestApp, json, mailCountNow, waitForMail } from './account-harness.ts';
@@ -60,7 +59,10 @@ describe('POST /api/auth/change-email: maximale lengte van het nieuwe adres', ()
   test('e-maillengte/AC-3: een te lang adres dat al bezet is: 400 VALIDATION en geen neutrale mail', async () => {
     const { browser, email } = await t.account('user');
     const taken = emailOfLength(MAX_EMAIL_LENGTH + 1);
-    await inviteUser(t.auth, { name: 'Ander', email: taken });
+    // Rechtstreeks aanmaken, zonder uitnodigingsmail: die zou naar een adres boven de SMTP-padgrens gaan.
+    await (
+      await t.auth.$context
+    ).internalAdapter.createUser({ name: 'Ander', email: taken, emailVerified: false }, { method: 'admin' });
     const before = await mailCountNow(email);
 
     const response = await requestChange(browser, taken);

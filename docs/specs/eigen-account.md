@@ -191,3 +191,4 @@ IP per sessie (OV-3), mail bij een nieuwe login.
   Aanbeveling: beide overnemen; met een nieuwe `createdAt` verlengt elke wachtwoordwijziging een MFA-sessie (absoluut 7 dagen, `freshAge`).
 - **OV-9** — Bezet adres: tijd gelijktrekken door ook dan een (neutrale) mail naar het oude adres te sturen, of geen mail (zoals Better Auth)?
   Aanbeveling: neutrale mail; zonder mail is een bezet adres meetbaar sneller (enumeratie), en zo ziet de eigenaar ook de poging.
+  Een te lang adres krijgt eerst `VALIDATION`, ook als het bezet is ([e-maillengte](e-maillengte.md)).
