@@ -66,14 +66,16 @@ integrationClient.call(reading: SwitchReading, request: OutboundRequest): Promis
   `normal`, `money`; `cost` en `source` vrij. Elke latere bouw-PR breidt de lijst uit. Ook `client` met een onbekende naam.
 - **App**: `src/api/integrations/index.ts` exporteert het register (template: leeg), zonder bijwerking (geen env);
   `buildApp` geeft het als optie `integrations` aan `createApp`, voor de partnerstap (M2) en het beheer (M7).
-- **Lezen** (OV-1). `readIntegrationSwitch(tx, name)` in `src/core/api/db` (vorm `createAuditFn`) roept
+- **Lezen** (OV-1). `readIntegrationSwitch(tx, name)` in `src/core/api/db/integration-switch.ts`, doorgegeven via
+  `index.ts` (vorm `createAuditFn`; eigen bestand zodat het register de pool niet laadt, depcruise `db-alleen-via-index` staat het toe) roept
   `app.integration_enabled` aan. `readSwitch` in het register gebruikt hem, alleen onder de markering (binnen `withUser`;
   anders `OutboundUsageError`), en geeft een `SwitchReading` (naam, stand, `performance.now()`). Een lezing is
   alleen geldig als core haar maakte: een module-private `WeakSet`, dus `unsafeCast` werkt niet. Dat de app
   `readIntegrationSwitch` zelf kan aanroepen is onschadelijk: `call` eist een `SwitchReading`.
 - **Volgorde in `IntegrationClient.call`**, telkens zonder aanroep: 1) onder de markering `OutboundForbiddenError`; 2) lezing
   ongeldig, van een andere koppeling of ouder dan `INTEGRATION_SWITCH_MAX_AGE_MS` (30 000, `limits.ts`) `OutboundUsageError`;
-  3) stand uit `UPSTREAM_UNAVAILABLE` met één logregel `outcome: 'DISABLED'`, `attempt` 0, `status` null. Dan de gewone client.
+  3) stand uit `UPSTREAM_UNAVAILABLE` met één logregel `outcome: 'DISABLED'`, `attempt` 0, `status` null; eerst toetst de client het
+  padsjabloon zoals de gewone client (zelfde `OutboundUsageError`, geen logregel), zodat die regel nooit een query of geheim bevat. Dan de gewone client.
 - **Zetten zonder scherm**: `pnpm integration:switch --name <naam> --on|--off`, vorm van `scripts/admin-create.mjs`, met
   `MIGRATOR_DATABASE_URL`; weigert een naam buiten het register.
 
@@ -96,7 +98,8 @@ Tegen de nep-partner; "geen aanroep" = teller 0.
 - **koppelingsregister/AC-1** — Gegeven een register met dubbele naam, ongeldige of te lange naam, host met `*`, ontbrekend
   kenmerk, `direction: ['write']` of `sensitivity: 'personal-data'`, dan `IntegrationConfigError`; `client('onbekend', …)` ook.
 - **koppelingsregister/AC-2** — Gegeven stand uit, dan geeft `call` `UPSTREAM_UNAVAILABLE` zonder aanroep met één logregel
-  `DISABLED`; een testroute van `createApp` die die fout teruggeeft, antwoordt 503 met precies `{ code, requestId }`.
+  `DISABLED`; met een ongeldig padsjabloon (bijv. `?token=…`) de gebruiksfout en geen logregel; een testroute van `createApp`
+  die die fout teruggeeft, antwoordt 503 met precies `{ code, requestId }`.
 - **koppelingsregister/AC-3** — Gegeven geen rij, dan `app.integration_enabled` `false` en de client geen aanroep.
 - **koppelingsregister/AC-4** — Gegeven aan, daarna uit via het script, dan doet een nieuwe lezing plus `call` geen aanroep.
 - **koppelingsregister/AC-5** — Gegeven een lezing van een andere koppeling, ouder dan de grens, of een nagemaakt object, dan
@@ -131,7 +134,10 @@ Tegen de nep-partner; "geen aanroep" = teller 0.
   R-LAAG-06 in `docs/framework.md` en `AGENTS.md` (export `readIntegrationSwitch`); R-DB-16 (`core.integration.*`).
 - Docs die anders onwaar worden (R-WERK-15): `docs/specs/uitgaande-client.md` ("per koppeling één client" via het register;
   `attempt` 0 bij `DISABLED`), `docs/specs/geheimen-in-env.md` (voorbeeld met `createOutboundClient`),
-  `docs/specs/netwerk-en-geheim-rails.md` AC-14 (melding), `docs/roadmap.md` ST-15 "Gebouwd:".
+  `docs/specs/netwerk-en-geheim-rails.md` (melding in criterium 14), `docs/roadmap.md` ST-15 "Gebouwd:".
+  Aanvulling (2026-11-04): de drie gebouwde specs hierboven kunnen niet in de bouw-PR mee, omdat `check-document-status`
+  nieuwe inhoud van een gebouwde spec alleen in de feature-lane toelaat en deze bouw kritieke paden raakt (ADR 0062 punt 2).
+  Ze volgen zodra die lacune is opgelost (leerpunt); tot dan is deze spec de bron voor register, schakelaar en melding.
 
 ## Buiten scope
 
@@ -146,6 +152,8 @@ een eigen `job`-functie met migratie.
 - **pgTAP** `db/tests/integration_switches.sql`: AC-3, AC-6 t/m AC-8; fixture in `test/rails/depcruise.test.ts`.
 
 ## Open vragen
+
+Besluit eigenaar (merge #530, 2026-11-04): alle aanbevelingen hieronder gevolgd.
 
 - **OV-1** — Waar lezen? Aanbeveling: `readIntegrationSwitch` in `src/core/api/db` (kritiek pad, past in deze besluit-PR);
   elders mag geen SQL (`database-alleen-in-core-db`). Geen cache: één indexlezing in een transactie die er al is, gelijk over processen.
