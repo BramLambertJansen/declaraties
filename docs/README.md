@@ -22,6 +22,7 @@ Deze template is bedoeld om webapps met code-agents te bouwen. De documentatie h
 | Weten wat nog ontbreekt | [Roadmap](roadmap.md) |
 | Weten wat een template-update verandert | [Changelog](../CHANGELOG.md) |
 | Een beheerder aanmaken of herstellen | [Beheerdersrunbook](operations/eerste-admin.md) |
+| Weten waarom een core-onderdeel zich zo gedraagt | [Loginregistratie en MFA](operations/loginregistratie.md), [focus van het foutenoverzicht](operations/formulierfocus.md), [datumkiezer](operations/datumkiezer.md), [foutlogging van idle databaseverbindingen](operations/databasefoutlogging.md) |
 
 ## Afspraken en achtergrond
 

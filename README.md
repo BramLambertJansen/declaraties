@@ -81,7 +81,7 @@ Eenmalig per repo:
 2. Zet als setup-script `bash scripts/cloud-setup.sh`. Het installeert de sandbox-pakketten (bubblewrap, socat), mise, de toolchain uit `mise.toml`, de dependencies en de git-hooks, zonder geheimen. Klaar binnen ongeveer vijf minuten betekent dat de omgeving wordt gecachet.
 3. Start elke sessie met **één repo**. Alleen dan gelden de hooks en permissieregels uit `.claude/settings.json`.
 
-Een cloudsessie heeft geen lokale stack: `pnpm gate:slow` en `pnpm test:db` draaien in CI. De GitHub-proxy beperkt niet naar welke branch gepusht wordt, dus de ruleset op `main` is daar de grens. Wat in een echte sessie wel en niet werkt (sandbox, hooks, `ask` vanaf de telefoon), staat in de cloudreview onder `docs/reviews/`. Tot die er is, is het pad naar het setup-script vanuit de omgeving niet bewezen.
+Een cloudsessie heeft geen lokale stack: `pnpm gate:slow` en `pnpm test:db` draaien in CI. De GitHub-proxy beperkt niet naar welke branch gepusht wordt, dus de ruleset op `main` is daar de grens. Wat in een cloudsessie anders werkt dan lokaal (sandbox, projecthooks, het rolhek), staat in [docs/ENVIRONMENT.md](docs/ENVIRONMENT.md#minimale-claude-code-versie) en [Grens van de sandbox](docs/ENVIRONMENT.md#grens-van-de-sandbox).
 
 Wat het script doet en waarom, staat in [docs/ENVIRONMENT.md](docs/ENVIRONMENT.md).
 Bij installatie-, proxy- of sandboxproblemen volg je de [probleemdiagnose voor de cloudomgeving](docs/ENVIRONMENT.md#problemen).
