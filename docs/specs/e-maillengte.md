@@ -1,5 +1,5 @@
 ---
-status: goedgekeurd
+status: gebouwd # #513; gevalideerd: 95e24f75c81b4883bb5b3b6b28673ab4602da8b8
 namespace: e-maillengte
 sjabloon: mini
 model: opus
