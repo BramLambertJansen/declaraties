@@ -1,3 +1,5 @@
+import { existsSync } from 'node:fs';
+
 import { ESLint } from 'eslint';
 import tseslint from 'typescript-eslint';
 import { expect, test } from 'vitest';
@@ -402,3 +404,23 @@ test.each([
     expect(tekst).toContain(deel);
   }
 });
+
+// AC-13: de huidige zone geeft geen melding van een van beide rails (regressie; pnpm lint bewijst hetzelfde op de hele repo).
+test('netwerk-en-geheim-rails/AC-13: huidige zone zonder melding van rails/netwerk-api of rails/geheim', async () => {
+  const zone = [
+    'src/api/**/*.{ts,tsx}',
+    'src/core/api/**/*.{ts,tsx}',
+    'src/shared/**/*.{ts,tsx}',
+    'src/core/shared/**/*.{ts,tsx}',
+    ...(existsSync(ENV) ? [ENV] : []),
+  ];
+  const results = await eslint.lintFiles(zone);
+  const schendingen = results.flatMap((r) =>
+    r.messages
+      .filter((m) => m.ruleId === NETWERK || m.ruleId === GEHEIM)
+      .map((m) => `${r.filePath}:${String(m.line)} ${m.ruleId ?? ''}`),
+  );
+
+  expect(results.length).toBeGreaterThan(0);
+  expect(schendingen).toStrictEqual([]);
+}, 120_000);

@@ -1,5 +1,5 @@
 ---
-status: voorstel
+status: gebouwd # #525
 namespace: netwerk-en-geheim-rails
 ---
 
@@ -138,7 +138,8 @@ opslagadapters (pad bij hun ADR); de `withJob`-eis en de overige werkstappen van
 
 - **Unit** (`test/rails/eslint-netwerk.test.ts`, vorm van `eslint-web.test.ts`, maar met ontdubbelde rule-ids):
   AC-1 tot en met AC-12 als `test.each`; AC-14 met een fixture die de meldingstekst controleert.
-- **Regressie**: AC-13 met `pnpm lint` op de hele repo. Geen integratietest.
+- **Regressie**: AC-13 met `pnpm lint` op de hele repo en een test die `eslint.lintFiles` over de zone draait
+  (`test/rails/eslint-netwerk.test.ts`). Geen integratietest.
 
 ## Open vragen
 
