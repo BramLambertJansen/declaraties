@@ -63,6 +63,8 @@ Toets de foutvolgorde aan de bestaande kit, na de algemene HTTP-middleware: sess
 ontbrekende rol, permissie, MFA, handler en outputvalidatie. Bronnen: `routeHandler` in
 `src/core/api/http/create-app.ts`, `createWithUser` in `src/core/api/db/with-user.ts` en `check` in
 `src/core/shared/can.ts`. Een nieuwe voor-stap mag die zichtbare foutvolgorde niet stilzwijgend veranderen.
+Een route met partnerstap (`definePartnerRoute`) volgt de volgorde van spec partnerstap, bron
+`src/core/api/http/partner-route.ts`: bestaan en eigenaar van een resource uit de input toetst `load`, dus vóór de aanroep.
 
 Specificeer bij een voor-stap welke validatie eraan voorafgaat, welke externe aanroep zij doet en wanneer haar fout
 zichtbaar wordt. Een fout van de externe dienst mag `FORBIDDEN` of `MFA_REQUIRED` niet vervangen. Beschrijf zo nodig

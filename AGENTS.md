@@ -23,7 +23,7 @@ Botst een regel met de opdracht: stop en vraag, omzeil of verzwak niets (R-WERK-
 - `process.env` alleen in `src/core/api/env.ts`, `import.meta.env` alleen in `src/core/web/lib/env.ts`, `MIGRATOR_DATABASE_URL` alleen in `scripts/`; `VITE_` alleen publiek (R-LAAG-08).
 
 **API**
-- Route alleen via `defineRoute({ method, path, input, output, permission, handler })`, input `.strict()`; nieuwe permissie in `src/shared/permissions.ts` met een test per verboden rol (R-WERK-09, R-CODE-03, R-TEST-03).
+- Route alleen via `defineRoute({ method, path, input, output, permission, handler })` of `definePartnerRoute`, input `.strict()`; nieuwe permissie in `src/shared/permissions.ts` met een test per verboden rol (R-WERK-09, R-CODE-03, R-TEST-03).
 - Handler gebruikt `ctx.actor`; zoek de gebruiker niet zelf op, vang geen Postgres-fouten af (R-DB-04). Fout naar buiten alleen `{ code, requestId }`, nooit stacktrace of SQL (R-SEC-02).
 
 **Database**

@@ -148,7 +148,7 @@ Open werk dat niet geparkeerd is, grofweg in volgorde. Wat nog een spec of eigen
   buiten de client; register en schakelaar per koppeling (migratie: eigen besluit-PR); partnerstap in de route kit; vaste vorm per koppeling met
   contracttestsuite en check; skill `nieuwe-koppeling`, paragraaf "Koppeling" in het spec-template, hoofdstuk in het gouden pad en een sectie in de
   feiten. Na ST-03, elk met eigen besluit-PR: outbox en sync, machineroute en inbox, tokenkluis per gebruiker, beheerschermen.
-  Gebouwd: uitgaande client, nep-partner en foutcodes (#515), `secret()` (#519), lintregels `rails/netwerk-api` en `rails/geheim` (#522, #523), register en schakelaar (spec koppelingsregister).
+  Gebouwd: uitgaande client, nep-partner en foutcodes (#515), `secret()` (#519), lintregels `rails/netwerk-api` en `rails/geheim` (#522, #523), register en schakelaar (spec koppelingsregister), partnerstap (spec partnerstap).
   **Afhankelijkheden:** ADR 0077; ST-03 voor schrijven, sync, terugbellen en tokens. Elke app-koppeling krijgt daarnaast één handmatige run tegen
   de testomgeving van de partner (ADR 0077 punt 6).
   **Klaar als:** een agent met alleen de skill deelt een fictieve partner in en schrijft een spec waarin elk kenmerk naar een bestaande bouwsteen
@@ -158,9 +158,7 @@ Open werk dat niet geparkeerd is, grofweg in volgorde. Wat nog een spec of eigen
   buiten de client falen in de lint, ook via `globalThis.fetch` en een dynamische import; een uitgezette koppeling doet geen aanroep.
   **Eisen uit het regelboek** (R-DOC-10: tot de bouw staan ze hier; de bouw-PR zet ze terug in het regelboek): de client weigert ook in een transactie van `withJob` (aanvulling R-CODE-12); de machineroute
   zonder login onder één vast prefix met verifier, tijdvenster, groottegrens, rate limit per IP en inbox, en een check die elke route buiten
-  `defineRoute` en buiten de lijst van §3 laat falen (uitzondering naast R-UIT-02, §3); foutvolgorde van de partnerstap: `FORBIDDEN`,
-  `MFA_REQUIRED` en `NOT_FOUND` vóór elke `UPSTREAM_*`-fout; een route met partnerstap gebruikt `rateLimit: 'duur'`
-  (aanvulling R-SEC-03).
+  `defineRoute` en buiten de lijst van §3 laat falen (uitzondering naast R-UIT-02, §3).
   aanleiding: `docs/adr/0077-externe-koppelingen-via-poorten.md` (verzoek van de eigenaar, 3 en 4 november 2026)
 - [ ] **ST-01 (P0) — GitHub-bescherming daadwerkelijk activeren** (stuk 6, diff-guard uit stuk 4). Een agent kan beschermd werk niet zonder de
   juiste eigenaarreview samenvoegen. Gebouwd: `scripts/github-ruleset.sh` met `test/scripts/github-ruleset.test.ts` (#104), de diff-guard met

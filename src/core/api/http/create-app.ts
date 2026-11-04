@@ -12,7 +12,7 @@ import {
   type RateLimits,
 } from '../../shared/limits.ts';
 import { unsafeCast } from '../../shared/unsafe-cast.ts';
-import type { AuthGateway } from '../auth/auth.ts';
+import type { AuthGateway, SessionInfo } from '../auth/auth.ts';
 import type { WithUser } from '../db/types.ts';
 import { AppError, statusFor } from '../errors.ts';
 import { z } from 'zod';
@@ -26,6 +26,7 @@ import { csrf } from './csrf.ts';
 import type { Readiness } from './readiness.ts';
 import { createRouteEffects } from './route-effects.ts';
 import { guardWithUser } from '../outbound/index.ts';
+import { assertPartnerRoute, runPartnerRoute } from './partner-route.ts';
 import type { Integrations } from '../integrations/index.ts';
 
 // Dev-login (spec accountbeheer, framework §3: limitatieve uitzondering, ADR 0043): logt echt in als het seed-account van de
@@ -38,7 +39,7 @@ interface BaseConfig<Services> {
   // Better Auth op /api/auth/* (framework §3: de enige routes buiten defineRoute) en de sessie per request.
   readonly auth?: AuthGateway;
   readonly withUser?: WithUser;
-  // Alleen routes uit defineRoute (ADR 0040); iets anders weigert createApp bij opstart.
+  // Alleen routes uit defineRoute of definePartnerRoute (ADR 0040); iets anders weigert createApp bij opstart.
   readonly routes?: readonly RouteDef<Contract, Services>[];
   readonly devLogin?: DevLogin;
   // Foutcodes die naar buiten mogen; een onbekende code wordt INTERNAL_ERROR.
@@ -50,8 +51,9 @@ interface BaseConfig<Services> {
   // Maximum per categorie per venster (spec rate-limit): standaard de harde grens uit core; de app geeft die uit
   // src/shared/limits.ts mee, een integratietest een lagere. Boven de harde grens weigert createApp bij opstart.
   readonly rateLimits?: RateLimits;
-  // Het koppelingsregister van de app (spec koppelingsregister); buildApp geeft het mee. Nog ongebruikt: voor de partnerstap
-  // (M2) en het beheer (M7).
+  // Het koppelingsregister van de app (spec koppelingsregister); buildApp geeft het mee. Een route met partnerstap
+  // (definePartnerRoute, spec partnerstap) vraagt het: zonder, of met een onbekende koppeling, weigert createApp bij
+  // opstart. Straks ook voor het beheer (M7).
   readonly integrations?: Integrations;
 }
 
@@ -86,6 +88,16 @@ function parseInput(raw: RawInput, params: Record<string, string>): unknown {
   return { ...body, ...params };
 }
 
+// Stap 1 van elke route: de sessie (UNAUTHENTICATED zonder), met de set-cookie-regels en de userId in de request-log.
+async function readSession(c: Context, auth: AuthGateway): Promise<SessionInfo> {
+  const { session, setCookie } = await auth.getSession(c.req.raw.headers);
+  for (const cookie of setCookie) c.header('set-cookie', cookie, { append: true });
+  if (session === null) throw new AppError('UNAUTHENTICATED');
+  const facts = c.get('requestFacts');
+  if (facts !== undefined) facts.userId = session.userId;
+  return session;
+}
+
 function routeHandler<Services>(
   route: RouteDef<Contract, Services>,
   config: BaseConfig<Services> & { readonly services?: Services },
@@ -97,19 +109,24 @@ function routeHandler<Services>(
   return async (c: Context) => {
     const { auth, withUser } = config;
     if (auth === undefined || withUser === undefined) throw new Error('createApp: routes vragen auth en withUser');
-    const { session, setCookie } = await auth.getSession(c.req.raw.headers);
-    for (const cookie of setCookie) c.header('set-cookie', cookie, { append: true });
-    if (session === null) throw new AppError('UNAUTHENTICATED');
-    const facts = c.get('requestFacts');
-    if (facts !== undefined) facts.userId = session.userId;
+    const session = await readSession(c, auth);
     const raw = await readRawInput(c, contract.method);
+    const services = unsafeCast<Services>(
+      config.services,
+      'AppConfig eist services zodra Services geen undefined toelaat; anders is undefined een geldige waarde',
+    );
+    // Spec partnerstap: twee transacties met de aanroep ertussen (partner-route.ts).
+    if (route.partner !== undefined) {
+      const rawInput = () => parseInput(raw, c.req.param());
+      return c.json(await runPartnerRoute(c, route, { auth, withUser, session, rawInput, services, rateLimit }));
+    }
     const actor = { userId: session.userId, sessionStrength: session.sessionStrength };
     const effects = createRouteEffects({
       requestId: c.get('requestId'),
       route: `${contract.method} /api${contract.path}`,
     });
     const output = await effects.run(() =>
-      timeDatabase(facts, () =>
+      timeDatabase(c.get('requestFacts'), () =>
         // De markering om de withUser-callback van elke route (spec uitgaande-client): de uitgaande client weigert in de
         // handler, ook als de app guardWithUser vergeet.
         guardWithUser(withUser)(
@@ -121,10 +138,6 @@ function routeHandler<Services>(
             if (role === null) throw new AppError('FORBIDDEN');
             const decision = route.check({ role, sessionStrength: session.sessionStrength });
             if (!decision.ok) throw new AppError(decision.code);
-            const services = unsafeCast<Services>(
-              config.services,
-              'AppConfig eist services zodra Services geen undefined toelaat; anders is undefined een geldige waarde',
-            );
             const result = await route.handler({
               input: parsed.data,
               actor: { ...session, role },
@@ -167,7 +180,9 @@ export function createApp<Services>(config: BaseConfig<Services> & { readonly se
     );
   }
   for (const route of routes) {
-    if (!isRouteDef(route)) throw new Error('createApp: alleen routes uit defineRoute (ADR 0040)');
+    if (!isRouteDef(route))
+      throw new Error('createApp: alleen routes uit defineRoute of definePartnerRoute (ADR 0040)');
+    assertPartnerRoute(route, config.integrations);
   }
   const fail = (c: Context, code: string) => c.json({ code, requestId: c.get('requestId') }, statusFor(code));
   const core: readonly string[] = coreErrorCodes;
