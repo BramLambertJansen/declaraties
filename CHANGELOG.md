@@ -6,6 +6,12 @@ Hier staan wijzigingen die van belang zijn bij het gebruiken of bijwerken van de
 
 ### Toegevoegd
 
+- Bewaking zichtbaar (leerpunt #462, spec bewaking-zichtbaar): `node scripts/kit/feiten.mjs` meldt in een Claude
+  Code-sessie op stderr `⚠ bewaking niet actief in deze sessie:` als de projecthooks niet draaien (geen recente meting van de
+  meethook) of de Bash-sandbox niet afschermt (de map boven de repository is schrijfbaar), ook vóór een toolchainfout
+  (`scripts/kit/bewaking.mjs`). Stdout en exitcode blijven gelijk. Wat verandert voor een app: niets te doen; een cloudsessie
+  zonder hooks ziet nu dat rolhek en sandbox ontbreken.
+
 - `document-status` lokaal bij `git push` (leerpunt #520, spec document-status-lokaal): de pre-push-hook draait dezelfde
   `scripts/kit/check-document-status.mjs` als de verplichte CI-check (`scripts/kit/document-status-lokaal.mjs`). Een spec die
   niet in een commit vóór de eerste code of test staat, blokkeert de push met de herstelroute; andere afkeuringen en een spec

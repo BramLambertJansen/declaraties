@@ -83,7 +83,11 @@ bij een oudere of onleesbare versie een ✗ en exit 1, ook als `claude --version
 melding in de context (`rails/hooks/lib/claude-versie.mjs`), maar zwijgt als `claude --version` faalt of ontbreekt. Zonder
 `claude` op het pad, zoals in CI, slaat de doctor de controle over. Beide kijken naar de `claude` op het pad; met meerdere
 installaties kan dat een andere zijn dan die de sessie draait. In een cloudsessie zonder projecthooks draait het rolhek
-niet (#462).
+niet (#462); `node scripts/kit/feiten.mjs` meldt dat dan op stderr met `⚠ bewaking niet actief in deze sessie:`
+(`scripts/kit/bewaking.mjs`, spec bewaking-zichtbaar): geen recente meting van de meethook in `.git/agent-meting/` (of
+`METING_DIR`), of de map boven de repository is schrijfbaar, dus de Bash-sandbox schermt niet af. De melding blokkeert niets;
+de sessie claimt dan geen rolhek, toets op effect of sandbox (R-WERK-23), draait destructieve of overgenomen commando's alleen
+in de kooi (R-TOOL-03) en noemt het in de PR-tekst.
 
 ## Eerst controleren in een sessie
 
@@ -94,6 +98,7 @@ Een sessie controleert dit eerst en stopt bij een fout, voordat ze iets verkent:
 | Node, exacte pnpm-pin en installatiebestanden aanwezig | `node scripts/kit/feiten.mjs` geeft geen `✗ toolchain ontbreekt` (`scripts/kit/toolchain.mjs`) | setup-script niet gedraaid of mislukt; zie Problemen |
 | Netwerk vanuit de Bash-tool | `pnpm install --frozen-lockfile` slaagt | zie Problemen, proxy |
 | Branch | `git branch --show-current` | zie Branchnaam |
+| Projecthooks en Bash-sandbox actief | `node scripts/kit/feiten.mjs` geeft geen `⚠ bewaking niet actief in deze sessie` | geen stop: werk door zonder op rolhek of sandbox te leunen, zie de alinea over #462 hierboven |
 
 Zonder Node 26 en dependencies draait geen enkele check die bewijs levert (`pnpm gate:fast`, `pnpm pr:verify`, `pnpm meting`).
 Een overdracht aan een cloudsessie begint daarom met een blok **Vereisten** met deze drie punten.
