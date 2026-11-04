@@ -2,8 +2,9 @@
 
 De adminpagina `/design-system` is de gereedschapskist van de app: dezelfde UI-kit als de app, met live voorbeelden in
 het echte thema ([spec designsystem-toolbox](specs/designsystem-toolbox.md)). Bovenaan staat de **Componentenindex**:
-zoeken op naam of variant, met de zoekparameter `q`. De lijst met alle componenten (ook interne onderdelen, met bron en
-importnaam) staat dicht en gaat open zodra je zoekt.
+zoeken op naam of variant, met de zoekparameter `q`. De lijst met alle componenten (ook interne onderdelen, met tabblad,
+varianten en een knop Toon) staat dicht en gaat open zodra je zoekt. Bronpad en importnaam staan niet op de pagina; die
+vraag je op met `node scripts/kit/feiten.mjs componenten` ([ADR 0048](adr/0048-ui-catalogus.md)).
 
 Daaronder staan de voorbeelden in zeven tabbladen: Basis, Acties, Formulieren, Meldingen en status, Gegevens tonen,
 Navigatie en layout en Patronen. Het open tabblad staat in de zoekparameter `vak` (bijvoorbeeld

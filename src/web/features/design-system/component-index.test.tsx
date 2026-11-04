@@ -40,12 +40,19 @@ test('zoeken op een variant vindt het herbruikbare component', () => {
   expect(screen.getByRole('row', { name: /^Button / })).toBeTruthy();
 });
 
-test('zoeken toont bronpad en hergebruik van het gevonden component', () => {
+// designsystem-toolbox/AC-9: bronpad en importnaam staan alleen in feiten.mjs componenten (ADR 0048, herzien in #501).
+test('designsystem-toolbox/AC-9: zoeken toont het gevonden component zonder bronpad of importnaam', () => {
   render(<ControlledIndex />);
   fireEvent.change(screen.getByLabelText('Component zoeken'), { target: { value: 'routeerror' } });
-  const row = screen.getByRole('row', { name: /RouteError/ });
-  expect(within(row).getByText('src/core/web/ui/route-error.tsx')).toBeTruthy();
-  expect(within(row).getByText('Publiek: RouteError')).toBeTruthy();
+  const headers = screen.getAllByRole('columnheader').map((header) => header.textContent);
+  expect(headers).toStrictEqual(['Component', 'Tabblad', 'Varianten', 'Voorbeeld']);
+  const row = screen.getByRole('row', { name: /^RouteError Meldingen en status/ });
+  expect(within(row).queryByText('src/core/web/ui/route-error.tsx')).toBeNull();
+  expect(within(row).queryByText(/Publiek|Intern/)).toBeNull();
+  fireEvent.change(screen.getByLabelText('Component zoeken'), { target: { value: 'route-error.tsx' } });
+  expect(screen.queryByRole('row', { name: /^RouteError / })).toBeNull();
+  // Terug naar de naam, zodat de controles hieronder weer op de gevonden RouteError-rij gelden.
+  fireEvent.change(screen.getByLabelText('Component zoeken'), { target: { value: 'routeerror' } });
   expect(screen.queryByRole('row', { name: /^Button / })).toBeNull();
   expect(screen.getByRole('status').textContent).toMatch(/^1 van \d+ componenten$/);
 });

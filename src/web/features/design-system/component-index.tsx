@@ -18,8 +18,9 @@ import { components, type ComponentMetadata } from '#web/ui/component-metadata.t
 
 const LIST_ID = 'alle-componenten';
 
+// Zoekt op wat de lijst toont, naam en varianten; bronpad en importnaam staan niet op de pagina (designsystem-toolbox/AC-9).
 function matches(item: ComponentMetadata, query: string): boolean {
-  return `${item.naam} ${item.bron} ${item.importnamen.join(' ')} ${Object.entries(item.varianten)
+  return `${item.naam} ${Object.entries(item.varianten)
     .flatMap(([name, values]) => [name, ...values])
     .join(' ')}`
     .toLocaleLowerCase('nl')
@@ -84,8 +85,6 @@ function IndexTable({
         <TableRow>
           <TableHead>Component</TableHead>
           <TableHead>Tabblad</TableHead>
-          <TableHead>Bron</TableHead>
-          <TableHead>Hergebruik</TableHead>
           <TableHead>Varianten</TableHead>
           <TableHead>Voorbeeld</TableHead>
         </TableRow>
@@ -97,10 +96,6 @@ function IndexTable({
             <TableRow key={`${item.bron}:${item.naam}`}>
               <TableCell>{item.naam}</TableCell>
               <TableCell>{target === undefined ? '—' : vakLabel(target.vak)}</TableCell>
-              <TableCell>
-                <code>{item.bron}</code>
-              </TableCell>
-              <TableCell>{item.publiek ? `Publiek: ${item.importnamen.join(', ')}` : 'Intern'}</TableCell>
               <TableCell>
                 {Object.entries(item.varianten)
                   .map(([name, values]) => `${name}: ${values.join(', ')}`)

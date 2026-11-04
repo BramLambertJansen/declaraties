@@ -92,7 +92,7 @@ test('dialoog: focus erin, Esc sluit, focus terug op de knop', async ({ page }) 
   expect(csp).toStrictEqual([]);
 });
 
-test('UI-index toont de echte bron en importnaam; beide toastvoorbeelden zijn bereikbaar en axe wordt op de meldingen uitgevoerd', async ({
+test('UI-index toont tabblad zonder bronpad of importnaam; beide toastvoorbeelden zijn bereikbaar en axe wordt op de meldingen uitgevoerd', async ({
   page,
 }) => {
   await signInAsAdmin(page);
@@ -102,8 +102,11 @@ test('UI-index toont de echte bron en importnaam; beide toastvoorbeelden zijn be
   await expect(page).toHaveURL(/q=RouteError/);
   await page.reload();
   await expect(index.getByLabel('Component zoeken')).toHaveValue('RouteError');
-  await expect(index.getByRole('row', { name: /RouteError/ })).toContainText('src/core/web/ui/route-error.tsx');
-  await expect(index.getByRole('row', { name: /RouteError/ })).toContainText('Publiek: RouteError');
+  // designsystem-toolbox/AC-9: bronpad en importnaam staan alleen in feiten.mjs componenten (ADR 0048).
+  const row = index.getByRole('row', { name: /RouteError/ });
+  await expect(row).toContainText('Meldingen en status');
+  await expect(row).not.toContainText('src/core/web/ui/route-error.tsx');
+  await expect(row).not.toContainText(/Publiek|Intern/);
   const errors = page.getByRole('region', { name: 'RouteError en NotFound' });
   await errors.getByRole('button', { name: 'Opnieuw proberen' }).click();
   await expect(errors.getByRole('status')).toHaveText('Opnieuw geprobeerd (voorbeeld).');

@@ -1,5 +1,5 @@
 ---
-status: gebouwd # #497
+status: gebouwd # #507
 namespace: designsystem-toolbox
 sjabloon: mini
 scope: functionele-ui
@@ -39,6 +39,7 @@ N.v.t. — geen API-route of foutcode. De schermroute `src/web/routes/_app/desig
 - **designsystem-toolbox/AC-6** — Per tabblad op 375 en 1280 px, licht en donker: `scanAxe` zonder fouten, geen horizontaal scrollen, geen CSP-schending; design-system/AC-5 blijft.
 - **designsystem-toolbox/AC-7** — `pnpm check:catalogus` en `test/ui/bundle-budget.test.ts` blijven ongewijzigd groen; `scripts/kit/` wijzigt niet.
 - **designsystem-toolbox/AC-8** — Openen, tabblad wisselen en "Toon" doen geen extra `/api/`-aanroep (design-system/AC-10 blijft).
+- **designsystem-toolbox/AC-9** — De lijst met alle componenten heeft de kolommen Component, Tabblad, Varianten en Voorbeeld; bronpad (`src/…/x.tsx`) en importnaam staan nergens op de pagina, en zoeken op een bronpad vindt niets (B3).
 
 ## Hergebruik en UX
 
@@ -47,7 +48,7 @@ N.v.t. — geen API-route of foutcode. De schermroute `src/web/routes/_app/desig
 - **Opbouw en tekst letterlijk:**
   1. PageHeader "Design system" (bestaand).
   2. Inleiding (Text, muted): "De gereedschapskist van deze app: alle onderdelen en stijlen waarmee schermen worden gebouwd, met live voorbeelden in het echte thema. Alles hier is voorbeelddata; niets wijzigt echte gegevens."
-  3. Section "Componentenindex": tekst "Zoek een onderdeel op naam of variant. Toon opent het juiste tabblad en springt naar het voorbeeld." (vervangt de huidige alinea); veld "Component zoeken" (`q`); status "{n} van {m} componenten". De tabel staat in Accordion-item "Lijst met alle componenten". Kolommen: Component, Tabblad (label van het tabblad), Varianten, Voorbeeld (knop "Toon {naam}"); Bron en Hergebruik: zie OV-1.
+  3. Section "Componentenindex": tekst "Zoek een onderdeel op naam of variant. Toon opent het juiste tabblad en springt naar het voorbeeld." (vervangt de huidige alinea); veld "Component zoeken" (`q`); status "{n} van {m} componenten". De tabel staat in Accordion-item "Lijst met alle componenten". Kolommen: Component, Tabblad (label van het tabblad), Varianten, Voorbeeld (knop "Toon {naam}"). Zoeken kijkt naar naam en varianten. Geen kolommen Bron en Hergebruik (B3).
   4. Tabs, label "Onderdelen per soort", zoekparameter `vak`. Sectietitels blijven zoals nu, behalve de splitsing van "PageHeader en Notice".
 - **Tabbladen, secties en gebruikszin:**
 
@@ -68,12 +69,12 @@ N.v.t. — geen API-route of foutcode. De schermroute `src/web/routes/_app/desig
 
 ## Besluiten
 
-Eigenaar (Bram), 2026-11-03: **B1** tabbladen per soort, het tabblad in de adresbalk (`vak`). **B2** een gebruikszin per voorbeeld, alleen op de pagina. **B3** bronpad en importnaam niet op de voorbeelden.
+Eigenaar (Bram), 2026-11-03: **B1** tabbladen per soort, het tabblad in de adresbalk (`vak`). **B2** een gebruikszin per voorbeeld, alleen op de pagina. **B3** bronpad en importnaam helemaal van de pagina, ook niet in de ingeklapte lijst; die staan alleen in `feiten.mjs componenten` ([ADR 0048](../adr/0048-ui-catalogus.md), herzien in #501). Daarmee is de vroegere OV-1 beantwoord.
 
 ## Raakt ook
 
 - `src/web/routes/_app/design-system.tsx` (`validateSearch` met `vak`); `docs/design-system-catalogue.md` (gebruiksdocs: tabbladen, `vak`, gebruikszin).
-- Spec `design-system` blijft geldig; deze spec vult hem aan. ADR 0048 blijft ongewijzigd bij de aanbeveling van OV-1.
+- Spec `design-system` blijft geldig; deze spec vult hem aan. ADR 0048 is herzien in #501 (B3).
 - Geen migratie, policy, permissie, resource of foutcode: `check:migrations`, `check:secdef`, `test:db`, `test/security/resources.ts` en de permissietest zijn n.v.t.
 
 ## Buiten scope
@@ -83,10 +84,9 @@ Gebruikszinnen in de broncode of in `feiten.mjs` (latere stap); nieuwe component
 ## Testplan
 
 - **Unit:** `src/web/features/design-system/*.test.tsx` (AC-1 t/m AC-5: volgorde, `vak`-fallback, Toon zet tabblad en focus, accordion bij `q`, gebruikszin per sectie) en `src/web/ui/section.test.tsx` (`description`, `framed`, standaard ongewijzigd).
-- **E2E:** `e2e/design-system*.spec.ts` (AC-1–AC-3, AC-6, AC-8). Gewijzigde bestaande tests: `e2e/design-system.spec.ts`, `e2e/design-system-coverage.spec.ts`, `e2e/typografie-en-layout.spec.ts`, `e2e/ui-collections.spec.ts`, `e2e/ui-data-display.spec.ts`, `e2e/ui-kit-basics.spec.ts`, `e2e/ui-ux-patterns.spec.ts`, `e2e/input-utilities.spec.ts`, `e2e/semantische-tokens.spec.ts`, `e2e/compound-input-controls.spec.ts` openen, waar ze een sectie buiten Basis bekijken, eerst het juiste tabblad via `?vak=`. Reden: tabbladen verbergen secties buiten het actieve tabblad (deze spec); de asserties blijven, behalve dat de URL-controle in `e2e/ui-ux-patterns.spec.ts` nu ook `vak=patronen` verwacht.
+- **E2E:** `e2e/design-system*.spec.ts` (AC-1–AC-3, AC-6, AC-8). Gewijzigde bestaande tests: `e2e/design-system.spec.ts`, `e2e/design-system-coverage.spec.ts`, `e2e/typografie-en-layout.spec.ts`, `e2e/ui-collections.spec.ts`, `e2e/ui-data-display.spec.ts`, `e2e/ui-kit-basics.spec.ts`, `e2e/ui-ux-patterns.spec.ts`, `e2e/input-utilities.spec.ts`, `e2e/semantische-tokens.spec.ts`, `e2e/compound-input-controls.spec.ts` openen, waar ze een sectie buiten Basis bekijken, eerst het juiste tabblad via `?vak=`. Reden: tabbladen verbergen secties buiten het actieve tabblad (deze spec); de asserties blijven, behalve dat de URL-controle in `e2e/ui-ux-patterns.spec.ts` nu ook `vak=patronen` verwacht. Voor AC-9 (B3) controleren `component-index.test.tsx`, `typografie-examples.test.tsx` en `e2e/design-system.spec.ts` niet langer bronpad en importnaam op de pagina, maar dat die ontbreken en dat het tabblad klopt.
 - **Rails:** `pnpm check:catalogus` en `test/ui/bundle-budget.test.ts` ongewijzigd (AC-7).
 
 ## Open vragen
 
-- **OV-1** — Blijven de kolommen Bron en Hergebruik in de ingeklapte lijst? ADR 0048 (Gevolgen) zegt dat pagina en `feiten.mjs componenten` dezelfde metadata tonen; opties: ja, alleen in de ingeklapte lijst; nee, met een nieuw ADR. Aanbeveling: ja, alleen in de ingeklapte lijst, zodat ADR 0048 ongewijzigd blijft.
 - **OV-2** — Blijft de bestaande hinttekst per groep (`text` in `example-targets.ts`) onder de knop "Toon {naam}" staan? Aanbeveling: ja, ongewijzigd; die beschrijft wat je in het voorbeeld kunt doen en is geen gebruikszin.

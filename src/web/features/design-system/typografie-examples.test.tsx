@@ -84,21 +84,17 @@ test('typografie-en-layout/AC-10: Stack per gap, als ul, ol en section; Inline p
 });
 
 // typografie-en-layout/AC-10
-test('typografie-en-layout/AC-10: de componentindex vindt Text, Heading, Stack en Inline in core', async () => {
+test('typografie-en-layout/AC-10: de componentindex vindt Text, Heading, Stack en Inline met hun tabblad', async () => {
   setup();
   const search = await screen.findByLabelText('Component zoeken');
-  // Op bronpad binnen de index zoeken: een rij op toegankelijke naam berekenen over alle rijen duurt in CI te lang.
+  // Op celtekst binnen de index zoeken: een rij op toegankelijke naam berekenen over alle rijen duurt in CI te lang.
   const index = search.closest('section');
   expect(index?.getAttribute('aria-labelledby')).toBeTruthy();
-  for (const [name, file] of [
-    ['Text', 'text'],
-    ['Heading', 'heading'],
-    ['Stack', 'stack'],
-    ['Inline', 'inline'],
-  ] as const) {
+  for (const name of ['Text', 'Heading', 'Stack', 'Inline']) {
     fireEvent.change(search, { target: { value: name } });
-    const source = await within(index ?? document.body).findByText(`src/core/web/ui/${file}.tsx`);
-    const row = source.closest('tr');
-    expect(row?.firstElementChild?.textContent.startsWith(name)).toBe(true);
+    const cell = await within(index ?? document.body).findByText(name, { selector: 'td' });
+    const row = cell.closest('tr');
+    expect(row === null ? null : within(row).getByText('Navigatie en layout')).toBeTruthy();
+    expect(row === null ? null : within(row).getByRole('button', { name: `Toon ${name}` })).toBeTruthy();
   }
 });
