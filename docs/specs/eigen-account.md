@@ -39,8 +39,7 @@ bevestiging via het oude én het nieuwe adres (roadmap stuk 3e).
     `createdAt`) voor de after-hook, want daar is die al verwijderd. After: de nieuwe sessie (`ctx.context.newSession`) krijgt sterkte én
     `createdAt` van de oude (OV-8); het antwoord wordt `{ user }` zonder `token`.
   - before `/change-password` en `/change-email`: `twoFactorEnabled` en sterkte ≠ `mfa` → `MFA_REQUIRED`.
-  - before `/change-email`: verse sessie eisen (Better Auth gebruikt hier `sensitiveSessionMiddleware`, geen `freshAge`; OV-4). Een nieuw adres
-    boven `MAX_EMAIL_LENGTH` weigert de hook daarna met `VALIDATION` ([e-maillengte](e-maillengte.md)). Is het adres
+  - before `/change-email`: verse sessie eisen (Better Auth gebruikt hier `sensitiveSessionMiddleware`, geen `freshAge`; OV-4). Is het adres
     bezet, dan stuurt de hook een neutrale mail naar het oude adres en antwoordt zelf `{ status: true }` (OV-9).
   - before `/verify-email`: sessie verplicht (vangnet; Better Auth maakt anders bij stap 2 zelf een sessie).
 - **`disabledPaths` erbij** (404, test per pad): `/update-user`, `/update-session`, `/list-sessions`, `/revoke-session`, `/revoke-sessions`,
@@ -191,4 +190,3 @@ IP per sessie (OV-3), mail bij een nieuwe login.
   Aanbeveling: beide overnemen; met een nieuwe `createdAt` verlengt elke wachtwoordwijziging een MFA-sessie (absoluut 7 dagen, `freshAge`).
 - **OV-9** — Bezet adres: tijd gelijktrekken door ook dan een (neutrale) mail naar het oude adres te sturen, of geen mail (zoals Better Auth)?
   Aanbeveling: neutrale mail; zonder mail is een bezet adres meetbaar sneller (enumeratie), en zo ziet de eigenaar ook de poging.
-  Een te lang adres krijgt eerst `VALIDATION`, ook als het bezet is ([e-maillengte](e-maillengte.md)).
