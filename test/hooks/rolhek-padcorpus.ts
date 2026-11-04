@@ -22,7 +22,7 @@ export interface Rij {
   /** Uitkomst achteraf als die bewust afwijkt van de uitkomst vooraf, met de reden. */
   readonly achteraf?: Uitkomst;
   readonly reden?: string;
-  /** Uitkomst achteraf als een rij die hier niets verandert, op een andere machine wel iets verandert (gawk op CI). */
+  /** Uitkomst achteraf als een rij die hier niets verandert, elders wel iets verandert (gawk op CI, een snellere of tragere runner). */
   readonly alsVeranderd?: Uitkomst;
 }
 
@@ -1859,7 +1859,10 @@ export const PADCORPUS: readonly Rij[] = [
     bestanden: { 'src/api/routes/a.test.ts': "test('a', () => {});\n" },
     lijsten: { '': ['src/api/routes/a.test.ts', 'test/x.test.ts', 'src/web/routeTree.gen.ts', '-x.test.ts'] },
     uitkomst: 'deny',
-    reden: 'loopt in de kooi over het hele (alleen-lezen) bestandssysteem; getoetst na afloop of na de time-out',
+    achteraf: 'door',
+    alsVeranderd: 'deny',
+    reden:
+      'verandert op deze machine niets als de time-out van de kooi komt voordat find de repository bereikt (dat hangt af van de snelheid van de runner); wist hij er iets, dan een blokkade',
   },
   {
     bron: 'rolhek-schrijfgaten.test.ts',
