@@ -119,7 +119,9 @@ rolhek niet af (`timeout` wel); een `git -C <map>` die tussen fetch en branch ve
 `git worktree add <pad> <branch>`.
 
 Pre-push waarschuwt (blokkeert niet) als de branch achterloopt op `origin/main`; haal main dan binnen met
-`git merge origin/main` (`scripts/kit/main-achterstand.mjs`). Een commitkop volgt conventional commits
+`git merge origin/main` (`scripts/kit/main-achterstand.mjs`). Pre-push draait ook `document-status` zoals CI (`scripts/kit/document-status-lokaal.mjs`): `git push` blokkeert
+op de volgorde: als een spec niet in een commit vóór de eerste code of test staat, en noemt de herstelroute. Andere afkeuringen zijn een waarschuwing,
+net als een spec die niet vóór de code staat maar nog geen besluit is (bijv. `voorstel`); een push van een andere branch of tag toetst het niet. Een commitkop volgt conventional commits
 (`fix(hooks): …`); de commit-msg-hook weigert een andere vorm (`scripts/kit/commit-msg.mjs`). Bij de start van een sessie op een
 featurebranch staat de open PR met checks en reviewstatus in de context, zodat een hervatte sessie rode checks en
 reviewcommentaar direct ziet. Lokaal geeft Claude Code een melding als het op de eigenaar wacht (WSL2: Windows-melding;

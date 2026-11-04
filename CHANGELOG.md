@@ -6,6 +6,12 @@ Hier staan wijzigingen die van belang zijn bij het gebruiken of bijwerken van de
 
 ### Toegevoegd
 
+- `document-status` lokaal bij `git push` (leerpunt #520, spec document-status-lokaal): de pre-push-hook draait dezelfde
+  `scripts/kit/check-document-status.mjs` als de verplichte CI-check (`scripts/kit/document-status-lokaal.mjs`). Een spec die
+  niet in een commit vóór de eerste code of test staat, blokkeert de push met de herstelroute; andere afkeuringen en een spec
+  met `voorstel` in de verkeerde volgorde geven een waarschuwing. Alleen een push van de huidige branch op HEAD wordt getoetst;
+  ontbrekende invoer (geen `origin/main`, detached HEAD) valt open. Wat verandert voor een app: niets te doen; `git push` toont dezelfde fout die CI anders pas later gaf.
+
 - Check op conflictmarkers (leerpunt #495): `pnpm ratchet` (dus `gate:fast`, pre-push en CI) faalt strikt op een regel in
   een getrackt tekstbestand die in kolom 1 begint met `<<<<<<<` of `>>>>>>>`, of op `=======`/`|||||||` tussen zulke
   markers (`scripts/kit/conflictmarkers.mjs`). Een losse `=======` (setext-kop) en ingesprongen markers tellen niet. Wat

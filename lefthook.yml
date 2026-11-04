@@ -24,3 +24,9 @@ pre-push:
     # Alleen een waarschuwing; `|| true` zodat ook een ontbrekend script de push nooit tegenhoudt.
     - name: main-achterstand
       run: node scripts/kit/main-achterstand.mjs || true
+    # Na main-achterstand (die origin/main ophaalt). Spiegel van de verplichte CI-check document-status (spec
+    # document-status-lokaal): blokkeert alleen op de volgorde spec vóór code, alleen als de push de huidige branch op HEAD
+    # bevat (stdin). Zonder het script (oude checkout) slaagt de job.
+    - name: document-status
+      use_stdin: true
+      run: test ! -f scripts/kit/document-status-lokaal.mjs || node scripts/kit/document-status-lokaal.mjs --pre-push

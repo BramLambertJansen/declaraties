@@ -40,4 +40,4 @@ Stappen:
    - "Raakt ook" noemt de checks die de spec raakt: `check:migrations`, `check:secdef`, `test:db`/policies, `test/security/resources.ts`, permissietest per verboden rol;
    - geen `⚠ open` bij `goedgekeurd`: los de vraag eerst op met de eigenaar, of geef haar een `Aanbeveling:`.
 7. Laat de reviewer elke spec in spec-modus toetsen (`.claude/agents/reviewer.md`), vóór het bouwen; hij toetst ook of het werk kritiek is.
-8. Commit de spec vóór de eerste code of test (`document-status` controleert de volgorde). Kritiek werk: eigen besluit-PR met alleen de spec, bouwen in een volgende PR. Zie `docs/operations/agent-doorloop.md`.
+8. Commit de spec vóór de eerste code of test (`document-status` controleert de volgorde, lokaal al bij `git push`). Kritiek werk: eigen besluit-PR met alleen de spec, bouwen in een volgende PR. Zie `docs/operations/agent-doorloop.md`.

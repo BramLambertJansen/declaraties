@@ -748,7 +748,7 @@ template-updates staan in de naslag hieronder; laat die de overdracht niet onder
 > **<App-naam> staat klaar** in **<absoluut-app-pad>** → github.com/<owner>/<slug>.
 > Draait: Postgres 17 + pgTAP op 127.0.0.1:<pg>, Mailpit op http://127.0.0.1:<mailui>. Migraties toegepast, rollen bewezen.
 > API: http://localhost:<api>; web en beide origins: http://localhost:<web>.
-> Afgedwongen zoals in de template: git-hooks (pre-commit: format, lint, secrets; commit-msg: conventional commits; pre-push: `pnpm gate:fast` en een waarschuwing bij achterstand op `origin/main`), de hooks, sandbox en
+> Afgedwongen zoals in de template: git-hooks (pre-commit: format, lint, secrets; commit-msg: conventional commits; pre-push: `pnpm gate:fast`, een waarschuwing bij achterstand op `origin/main` en `document-status`, dat blokkeert op de volgorde spec vóór code), de hooks, sandbox en
 > permissies van Claude Code (`.claude/`), CI (`gate:fast`, `gate:slow`, `secrets`, `image`, `check:new-resource`, `check-core`, `document-status`, CodeQL, osv-scanner)
 > en de ruleset op `main` met die checks verplicht, uitsluitend voor zover hierboven werkelijk gecontroleerd.
 > Browser/login/MFA: <uitvoerder en uitslag, of niet uitgevoerd met reden>.
