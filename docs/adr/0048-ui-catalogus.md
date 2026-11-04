@@ -3,6 +3,8 @@
 Status: geaccepteerd
 
 Vervangt [0015](0015-design-system-in-de-app.md) en [0028](0028-volledige-ui-catalogus.md).
+Herzien: 2026-11-03 (#501): punt 8 en Gevolgen, `/design-system` toont geen bronpad en importnaam meer; die staan alleen in
+`feiten.mjs componenten` (eigenaarbesluit B3, spec [designsystem-toolbox](../specs/designsystem-toolbox.md)).
 Drempel: A4. Consolidatie zonder inhoudelijke wijziging (eigenaarbesluit 2026-10-21, [0038](0038-beslisroute.md) Gevolgen).
 
 ## Context
@@ -39,7 +41,8 @@ alle UI-elementen te herkennen, te indexeren voor hergebruik en in de catalogus 
 8. **Eén bron** (was 0028 punt 2). `scripts/kit/catalogus-source.ts` voedt de CLI-index en de zoekbare index in de catalogus.
    De browser krijgt alleen compacte metadata, als Vite-transformatie (`scripts/kit/catalogus-index.ts`) van
    `src/web/ui/component-metadata.ts`: geen virtuele import, geen uitzondering op dependency-cruiser, geen compiler of
-   scriptcode in de productiebundel. In dev wordt de index opnieuw opgebouwd bij toevoegen, wijzigen en verwijderen.
+   scriptcode in de productiebundel. De pagina toont per component naam, tabblad, varianten en voorbeeld; bronpad en
+   importnaam zijn bouwinformatie voor wie code schrijft en staan alleen in `feiten.mjs componenten` (herzien 2026-11-03). In dev wordt de index opnieuw opgebouwd bij toevoegen, wijzigen en verwijderen.
 9. **Zoeken** (was 0028 punt 3). Via de bestaande `useListSearch()` en de gevalideerde zoekparameter `q`; geen eigen
    state-conventie.
 10. **Renderbewijs** (was 0028 punt 4). `scripts/kit/catalogus-graph.ts` volgt lokale JSX, importaliassen, doorgegeven JSX en
@@ -59,12 +62,16 @@ alle UI-elementen te herkennen, te indexeren voor hergebruik en in de catalogus 
 - **Handmatige registratielijst, titels of imports controleren, of een uitzonderingenlijst** (was 0028): mist nieuwe
   componenten, bewijst geen voorbeeld, of groeit tot een tweede waarheid.
 - **Een losse check naast de bestaande gate** (was 0028): versnippert de werkstraat.
+- **Bronpad en importnaam ingeklapt op de pagina houden** (2026-11-03): houdt pagina en CLI gelijk, maar de beheerder
+  ziet bouwdetails waar die niets mee doet; wie code schrijft, vraagt ze via `feiten.mjs componenten`.
 
 ## Gevolgen
 
 - `design-system:read` staat in `src/shared/permissions.ts`; de tabeltest dekt elke verboden rol en de admin zonder MFA.
 - Elke nieuwe of gewijzigde sectie van de catalogus komt in productie (was 0015).
 - Een nieuw component of een nieuwe eindige variant blokkeert CI tot export en voorbeeld compleet zijn;
-  `feiten.mjs componenten --json` en `/design-system` tonen dezelfde metadata (was 0028).
+  `feiten.mjs componenten --json` en `/design-system` komen uit dezelfde bron; de pagina laat bronpad en importnaam weg,
+  zodat ze een gereedschapskist voor de beheerder is en geen naslag voor ontwikkelaars (herzien 2026-11-03; was 0028:
+  dezelfde metadata).
 - Er komt geen API-route, migratie, dependency of baseline-uitzondering bij (was 0028). Het gebruik en uitbreiden staat in
   [de UI-catalogus gebruiken](../design-system-catalogue.md).
