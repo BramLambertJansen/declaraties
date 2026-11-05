@@ -1553,6 +1553,9 @@ export const PADCORPUS: readonly Rij[] = [
     rol: 'developer',
     bestanden: { 'src/api/routes/a.test.ts': "test('a', () => {});\n" },
     uitkomst: 'deny',
+    achteraf: 'door',
+    reden:
+      'verandert op deze machine niets als sort uit uutils komt: een lege invoer schrijft het uitvoerbestand niet (GNU sort maakt het leeg); achteraf is er niets te toetsen',
   },
   {
     bron: 'rolhek-schrijfgaten.test.ts',
@@ -1560,6 +1563,9 @@ export const PADCORPUS: readonly Rij[] = [
     rol: 'developer',
     bestanden: { 'src/api/routes/a.test.ts': "test('a', () => {});\n" },
     uitkomst: 'deny',
+    achteraf: 'door',
+    reden:
+      'verandert op deze machine niets als sort uit uutils komt: een lege invoer schrijft het uitvoerbestand niet (GNU sort maakt het leeg); achteraf is er niets te toetsen',
   },
   {
     bron: 'rolhek-schrijfgaten.test.ts',
@@ -1744,8 +1750,10 @@ export const PADCORPUS: readonly Rij[] = [
     rol: 'tester',
     bestanden: { 'src/api/routes/a.test.ts': "test('a', () => {});\n" },
     uitkomst: 'melding',
-    achteraf: 'deny',
-    reden: 'achteraf kent de toets de inhoud: de tests verdwijnen; strenger dan vooraf',
+    achteraf: 'door',
+    alsVeranderd: 'deny',
+    reden:
+      'verandert op deze machine niets als sort uit uutils komt: een lege invoer schrijft het uitvoerbestand niet (GNU sort maakt het leeg); achteraf is er niets te toetsen. Met GNU sort verdwijnen de tests: strenger dan vooraf',
   },
   {
     bron: 'rolhek-schrijfgaten.test.ts',
@@ -1753,8 +1761,10 @@ export const PADCORPUS: readonly Rij[] = [
     rol: 'tester',
     bestanden: { 'src/api/routes/a.test.ts': "test('a', () => {});\n" },
     uitkomst: 'melding',
-    achteraf: 'deny',
-    reden: 'achteraf kent de toets de inhoud: de tests verdwijnen; strenger dan vooraf',
+    achteraf: 'door',
+    alsVeranderd: 'deny',
+    reden:
+      'verandert op deze machine niets als sort uit uutils komt: een lege invoer schrijft het uitvoerbestand niet (GNU sort maakt het leeg); achteraf is er niets te toetsen. Met GNU sort verdwijnen de tests: strenger dan vooraf',
   },
   {
     bron: 'rolhek-schrijfgaten.test.ts',
@@ -2127,6 +2137,9 @@ export const PADCORPUS: readonly Rij[] = [
     rol: 'developer',
     bestanden: { 'src/api/routes/a.test.ts': "test('a', () => {});\n" },
     uitkomst: 'deny',
+    achteraf: 'door',
+    reden:
+      'verandert op deze machine niets als sort uit uutils komt: een lege invoer schrijft het uitvoerbestand niet (GNU sort maakt het leeg); achteraf is er niets te toetsen',
   },
   {
     bron: 'rolhek-schrijfgaten.test.ts',
@@ -2134,6 +2147,9 @@ export const PADCORPUS: readonly Rij[] = [
     rol: 'developer',
     bestanden: { 'src/api/routes/a.test.ts': "test('a', () => {});\n" },
     uitkomst: 'deny',
+    achteraf: 'door',
+    reden:
+      'verandert op deze machine niets als sort uit uutils komt: een lege invoer schrijft het uitvoerbestand niet (GNU sort maakt het leeg); achteraf is er niets te toetsen',
   },
   {
     bron: 'rolhek-schrijfgaten.test.ts',
@@ -2141,6 +2157,9 @@ export const PADCORPUS: readonly Rij[] = [
     rol: 'developer',
     bestanden: { 'src/api/routes/a.test.ts': "test('a', () => {});\n" },
     uitkomst: 'deny',
+    achteraf: 'door',
+    reden:
+      'verandert op deze machine niets als sort uit uutils komt: een lege invoer schrijft het uitvoerbestand niet (GNU sort maakt het leeg); achteraf is er niets te toetsen',
   },
   {
     bron: 'rolhek-schrijfgaten.test.ts',
