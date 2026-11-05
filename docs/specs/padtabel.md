@@ -1,5 +1,5 @@
 ---
-status: goedgekeurd
+status: gebouwd # #537
 namespace: padtabel
 model: opus
 ---
