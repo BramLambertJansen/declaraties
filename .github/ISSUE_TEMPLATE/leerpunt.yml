@@ -1,4 +1,4 @@
-# Leerpunt (ADR 0059)
+# Leerpunt (ADR 0059, 0078, 0081)
 name: Leerpunt
 description: Een les uit het bouwen van een app die de template kan verbeteren. Alleen in de template-repo; geen appcode, appdata of geheimen.
 title: "Leerpunt: "
@@ -46,6 +46,7 @@ body:
     attributes:
       label: Voorstel voor de plek
       options:
+        - Schrappen of vereenvoudigen
         - Type
         - Check
         - Gouden pad of generator
@@ -54,6 +55,13 @@ body:
         - AGENTS.md
     validations:
       required: true
+  - type: textarea
+    id: onderbouwing
+    attributes:
+      label: Onderbouwing
+      description: "Alleen bij Schrappen of vereenvoudigen, dan verplicht. Drie regels - Meting: nu en verwacht, elk een getal of onbekend met reden, en de bron. Overname: welk risico het stuk dekt en wat dat daarna dekt, of waarom het weg is. Terugval: signaal dat het fout was en hoe terug. Geen appcode, appdata of geheimen."
+    validations:
+      required: false
   - type: input
     id: template_sha
     attributes:

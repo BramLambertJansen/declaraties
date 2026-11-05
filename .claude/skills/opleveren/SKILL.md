@@ -80,6 +80,9 @@ Alleen nadat de PR is gemerged, ook als de eigenaar zelf mergde.
    blokkerende reviewbevinding (Leerpunt: ja), tweede mislukte correctiepoging. Per les: Leerpunt? Generiek: dien het in volgens
    het sjabloon leerpunt (gh issue create naar onderhoud.repository met --label leerpunt) en toon de tekst. Alleen voor deze app:
    een padregel, spec of ADR (vanaf 0100) in de app, geen issue. Niets: zeg "geen leerpunt".
+   Vraag ook (ADR 0081): kostte een stap, check, hook of instructie in deze sessie merkbaar tijd, rondes of tokens zonder iets
+   te vangen, of las je code die bij gelijk gedrag veel korter of sneller kan? Dan een leerpunt met plek
+   `Schrappen of vereenvoudigen` en een `Onderbouwing` met de regels `Meting:`, `Overname:` en `Terugval:`.
    De repo is `onderhoud.repository` uit `.claude/gates.json`; precies één `--label leerpunt`, geen andere vorm (anders vraagt het rolhek).
    Titel `Leerpunt: <soort>: <één zin>`; body in de volgorde van `.github/ISSUE_TEMPLATE/leerpunt.yml`, zonder appcode, appdata of geheimen:
 
@@ -93,7 +96,9 @@ Alleen nadat de PR is gemerged, ook als de eigenaar zelf mergde.
    ### Generieke reproductie
    <stappen op een verse kopie van de template>
    ### Voorstel voor de plek
-   <Type, Check, Gouden pad of generator, Skill, Padregel of AGENTS.md>
+   <Schrappen of vereenvoudigen, Type, Check, Gouden pad of generator, Skill, Padregel of AGENTS.md>
+   ### Onderbouwing
+   <alleen bij Schrappen of vereenvoudigen: Meting:, Overname: en Terugval:, elk op een eigen regel; anders leeg>
    ### Template-SHA van de app
    <git merge-base HEAD template/main; in de template zelf HEAD>
    ### Eerder
@@ -107,3 +112,5 @@ Alleen nadat de PR is gemerged, ook als de eigenaar zelf mergde.
    Sluit een PR een leerpunt (sluitwoord of koppeling), dan krijgt de beschrijving de sectie `## Leerpunt` met per issue
    `- #<nr>: trede <trede>; bewijs <testpad>`; de job `leerpunt-bewijs` draait die test rood op de basis en groen op de head.
    Alleen bij Skill, Padregel, AGENTS.md of een integratie- of e2e-test: `bewijs geen test: <reden>`, en dan merget de eigenaar.
+   Bij `trede Schrappen of vereenvoudigen`: `bewijs meting: <voor> → <na> (<bron>)` met getallen, het issue heeft die plek,
+   de bestaande tests blijven groen en de eigenaar merget.

@@ -29,7 +29,9 @@
 - #<nr>: trede <Type|Check|Gouden pad of generator|Skill|Padregel|AGENTS.md>; bewijs <testpad>
 Het testpad is een `*.test.ts(x)` (bij Type een `*.test-d.ts`) die deze PR toevoegt of wijzigt; hij faalt op de basis op een
 assertie en slaagt op de head. Bij Skill, Padregel, AGENTS.md of een integratie- of e2e-test (noem die in de reden):
-`bewijs geen test: <reden>`; dan merget de eigenaar. -->
+`bewijs geen test: <reden>`; dan merget de eigenaar. Schrappen of vereenvoudigen (ADR 0081; het issue heeft die plek):
+- #<nr>: trede Schrappen of vereenvoudigen; bewijs meting: <voor> → <na> (<bron>)
+Voor en na zijn getallen; de bestaande tests blijven groen; de eigenaar merget. -->
 
 ## Checklist
 

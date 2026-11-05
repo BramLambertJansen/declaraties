@@ -1,12 +1,19 @@
-// Leerlus met bewijs (ADR 0078, spec leerlus-bewijs): pure functies voor de issue-check (AC-5, AC-6), de sectie
+// Leerlus met bewijs (ADR 0078, spec leerlus-bewijs; ADR 0081, spec leerlus-herzien): pure functies voor de issue-check (AC-5, AC-6), de sectie
 // `## Leerpunt` in een PR-beschrijving (AC-1, AC-2, AC-4) en het oordeel over de bewijsruns (AC-3). Zonder dependencies:
 // de workflows draaien dit vanaf main zonder install, net als de guard (alleen `node:`- en relatieve imports).
 
 /** @typedef {{ label: string, verplicht: boolean, opties: string[] }} Veld */
-/** @typedef {{ nummer: number, trede: string, pad: string | null, reden: string | null }} Regel */
+/** @typedef {{ nummer: number, trede: string, pad: string | null, reden: string | null, meting: string | null }} Regel */
 /** @typedef {{ status: string, assertieFouten: number, laadFout: boolean }} RunUitslag */
 
 export const LADDER = ['Type', 'Check', 'Gouden pad of generator', 'Skill', 'Padregel', 'AGENTS.md'];
+/** De plek naast de ladder voor schrappen, vereenvoudigen of versnellen (ADR 0081 punt 1); de keuzelijst is `PLEKKEN`. */
+export const PLEK_SCHRAPPEN = 'Schrappen of vereenvoudigen';
+export const PLEKKEN = [PLEK_SCHRAPPEN, ...LADDER];
+/** De drie verplichte delen van `Onderbouwing` bij `PLEK_SCHRAPPEN` (ADR 0081 punt 2). */
+export const ONDERBOUWING = ['Meting', 'Overname', 'Terugval'];
+const KOP_PLEK = 'Voorstel voor de plek';
+const KOP_ONDERBOUWING = 'Onderbouwing';
 /** Treden waarbij `geen test: <reden>` mag (ADR 0078 punt 2). */
 export const ZONDER_TEST = ['Skill', 'Padregel', 'AGENTS.md'];
 export const GEEN_ANTWOORD = '_No response_';
@@ -88,7 +95,37 @@ export function toetsBody(body, velden) {
     else if (veld.opties.length > 0 && !leeg(gevonden.waarde) && !veld.opties.includes(gevonden.waarde))
       fouten.push(`onbekende waarde bij ${veld.label}: ${gevonden.waarde}`);
   }
-  return fouten;
+  return [...fouten, ...onderbouwingFouten(koppen)];
+}
+
+/** @param {{ kop: string, waarde: string }[]} koppen @param {string} naam */
+function waardeVan(koppen, naam) {
+  return koppen.find(({ kop }) => kop === naam)?.waarde ?? '';
+}
+
+/** De plek uit een issuebody, of '' (spec leerlus-herzien AC-3). @param {string} body */
+export function plekVan(body) {
+  return waardeVan(bodyKoppen(body), KOP_PLEK);
+}
+
+/**
+ * Bij plek `Schrappen of vereenvoudigen` moet `Onderbouwing` per deel een regel `<deel>: <tekst>` hebben, ook na `- ` of
+ * met `**` of na `1. ` (spec leerlus-herzien AC-2). Bij een andere plek: geen eis.
+ * @param {{ kop: string, waarde: string }[]} koppen @returns {string[]}
+ */
+function onderbouwingFouten(koppen) {
+  if (waardeVan(koppen, KOP_PLEK) !== PLEK_SCHRAPPEN) return [];
+  const regels = waardeVan(koppen, KOP_ONDERBOUWING)
+    .split('\n')
+    .map((regel) =>
+      regel
+        .replace(/^\s*(?:[-*]|\d+\.)\s+/, '')
+        .replaceAll('**', '')
+        .trim(),
+    );
+  const heeft = (/** @type {string} */ deel) =>
+    regels.some((regel) => regel.startsWith(`${deel}:`) && regel.slice(deel.length + 1).trim() !== '');
+  return ONDERBOUWING.filter((deel) => !heeft(deel)).map((deel) => `onderbouwing ontbreekt: ${deel}`);
 }
 
 /** @param {string[]} fouten */
@@ -115,11 +152,13 @@ export function leesLeerpuntSectie(body) {
     if (m === null) continue;
     const bewijs = (m[3] ?? '').replace(/^`|`$/g, '');
     const geenTest = /^geen test:\s*(.*)$/.exec(bewijs);
+    const meting = /^meting:\s*(.*)$/.exec(bewijs);
     uit.push({
       nummer: Number(m[1]),
       trede: (m[2] ?? '').trim(),
-      pad: geenTest === null ? bewijs : null,
+      pad: geenTest === null && meting === null ? bewijs : null,
       reden: geenTest === null ? null : (geenTest[1] ?? '').trim(),
+      meting: meting === null ? null : (meting[1] ?? '').trim(),
     });
   }
   return uit;
@@ -140,7 +179,8 @@ export function soortBewijs(pad) {
  */
 export function regelFout(regel, diff) {
   const naam = `#${String(regel.nummer)}`;
-  if (!LADDER.includes(regel.trede)) return `${naam}: onbekende trede "${regel.trede}"`;
+  if (!PLEKKEN.includes(regel.trede)) return `${naam}: onbekende trede "${regel.trede}"`;
+  if (regel.trede === PLEK_SCHRAPPEN || regel.meting !== null) return metingFout(regel, naam);
   if (regel.reden !== null) {
     if (regel.reden === '') return `${naam}: "geen test" zonder reden`;
     if (ZONDER_TEST.includes(regel.trede)) return null;
@@ -157,13 +197,27 @@ export function regelFout(regel, diff) {
   return null;
 }
 
+/** `<voor> → <na> (<bron>)`: voor en na beginnen met een cijfer, de bron is niet leeg (spec leerlus-herzien AC-3). */
+const METING = /^\d[^→>]*?\s*(?:→|->)\s*\d[^→>]*\(\s*\S[^()]*\)\s*$/;
+
+/** @param {Regel} regel @param {string} naam */
+function metingFout(regel, naam) {
+  if (regel.trede !== PLEK_SCHRAPPEN) return `${naam}: "meting:" hoort alleen bij trede ${PLEK_SCHRAPPEN}`;
+  if (regel.meting === null) return `${naam}: bij ${PLEK_SCHRAPPEN} is het bewijs "meting: <voor> → <na> (<bron>)"`;
+  if (!METING.test(regel.meting))
+    return `${naam}: meting "${regel.meting}" heeft niet de vorm <voor> → <na> (<bron>), met getallen voor en na`;
+  return null;
+}
+
 /**
  * Het plan van de bewijsjob (AC-1, AC-2, AC-4): welke leerpunten de PR sluit, of elk een geldige regel heeft, en welke
  * testbestanden op basis en head draaien.
- * @param {{ gesloten: { nummer: number, labels: string[] }[], body: string, diff: string[] }} invoer
+ * Bij trede `Schrappen of vereenvoudigen` moet het issue zelf die plek hebben (spec leerlus-herzien AC-3).
+ * @param {{ gesloten: { nummer: number, labels: string[], body?: string }[], body: string, diff: string[] }} invoer
  */
 export function bewijsPlan({ gesloten, body, diff }) {
-  const leerpunten = gesloten.filter(({ labels }) => labels.includes('leerpunt')).map(({ nummer }) => nummer);
+  const issues = gesloten.filter(({ labels }) => labels.includes('leerpunt'));
+  const leerpunten = issues.map(({ nummer }) => nummer);
   const regels = leesLeerpuntSectie(body);
   const set = new Set(diff);
   /** @type {string[]} */
@@ -176,7 +230,12 @@ export function bewijsPlan({ gesloten, body, diff }) {
       fouten.push(`#${String(nummer)}: geen regel "- #${String(nummer)}: …" in de sectie ## Leerpunt`);
       continue;
     }
-    const fout = regelFout(regel, set);
+    const issueBody = issues.find((issue) => issue.nummer === nummer)?.body ?? '';
+    const fout =
+      regelFout(regel, set) ??
+      (regel.trede === PLEK_SCHRAPPEN && plekVan(issueBody) !== PLEK_SCHRAPPEN
+        ? `#${String(nummer)}: het issue heeft een andere plek dan ${PLEK_SCHRAPPEN}`
+        : null);
     if (fout !== null) fouten.push(fout);
     else if (regel.pad !== null && !runs.some((run) => run.pad === regel.pad))
       runs.push({ pad: regel.pad, soort: soortBewijs(regel.pad) ?? 'unit' });
@@ -185,16 +244,21 @@ export function bewijsPlan({ gesloten, body, diff }) {
     leerpunten,
     fouten,
     runs,
-    zonderTest: regels.some((r) => leerpunten.includes(r.nummer) && r.reden !== null),
+    zonderTest: regels.some((r) => leerpunten.includes(r.nummer) && zonderTest(r)),
   };
 }
 
+/** `geen test:` of `meting:`: de eigenaar merget (ADR 0078 punt 2, ADR 0081 punt 3). @param {Regel} regel */
+function zonderTest(regel) {
+  return regel.reden !== null || regel.meting !== null;
+}
+
 /**
- * De reden voor agent-merge `nee` (AC-4): een regel met `geen test:` in de sectie. Leeg zonder zo'n regel.
+ * De reden voor agent-merge `nee` (AC-4): een regel met `geen test:` of `meting:` in de sectie. Leeg zonder zo'n regel.
  * @param {string} body @returns {string[]}
  */
 export function leerpuntMergeRedenen(body) {
-  return leesLeerpuntSectie(body).some((regel) => regel.reden !== null) ? [REDEN_ZONDER_TEST] : [];
+  return leesLeerpuntSectie(body).some(zonderTest) ? [REDEN_ZONDER_TEST] : [];
 }
 
 /** @param {unknown} test */

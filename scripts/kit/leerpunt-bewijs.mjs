@@ -16,7 +16,7 @@ import { bewijsPlan, graphqlData, leesVitest, lijst, metExit, runOordeel, typeUi
 const GRAPHQL = `query($owner: String!, $name: String!, $nummer: Int!) {
   repository(owner: $owner, name: $name) {
     pullRequest(number: $nummer) {
-      closingIssuesReferences(first: 50) { nodes { number labels(first: 30) { nodes { name } } } }
+      closingIssuesReferences(first: 50) { nodes { number body labels(first: 30) { nodes { name } } } }
     }
   }
 }`;
@@ -28,13 +28,20 @@ function env(naam) {
   return waarde;
 }
 
-/** @param {unknown} data @returns {{ nummer: number, labels: string[] }[]} */
+/**
+ * De gesloten issues met labels, en de body als GitHub die geeft (voor de plek, spec leerlus-herzien AC-3).
+ * @param {unknown} data @returns {{ nummer: number, labels: string[], body?: string }[]}
+ */
 export function leesGesloten(data) {
   const pr = veld(veld(veld(data, 'data'), 'repository'), 'pullRequest');
-  return lijst(veld(veld(pr, 'closingIssuesReferences'), 'nodes')).map((node) => ({
-    nummer: Number(veld(node, 'number')),
-    labels: lijst(veld(veld(node, 'labels'), 'nodes')).map((label) => String(veld(label, 'name'))),
-  }));
+  return lijst(veld(veld(pr, 'closingIssuesReferences'), 'nodes')).map((node) => {
+    const body = veld(node, 'body');
+    return {
+      nummer: Number(veld(node, 'number')),
+      labels: lijst(veld(veld(node, 'labels'), 'nodes')).map((label) => String(veld(label, 'name'))),
+      ...(typeof body === 'string' ? { body } : {}),
+    };
+  });
 }
 
 /** @param {string} uit */
