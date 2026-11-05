@@ -2,6 +2,8 @@
 
 Status: geaccepteerd
 
+Herzien: 2026-11-05 (#543): gewijzigd door [0081](0081-leerlus-schrappen-en-vereenvoudigen.md) punt 1, 2, 3 en 8 (trede Schrappen of vereenvoudigen met meting als sluitbewijs, onderbouwing in de issue-check, eigen bak in de voorsortering)
+
 Wijzigt [0059](0059-leerlus-van-app-naar-template.md) punt 1, 3, 4 en 7; vult R-SEC-09 aan met één uitzondering voor MCP.
 Drempel: A3 (een nieuwe workflow met schrijfrecht op issues; een uitzondering op "MCP alleen lezend") en A4 (een
 geaccepteerd ADR wijzigt). Uitwerking: [spec leerlus-bewijs](../specs/leerlus-bewijs.md). Aanleiding: de herbeoordeling van de
