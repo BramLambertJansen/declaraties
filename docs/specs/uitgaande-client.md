@@ -15,7 +15,7 @@ de codes niets kan gooien.
 
 ## Rollen en wie wat ziet
 
-Een gebruiker ziet bij een partnerfout alleen de tekst van de `UPSTREAM_*`-code. De app maakt per koppeling één client en mag grenzen
+Een gebruiker ziet bij een partnerfout alleen de tekst van de `UPSTREAM_*`-code. De app maakt per koppeling één client, via het register (`integrations.client`, spec [koppelingsregister](koppelingsregister.md)), en mag grenzen
 lager zetten, nooit hoger. De partner ziet methode, URL, body, de vaste `headers` van de app, de headers die
 de client zet (`Accept`, `Content-Type`, `Idempotency-Key`) en de standaardheaders van `fetch` (`User-Agent`, `Accept-Encoding`).
 
@@ -100,7 +100,7 @@ zet de markering om de `afterCommit`-effecten (OV-3) en draait `afterRollback`-c
 vanuit de handler wordt geregistreerd. `src/core/api/db` verandert niet: dat is een kritiek pad (R-WERK-05).
 
 **Log**, één regel per poging, zoals `src/core/api/obs/request-log.ts`: `time`, `requestId`, `outbound` (de `name`), `method`, `path`
-(het sjabloon), `status` (`null` zonder antwoord), `durationMs`, `attempt` (vanaf 1), `outcome` (`OK`, `EXPECTED` of de
+(het sjabloon), `status` (`null` zonder antwoord), `durationMs`, `attempt` (vanaf 1; 0 bij `outcome: 'DISABLED'`, de schakelaar staat uit en er was geen poging), `outcome` (`OK`, `EXPECTED` of de
 `UPSTREAM_*`-code) en `retry` (boolean: er volgt nog een poging). Nooit headers, body, query of geheimen. De `requestId` komt per
 aanroep mee; de partnerstap (ADR 0077 punt 7) geeft `c.get('requestId')` door. Een gooiende logschrijver stopt de aanroep niet.
 

@@ -96,7 +96,7 @@ PORT: z.number().default(1), TOKEN_TTL: z.number(), tokenTtl: z.number() }));` o
 - **netwerk-en-geheim-rails/AC-13** — Gegeven de huidige repo, dan is `pnpm lint` groen zonder nieuwe regels in
   `eslint-suppressions.json`. Een proef met de selectors op alle 82 niet-testbestanden van de zone gaf geen melding;
   `src/core/api/env.ts` (met `pattern.global`) valt onder `rails/netwerk-api` maar buiten `rails/geheim`.
-- **netwerk-en-geheim-rails/AC-14** — De meldingen bevatten letterlijk `createOutboundClient` en `R-CODE-12`, resp.
+- **netwerk-en-geheim-rails/AC-14** — De meldingen bevatten letterlijk `integrations.client` (sinds koppelingsregister; eerder `createOutboundClient`) en `R-CODE-12`, resp.
   `secret(ctx, …)` en `R-SEC-05`; `pnpm test:unit` is groen.
 
 ## Randgevallen

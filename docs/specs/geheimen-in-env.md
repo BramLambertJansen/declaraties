@@ -39,7 +39,7 @@ export function appEnv() {
   return readEnv((ctx) => z.object({ PARTNER_API_KEY: secret(ctx, { livePattern: /^partner_live_/ }) }));
 }
 // src/api/server.ts (compositie-root), naast env():
-const partner = createOutboundClient({ …, headers: { authorization: `Bearer ${appEnv().PARTNER_API_KEY.reveal()}` } });
+const partner = integrations.client('partner', { …, headers: { authorization: `Bearer ${appEnv().PARTNER_API_KEY.reveal()}` } });
 ```
 
 `src/api/env.ts` bestaat nu niet en komt niet in deze PR; het is een beschermd pad (ADR 0040) en wordt gedeeld met spec
