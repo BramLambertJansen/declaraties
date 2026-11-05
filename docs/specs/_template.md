@@ -24,6 +24,15 @@ Bij routes: beschrijf per padparameter de vorm, het contractschema, de foutcode 
 Leg de foutvolgorde en eventuele voor-stappen vast, met gecombineerde foutgevallen als acceptatiecriteria;
 zie "Padparameters en foutvolgorde" in `docs/gouden-pad.md`. Zonder routes: "n.v.t. — reden".
 
+## Koppeling
+
+Zonder externe dienst: "n.v.t. — reden". Anders volgens de skill `nieuwe-koppeling` en het app-ADR (0100+) dat de partner noemt.
+Indeling: machtiging, richting, ritme, gevoeligheid, kosten en quota, bron van waarheid; elke waarde gebouwd volgens
+`node scripts/kit/feiten.mjs koppelingen`. Per aanroep:
+
+| Methode | Padsjabloon | Time-out | Herhaalbaar | Schema | Foutcode |
+|---|---|---|---|---|---|
+
 ## Kopieer de vorm van
 
 Per regel een bestaand pad uit `docs/gouden-pad.md` (accountbeheer) en wat je overneemt; `check-docs` controleert het pad.

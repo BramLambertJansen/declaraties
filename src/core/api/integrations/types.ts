@@ -38,9 +38,20 @@ export interface IntegrationClient {
   ) => Promise<OutboundResult<S, E>>;
 }
 
+// Eén kenmerk uit de catalogus (spec koppeling-agentlaag): afgeleid uit TRAITS in register.ts, de enige lijst.
+export interface IntegrationTraitInfo {
+  // In de volgorde van TRAITS.
+  readonly trait: keyof IntegrationTraits;
+  readonly list: boolean;
+  // In de volgorde van known; built zegt of de waarde een bouwsteen heeft.
+  readonly values: readonly { readonly value: string; readonly built: boolean }[];
+}
+
 export interface Integrations {
   // De geregistreerde namen, in de volgorde van het register (voor het script en straks het beheer, M7).
   readonly names: readonly string[];
+  // De geregistreerde koppelingen in registervolgorde, diep bevroren kopieën (voor de feiten-sectie koppelingen).
+  readonly defs: readonly IntegrationDef[];
   readonly has: (name: string) => boolean;
   // Gooit IntegrationConfigError bij een onbekende naam, OutboundConfigError bij een configuratie die niet klopt.
   readonly client: (name: string, config: IntegrationClientConfig) => IntegrationClient;

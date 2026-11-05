@@ -149,7 +149,7 @@ Open werk dat niet geparkeerd is, grofweg in volgorde. Wat nog een spec of eigen
   buiten de client; register en schakelaar per koppeling (migratie: eigen besluit-PR); partnerstap in de route kit; vaste vorm per koppeling met
   contracttestsuite en check; skill `nieuwe-koppeling`, paragraaf "Koppeling" in het spec-template, hoofdstuk in het gouden pad en een sectie in de
   feiten. Na ST-03, elk met eigen besluit-PR: outbox en sync, machineroute en inbox, tokenkluis per gebruiker, beheerschermen.
-  Gebouwd: uitgaande client, nep-partner en foutcodes (#515), `secret()` (#519), lintregels `rails/netwerk-api` en `rails/geheim` (#522, #523), register en schakelaar (spec koppelingsregister), partnerstap (spec partnerstap), vaste vorm met contracttest en check (spec koppelingsvorm).
+  Gebouwd: uitgaande client, nep-partner en foutcodes (#515), `secret()` (#519), lintregels `rails/netwerk-api` en `rails/geheim` (#522, #523), register en schakelaar (spec koppelingsregister), partnerstap (spec partnerstap), vaste vorm met contracttest en check (spec koppelingsvorm), agentlaag (spec koppeling-agentlaag).
   **Afhankelijkheden:** ADR 0077; ST-03 voor schrijven, sync, terugbellen en tokens. Elke app-koppeling krijgt daarnaast één handmatige run tegen
   de testomgeving van de partner (ADR 0077 punt 6).
   **Klaar als:** een agent met alleen de skill deelt een fictieve partner in en schrijft een spec waarin elk kenmerk naar een bestaande bouwsteen

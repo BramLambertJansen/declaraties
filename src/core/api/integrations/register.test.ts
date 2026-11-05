@@ -3,7 +3,7 @@ import path from 'node:path';
 import { describe, expect, test } from 'vitest';
 import { INTEGRATION_NAME_MAX_LENGTH, INTEGRATION_SWITCH_MAX_AGE_MS } from '../../shared/limits.ts';
 import { unsafeCast } from '../../shared/unsafe-cast.ts';
-import { IntegrationConfigError, registerIntegrations, type IntegrationDef } from './index.ts';
+import { IntegrationConfigError, integrationTraitCatalog, registerIntegrations, type IntegrationDef } from './index.ts';
 
 // Spec koppelingsregister, Opstart (AC-1): registerIntegrations gooit IntegrationConfigError bij een register dat niet
 // klopt; de melding noemt de naam en de regel. Ook client() met een onbekende naam. Geen netwerk en geen database.
@@ -167,5 +167,192 @@ describe('koppelingsregister: grenzen in limits.ts', () => {
 
     expect(table).toMatch(new RegExp(`\\b${String(INTEGRATION_NAME_MAX_LENGTH)}\\b`));
     expect(table).toContain('^[a-z][a-z0-9-]*$');
+  });
+});
+
+// Spec koppeling-agentlaag (AC-3, AC-4): de catalogus van kenmerken is gebonden aan de echte controle, en het register
+// geeft diep bevroren kopieën terug die een latere wijziging niet raakt.
+
+describe('koppeling-agentlaag/AC-3: de catalogus volgt de controle van registerIntegrations', () => {
+  const catalog = integrationTraitCatalog();
+  const cases = catalog.flatMap((info) =>
+    info.values.map(({ value, built }) => ({ trait: info.trait, list: info.list, value, built })),
+  );
+
+  test('koppeling-agentlaag/AC-3: precies de zes sleutels in de volgorde auth tot en met source; direction en cadence zijn lijsten', () => {
+    expect(catalog.map(({ trait }) => trait)).toStrictEqual(Object.keys(TRAITS));
+    expect(catalog.filter(({ list }) => list).map(({ trait }) => trait)).toStrictEqual(['direction', 'cadence']);
+  });
+
+  test('koppeling-agentlaag/AC-3: de catalogus is diep bevroren en een wijzigpoging verandert hem niet', () => {
+    const before = JSON.stringify(catalog);
+
+    expect(Object.isFrozen(catalog)).toBe(true);
+    for (const info of catalog) {
+      expect(Object.isFrozen(info)).toBe(true);
+      expect(Object.isFrozen(info.values)).toBe(true);
+      for (const item of info.values) expect(Object.isFrozen(item)).toBe(true);
+    }
+    expectRejectedMutation(() => {
+      unsafeCast<{ built: boolean }[]>(catalog[0]?.values, 'test: wijzigpoging op de bevroren catalogus').push({
+        built: true,
+      });
+    });
+    expectRejectedMutation(() => {
+      const first = unsafeCast<{ built: boolean }>(catalog[0]?.values[0], 'test: wijzigpoging op een catalogwaarde');
+      first.built = !first.built;
+    });
+    expect(JSON.stringify(integrationTraitCatalog())).toBe(before);
+  });
+
+  test.each(cases.filter(({ built }) => built))(
+    'koppeling-agentlaag/AC-3: $trait $value (built: true) wordt aanvaard',
+    ({ trait, list, value }) => {
+      const traits = { ...TRAITS, [trait]: list ? [value] : value };
+      expect(() => registerIntegrations([withTraits('gebouwd', traits)])).not.toThrow();
+    },
+  );
+
+  test.each(cases.filter(({ built }) => !built))(
+    'koppeling-agentlaag/AC-3: $trait $value (built: false) gooit IntegrationConfigError met "nog geen bouwsteen"',
+    ({ trait, list, value }) => {
+      const traits = { ...TRAITS, [trait]: list ? [value] : value };
+      expectConfigError([withTraits('zonder-bouwsteen', traits)], 'zonder-bouwsteen', trait, 'nog geen bouwsteen');
+    },
+  );
+
+  test('koppeling-agentlaag/AC-3: de catalogus heeft waarden met en zonder bouwsteen', () => {
+    expect(cases.some(({ built }) => built)).toBe(true);
+    expect(cases.some(({ built }) => !built)).toBe(true);
+  });
+});
+
+// Een wijziging op een bevroren object gooit in strikte modus een TypeError; op een kopie gaat ze zonder fout. Beide mogen,
+// zolang het register niet verandert.
+function expectRejectedMutation(mutate: () => void): void {
+  try {
+    mutate();
+  } catch (error) {
+    expect(error).toBeInstanceOf(TypeError);
+  }
+}
+
+type MutableTraits = {
+  -readonly [K in keyof Traits]: Traits[K] extends readonly (infer U)[] ? U[] : Traits[K];
+};
+
+interface MutableDef {
+  name: string;
+  hosts: string[];
+  traits: MutableTraits;
+}
+
+const freshTraits = (): MutableTraits => ({
+  auth: 'none',
+  direction: ['read'],
+  cadence: ['on-demand'],
+  sensitivity: 'normal',
+  cost: 'free',
+  source: 'partner',
+});
+
+const CLIENT_CONFIG = { baseUrl: 'http://127.0.0.1:1', appEnv: 'test' } as const;
+const SNAPSHOT = [
+  { name: 'eerste', hosts: ['127.0.0.1'], traits: freshTraits() },
+  { name: 'tweede', hosts: ['127.0.0.1'], traits: freshTraits() },
+];
+
+describe('koppeling-agentlaag/AC-4: integrations.defs is een bevroren kopie in registervolgorde', () => {
+  test('koppeling-agentlaag/AC-4: defs geeft naam, hosts en kenmerken in registervolgorde', () => {
+    const integrations = registerIntegrations([
+      def('tweede', { hosts: ['127.0.0.1'] }),
+      def('eerste', { hosts: ['127.0.0.1', 'localhost'] }),
+    ]);
+
+    expect(integrations.defs).toStrictEqual([
+      { name: 'tweede', hosts: ['127.0.0.1'], traits: TRAITS },
+      { name: 'eerste', hosts: ['127.0.0.1', 'localhost'], traits: TRAITS },
+    ]);
+    expect(integrations.defs.map(({ name }) => name)).toStrictEqual(integrations.names);
+    expect(registerIntegrations([]).defs).toStrictEqual([]);
+  });
+
+  test('koppeling-agentlaag/AC-4: defs, elke definitie, hosts, traits, direction en cadence zijn bevroren', () => {
+    const integrations = registerIntegrations([def('bevroren', { hosts: ['127.0.0.1'] })]);
+    const [first] = integrations.defs;
+
+    expect(Object.isFrozen(integrations.defs)).toBe(true);
+    expect(first).toBeDefined();
+    for (const part of [first, first?.hosts, first?.traits, first?.traits.direction, first?.traits.cadence]) {
+      expect(Object.isFrozen(part)).toBe(true);
+    }
+  });
+
+  test('koppeling-agentlaag/AC-4: een wijziging via defs (ook traits.direction) verandert defs, names en client niet', () => {
+    const integrations = registerIntegrations([
+      { name: 'eerste', hosts: ['127.0.0.1'], traits: freshTraits() },
+      { name: 'tweede', hosts: ['127.0.0.1'], traits: freshTraits() },
+    ]);
+    const viaDefs = unsafeCast<MutableDef[]>(integrations.defs, 'test: wijzigpoging op de bevroren defs');
+    const first = viaDefs[0];
+
+    expectRejectedMutation(() => {
+      viaDefs.push({ name: 'erbij', hosts: ['127.0.0.1'], traits: freshTraits() });
+    });
+    expectRejectedMutation(() => {
+      viaDefs.reverse();
+    });
+    if (first !== undefined) {
+      expectRejectedMutation(() => {
+        first.name = 'anders';
+      });
+      expectRejectedMutation(() => {
+        first.hosts.push('ander.example');
+      });
+      expectRejectedMutation(() => {
+        first.traits.direction.push('write');
+      });
+      expectRejectedMutation(() => {
+        first.traits.cadence.push('push');
+      });
+      expectRejectedMutation(() => {
+        first.traits.auth = 'app-oauth2';
+      });
+      expectRejectedMutation(() => {
+        first.traits = { ...freshTraits(), sensitivity: 'personal-data' };
+      });
+    }
+
+    expect(integrations.defs).toStrictEqual(SNAPSHOT);
+    expect(integrations.names).toStrictEqual(['eerste', 'tweede']);
+    expect(integrations.has('anders')).toBe(false);
+    expect(integrations.client('eerste', CLIENT_CONFIG).name).toBe('eerste');
+    expect(() => integrations.client('eerste', { baseUrl: 'http://ander.example', appEnv: 'test' })).toThrow();
+  });
+
+  test('koppeling-agentlaag/AC-4: een wijziging van het invoerobject (ook traits en lijsten) verandert defs, names en client niet', () => {
+    const traits = freshTraits();
+    const first: MutableDef = { name: 'eerste', hosts: ['127.0.0.1'], traits };
+    const list: MutableDef[] = [first, { name: 'tweede', hosts: ['127.0.0.1'], traits: freshTraits() }];
+    const integrations = registerIntegrations(list);
+
+    first.name = 'anders';
+    first.hosts.push('ander.example');
+    traits.direction.push('write');
+    traits.cadence.push('periodic');
+    traits.auth = 'on-behalf-of-user';
+    traits.sensitivity = 'personal-data';
+    first.traits = { ...freshTraits(), source: 'shared' };
+    list.push({ name: 'derde', hosts: ['127.0.0.1'], traits: freshTraits() });
+    list.reverse();
+
+    expect(integrations.defs).toStrictEqual(SNAPSHOT);
+    expect(integrations.names).toStrictEqual(['eerste', 'tweede']);
+    expect(integrations.has('anders')).toBe(false);
+    expect(integrations.has('derde')).toBe(false);
+    expect(integrations.client('eerste', CLIENT_CONFIG).name).toBe('eerste');
+    // De host die later aan het invoerobject werd toegevoegd, geldt niet voor de client.
+    expect(() => integrations.client('eerste', { baseUrl: 'http://ander.example', appEnv: 'test' })).toThrow();
+    expect(() => integrations.client('anders', CLIENT_CONFIG)).toThrow(IntegrationConfigError);
   });
 });

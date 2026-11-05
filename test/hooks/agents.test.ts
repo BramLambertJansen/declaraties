@@ -66,6 +66,7 @@ describe('skills', () => {
         'nieuw-component',
         'nieuw-route',
         'nieuw-scherm',
+        'nieuwe-koppeling',
         'ontwerp-overnemen',
         'opleveren',
         'security-review',

@@ -3,7 +3,7 @@ import { allowedHosts } from '../outbound/config.ts';
 import { OutboundConfigError } from '../outbound/errors.ts';
 import { createIntegrationClient } from './client.ts';
 import { IntegrationConfigError } from './errors.ts';
-import type { IntegrationDef, Integrations, IntegrationTraits } from './types.ts';
+import type { IntegrationDef, Integrations, IntegrationTraitInfo, IntegrationTraits } from './types.ts';
 
 // Het register (spec koppelingsregister, Opstart; ADR 0077 punt 1 en 2): bij opstart gecontroleerd, elke fout een
 // IntegrationConfigError met naam en regel.
@@ -78,6 +78,47 @@ function checkTraits(def: IntegrationDef): void {
   }
 }
 
+const isTraitKey = (key: string): key is keyof IntegrationTraits => Object.hasOwn(TRAITS, key);
+
+// De catalogus van kenmerken (spec koppeling-agentlaag, OV-2): afgeleid uit TRAITS, één keer gebouwd en diep bevroren.
+const CATALOG: readonly IntegrationTraitInfo[] = Object.freeze(
+  Object.entries(TRAITS).flatMap(([trait, rule]: [string, TraitRule]) =>
+    isTraitKey(trait)
+      ? [
+          Object.freeze({
+            trait,
+            list: rule.list,
+            values: Object.freeze(
+              rule.known.map((value) => Object.freeze({ value, built: rule.built.includes(value) })),
+            ),
+          }),
+        ]
+      : [],
+  ),
+);
+
+// Per kenmerk de lijst-eigenschap en per bekende waarde of er een bouwsteen is; bevroren, in de volgorde van TRAITS.
+export function integrationTraitCatalog(): readonly IntegrationTraitInfo[] {
+  return CATALOG;
+}
+
+// Een diep bevroren kopie: een latere wijziging van het invoerobject verandert het register niet.
+function frozenDef(def: IntegrationDef): IntegrationDef {
+  const { traits } = def;
+  return Object.freeze({
+    name: def.name,
+    hosts: Object.freeze([...def.hosts]),
+    traits: Object.freeze({
+      auth: traits.auth,
+      direction: Object.freeze([...traits.direction]),
+      cadence: Object.freeze([...traits.cadence]),
+      sensitivity: traits.sensitivity,
+      cost: traits.cost,
+      source: traits.source,
+    }),
+  });
+}
+
 // Controleert het register bij opstart; gooit IntegrationConfigError. Zonder bijwerking: geen env, geen netwerk.
 export function registerIntegrations(list: readonly IntegrationDef[]): Integrations {
   const defs = new Map<string, IntegrationDef>();
@@ -85,11 +126,12 @@ export function registerIntegrations(list: readonly IntegrationDef[]): Integrati
     checkName(def.name, new Set(defs.keys()));
     checkHosts(def);
     checkTraits(def);
-    defs.set(def.name, Object.freeze({ ...def, hosts: Object.freeze([...def.hosts]) }));
+    defs.set(def.name, frozenDef(def));
   }
   const names = Object.freeze([...defs.keys()]);
   return {
     names,
+    defs: Object.freeze([...defs.values()]),
     has: (name) => defs.has(name),
     client: (name, config) => {
       const def = defs.get(name);

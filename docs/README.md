@@ -12,6 +12,7 @@ Deze template is bedoeld om webapps met code-agents te bouwen. De documentatie h
 | Een nieuwe app laten aanmaken | [Startinstructie voor coding agents](../START-NIEUWE-APP.md) → [setup-playbook](nieuwe-app.md); de startinstructie beschrijft de volgorde, het playbook de uitvoering |
 | De template met een echte app beproeven | [ST-09 praktijkproef](operations/st-09-praktijkproef.md): generiek protocol; appkeuze, appdata en resultaten blijven in de aparte app-repo |
 | Een feature bouwen | [Gouden pad](gouden-pad.md), daarna de bijbehorende featurespec |
+| Een koppeling met een externe dienst bouwen | Skill `nieuwe-koppeling`; [Gouden pad](gouden-pad.md#koppeling-met-een-externe-dienst) |
 | UI-componenten vinden en uitproberen | [UI-catalogus](design-system-catalogue.md) |
 | Een ontwerp of huisstijl overnemen | Skill `ontwerp-overnemen`; mappingdocumenten in [ontwerp/](ontwerp/_template.md) |
 | Tabellen, tabs, galerijen en filters gebruiken | [Gegevensweergave en navigatie](ui-data-display.md) |

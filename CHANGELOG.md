@@ -6,6 +6,12 @@ Hier staan wijzigingen die van belang zijn bij het gebruiken of bijwerken van de
 
 ### Toegevoegd
 
+- Agentlaag voor koppelingen (ST-15, spec koppeling-agentlaag): skill `nieuwe-koppeling` (indelen op zes kenmerken, stoppen
+  bij een waarde zonder bouwsteen), sectie `koppelingen` in `node scripts/kit/feiten.mjs` (register van de app en per kenmerk
+  welke waarden gebouwd zijn), kop "Koppeling" in het spec-template en een hoofdstuk in het gouden pad. Core:
+  `integrationTraitCatalog()` en `integrations.defs`; het register bevriest kenmerken nu diep. Wat verandert voor een app: een
+  nieuwe spec krijgt de kop "Koppeling" (zonder externe dienst "n.v.t. — reden"); verder niets te doen.
+
 - Voorwaardelijk geregistreerde tests tellen als skip (leerpunt #410, spec voorwaardelijke-tests): krijgt een bestaand
   testbestand meer tests binnen `if`/`else`/`switch`/`catch`, na een vroege `return`/`throw`, na `&&`/`||`/`??` of een
   ternary, of `test` als waarde (`ok ? test : test.skip`), dan geeft `testChangeRisk` `skip` (rolhek en

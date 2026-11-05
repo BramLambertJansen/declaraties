@@ -4,7 +4,7 @@
 
 export { IntegrationConfigError } from './errors.ts';
 export { readSwitch } from './reading.ts';
-export { registerIntegrations } from './register.ts';
+export { integrationTraitCatalog, registerIntegrations } from './register.ts';
 export type {
   Adapter,
   AdapterCall,
@@ -12,6 +12,7 @@ export type {
   IntegrationClientConfig,
   IntegrationDef,
   Integrations,
+  IntegrationTraitInfo,
   IntegrationTraits,
   SwitchReading,
 } from './types.ts';
