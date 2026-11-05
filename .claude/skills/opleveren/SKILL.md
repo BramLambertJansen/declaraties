@@ -29,13 +29,13 @@ Feiten nu:
 6. De lus leeft alleen binnen de sessie: geen timer, token of credentialwerk.
 7. Bevat de PR de implementatie van een spec: zet na het openen van de PR in een gewone commit `status: gebouwd # #<nr>` met
    het eigen PR-nummer, plus het roadmapvinkje met `#<nr>` als de spec een item noemt (ADR 0062); geen wachten op groen.
-   Alleen voor een spec waarvan de implementatie al op main staat: eerst groen op HEAD, dan `pnpm docs:status <spec> gebouwd --pr <nr> --roadmap`
-   (zonder `--roadmap` als geen roadmap-item de spec noemt) als laatste commit (het vinkje hoort in die commit, niet in de
-   implementatie), en pas na groen op die commit mag de eigenaar mergen of auto-merge aanzetten. Staat auto-merge al aan,
-   vraag de eigenaar hem uit te zetten. Zonder `gh`-auth: stop en meld het. Noemt het roadmap-item het specpad niet
-   tussen backticks (dan kan `--roadmap` het niet afvinken), dan komt de roadmapwijziging in de implementatie, niet in de
-   statuscommit; een commit na de statuscommit maakt `document-status`
-   rood (leerpunt #314; `docs/operations/agent-doorloop.md`, "PR en statussen afronden").
+   Alleen voor een spec waarvan de implementatie al op main staat: een aparte PR met alleen
+   `pnpm docs:status <spec> gebouwd --pr <nr> --roadmap` (zonder `--roadmap` als geen roadmap-item de spec noemt); het
+   bouwbewijs (gemergde PR, verplichte checks groen op de head) komt van GitHub, zonder SHA in de statusregel (ADR 0080).
+   Zonder `gh`-auth: stop en meld het. Noemt het roadmap-item het specpad niet tussen backticks (dan kan `--roadmap` het
+   niet afvinken), dan komt de roadmapwijziging in de implementatie; een status-PR wijzigt alleen statusregels en
+   vinkjes, elke andere wijziging erin maakt `document-status` rood (`docs/operations/agent-doorloop.md`, "PR en
+   statussen afronden").
 8. Draai `pnpm meting --trend` en `pnpm leespad`. Zet elke "let op"-regel (de trend: een echte stap omhoog in reviewrondes,
    CI-rood of Codex-bevindingen; het leespad: groei tegenover de basis) in de PR-beschrijving en noem hem in de oplevermelding
    aan de eigenaar; de eigenaar beslist (R-DOC-08, ADR 0070). "onbekend" meld je als onbekend.

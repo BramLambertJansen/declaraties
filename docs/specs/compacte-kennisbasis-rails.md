@@ -48,7 +48,8 @@ Geen accountbeheerpad uit `docs/gouden-pad.md` past (werkstraat, geen UI).
 - **compacte-kennisbasis-rails/AC-4** — `vervangen door NNNN` en links (`linkViolations`) lossen op naar `archief/`, ook relatief
   vanuit `archief/`; een niet-bestaand pad is rood.
 - **compacte-kennisbasis-rails/AC-5** — `documentKind` herkent `docs/template/specs/` als spec, met AC-traceerbaarheid. Een
-  byte-gelijke `git mv` van een spec (elke status) daarheen is groen in `verifyGeenRename` en de lane-herkenning.
+  byte-gelijke `git mv` daarheen is alleen groen voor een spec op `voorstel`; een vervallen spec gaat naar
+  `docs/specs/archief/` ([ADR 0080](../adr/0080-specarchief-en-bouwvorm.md)).
 - **compacte-kennisbasis-rails/AC-6** — `framework §N` of `framework.md §N` met N buiten §1–§12 en §11a is rood, behalve in
   `docs/adr/` en `archief/` (onwijzigbaar; de ankers blijven).
 - **compacte-kennisbasis-rails/AC-7** — Een backtick-pad in `docs/framework.md` dat niet bestaat, is rood tenzij direct erachter
