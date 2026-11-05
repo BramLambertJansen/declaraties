@@ -1,4 +1,4 @@
-# 0078 — Zelfladende paden: afscherming door de sandbox, vooraf een leeslijst
+# 0082 — Zelfladende paden: afscherming door de sandbox, vooraf een leeslijst
 
 Status: geaccepteerd
 
