@@ -1,9 +1,10 @@
 import { spawnSync } from 'node:child_process';
-import { mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, test } from 'vitest';
 import { decide, loadConfig } from '../../rails/hooks/lib/rolhek.mjs';
+import { OUDE_GATES_TEKST } from '../rails/padtabel-kit';
 
 // ADR 0045 punt 8 tot 9 (contract B1 tot en met B3): de modus `onderhoud` (alleen in de template-repo) behandelt `voorReview` voor
 // de hoofdsessie en de developer zoals de andere gate-paden, behalve de paden in `altijdVragen`. Al het andere blijft zoals het is.
@@ -20,8 +21,10 @@ const ALTIJD_VRAGEN = [
   'pnpm-lock.yaml',
 ];
 
+// `altijdVragen` als losse lijst bestaat alleen in de oude vorm: de basis is de gates.json van 30cc352 (padtabel-kit), die de
+// lezers nog accepteren en die dezelfde lijsten geeft als de padtabel (ADR 0079, spec padtabel AC-6).
 const echte = (): Record<string, unknown> => {
-  const parsed: unknown = JSON.parse(readFileSync('.claude/gates.json', 'utf8'));
+  const parsed: unknown = JSON.parse(OUDE_GATES_TEKST);
   return typeof parsed === 'object' && parsed !== null ? { ...parsed } : {};
 };
 // De echte configuratie zonder de twee nieuwe sleutels, zodat elke test ze zelf zet (de echte krijgt ze pas met de implementatie).

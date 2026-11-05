@@ -9,14 +9,16 @@ import { automaticRunner } from './runner-authority.mjs';
 import { isCoreUiSource, testChangeRisk } from './functional-ui.mjs';
 import { staleBranchStart } from './verse-main.mjs';
 import { zelfladend } from './zelfladend.mjs';
+import { afgeleid, globMatch } from './padtabel.mjs';
 
 /**
  * @typedef {{ gates: string[], testpaden: string[], jsonGates: Record<string, string[]>, gegenereerd: string[],
  *   migraties: string[], schrijfrecht: Record<string, string[]>, mcpLezen: string[], voorReview?: string[] | undefined,
- *   altijdVragen?: string[] | undefined, zelfladend?: string[] | undefined, onderhoud?: { repository: string } | undefined,
+ *   altijdVragen?: string[] | undefined, kritiek?: string[] | undefined, zelfladend?: string[] | undefined, onderhoud?: { repository: string } | undefined,
  *   rolhekEffectHoofdsessie?: 'uit' | 'schaduw' | 'aan', generatoren?: string[] | undefined }} Config
  * `rolhekEffectHoofdsessie` (spec rolhek-vooraf-krimp AC-4, AC-7): ontbreekt → `uit`. `generatoren`: commando's die exact zo een
  * pad onder `gegenereerd` mogen schrijven.
+ * De lijsten komen uit `afgeleid` (rails/hooks/lib/padtabel.mjs, ADR 0079); alleen in de oude vorm kunnen ze ontbreken:
  * `voorReview` ontbreekt → elke gate telt als voorReview (faalt dicht). `altijdVragen` ontbreekt → in onderhoud blijft elk
  * voorReview-pad een gate (faalt dicht). `onderhoud`: de repository waarin de onderhoudsmodus geldt (ADR 0045 punt 8).
  * @typedef {{ root: string, cwd: string, config: Config, read: (rel: string) => string | null,
@@ -57,16 +59,19 @@ export function loadConfig(text) {
       throw new Error(`.claude/gates.json: ${key} is geen object`);
     return Object.fromEntries(Object.entries(found).map(([name, items]) => [name, Array.isArray(items) ? items.map(String) : []]));
   };
+  // Spec padtabel (ADR 0079): gates, voorReview, altijdVragen en kritiek komen uit de padtabel (of de oude vorm); beide vormen gooit.
+  const lijsten = afgeleid(raw);
   return {
-    gates: list('gates'),
+    gates: lijsten.gates,
     testpaden: list('testpaden'),
     gegenereerd: list('gegenereerd'),
     migraties: list('migraties'),
     mcpLezen: list('mcpLezen'),
     jsonGates: record('jsonGates'),
     schrijfrecht: record('schrijfrecht'),
-    voorReview: optionalList('voorReview'),
-    altijdVragen: optionalList('altijdVragen'),
+    voorReview: lijsten.voorReview,
+    altijdVragen: lijsten.altijdVragen,
+    kritiek: lijsten.kritiek,
     zelfladend: optionalList('zelfladend'),
     onderhoud: onderhoudVan(value('onderhoud')),
     rolhekEffectHoofdsessie: effectModus(value('rolhekEffectHoofdsessie')),
@@ -547,27 +552,7 @@ export function jsonKeysChanged(keys, before, after) {
   return old === null || next === null || old !== next;
 }
 
-/**
- * Glob met `*` (binnen één map), `**` (over mappen) en `?`.
- * @param {string} glob
- * @param {string} rel
- */
-export function globMatch(glob, rel) {
-  let pattern = '';
-  for (let index = 0; index < glob.length; index += 1) {
-    const char = glob[index] ?? '';
-    if (glob.startsWith('**/', index)) {
-      pattern += '(?:.*/)?';
-      index += 2;
-    } else if (glob.startsWith('**', index)) {
-      pattern += '.*';
-      index += 1;
-    } else if (char === '*') pattern += '[^/]*';
-    else if (char === '?') pattern += '[^/]';
-    else pattern += char.replace(/[.+^${}()|[\]\\]/g, '\\$&');
-  }
-  return new RegExp(`^${pattern}$`).test(rel);
-}
+export { globMatch } from './padtabel.mjs';
 
 // ---------- Bash ----------
 

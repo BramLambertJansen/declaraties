@@ -116,7 +116,10 @@ describe('taakmandaat tegen echte git-objecten', () => {
   test('het echte rolhek gebruikt de gates uit main bij een lokaal weggehaalde core-bescherming', () => {
     const { root } = fixture();
     // Een pad uit altijdVragen: in de template-repo staat de onderhoudsmodus aan (ADR 0045), waarin scripts/** alleen een melding is.
-    write(root, '.claude/gates.json', CONFIG.replaceAll('".github/**",', ''));
+    // De padtabel (ADR 0079): de rij `.github/**` uit `paden` halen; de regel zelf staat in de vorm `".github/**": { … },`.
+    const zonderRij = CONFIG.replace(/^\s*"\.github\/\*\*":\s*\{[^}]*\},\n/m, '');
+    expect(zonderRij).not.toContain('".github/**"');
+    write(root, '.claude/gates.json', zonderRij);
     const payload = {
       cwd: root,
       tool_name: 'Write',

@@ -15,6 +15,7 @@ import { execFileSync } from 'node:child_process';
 import { appendFileSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { globMatch } from '../../rails/hooks/lib/rolhek.mjs';
+import { afgeleid } from '../../rails/hooks/lib/padtabel.mjs';
 import { agentMergeOordeel, leesMergeConfig, patchBytes } from './agent-merge.mjs';
 import { leerpuntMergeRedenen } from './leerpunt.mjs';
 
@@ -117,7 +118,8 @@ export function leesConfig(tekst) {
   if (typeof json !== 'object' || json === null || Array.isArray(json))
     throw new Error('.claude/gates.json: jsonGates is geen object');
   return {
-    gates: lijst('gates'),
+    // Spec padtabel (ADR 0079): de gates komen uit de padtabel of de oude vorm; beide vormen tegelijk gooit (faalt dicht).
+    gates: afgeleid(ruw).gates,
     testpaden: lijst('testpaden'),
     goedkeurders: lijst('goedkeurders'),
     jsonGates: Object.fromEntries(

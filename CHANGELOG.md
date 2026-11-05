@@ -305,6 +305,18 @@ Hier staan wijzigingen die van belang zijn bij het gebruiken of bijwerken van de
 
 ### Gewijzigd
 
+- Eén padtabel (ADR 0079, spec padtabel): `.claude/gates.json` beschrijft per glob in `paden` het schrijfniveau (`gate`,
+  `voorReview`, `altijdVragen`) en het besluit (`agent`, `eigenaar`, `besluit-pr`); per kolom wint de strengste passende rij.
+  Rolhek, diff-guard, lane, agent-merge, `pnpm pr:merge` en check-docs leiden er de oude lijsten uit af
+  (`rails/hooks/lib/padtabel.mjs`); `KRITIEK` in `scripts/kit/lane.mjs` vervalt. `node scripts/kit/feiten.mjs pad <pad>` toont
+  het niveau met de globs die het leveren. check-docs eist samenhang (altijdVragen ⇒ besluit-pr, schrijven ≥ gate ⇒ niet
+  agent), geen dubbele, `!`- of lege rij en een vloer (`.github/**`, `.claude/hooks/**`, `.claude/settings.json`,
+  `.claude/gates.json`, `.claude/decisions.json`, `package.json`, `pnpm-lock.yaml`: altijdVragen en besluit-pr).
+  `.claude/decisions.json` houdt alleen `version` en `requiredChecks`. Wat verandert voor een app: zet bij de template-merge
+  `gates`, `voorReview`, `altijdVragen`, `agentMerge.toegestaan` en `agentMerge.kritiek` om naar rijen in `paden` (de oude
+  vorm is rood in check-docs, hooks en scripts lezen hem nog), voeg CODEOWNERS-regels toe voor de vloerpaden die nu eigen
+  gates zijn, en haal de records uit `decisions.json`.
+
 - CI draait `gate:fast`, `check:new-resource` en `gate:slow (ui:check)` in delen naast elkaar (ADR 0076, spec
   `ci-in-delen`): de snelle suite in `checks`, `test-1` en `test-2`, de e2e-suite in twee helften. Samenvattende jobs houden
   de verplichte namen, dus de ruleset verandert niet. Nieuw: `pnpm gate:fast --deel <naam>`, `pnpm check:new-resource --deel

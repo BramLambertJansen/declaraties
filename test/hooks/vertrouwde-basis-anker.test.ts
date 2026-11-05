@@ -16,6 +16,7 @@ import { deflateSync } from 'node:zlib';
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import { readAuthority } from '../../rails/hooks/lib/authority-context.mjs';
 import { trustedRunner } from '../../rails/hooks/lib/runner-authority.mjs';
+import { OUDE_GATES_TEKST } from '../rails/padtabel-kit';
 
 // ADR 0045 punt 3 (voorwaarde voor punt 8 en 9): de hooks lezen hun vertrouwde basis uit het anker (de SHA die de stub-lader als
 // RAILS_ANKER doorgeeft), gecontroleerd tegen de hash van elk object, en niet uit een lokale origin/main die een agent kan
@@ -462,8 +463,10 @@ describe('A4: trustedRunner(root) met RAILS_ANKER', () => {
 
 // ---------- A5: het rolhek-script ----------
 
+// `voorReview` als losse lijst bestaat alleen in de oude vorm: de basis is de gates.json van 30cc352 (padtabel-kit), die het
+// rolhek nog accepteert (ADR 0079, spec padtabel AC-11).
 const echteConfig = (): Record<string, unknown> => {
-  const parsed: unknown = JSON.parse(readFileSync('.claude/gates.json', 'utf8'));
+  const parsed: unknown = JSON.parse(OUDE_GATES_TEKST);
   return typeof parsed === 'object' && parsed !== null ? { ...parsed } : {};
 };
 const VOOR = (voorReview: string[]) => JSON.stringify({ ...echteConfig(), voorReview }, null, 2);

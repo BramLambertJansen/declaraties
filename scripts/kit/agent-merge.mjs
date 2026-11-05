@@ -1,6 +1,7 @@
 // Oordeel agent-merge (ADR 0069 punt 1, spec agent-merge-niet-kritiek AC-1): mag de hoofdsessie deze PR zelf mergen? Puur:
 // de diff-guard levert de wijzigingen, de tekst van de bronbestanden en het risico-overzicht. Een toegestane lijst, de rest
-// dicht: elk pad moet op `agentMerge.toegestaan` staan en op geen gate, `agentMerge.kritiek` of kritiek pad (ADR 0062). Een
+// dicht: elk pad moet op `agentMerge.toegestaan` staan en op geen gate, `agentMerge.kritiek` of kritiek pad (ADR 0062); die
+// lijsten komen uit de padtabel `paden` (rails/hooks/lib/padtabel.mjs, ADR 0079: toegestaan = besluit agent met schrijven vrij). Een
 // goedkeuring telt niet mee; reviews worden hier niet gelezen. Omvang (spec agent-merge-zonder-codex AC-2): hoogstens
 // `agentMerge.maxRegels` regels, hoogstens `agentMerge.maxBytes` gewijzigde bytes (spec agent-merge-bytegrens: weinig maar
 // zeer lange regels omzeilen de regelgrens niet) en geen binair bestand. Ontbreekt `maxRegels` of `maxBytes`, dan is
@@ -10,7 +11,7 @@
 // "agentMerge ontbreekt of is onleesbaar" bij een ongeldige lijst. `patchBytes()` is de ene bytetelling voor CI en `pr:merge`.
 
 import { Buffer } from 'node:buffer';
-import { globMatch } from '../../rails/hooks/lib/rolhek.mjs';
+import { agentMergeLijsten, afgeleid, globMatch } from '../../rails/hooks/lib/padtabel.mjs';
 import { kritiekPad } from './lane.mjs';
 
 /**
@@ -18,7 +19,8 @@ import { kritiekPad } from './lane.mjs';
  * @typedef {{ toegestaan: string[], kritiek: string[], codex: CodexModus, maxRegels: number,
  *   maxBytes: number }} AgentMerge
  * @typedef {{ gates: string[], testpaden: string[], jsonGates: Record<string, string[]>, voorReview?: string[] | undefined,
- *   altijdVragen?: string[] | undefined, agentMerge: AgentMerge | null, merge: 'eigenaar' | 'niet-kritiek' }} MergeConfig
+ *   altijdVragen?: string[] | undefined, kritiek?: string[] | undefined, agentMerge: AgentMerge | null,
+ *   merge: 'eigenaar' | 'niet-kritiek' }} MergeConfig
  * @typedef {{ status: string, pad: string, van?: string }} Wijziging
  * @typedef {{ wijzigingen: Wijziging[], json: Record<string, { voor: string | null, na: string | null }>,
  *   geraakteJson: string[], risico: Record<string, string[]>, regels?: unknown, binair?: unknown, bytes?: unknown }} MergeInvoer
@@ -92,33 +94,49 @@ export function patchBytes(tekst) {
 }
 
 /**
- * `agentMerge` uit .claude/gates.json, of null als het ontbreekt of een andere vorm heeft (faalt dicht); ook null zonder
+ * `toegestaan` en `kritiek` uit de padtabel (`agentMergeLijsten`, ADR 0079), of de fout van de lezer (beide vormen tegelijk,
+ * `paden` geen object). @param {unknown} ruw
+ * @returns {{ toegestaan: string[] | undefined, kritiek: string[] | undefined, fout: string | null }}
+ */
+function padLijsten(ruw) {
+  try {
+    return { ...agentMergeLijsten(ruw), fout: null };
+  } catch (error) {
+    return { toegestaan: undefined, kritiek: undefined, fout: error instanceof Error ? error.message : String(error) };
+  }
+}
+
+/**
+ * `agentMerge` uit .claude/gates.json: het blok (`codex`, `maxRegels`, `maxBytes`) met `toegestaan` en `kritiek` uit de
+ * padtabel (in de oude vorm uit het blok), of null als iets ontbreekt of een andere vorm heeft (faalt dicht); ook null zonder
  * `maxRegels` of `maxBytes` als geheel getal ≥ 1 (spec agent-merge-zonder-codex AC-1, agent-merge-bytegrens AC-1).
  * @param {unknown} ruw
  * @returns {AgentMerge | null}
  */
 export function leesAgentMerge(ruw) {
   const blok = veld(ruw, 'agentMerge');
-  const toegestaan = veld(blok, 'toegestaan');
-  const kritiek = veld(blok, 'kritiek');
+  const { toegestaan, kritiek } = padLijsten(ruw);
   const maxRegels = veld(blok, 'maxRegels');
   const maxBytes = veld(blok, 'maxBytes');
-  if (!tekstLijst(toegestaan) || !tekstLijst(kritiek) || !geheelVanaf(maxRegels, 1) || !geheelVanaf(maxBytes, 1))
+  if (toegestaan === undefined || kritiek === undefined || !geheelVanaf(maxRegels, 1) || !geheelVanaf(maxBytes, 1))
     return null;
   return { toegestaan, kritiek, codex: leesCodex(veld(blok, 'codex')), maxRegels, maxBytes };
 }
 
 /**
- * Waarom `leesAgentMerge()` null geeft, per fout één reden (leeg als het blok geldig is): `AGENT_MERGE_ONLEESBAAR` bij een
- * ontbrekend blok of een ongeldige `toegestaan` of `kritiek`, `OMVANG_ONLEESBAAR` bij een ongeldige `maxRegels`,
- * `BYTES_ONLEESBAAR` bij een ongeldige `maxBytes`.
+ * Waarom `leesAgentMerge()` null geeft, per fout één reden (leeg als het blok geldig is): de fout van de padtabellezer (beide
+ * vormen tegelijk), `AGENT_MERGE_ONLEESBAAR` bij een ontbrekend blok of (oude vorm) een ongeldige `toegestaan` of `kritiek`,
+ * `OMVANG_ONLEESBAAR` bij een ongeldige `maxRegels`, `BYTES_ONLEESBAAR` bij een ongeldige `maxBytes`.
  * @param {unknown} ruw
  * @returns {string[]}
  */
 export function agentMergeFouten(ruw) {
   const blok = veld(ruw, 'agentMerge');
+  const { toegestaan, kritiek, fout } = padLijsten(ruw);
+  const lijsten = toegestaan !== undefined && kritiek !== undefined && typeof blok === 'object' && blok !== null;
   return [
-    ...(tekstLijst(veld(blok, 'toegestaan')) && tekstLijst(veld(blok, 'kritiek')) ? [] : [AGENT_MERGE_ONLEESBAAR]),
+    ...(fout === null ? [] : [fout]),
+    ...(lijsten ? [] : [AGENT_MERGE_ONLEESBAAR]),
     ...(geheelVanaf(veld(blok, 'maxRegels'), 1) ? [] : [OMVANG_ONLEESBAAR]),
     ...(geheelVanaf(veld(blok, 'maxBytes'), 1) ? [] : [BYTES_ONLEESBAAR]),
   ];
@@ -127,6 +145,19 @@ export function agentMergeFouten(ruw) {
 /** `merge` uit .claude/gates.json; ontbrekend of onbekend telt als `eigenaar` (ADR 0069 punt 3). @param {unknown} ruw */
 export function leesModus(ruw) {
   return veld(ruw, 'merge') === 'niet-kritiek' ? 'niet-kritiek' : 'eigenaar';
+}
+
+/**
+ * De gate-lijsten uit de padtabel (`afgeleid`, ADR 0079); een fout van de lezer (beide vormen tegelijk, `paden` geen object,
+ * in de oude vorm een ongeldige lijst) valt dicht: elk pad een gate en kritiek. @param {unknown} ruw
+ */
+function gateLijsten(ruw) {
+  try {
+    const { gates, voorReview, altijdVragen, kritiek } = afgeleid(ruw);
+    return { gates, voorReview, altijdVragen, kritiek };
+  } catch {
+    return { gates: ['**'], voorReview: undefined, altijdVragen: undefined, kritiek: ['**'] };
+  }
 }
 
 /** @param {string} tekst @returns {MergeConfig} */
@@ -140,14 +171,12 @@ export function leesMergeConfig(tekst) {
   };
   const jsonGates = veld(ruw, 'jsonGates');
   return {
-    gates: lijst('gates') ?? ['**'],
+    ...gateLijsten(ruw),
     testpaden: lijst('testpaden') ?? [],
     jsonGates:
       typeof jsonGates === 'object' && jsonGates !== null && !Array.isArray(jsonGates)
         ? Object.fromEntries(Object.entries(jsonGates).map(([k, v]) => [k, tekstLijst(v) ? v : []]))
         : {},
-    voorReview: lijst('voorReview'),
-    altijdVragen: lijst('altijdVragen'),
     agentMerge: leesAgentMerge(ruw),
     merge: leesModus(ruw),
   };

@@ -170,13 +170,22 @@ describe('readRegistry: strikte eigenaarsbesluiten', () => {
     expect(readRegistry(JSON.stringify(expected))).toStrictEqual(expected);
   });
 
+  // GEWIJZIGD (spec padtabel AC-14, ADR 0079, eigenaarakkoord 2026-11-04): een register zonder `decisions` werd geweigerd;
+  // sinds de besluitrecords vervallen is het de normale vorm en wordt het gelezen met een lege lijst.
+  test('ontbrekende besluiten wordt gelezen als lege lijst', () => {
+    expect(readRegistry(JSON.stringify({ version: 1, requiredChecks: ['gate:fast'] }))).toStrictEqual({
+      version: 1,
+      requiredChecks: ['gate:fast'],
+      decisions: [],
+    });
+  });
+
   test.each([
     { name: 'geen JSON', text: '{' },
     { name: 'null', text: 'null' },
     { name: 'array', text: '[]' },
     { name: 'ontbrekende version', text: JSON.stringify({ requiredChecks: ['gate:fast'], decisions: [] }) },
     { name: 'ontbrekende checks', text: JSON.stringify({ version: 1, decisions: [] }) },
-    { name: 'ontbrekende besluiten', text: JSON.stringify({ version: 1, requiredChecks: ['gate:fast'] }) },
     { name: 'onbekende versie', text: JSON.stringify({ ...registry(), version: 2 }) },
     { name: 'onbekende sleutel', text: JSON.stringify({ ...registry(), approved: true }) },
     { name: 'checks als tekst', text: JSON.stringify({ ...registry(), requiredChecks: 'gate:fast' }) },

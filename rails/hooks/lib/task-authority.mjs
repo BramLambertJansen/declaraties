@@ -62,12 +62,16 @@ function readDecision(value) {
 
 /** @param {string} text @returns {Registry} */
 export function readRegistry(text) {
-  const raw = objectWithKeys(JSON.parse(text), ['version', 'requiredChecks', 'decisions']);
+  /** @type {unknown} */
+  const parsed = JSON.parse(text);
+  // Spec padtabel, Werking 8: het register zonder `decisions` (ADR 0079 punt 8) en de oude vorm met records.
+  const zonderRecords = typeof parsed === 'object' && parsed !== null && !('decisions' in parsed);
+  const raw = objectWithKeys(parsed, zonderRecords ? ['version', 'requiredChecks'] : ['version', 'requiredChecks', 'decisions']);
   if (field(raw, 'version') !== 1) throw new Error('Beslissingen: onbekende versie');
   const requiredChecks = stringList(field(raw, 'requiredChecks'));
   if (requiredChecks.length === 0 || requiredChecks.some((name) => name.trim() !== name || name === '') ||
     new Set(requiredChecks).size !== requiredChecks.length) throw new Error('Beslissingen: verplichte checks ontbreken of zijn ongeldig');
-  const values = field(raw, 'decisions');
+  const values = zonderRecords ? [] : field(raw, 'decisions');
   if (!Array.isArray(values)) throw new Error('Beslissingen: decisions is geen lijst');
   const decisions = values.map((value) => readDecision(value));
   const identifiers = decisions.map((entry) => `${entry.repository}\0${entry.branch}\0${entry.file}`);

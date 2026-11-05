@@ -3,6 +3,7 @@ import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { expect, test } from 'vitest';
+import { afgeleid } from '../../rails/hooks/lib/padtabel.mjs';
 import { docsViolations } from '../../scripts/kit/check-docs.mjs';
 
 // ADR 0045 punt 8 en 9 (contract B4): de Edit-regels in `permissions.ask` van .claude/settings.json zijn precies `altijdVragen`
@@ -88,7 +89,9 @@ test('B4: met altijdVragen is een altijdVragen-pad zonder Edit-regel in ask een 
   expect(noemt(await meldingen(root), /scripts\/\*\*/, /altijdVragen/)).not.toStrictEqual([]);
 });
 
-test('B4: altijdVragen valt binnen voorReview: een altijdVragen-pad buiten voorReview is een melding', async () => {
+// GEWIJZIGD (spec padtabel, Werking 6, OV-1 ii): de regel altijdVragen ⊆ voorReview vervalt; in de padtabel is elk
+// altijdVragen-pad per definitie voorReview (ADR 0079). Een altijdVragen-pad buiten voorReview geeft geen melding meer.
+test('B4: altijdVragen buiten voorReview: geen melding meer (padtabel)', async () => {
   const root = repo({
     gates: GATES,
     voorReview: ['scripts/**'],
@@ -96,7 +99,7 @@ test('B4: altijdVragen valt binnen voorReview: een altijdVragen-pad buiten voorR
     ask: ['Edit(scripts/**)', 'Edit(.github/**)'],
   });
 
-  expect(noemt(await meldingen(root), /\.github\/\*\*/, /altijdVragen/)).not.toStrictEqual([]);
+  expect(noemt(await meldingen(root), /\.github\/\*\*/, /altijdVragen/)).toStrictEqual([]);
 });
 
 test('B4: altijdVragen valt binnen voorReview ook als een voorReview-glob het pad dekt (.claude/hooks/** onder .claude/**)', async () => {
@@ -192,8 +195,11 @@ test('B4: onderhoud hoort bij de template, niet bij een hernoemde app', () => {
   expect(lees('.claude/gates.json')['onderhoud']).toStrictEqual(expected);
 });
 
+// De echte lijsten zijn afgeleid uit de padtabel (ADR 0079); de verwachte lijsten zijn ongewijzigd.
+const ECHT = afgeleid(lees('.claude/gates.json'));
+
 test('B4: de echte .claude/gates.json: altijdVragen is precies de lijst uit ADR 0045 punt 9', () => {
-  const altijdVragen = lees('.claude/gates.json')['altijdVragen'];
+  const altijdVragen = ECHT.altijdVragen;
 
   expect(Array.isArray(altijdVragen) ? altijdVragen.map(String).sort() : altijdVragen).toStrictEqual(
     [...ECHTE_ALTIJD_VRAGEN].sort(),
@@ -201,8 +207,8 @@ test('B4: de echte .claude/gates.json: altijdVragen is precies de lijst uit ADR 
 });
 
 test('B4: de echte altijdVragen valt binnen de echte voorReview', () => {
-  const voorReview = lees('.claude/gates.json')['voorReview'];
-  const altijdVragen = lees('.claude/gates.json')['altijdVragen'];
+  const voorReview = ECHT.voorReview;
+  const altijdVragen = ECHT.altijdVragen;
   const globs = Array.isArray(voorReview) ? voorReview.map(String) : [];
   // Gedekt: gelijk aan een voorReview-glob, of onder een `<map>/**`-glob (`.claude/hooks/**` valt onder `.claude/**`).
   const gedekt = (pad: string) =>

@@ -378,7 +378,8 @@ export function codexVoorwaarde(api, { repo, nummer, head, pull, comments, codex
 /**
  * Alle voorwaarden uit ADR 0069 punt 3 plus de stand van de Codex-voorwaarde; geen redenen betekent mergen. Is `agentMerge`
  * op main onleesbaar (AC-3), dan één reden per fout (`agentMergeFouten`): de omvangreden `OMVANG_ONLEESBAAR` bij een
- * ongeldige `maxRegels`, `BYTES_ONLEESBAAR` bij een ongeldige `maxBytes`, "agentMerge ontbreekt of is onleesbaar" bij een ontbrekend blok of een ongeldige lijst.
+ * ongeldige `maxRegels`, `BYTES_ONLEESBAAR` bij een ongeldige `maxBytes`, "agentMerge ontbreekt of is onleesbaar" bij een ontbrekend blok of een ongeldige lijst,
+ * en de fout van de padtabellezer bij `paden` naast de oude lijsten (spec padtabel AC-5): nooit een crash, nooit een merge.
  * @param {Api} api @param {{ repo: string, nummer: number, head: string }} doel
  * @returns {{ redenen: string[], codex: 'voldaan' | 'verviel' | 'uit' | null }}
  */

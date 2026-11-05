@@ -6,6 +6,7 @@
 
 import { globMatch } from '../../rails/hooks/lib/rolhek.mjs';
 import { functionalUiReason } from '../../rails/hooks/lib/functional-ui.mjs';
+import { OUDE_KRITIEK } from '../../rails/hooks/lib/padtabel.mjs';
 
 /** @typedef {{ status: string, pad: string, van?: string }} Wijziging */
 /** @typedef {{ lane: 'feature' | 'framework' | null, reden: string }} Uitslag */
@@ -15,41 +16,21 @@ const BEKEND = [/^src\//, /^docs\//, /^db\//, /^CHANGELOG\.md$/];
 const INSTRUCTIES = /(?:^|\/)(?:(?:CLAUDE|AGENTS)[^/]*\.md|\.claude\/.*)$/;
 const JS_TEST = /\.(?:[cm]?[jt]sx?)$/;
 const VASTE_INSTRUCTIES = /^(?:CLAUDE\.md|AGENTS\.md|\.claude\/(?:agents|skills|rules)\/.+)$/;
-// ADR 0062 punt 2: auth, gegevensisolatie, alle hookcode en de scripts die over besluiten, statussen en merges oordelen
-// (spec spec-en-bouw-in-een-pr, AC-3); `altijdVragen` komt uit de config.
-const KRITIEK = [
-  'src/core/api/auth/**',
-  'src/core/api/db/**',
-  'db/init/**',
-  'rails/hooks/**',
-  ...[
-    'check-document-status',
-    'lane',
-    'functional-ui-status',
-    'status-git',
-    'github-evidence',
-    'diff-guard',
-    'pr-verify',
-    'check-roadmap',
-    'roadmap-item',
-    'document-status',
-    'gates',
-    'agent-merge',
-    'pr-merge',
-  ].map((naam) => `scripts/kit/${naam}.mjs`),
-];
-
 /** @param {readonly string[]} globs @param {string} pad */
 const inLijst = (globs, pad) => globs.some((glob) => globMatch(glob, pad));
 
 /**
- * Kritiek werk (ADR 0062 punt 2) krijgt eerst een besluit-PR. Ontbreekt `altijdVragen`, dan telt elk `voorReview`-pad als
- * kritiek, en zonder `voorReview` elke gate (faalt dicht).
- * @param {string} pad @param {{ gates: string[], voorReview?: string[] | undefined, altijdVragen?: string[] | undefined }} config
+ * Kritiek werk (ADR 0062 punt 2) krijgt eerst een besluit-PR. De kritieke paden komen uit de padtabel (`config.kritiek`:
+ * besluit-pr of schrijven altijdVragen, ADR 0079). Zonder dat veld de oude regel: `OUDE_KRITIEK` plus `altijdVragen`, zonder
+ * die lijst elk `voorReview`-pad en zonder `voorReview` elke gate (faalt dicht).
+ * @param {string} pad
+ * @param {{ gates: string[], voorReview?: string[] | undefined, altijdVragen?: string[] | undefined,
+ *   kritiek?: string[] | undefined }} config
  */
 export function kritiekPad(pad, config) {
+  if (config.kritiek !== undefined) return inLijst(config.kritiek, pad);
   const vragen = config.altijdVragen ?? config.voorReview ?? config.gates;
-  return inLijst([...KRITIEK, ...vragen], pad);
+  return inLijst([...OUDE_KRITIEK, ...vragen], pad);
 }
 
 /**

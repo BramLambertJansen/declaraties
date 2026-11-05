@@ -4,10 +4,11 @@
 //     (een kale naam of relatief pad telt als een bestand in git erop eindigt; `/route` is een URL, geen pad).
 //  2. Relatieve links in docs/**/*.md en README.md wijzen naar een bestaand bestand.
 //  3. ADR- en spec-statussen komen uit de vaste woordenlijst; een goedgekeurde of gebouwde spec heeft "Hergebruik en UX".
-//  4. CODEOWNERS noemt precies de gates en jsonGates uit .claude/gates.json (de bron, ADR 0045); `voorReview` valt daarbinnen,
-//     `altijdVragen` valt binnen `voorReview`, en de Edit-regels in `ask` van .claude/settings.json zijn precies `altijdVragen`
-//     (zonder die lijst: `voorReview`; ADR 0046 punt 27 en 28, ADR 0045 punt 9). `onderhoud` heeft de vorm { repository }.
-//  5. `schrijfrecht` van een rol overlapt niet met `gates` (WS-02), op de uitzonderingen in SCHRIJFRECHT_VRIJ na.
+//  4. De padtabel `paden` in .claude/gates.json (ADR 0079, spec padtabel Werking 6): samenhang (altijdVragen ⇒ besluit-pr,
+//     schrijven ≥ gate ⇒ niet agent), geen onbekende kolom of waarde, geen `{}`, dubbele of `!`-sleutel, en de vloer (VLOER);
+//     de oude vorm is rood. CODEOWNERS noemt precies de afgeleide gates en jsonGates, de Edit-regels in `ask` van
+//     .claude/settings.json zijn precies de afgeleide `altijdVragen` (ADR 0045 punt 9). `onderhoud` heeft de vorm { repository }.
+//  5. `schrijfrecht` van een rol overlapt niet met de afgeleide gates (WS-02), op de uitzonderingen in SCHRIJFRECHT_VRIJ na.
 //  6. Elk AC-id van een gebouwde spec heeft een testbestand met `<namespace>/AC-n`, of met het AC-id samen met de specnaam
 //     of de namespace (sleutel `docs:ac:<spec>:<AC-n>`).
 //  7. Spec-discipline: geen lijstitem met `⚠ open` in "Open vragen" bij goedgekeurd of gebouwd (`:open-vraag`); elk pad in
@@ -24,7 +25,16 @@
 import { execFileSync, spawnSync } from 'node:child_process';
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
-import { globMatch, onderhoudVan } from '../../rails/hooks/lib/rolhek.mjs';
+import {
+  afgeleid,
+  globMatch,
+  OUDE_VORM_ZONDER_PADEN,
+  padenVan,
+  rijFouten,
+  SCHRIJVEN,
+  VLOER,
+} from '../../rails/hooks/lib/padtabel.mjs';
+import { onderhoudVan } from '../../rails/hooks/lib/rolhek.mjs';
 import { adrHerzienViolations } from './adr-herzien.mjs';
 import { adrNumber, duplicateAdrNumbers, invalidAdrNames } from './adr-numbers.mjs';
 import { geheelVanaf, leesMergeConfig, padReden } from './agent-merge.mjs';
@@ -58,6 +68,7 @@ export async function docsViolations(root = '.') {
     ...statusViolations(files, read),
     ...acViolations(files, read),
     ...mirrorViolations(files, read),
+    ...(files.includes('.claude/gates.json') ? padenViolations(read('.claude/gates.json')) : []),
     ...(files.includes('.claude/gates.json') ? schrijfrechtViolations(read('.claude/gates.json')) : []),
     ...(files.includes('.claude/gates.json') ? werkmapNegeerViolations(files, read('.claude/gates.json')) : []),
     ...(files.includes('.claude/gates.json') ? agentMergeViolations(files, read('.claude/gates.json')) : []),
@@ -593,59 +604,137 @@ function mirrorViolations(files, read) {
       .map((entry) => entry.replace(/^\//, '').replace(/\/$/, '/**')),
   );
   if (!files.includes('.claude/gates.json')) return [];
-  const gates = read('.claude/gates.json');
+  /** @type {unknown} */
+  const ruw = JSON.parse(read('.claude/gates.json'));
+  const lijsten = lijstenVan(ruw);
+  const naam = lijsten?.altijdVragen === undefined ? 'voorReview' : 'altijdVragen';
+  const ask = new Set(askEditPaths(read('.claude/settings.json')));
   return [
-    ...gatesViolations(owners, gates),
-    ...voorReviewViolations(gates, askEditPaths(read('.claude/settings.json'))),
+    ...(lijsten === null ? [] : gatesViolations(owners, lijsten.gates, veld(ruw, 'jsonGates'))),
+    ...(lijsten === null ? [] : askViolations(new Set(lijsten.altijdVragen ?? lijsten.voorReview ?? []), naam, ask)),
+    ...onderhoudViolations(veld(ruw, 'onderhoud')),
   ];
 }
 
+const PADEN = '.claude/gates.json: paden.';
+
 /**
- * `voorReview` ⊆ gates + jsonGates, `altijdVragen` ⊆ `voorReview`, Edit-regels in `ask` = `altijdVragen` (ADR 0045 punt 9).
- * @param {string} text
- * @param {readonly string[]} askPaths
+ * De padtabel (spec padtabel, Werking 6, AC-3, AC-4, AC-9 t/m AC-11): de oude vorm is rood (migratiemelding), beide vormen
+ * tegelijk of `paden` geen object ook; verder per rij onbekende kolom of waarde, `{}`, `!`-sleutel, dubbele sleutel in de ruwe
+ * tekst (`JSON.parse` houdt stil de laatste), de samenhangregels en de vloer (elk VLOER-pad een eigen rij altijdVragen/besluit-pr).
+ * @param {string} tekst
  * @returns {Violation[]}
  */
-function voorReviewViolations(text, askPaths) {
+function padenViolations(tekst) {
   /** @type {unknown} */
-  const config = JSON.parse(text);
-  const entry = (/** @type {string} */ key) =>
-    typeof config === 'object' && config !== null
-      ? Object.entries(config).find(([name]) => name === key)?.[1]
-      : undefined;
-  const list = (/** @type {unknown} */ value) => (Array.isArray(value) ? value.map(String) : []);
-  const jsonGates = entry('jsonGates');
-  const gates = new Set([
-    ...list(entry('gates')),
-    ...(typeof jsonGates === 'object' && jsonGates !== null ? Object.keys(jsonGates) : []),
-  ]);
-  const voorReview = new Set(list(entry('voorReview')));
-  const altijd = entry('altijdVragen') === undefined ? null : new Set(list(entry('altijdVragen')));
-  return [
-    ...[...voorReview]
-      .filter((path) => !gates.has(path))
-      .map((path) => ({
-        key: `docs:spiegel:voorreview-gates:${path}`,
-        message: `voorReview noemt ${path}, gates en jsonGates in .claude/gates.json niet`,
-      })),
-    ...[...(altijd ?? [])]
-      .filter((path) => !gedektDoor(path, voorReview))
-      .map((path) => ({
-        key: `docs:spiegel:altijdvragen-voorreview:${path}`,
-        message: `altijdVragen noemt ${path}, voorReview in .claude/gates.json dekt het niet`,
-      })),
-    ...askViolations(altijd ?? voorReview, altijd === null ? 'voorReview' : 'altijdVragen', new Set(askPaths)),
-    ...onderhoudViolations(entry('onderhoud')),
+  const ruw = JSON.parse(tekst);
+  /** @type {Record<string, unknown> | null} */
+  let paden;
+  try {
+    paden = padenVan(ruw);
+  } catch (error) {
+    return [{ key: 'docs:paden:vorm', message: error instanceof Error ? error.message : String(error) }];
+  }
+  if (paden === null) return [{ key: 'docs:paden:oude-vorm', message: OUDE_VORM_ZONDER_PADEN }];
+  const sleutels = padenSleutels(tekst);
+  const dubbel = [...new Set(sleutels.filter((sleutel, index) => sleutels.indexOf(sleutel) !== index))];
+  const meldingen = [
+    ...dubbel.map((glob) => ({ glob, melding: 'dubbele sleutel' })),
+    ...Object.entries(paden).flatMap(([glob, rij]) => rijMeldingen(glob, rij).map((melding) => ({ glob, melding }))),
+    ...VLOER.filter((glob) => !opVloer(paden[glob])).map((glob) => ({
+      glob,
+      melding: 'vloer: verwacht altijdVragen en besluit-pr',
+    })),
   ];
+  return meldingen.map(({ glob, melding }) => ({
+    key: `docs:paden:${glob}:${melding}`,
+    message: `${PADEN}${glob}: ${melding}`,
+  }));
 }
 
-/** Een pad staat letterlijk in de lijst of valt onder een `<map>/**` ervan. @param {string} path @param {ReadonlySet<string>} lijst */
-function gedektDoor(path, lijst) {
-  return lijst.has(path) || [...lijst].some((glob) => glob.endsWith('/**') && path.startsWith(glob.slice(0, -2)));
+/** @param {unknown} rij */
+function opVloer(rij) {
+  return veld(rij, 'schrijven') === 'altijdVragen' && veld(rij, 'besluit') === 'besluit-pr';
 }
 
 /**
- * De Edit-regels in `ask` zijn precies `altijdVragen`, of `voorReview` zolang die ontbreekt (ADR 0045 punt 9, ADR 0046 punt 28).
+ * Meldingen voor één rij: `!`-sleutel, onleesbaar (`rijFouten`) of in strijd met de samenhang.
+ * @param {string} glob @param {unknown} rij @returns {string[]}
+ */
+function rijMeldingen(glob, rij) {
+  const fouten = [...(glob.startsWith('!') ? ['een glob begint niet met !'] : []), ...rijFouten(rij)];
+  if (rijFouten(rij).length > 0) return fouten;
+  const schrijven = String(veld(rij, 'schrijven') ?? 'vrij');
+  const besluit = String(veld(rij, 'besluit') ?? 'eigenaar');
+  return [
+    ...fouten,
+    ...(schrijven === 'altijdVragen' && besluit !== 'besluit-pr' ? ['altijdVragen vraagt besluit besluit-pr'] : []),
+    ...(SCHRIJVEN.findIndex((niveau) => niveau === schrijven) >= 1 && besluit === 'agent'
+      ? [`schrijven ${schrijven} met besluit agent`]
+      : []),
+  ];
+}
+
+/**
+ * De sleutels van het object `paden` (direct onder de wortel) zoals ze in de ruwe tekst staan, dubbele incluis.
+ * @param {string} tekst @returns {string[]}
+ */
+export function padenSleutels(tekst) {
+  /** @type {string[]} */
+  const sleutels = [];
+  /** @type {{ sleutel: string | null }[]} */
+  const stapel = [];
+  for (let index = 0; index < tekst.length; index += 1) {
+    const teken = tekst[index];
+    if (teken === '{' || teken === '[') stapel.push({ sleutel: null });
+    else if (teken === '}' || teken === ']') stapel.pop();
+    else if (teken === '"') {
+      const { eind, sleutel } = leesString(tekst, index);
+      const boven = stapel.at(-1);
+      if (boven !== undefined && sleutel !== null) boven.sleutel = sleutel;
+      if (sleutel !== null && stapel.length === 2 && stapel[0]?.sleutel === 'paden') sleutels.push(sleutel);
+      index = eind;
+    }
+  }
+  return sleutels;
+}
+
+/**
+ * De string die op `begin` opent: de index van het sluitende `"`, en de inhoud als er een `:` volgt (een sleutel), anders null.
+ * @param {string} tekst @param {number} begin
+ */
+function leesString(tekst, begin) {
+  const eind = stringEinde(tekst, begin);
+  const dubbelepunt = /\s*:/y;
+  dubbelepunt.lastIndex = eind + 1;
+  return { eind, sleutel: dubbelepunt.test(tekst) ? String(JSON.parse(tekst.slice(begin, eind + 1))) : null };
+}
+
+/** De index van het sluitende `"` van de string die op `begin` opent. @param {string} tekst @param {number} begin */
+function stringEinde(tekst, begin) {
+  let index = begin + 1;
+  while (index < tekst.length && tekst[index] !== '"') index += tekst[index] === '\\' ? 2 : 1;
+  return index;
+}
+
+/** @param {unknown} ruw @param {string} sleutel */
+function veld(ruw, sleutel) {
+  return typeof ruw === 'object' && ruw !== null
+    ? Object.entries(ruw).find(([naam]) => naam === sleutel)?.[1]
+    : undefined;
+}
+
+/** De afgeleide lijsten (ADR 0079), of null als de lezer gooit; `padenViolations` meldt die fout. @param {unknown} ruw */
+function lijstenVan(ruw) {
+  try {
+    return afgeleid(ruw);
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * De Edit-regels in `ask` zijn precies de afgeleide `altijdVragen` (oude vorm zonder die lijst: `voorReview`; ADR 0045 punt 9).
  * @param {ReadonlySet<string>} bron @param {string} naam @param {ReadonlySet<string>} ask
  * @returns {Violation[]}
  */
@@ -677,22 +766,15 @@ function onderhoudViolations(value) {
 }
 
 /**
- * CODEOWNERS = gates + jsonGates uit .claude/gates.json.
+ * CODEOWNERS = de afgeleide gates + jsonGates uit .claude/gates.json (spec padtabel AC-7).
  * @param {ReadonlySet<string>} owners
- * @param {string} text
+ * @param {readonly string[]} gates
+ * @param {unknown} jsonGates
  * @returns {Violation[]}
  */
-function gatesViolations(owners, text) {
-  /** @type {unknown} */
-  const config = JSON.parse(text);
-  const entry = (/** @type {string} */ key) =>
-    typeof config === 'object' && config !== null
-      ? Object.entries(config).find(([name]) => name === key)?.[1]
-      : undefined;
-  const gates = entry('gates');
-  const jsonGates = entry('jsonGates');
+function gatesViolations(owners, gates, jsonGates) {
   const expected = new Set([
-    ...(Array.isArray(gates) ? gates.map(String) : []),
+    ...gates,
     ...(typeof jsonGates === 'object' && jsonGates !== null ? Object.keys(jsonGates) : []),
   ]);
   return [
@@ -756,8 +838,8 @@ function agentMergeVorm(ruw) {
 
 /**
  * `merge` en `agentMerge` (ADR 0069, spec agent-merge-niet-kritiek AC-5): de modus is `eigenaar` of `niet-kritiek`, en na de
- * uitsluitingen is geen pad uit `voorReview` of `altijdVragen` agent-mergebaar; getoetst met dezelfde functie als het
- * oordeel, op elk getrackt pad en een voorbeeldpad per glob van die lijsten.
+ * uitsluitingen is geen pad met schrijven ≠ vrij (afgeleide gates, `voorReview` of `altijdVragen`, spec padtabel Werking 6)
+ * agent-mergebaar; getoetst met dezelfde functie als het oordeel, op elk getrackt pad en een voorbeeldpad per glob.
  * @param {readonly string[]} files
  * @param {string} text
  * @returns {Violation[]}
@@ -781,7 +863,7 @@ export function agentMergeViolations(files, text) {
   const config = leesMergeConfig(text);
   const agentMerge = config.agentMerge;
   if (agentMerge === null) return fouten;
-  const bewaakt = [...(config.voorReview ?? []), ...(config.altijdVragen ?? [])];
+  const bewaakt = [...config.gates, ...(config.voorReview ?? []), ...(config.altijdVragen ?? [])];
   const kandidaten = [
     ...new Set([
       ...bewaakt.map(voorbeeldPad),
@@ -794,7 +876,7 @@ export function agentMergeViolations(files, text) {
       .filter((pad) => padReden(pad, 'M', { ...config, agentMerge }) === null)
       .map((pad) => ({
         key: `docs:agentMerge:${pad}`,
-        message: `agentMerge maakt ${pad} (voorReview of altijdVragen) agent-mergebaar`,
+        message: `agentMerge maakt ${pad} (schrijven niet vrij) agent-mergebaar`,
       })),
   ];
 }
@@ -866,7 +948,7 @@ function schrijfrechtViolations(text) {
   const strings = (/** @type {unknown} */ value) => (Array.isArray(value) ? value.map(String) : []);
   const testpaden = strings(entry('testpaden'));
   const naamGates = testpaden.filter((glob) => glob.startsWith('**/'));
-  const gates = strings(entry('gates')).filter((gate) => !naamGates.includes(gate));
+  const gates = (lijstenVan(raw)?.gates ?? []).filter((gate) => !naamGates.includes(gate));
   const rollen = entry('schrijfrecht');
   if (typeof rollen !== 'object' || rollen === null) return [];
   return Object.entries(rollen)
