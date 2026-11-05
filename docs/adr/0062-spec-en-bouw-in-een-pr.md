@@ -8,6 +8,8 @@ Herzien: 2026-10-30 (#385): in punt 2 vervallen "gate-label" en "of mandaat"
 ([0063](0063-compacte-kennisbasis-en-lichtere-werkstraat.md)).
 Herzien: 2026-11-04 (#535): gewijzigd door [0079](0079-een-padtabel.md) punt 2, de kritieke paden komen uit de kolom
 `besluit: besluit-pr` van de padtabel in `.claude/gates.json`, niet meer uit een lijst in `scripts/kit/lane.mjs`
+Herzien: 2026-11-05 (#541): gewijzigd door [0080](0080-specarchief-en-bouwvorm.md) punt 4, ook voor een gemergde PR vervalt de vorm met SHA;
+`gebouwd # #<PR>` noemt dan de gemergde bouw-PR
 
 Wijzigt [0046](0046-werkstraat-en-beslisroute.md) punt 5, 10, 12, 14 en 15. Drempel: A3 (de lanetoets in
 `check-document-status` laat meer toe) en A4 (afspraken uit een geaccepteerd ADR). De status is de bedoelde acceptatie in dit
