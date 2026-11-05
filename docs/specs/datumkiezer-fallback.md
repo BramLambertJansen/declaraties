@@ -1,5 +1,5 @@
 ---
-status: gebouwd # #296; gevalideerd: a3a985009cf27d4360ae2b37462223f0a2bdb737
+status: gebouwd # #296
 namespace: datumkiezer-fallback
 sjabloon: mini
 scope: functionele-ui

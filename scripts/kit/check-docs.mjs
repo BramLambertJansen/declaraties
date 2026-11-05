@@ -35,6 +35,7 @@ import {
   VLOER,
 } from '../../rails/hooks/lib/padtabel.mjs';
 import { onderhoudVan } from '../../rails/hooks/lib/rolhek.mjs';
+import { acIds } from '../../rails/hooks/lib/document-state.mjs';
 import { adrHerzienViolations } from './adr-herzien.mjs';
 import { adrNumber, duplicateAdrNumbers, invalidAdrNames } from './adr-numbers.mjs';
 import { geheelVanaf, leesMergeConfig, padReden } from './agent-merge.mjs';
@@ -66,6 +67,7 @@ export async function docsViolations(root = '.') {
     ...identifierViolations(files, read),
     ...linkViolations(root, files, read),
     ...statusViolations(files, read),
+    ...specarchiefViolations(files, read),
     ...acViolations(files, read),
     ...mirrorViolations(files, read),
     ...(files.includes('.claude/gates.json') ? padenViolations(read('.claude/gates.json')) : []),
@@ -112,6 +114,7 @@ const ADR_MAP = 'docs/adr/';
 const ARCHIEF = 'docs/adr/archief/';
 // Regel 2: specs in docs/specs/ en docs/template/specs/ (framework §10); `_template.md` en dergelijke tellen niet.
 const SPEC_BESTAND = /^docs\/(?:template\/)?specs\/[^_/][^/]*\.md$/;
+const SPEC_ARCHIEF = 'docs/specs/archief/';
 
 /** Regelnummer (1-based) van een positie in een tekst. @param {string} text @param {number} index */
 function regelVan(text, index) {
@@ -411,11 +414,26 @@ function linkViolations(root, files, read) {
 /**
  * Waar een relatieve link mag landen. Binnen `docs/adr/` en `archief/` (framework §10) leest een link uit het archief alsof
  * het bestand nog in `docs/adr/` stond, en een ADR-doel in `docs/adr/` lost ook op naar `archief/`. Een spec met een
- * eigenaarstatus mag niet van inhoud wijzigen, dus ook vanuit een spec lost een ADR-doel op naar `archief/`. Elders geldt
- * alleen het letterlijke pad: die links gaan mee naar het nieuwe pad (ADR 0053 punt 4).
+ * eigenaarstatus mag niet van inhoud wijzigen, dus ook vanuit een spec lost een ADR-doel op naar `archief/`. Zo ook het
+ * specarchief (ADR 0080): een link uit `docs/specs/archief/` leest alsof in `docs/specs/`, en een doel `docs/specs/<naam>.md`
+ * lost vanuit `docs/adr/**` en `docs/specs/**` ook op naar `docs/specs/archief/`. Elders geldt alleen het letterlijke pad: die
+ * links gaan mee naar het nieuwe pad (ADR 0053 punt 4).
  * @param {string} file @param {string} doel
  */
 function linkDoelen(file, doel) {
+  const alsSpec = file.startsWith(SPEC_ARCHIEF) ? `docs/specs/${path.posix.basename(file)}` : file;
+  const doelen = [
+    ...(alsSpec === file ? [] : [path.posix.join(path.posix.dirname(file), doel)]),
+    ...adrLinkDoelen(alsSpec, doel),
+  ];
+  if (!/^docs\/(?:adr|specs)\//.test(file)) return doelen;
+  return doelen.flatMap((pad) =>
+    /^docs\/specs\/[^/]+\.md$/.test(pad) ? [pad, pad.replace('docs/specs/', SPEC_ARCHIEF)] : [pad],
+  );
+}
+
+/** De doelen voor het ADR-archief (ADR 0053 punt 4). @param {string} file @param {string} doel */
+function adrLinkDoelen(file, doel) {
   const letterlijk = path.posix.join(path.posix.dirname(file), doel);
   if (SPEC_BESTAND.test(file) && /^docs\/adr\/\d{4}-[^/]+\.md$/.test(letterlijk))
     return [letterlijk, letterlijk.replace(ADR_MAP, ARCHIEF)];
@@ -428,6 +446,40 @@ function linkDoelen(file, doel) {
       /^docs\/adr\/\d{4}-[^/]+\.md$/.test(pad) ? [pad.replace(ADR_MAP, ARCHIEF)] : [],
     ),
   ];
+}
+
+/**
+ * ADR 0080: een naam uit het specarchief komt niet terug in `docs/specs/`, en een statusregel in `docs/specs/` heeft de ene
+ * vorm `gebouwd # #<PR>` (de oude vorm met SHA lezen de guard en check-roadmap nog).
+ * @param {readonly string[]} files @param {(file: string) => string} read
+ * @returns {Violation[]}
+ */
+function specarchiefViolations(files, read) {
+  const archief = new Set(
+    files.filter((file) => file.startsWith(SPEC_ARCHIEF)).map((file) => path.posix.basename(file)),
+  );
+  const specs = files.filter((file) => /^docs\/specs\/[^/]+\.md$/.test(file));
+  return specs.flatMap((file) => {
+    const sha = /^status: gebouwd # #(\d+); gevalideerd: (\S+)/m.exec(read(file));
+    return [
+      ...(archief.has(path.posix.basename(file))
+        ? [
+            {
+              key: `docs:${file}:archief`,
+              message: `${file}: de naam staat ook in docs/specs/archief/; een naam komt niet terug (ADR 0080)`,
+            },
+          ]
+        : []),
+      ...(sha === null
+        ? []
+        : [
+            {
+              key: `docs:${file}:gevalideerd`,
+              message: `${file}: statusregel met gevalideerd: ${sha[2] ?? ''}; schrijf status: gebouwd # #${sha[1] ?? ''} (ADR 0080)`,
+            },
+          ]),
+    ];
+  });
 }
 
 /**
@@ -576,9 +628,14 @@ function acViolations(files, read) {
     const spec = { naam: path.basename(file, '.md'), namespace: /^namespace:\s*(\S+)\s*$/m.exec(text)?.[1] };
     const eigen = new Set([spec.naam, spec.namespace]);
     // Een AC met het voorvoegsel van een andere spec (`accounts/AC-42`) is een kruisverwijzing, geen eigen AC.
+    // Een AC met de markering `(nog niet gebouwd)` wacht nog op zijn bouw-PR (ADR 0080 punt 4).
+    const gemarkeerd = new Set(
+      [...acIds(text).gemarkeerd].flatMap((id) => (eigen.has(id.split('/')[0]) ? [id.replace(/^.*\//, '')] : [])),
+    );
     const ids = [...text.matchAll(AC_ID)]
       .filter(([, voor]) => voor === undefined || eigen.has(voor))
-      .map(([, , id = '']) => id);
+      .map(([, , id = '']) => id)
+      .filter((id) => !gemarkeerd.has(id));
     const acs = [...new Set(ids)].sort((a, b) => Number(a.slice(3)) - Number(b.slice(3)));
     return acs
       .filter((ac) => !tests.some((tekst) => dekt(tekst, spec, ac)))

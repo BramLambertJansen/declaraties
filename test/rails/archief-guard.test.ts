@@ -205,12 +205,23 @@ describe('compacte-kennisbasis-rails/AC-5: een byte-gelijke git mv van een spec 
   const tekstVoor = (status: string): string =>
     status === 'gebouwd' ? specBody('demo', `gebouwd # #130; gevalideerd: ${SHA}`) : specBody('demo', status);
 
-  test.each(['voorstel', 'goedgekeurd', 'gebouwd', 'vervallen'])(
+  // GEWIJZIGD (specarchief-en-bouwvorm/AC-8, ADR 0080, OV-1): `docs/template/specs/` is geen verhuisdoel meer; een spec met
+  // eigenaarstatus verlaat docs/specs/ alleen via vervallen naar docs/specs/archief/. Alleen een voorstel blijft groen.
+  test.each(['voorstel'])(
     'compacte-kennisbasis-rails/AC-5 een spec met status %s verhuist byte-gelijk: groen',
     (status) => {
       const fixture = metBasis({ [SPEC]: tekstVoor(status) });
       verhuis(fixture, SPEC, SPEC_TEMPLATE);
       slaagt(fixture);
+    },
+  );
+
+  test.each(['goedgekeurd', 'gebouwd', 'vervallen'])(
+    'compacte-kennisbasis-rails/AC-5 een spec met status %s verhuist byte-gelijk naar docs/template/specs/: rood',
+    (status) => {
+      const fixture = metBasis({ [SPEC]: tekstVoor(status) });
+      verhuis(fixture, SPEC, SPEC_TEMPLATE);
+      faalt(fixture);
     },
   );
 

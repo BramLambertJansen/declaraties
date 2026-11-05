@@ -2,7 +2,12 @@
 import { appendFileSync } from 'node:fs';
 import {
   A4_MELDING,
+  MARKERING,
+  acIds,
+  archiefBron,
   beslisOvergang,
+  isArchief,
+  specNamespace,
   documentInfo,
   documentKind,
   builtReference,
@@ -20,7 +25,6 @@ import { laneVan, migratieOvertreding } from './lane.mjs';
 import { isFunctionalUiSpec, isUiTest, testChangeRisk } from '../../rails/hooks/lib/functional-ui.mjs';
 import { functionalUiApproval, verifyFunctionalUiChanges } from './functional-ui-status.mjs';
 import { adrNumber, duplicateAdrNumbers } from './adr-numbers.mjs';
-import path from 'node:path';
 
 /** @typedef {{ root: string, base: string, sha: string, split: string, pr: number | null, code: boolean, adrBestanden: string[], adrArchief: string[], authority: import('../../rails/hooks/lib/task-authority.mjs').Authority, config: import('../../rails/hooks/lib/rolhek.mjs').Config }} Context */
 
@@ -32,25 +36,31 @@ function requiredEnv(name) {
 }
 
 /**
- * Null bij geldig bouwbewijs, anders de toevoeging aan de melding (leeg voor de route van een open PR).
- * @param {{ file: string, text: string }} document @param {Context} context @returns {string | null}
+ * Null bij geldig bouwbewijs, anders de toevoeging aan de melding (leeg voor de route van een open PR). Zonder SHA in de regel
+ * is het de gemergde route met de head van PR N uit GitHub (ADR 0080 punt 5).
+ * @param {{ file: string, text: string }} document @param {Context} context
+ * @param {import('../../rails/hooks/lib/built-evidence.mjs').PullRequest} [opgehaald] PR N, als die al gelezen is
+ * @returns {string | null}
  */
-function verifyBuilt(document, context) {
+function verifyBuilt(document, context, opgehaald) {
   const reference = builtReference(document.text);
-  if (reference?.sha === undefined) return '';
-  const pr = pullRequest(context.authority.repository, reference.pr);
+  if (reference === null) return '';
+  const pr = opgehaald ?? pullRequest(context.authority.repository, reference.pr);
+  const sha = reference.sha ?? pr.headSha;
+  if (!/^[0-9a-f]{40}$/.test(sha))
+    return pr.merged ? `; gebouwd na de merge vereist de head van PR #${String(pr.number)}` : '';
   // Gemergde PR (spec gebouwd-na-merge): de PR wijzigt alleen statusregels tegenover de basis; het bewijs komt uit de mergecommit.
-  const commits = pr.merged ? { from: context.split, to: context.sha } : { from: reference.sha, to: context.sha };
+  const commits = pr.merged ? { from: context.split, to: context.sha } : { from: sha, to: context.sha };
   const evidence = {
     pr,
-    checks: checkRuns(context.authority.repository, reference.sha),
+    checks: checkRuns(context.authority.repository, sha),
     headSha: context.sha,
     ancestor: isAncestor(context.root, commits),
     onlyStatuses: statusOnlyDiff(context.root, commits, { testpaden: context.config.testpaden }),
     uiApproval: functionalUiApproval({
       root: context.root,
       base: context.base,
-      sha: reference.sha,
+      sha,
       repository: context.authority.repository,
       file: document.file,
       text: document.text,
@@ -89,6 +99,7 @@ function verifyDocument(document, context) {
   if (document.before === document.after) return null;
   const { uitslag } = beslisOvergang(document.file, document.before, document.after);
   if (uitslag === 'a4') throw new Error(`${document.file}: ${A4_MELDING}`);
+  verifyLevendeSpec({ file: document.file, before: document.before, after: document.after }, uitslag, context);
   if (uitslag === 'vrij') return null;
   // Een herschreven geaccepteerd ADR is een besluit: alleen een besluit-PR laat het door (verifyInPrStatus).
   if (uitslag === 'herzien') {
@@ -105,23 +116,37 @@ function verifyDocument(document, context) {
 }
 
 /**
- * `gebouwd` met SHA vraagt bouwbewijs (ADR 0046 punt 10). Zonder SHA (ADR 0062 punt 4) alleen met het nummer van deze PR en code
- * buiten `docs/` en `CHANGELOG.md`; de ruleset eist bij de merge de verplichte checks op de head. Een nieuwe spec of nieuwe inhoud is dan ook een
- * besluit, dat de lane- en volgordetoets van `verifyInPrStatus` krijgt.
+ * `gebouwd` met SHA vraagt bouwbewijs (ADR 0046 punt 10). Zonder SHA (ADR 0062 punt 4, ADR 0080 punt 5): met het nummer van
+ * deze PR de eigen route (code buiten `docs/` en `CHANGELOG.md`, geen markering; de ruleset eist bij de merge de verplichte
+ * checks op de head), anders de gemergde route. Een nieuwe spec of nieuwe inhoud is in de eigen route ook een besluit, dat de
+ * lane- en volgordetoets van `verifyInPrStatus` krijgt.
  * @param {{ file: string, before: string | null }} document @param {{ file: string, text: string }} target @param {Context} context
  * @returns {Besluit | null}
  */
 function verifyGebouwd(document, target, context) {
   const reference = builtReference(target.text);
+  if (reference !== null && reference.sha === undefined && reference.pr !== context.pr)
+    return verifyGemergd(document.file, target, context);
   if (reference?.sha !== undefined) {
     const bezwaar = verifyBuilt(target, context);
     if (bezwaar === null) return null;
     throw new Error(`${document.file}: ${GEEN_BESLUIT}${bezwaar}`);
   }
-  if (reference === null || context.pr === null || reference.pr !== context.pr || !context.code)
+  if (reference === null || !context.code)
     throw new Error(
       `${document.file}: ${GEEN_BESLUIT}; gebouwd zonder SHA vraagt het nummer van deze PR en code buiten docs/ en CHANGELOG.md (ADR 0062)`,
     );
+  if (acIds(target.text).gemarkeerd.size > 0)
+    throw new Error(`${document.file}: gebouwd # #${String(reference.pr)} met een AC${MARKERING} (ADR 0080)`);
+  return verifyEigenGebouwd(document, target);
+}
+
+/**
+ * De eigen route: `gebouwd # #<deze PR>` met code. Een besluit tenzij main dezelfde inhoud al goedgekeurd of gebouwd had.
+ * @param {{ file: string, before: string | null }} document @param {{ file: string, text: string }} target
+ * @returns {Besluit | null}
+ */
+function verifyEigenGebouwd(document, target) {
   const oud = document.before === null ? null : documentInfo(document.file, document.before);
   // Een vervallen spec komt niet terug (zoals `vervallen` → `goedgekeurd`, ADR 0046 punt 5).
   if (oud !== null && !['voorstel', 'goedgekeurd', 'gebouwd'].includes(oud.status))
@@ -131,6 +156,22 @@ function verifyGebouwd(document, target, context) {
   const info = documentInfo(document.file, target.text);
   if (oud !== null && oud.status !== 'voorstel' && oud.digest === info?.digest) return null;
   return { file: document.file, opMain: false };
+}
+
+/**
+ * `gebouwd # #N` zonder SHA, N is niet deze PR: alleen met een gemergde PR N en bouwbewijs uit de mergecommit (ADR 0080 punt 5).
+ * @param {string} file @param {{ file: string, text: string }} target @param {Context} context @returns {null}
+ */
+function verifyGemergd(file, target, context) {
+  const reference = builtReference(target.text);
+  const n = String(reference?.pr ?? '');
+  const pr = pullRequest(context.authority.repository, reference?.pr ?? 0);
+  if (!pr.merged) throw new Error(`${file}: gebouwd # #${n} is niet deze PR en PR #${n} is niet gemerged (ADR 0080)`);
+  if (acIds(target.text).gemarkeerd.size > 0)
+    throw new Error(`${file}: gebouwd # #${n} met een AC${MARKERING} (ADR 0080)`);
+  const bezwaar = verifyBuilt(target, context, pr);
+  if (bezwaar === null) return null;
+  throw new Error(`${file}: ${GEEN_BESLUIT}${bezwaar}`);
 }
 
 /**
@@ -295,49 +336,146 @@ function statusLine(text) {
 }
 
 const ARCHIEF = 'docs/adr/archief/';
-const TEMPLATE_SPECS = 'docs/template/specs/';
+const ARCHIEF_MAPPEN = [ARCHIEF, 'docs/specs/archief/'];
+const inArchief = (/** @type {string} */ pad) => ARCHIEF_MAPPEN.some((map) => pad.startsWith(map));
 
 /**
- * De bron van een verhuizing onder dezelfde bestandsnaam: `docs/adr/` naar `archief/`, of `docs/specs/` naar
- * `docs/template/specs/` (framework §10). Null voor elke andere wijziging.
+ * De bron van een verhuizing onder dezelfde bestandsnaam: `docs/adr/` naar `docs/adr/archief/`, of `docs/specs/` naar
+ * `docs/specs/archief/` (framework §10, ADR 0080). Null voor elke andere wijziging.
  * @param {{ status: string, pad: string, van?: string }} change @returns {string | null}
  */
 function verhuisBron({ status, pad, van }) {
-  if (status !== 'R' || van === undefined || documentKind(pad) === null) return null;
-  const naam = path.posix.basename(pad);
-  const map = pad.startsWith(ARCHIEF) ? 'docs/adr/' : pad.startsWith(TEMPLATE_SPECS) ? 'docs/specs/' : null;
-  return map !== null && van === `${map}${naam}` ? van : null;
+  if (status !== 'R' || van === undefined) return null;
+  return van === archiefBron(pad) ? van : null;
 }
 
 /**
- * Verhuizen mag, wijzigen niet (framework §10): een verhuizing is byte-gelijk; naar `archief/` alleen een vervangen of
- * vervallen ADR, met alleen wijzigingen onder `docs/` ernaast. Elke andere wijziging die `archief/` raakt (nieuw, gewijzigd,
- * verwijderd, terug of onder een andere naam) is A4, ook in een besluit-PR.
+ * Verhuizen mag, wijzigen niet (framework §10): een verhuizing is byte-gelijk; naar een archief alleen een vervangen of
+ * vervallen ADR of een vervallen spec, met alleen wijzigingen onder `docs/` ernaast. Elke andere wijziging die een archief raakt
+ * (nieuw, gewijzigd, verwijderd, terug of onder een andere naam) is A4, ook in een besluit-PR.
  * @param {{ status: string, pad: string, van?: string }[]} changes @param {Context} context
  */
 function verifyVerhuizingen(changes, context) {
-  const naarArchief = changes.filter((change) => verhuisBron(change) !== null && change.pad.startsWith(ARCHIEF));
+  const naarArchief = changes.filter((change) => verhuisBron(change) !== null);
   for (const change of changes) {
     const bron = verhuisBron(change);
     if (bron === null) {
-      const raakt = [change.pad, change.van ?? ''].find((pad) => pad.startsWith(ARCHIEF));
+      const raakt = [change.pad, change.van ?? ''].find(inArchief);
       if (raakt !== undefined)
         throw new Error(`${raakt}: geen byte-gelijke verhuizing naar het archief; ${A4_MELDING}`);
     } else if (context.authority.trusted(bron) !== context.authority.working(change.pad))
       throw new Error(`${change.pad}: verhuisd van ${bron} maar niet byte-gelijk (framework §10)`);
   }
-  for (const { pad, van = '' } of naarArchief) {
-    const status = documentInfo(van, context.authority.trusted(van) ?? '')?.status ?? '';
-    if (status !== 'vervallen' && !/^vervangen door \d{4}$/.test(status))
-      throw new Error(
-        `${pad}: alleen een vervangen of vervallen ADR verhuist naar het archief (status ${status}); ${A4_MELDING}`,
-      );
-  }
+  for (const { pad, van = '' } of naarArchief)
+    verifyArchiefStatus(pad, documentInfo(van, context.authority.trusted(van) ?? '')?.status ?? '');
   const vreemd = changes.find(({ pad }) => !pad.startsWith('docs/'));
   if (naarArchief.length > 0 && vreemd !== undefined)
     throw new Error(
       `${vreemd.pad}: een verhuizing naar het archief gaat alleen samen met wijzigingen onder docs/ (framework §10)`,
     );
+}
+
+/**
+ * Naar het archief alleen een vervallen spec, of een vervangen of vervallen ADR (framework §10, ADR 0080).
+ * @param {string} pad @param {string} status de status van de bron op main
+ */
+function verifyArchiefStatus(pad, status) {
+  if (documentKind(pad) === 'spec' && status !== 'vervallen')
+    throw new Error(`${pad}: alleen een vervallen spec verhuist naar het archief (status ${status})`);
+  if (documentKind(pad) === 'adr' && status !== 'vervallen' && !/^vervangen door \d{4}$/.test(status))
+    throw new Error(
+      `${pad}: alleen een vervangen of vervallen ADR verhuist naar het archief (status ${status}); ${A4_MELDING}`,
+    );
+}
+
+/**
+ * Een spec met een eigenaarstatus op main verlaat `docs/specs/` alleen via `vervallen` naar het archief (ADR 0080 punt 4):
+ * verwijderen of een andere naam is rood.
+ * @param {{ status: string, pad: string, van?: string }[]} changes @param {Context} context
+ */
+function verifySpecWeg(changes, context) {
+  for (const change of changes) {
+    const bron =
+      change.status === 'D'
+        ? change.pad
+        : change.status === 'R' && verhuisBron(change) === null
+          ? change.van
+          : undefined;
+    if (bron === undefined || documentKind(bron) !== 'spec' || isArchief(bron)) continue;
+    const status = documentInfo(bron, context.authority.trusted(bron) ?? '')?.status;
+    if (status !== undefined && status !== 'voorstel')
+      throw new Error(
+        `${bron}: een spec met eigenaarstatus verlaat docs/specs/ alleen via vervallen naar het archief (ADR 0080)`,
+      );
+  }
+}
+
+/**
+ * Een levende spec (ADR 0080 punt 3 en 4): een spec met eigenaarstatus op main houdt elk id `<ns>/AC-n`; de markering staat
+ * alleen op een nieuw id en niet in een PR met code; een gebouwde spec die met dezelfde verwijzing nieuwe inhoud krijgt,
+ * markeert elke nieuwe AC.
+ * @param {{ file: string, before: string | null, after: string }} document @param {string} uitslag @param {Context} context
+ */
+function verifyLevendeSpec({ file, before, after }, uitslag, context) {
+  if (documentKind(file) !== 'spec') return;
+  const oud = before === null ? null : documentInfo(file, before);
+  const voor = before === null ? { alle: new Set(), gemarkeerd: new Set() } : acIds(before);
+  const na = acIds(after);
+  if (oud !== null && oud.status !== 'voorstel')
+    verifyAcIdsBlijven(file, specNamespace(file, before ?? ''), { voor: voor.alle, na: na.alle });
+  verifyMarkering({ file, after, oudStatus: oud?.status ?? null }, { voor, na }, { uitslag, context });
+  if (uitslag === 'besluit' && oud?.status === 'gebouwd' && documentInfo(file, after)?.status === 'gebouwd')
+    verifyGebouwdeInhoud(file, { voor, na }, context);
+}
+
+/**
+ * Nieuwe inhoud van een gebouwde spec met dezelfde verwijzing: alleen in een besluit-PR zonder code, en elke nieuwe AC gemarkeerd.
+ * @param {string} file
+ * @param {{ voor: { alle: Set<string> }, na: { alle: Set<string>, gemarkeerd: Set<string> } }} ids
+ * @param {Context} context
+ */
+function verifyGebouwdeInhoud(file, { voor, na }, context) {
+  if (context.code)
+    throw new Error(
+      `${file}: nieuwe inhoud van een gebouwde spec: besluit-PR zonder code of gebouwd # #<deze PR> (ADR 0080)`,
+    );
+  const kaal = [...na.alle].filter((id) => !voor.alle.has(id) && !na.gemarkeerd.has(id));
+  if (kaal.length > 0)
+    throw new Error(`${file}: ${kaal.join(', ')} is nieuw in een gebouwde spec en mist${MARKERING} (ADR 0080)`);
+}
+
+/**
+ * De markering (ADR 0080 punt 4, R-DOC-10): een nieuwe staat alleen op een nieuw id, in een spec die op main `gebouwd` is, in een
+ * PR zonder code; `gebouwd` met een markering of een weggehaalde markering zonder `gebouwd # #<deze PR>` is rood.
+ * @param {{ file: string, after: string, oudStatus: string | null }} spec
+ * @param {{ voor: { alle: Set<string>, gemarkeerd: Set<string> }, na: { alle: Set<string>, gemarkeerd: Set<string> } }} ids
+ * @param {{ uitslag: string, context: Context }} pr
+ */
+function verifyMarkering({ file, after, oudStatus }, { voor, na }, { uitslag, context }) {
+  const verwijzing = builtReference(after);
+  if (uitslag === 'gebouwd' && verwijzing !== null && na.gemarkeerd.size > 0)
+    throw new Error(`${file}: gebouwd # #${String(verwijzing.pr)} met een AC${MARKERING} (ADR 0080)`);
+  const weg = [...voor.gemarkeerd].some((id) => na.alle.has(id) && !na.gemarkeerd.has(id));
+  if (weg && (verwijzing === null || verwijzing.pr !== context.pr))
+    throw new Error(`${file}: een AC zonder${MARKERING} vraagt gebouwd # #<deze PR> (ADR 0080)`);
+  const nieuw = [...na.gemarkeerd].filter((id) => !voor.gemarkeerd.has(id));
+  const opMain = nieuw.find((id) => voor.alle.has(id));
+  if (opMain !== undefined)
+    throw new Error(`${file}: ${opMain}${MARKERING} staat al op main; markeer alleen een nieuw AC-id (ADR 0080)`);
+  if (nieuw.length > 0 && (context.code || oudStatus !== 'gebouwd'))
+    throw new Error(
+      `${file}: een AC${MARKERING} hoort in een besluit-PR zonder code op een spec die op main gebouwd is (ADR 0080)`,
+    );
+}
+
+/**
+ * Elk id `<ns>/AC-n` van main staat er nog (ADR 0080 punt 3).
+ * @param {string} file @param {string} ns @param {{ voor: Set<string>, na: Set<string> }} ids
+ */
+function verifyAcIdsBlijven(file, ns, { voor, na }) {
+  const weg = [...voor].filter((id) => id.startsWith(`${ns}/`) && !na.has(id));
+  if (weg.length > 0)
+    throw new Error(weg.map((id) => `${file}: ${id} verdwijnt; een AC houdt zijn id (ADR 0080)`).join('; '));
 }
 
 /** Bestandsnamen van de ADR's op HEAD in `map` (standaard `docs/adr/`, zonder archief). @param {string} root @param {string} sha @param {string} [map] */
@@ -505,6 +643,7 @@ async function main() {
   const context = { root, base, sha, split, pr, code, ...adrLijsten(root, sha), authority: snapshot, config };
   verifyNummerVrij(changes, context);
   verifyVerhuizingen(changes, context);
+  verifySpecWeg(changes, context);
   const verwijderd = verifyAdrWeg(changes, context);
   const gewijzigd = verifyDocuments(changes, context);
   const besluiten = [...gewijzigd, ...verwijderd];

@@ -134,29 +134,28 @@ describe('documentInfo: inhoud en afgeleide status scheiden', () => {
 });
 
 describe('changeStatus: formatter, geen eigenaartoestemming', () => {
-  test('gebouwd legt PR en volledige gevalideerde SHA vast zonder bodywijziging', () => {
-    const changed = changeStatus(SPEC, APPROVED, { status: 'gebouwd', pr: 42, validatedSha: SHA });
+  // GEWIJZIGD (specarchief-en-bouwvorm/AC-13, ADR 0080 punt 5): `changeStatus` schrijft alleen `gebouwd # #<PR>`; de
+  // weigeringen om een ontbrekende of ongeldige SHA vervallen (eigenaarakkoord: OV-1 van die spec).
+  test('gebouwd legt het PR-nummer vast zonder bodywijziging', () => {
+    const changed = changeStatus(SPEC, APPROVED, { status: 'gebouwd', pr: 42 });
 
-    expect(changed).toBe(BUILT);
+    expect(changed).toBe(PROPOSED.replace('status: voorstel', 'status: gebouwd # #42'));
     expect(documentInfo(SPEC, changed)?.digest).toBe(DIGEST);
   });
 
   test.each([
     { name: 'ontbrekend bewijs', options: { status: 'gebouwd' } },
-    { name: 'ontbrekende SHA', options: { status: 'gebouwd', pr: 42 } },
-    { name: 'ontbrekende PR', options: { status: 'gebouwd', validatedSha: SHA } },
-    { name: 'PR nul', options: { status: 'gebouwd', pr: 0, validatedSha: SHA } },
-    { name: 'negatieve PR', options: { status: 'gebouwd', pr: -1, validatedSha: SHA } },
-    { name: 'fractionele PR', options: { status: 'gebouwd', pr: 1.5, validatedSha: SHA } },
-    { name: 'korte SHA', options: { status: 'gebouwd', pr: 42, validatedSha: SHA.slice(1) } },
-    { name: 'niet-hex SHA', options: { status: 'gebouwd', pr: 42, validatedSha: 'g'.repeat(40) } },
+    { name: 'ontbrekende PR', options: { status: 'gebouwd' } },
+    { name: 'PR nul', options: { status: 'gebouwd', pr: 0 } },
+    { name: 'negatieve PR', options: { status: 'gebouwd', pr: -1 } },
+    { name: 'fractionele PR', options: { status: 'gebouwd', pr: 1.5 } },
   ])('$name wordt geweigerd', ({ options }) => {
     expect(() => changeStatus(SPEC, APPROVED, options)).toThrow();
   });
 
   test('ADR vervangen is toegestaan; gebouwd en specstatussen zijn ongeldig', () => {
     expect(changeStatus(ADR, ADR_ACCEPTED, { status: 'vervangen door 0028' })).toContain('Status: vervangen door 0028');
-    expect(() => changeStatus(ADR, ADR_ACCEPTED, { status: 'gebouwd', pr: 42, validatedSha: SHA })).toThrow();
+    expect(() => changeStatus(ADR, ADR_ACCEPTED, { status: 'gebouwd', pr: 42 })).toThrow();
     expect(() => changeStatus(ADR, ADR_ACCEPTED, { status: 'goedgekeurd' })).toThrow();
     expect(() => changeStatus(SPEC, APPROVED, { status: 'geaccepteerd' })).toThrow();
   });

@@ -1,5 +1,5 @@
 ---
-status: gebouwd # #482; gevalideerd: 188e95836b7cc79aa316a1a35fdc136cc3a5f9e8
+status: gebouwd # #482
 namespace: agent-merge-bytegrens
 sjabloon: mini
 ---

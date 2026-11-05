@@ -89,10 +89,11 @@ describe('mandate-follow-up/AC-10: alleen status: gebouwd # #<PR>; gevalideerd: 
     expect(keys).toStrictEqual(geldig ? [] : SPEC_BEWIJS);
   });
 
+  // GEWIJZIGD (specarchief-en-bouwvorm, ADR 0080 punt 5, OV-1): de melding noemt de ene vorm zonder SHA.
   test('de nieuwe meldingstekst noemt het bestand en de exacte vorm', async () => {
     const resultaat = await meldingen({ basis: GOEDGEKEURD, head: specMet('status: gebouwd') });
     expect(resultaat.map((m) => m.message)).toStrictEqual([
-      'docs/specs/a.md: naar gebouwd zonder bouwbewijs; zet de status met pnpm docs:status (status: gebouwd # #<PR>; gevalideerd: <sha>)',
+      'docs/specs/a.md: naar gebouwd zonder bouwbewijs; zet de status met pnpm docs:status (status: gebouwd # #<PR>)',
     ]);
   });
 });

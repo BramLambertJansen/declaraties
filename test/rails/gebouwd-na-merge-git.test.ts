@@ -158,9 +158,10 @@ function ciGroen(uitvoer: Uitvoer): void {
   expect(uitvoer.status).toBe(0);
 }
 
+// GEWIJZIGD (specarchief-en-bouwvorm, ADR 0080 punt 5, OV-1): docs:status schrijft `gebouwd # #<n>`, zonder SHA.
 describe('gebouwd-na-merge/AC-1: docs:status schrijft gebouwd na een squash- of mergecommit', () => {
   test.each(['squash', 'merge'] as const)(
-    'gebouwd-na-merge/AC-1: %s — status: gebouwd # #<n>; gevalideerd: <PR-head>, en CI is groen',
+    'gebouwd-na-merge/AC-1: %s — status: gebouwd # #<n>, en CI is groen',
     (variant) => {
       const { root } = maakMain();
       const merge = mergePr(root, { variant });
@@ -170,7 +171,7 @@ describe('gebouwd-na-merge/AC-1: docs:status schrijft gebouwd na een squash- of 
 
       expect(uitvoer.stderr).toBe('');
       expect(uitvoer.status).toBe(0);
-      expect(read(root, SPEC)).toBe(specTekst(builtLine(merge.prHead)));
+      expect(read(root, SPEC)).toBe(specTekst(`gebouwd # #${String(PR)}`));
       expect(git(root, ['diff', '--name-only'])).toBe(SPEC);
       ciGroen(ci(root, commit(root, 'docs: gebouwd'), gemergd(merge)));
     },
@@ -370,7 +371,8 @@ describe('gebouwd-na-merge/AC-8: een open PR via de bestaande route, een gemergd
     const uitvoer = draaiDocsStatus(root, ARGS, { STUB_PR_HEAD: prHead, STUB_PR_REF: FEATURE });
     expect(uitvoer.stderr).toBe('');
     expect(uitvoer.status).toBe(0);
-    expect(read(root, SPEC)).toBe(specTekst(builtLine(prHead)));
+    // GEWIJZIGD (specarchief-en-bouwvorm, ADR 0080 punt 5, OV-1): ook de open route schrijft `gebouwd # #<n>`.
+    expect(read(root, SPEC)).toBe(specTekst(`gebouwd # #${String(PR)}`));
   });
 
   test('gebouwd-na-merge/AC-8: een gemergde PR gaat niet via de open route, ook niet op de lokale PR-head en branch', () => {
@@ -405,7 +407,8 @@ describe('gebouwd-na-merge/AC-9: --roadmap in de gemergde route', () => {
       `${SPEC}: gebouwd; bewijs gecontroleerd, alleen de statusregel en het vinkje van het item gewijzigd\n`,
     );
     expect(read(root, ROADMAP)).toBe(roadmap(doneItem(SPEC, ` (#${String(PR)})`, 'Taak voor')));
-    expect(read(root, SPEC)).toBe(specTekst(builtLine(merge.prHead)));
+    // GEWIJZIGD (specarchief-en-bouwvorm, ADR 0080 punt 5, OV-1): de regel is `gebouwd # #<n>`.
+    expect(read(root, SPEC)).toBe(specTekst(`gebouwd # #${String(PR)}`));
   });
 });
 

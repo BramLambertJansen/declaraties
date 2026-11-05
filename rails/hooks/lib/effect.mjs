@@ -4,6 +4,7 @@ import { createHash } from 'node:crypto';
 import { lstatSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { decideChange, globMatch } from './rolhek.mjs';
+import { archiefBron } from './document-state.mjs';
 import { blobVan, entryVan, gelijk, veranderingen } from './effect-compare.mjs';
 import { MAX_MS, blobBytes, gitDirVan, momentopname, padStaten } from './effect-snapshot.mjs';
 
@@ -187,8 +188,8 @@ function beslis(repo, { verandering, agentType, voor, verhuisd }) {
 }
 
 /**
- * Verhuizingen naar het ADR-archief (spec rolhek-vooraf-krimp AC-5): een nieuw `docs/adr/archief/<naam>` met dezelfde inhoud
- * als het `docs/adr/<naam>` dat in hetzelfde commando verdween.
+ * Verhuizingen naar een archief (spec rolhek-vooraf-krimp AC-5, ADR 0080): een nieuw `docs/adr/archief/<naam>` of
+ * `docs/specs/archief/<naam>` met dezelfde inhoud als het `docs/adr/<naam>` of `docs/specs/<naam>` dat in hetzelfde commando verdween.
  * @param {Repo} repo @param {{ lijst: readonly Verandering[], voor: Snapshot }} doel
  * @returns {Set<string>}
  */
@@ -196,11 +197,11 @@ function verhuizingen(repo, { lijst, voor }) {
   const weggehaald = new Set(lijst.filter((verandering) => weg(verandering.na)).map((verandering) => verandering.rel));
   const lees = leesVoor(repo, voor);
   return new Set(lijst
-    .filter((verandering) => verandering.rel.startsWith('docs/adr/archief/') && weg(verandering.voor) && !weg(verandering.na))
+    .filter((verandering) => weg(verandering.voor) && !weg(verandering.na))
     .filter((verandering) => {
-      const bron = `docs/adr/${verandering.rel.slice('docs/adr/archief/'.length)}`;
-      const inhoud = weggehaald.has(bron) ? lees(bron) : null;
-      return !bron.slice('docs/adr/'.length).includes('/') && inhoud !== null && inhoud === leesNu(repo, verandering.rel);
+      const bron = archiefBron(verandering.rel);
+      const inhoud = bron !== null && weggehaald.has(bron) ? lees(bron) : null;
+      return inhoud !== null && inhoud === leesNu(repo, verandering.rel);
     })
     .map((verandering) => verandering.rel));
 }

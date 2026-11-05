@@ -305,6 +305,15 @@ Hier staan wijzigingen die van belang zijn bij het gebruiken of bijwerken van de
 
 ### Gewijzigd
 
+- Specarchief en één vorm voor `gebouwd` (ADR 0080, spec specarchief-en-bouwvorm): een vervallen spec verhuist byte-gelijk
+  naar `docs/specs/archief/` (onwijzigbaar, zoals het ADR-archief; rolhek, toets op effect en `check-document-status`); links
+  lossen op zoals bij ADR's en een naam uit het archief komt niet terug (`check-docs`). Een gebouwde spec blijft levend: een
+  besluit-PR voegt een AC toe als `- **<ns>/AC-n** (nog niet gebouwd)` en de bouw-PR haalt de markering weg; een AC-id van een
+  spec met eigenaarstatus verdwijnt niet, en zo'n spec verlaat `docs/specs/` alleen via `vervallen` naar het archief.
+  `gebouwd` heeft één vorm, `gebouwd # #<PR>`: `pnpm docs:status` schrijft die ook na de merge (de guard haalt de head bij
+  GitHub) en voor een open PR zonder check-runs. Wat verandert voor een app: `check-docs` weigert een statusregel met
+  `; gevalideerd: <sha>` in `docs/specs/`; haal dat deel weg (één regel per spec, zonder GitHub-aanroep groen).
+
 - Eén padtabel (ADR 0079, spec padtabel): `.claude/gates.json` beschrijft per glob in `paden` het schrijfniveau (`gate`,
   `voorReview`, `altijdVragen`) en het besluit (`agent`, `eigenaar`, `besluit-pr`); per kolom wint de strengste passende rij.
   Rolhek, diff-guard, lane, agent-merge, `pnpm pr:merge` en check-docs leiden er de oude lijsten uit af

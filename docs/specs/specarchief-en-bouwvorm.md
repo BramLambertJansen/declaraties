@@ -1,5 +1,5 @@
 ---
-status: goedgekeurd
+status: gebouwd # #544
 namespace: specarchief-en-bouwvorm
 model: opus
 modelreden: wijzigt de guard over besluiten en bouwbewijs, het rolhek en `docs:status` (ADR 0046 punt 18)

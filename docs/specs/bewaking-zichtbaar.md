@@ -1,5 +1,5 @@
 ---
-status: gebouwd # #526; gevalideerd: 9bb72dab98535f7f1e8f07fcc3ffc7932a3bb452
+status: gebouwd # #526
 namespace: bewaking-zichtbaar
 ---
 

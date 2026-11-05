@@ -217,12 +217,13 @@ describe('roadmapMeldingen: meldteksten (letterlijk uit de spec)', () => {
     ]);
   });
 
+  // GEWIJZIGD (specarchief-en-bouwvorm, ADR 0080 punt 5, OV-1): de melding noemt de ene vorm zonder SHA.
   test('spec naar gebouwd zonder bewijs', async () => {
     expect(await meldingenVoor('spec-gebouwd-zonder-bewijs')).toStrictEqual([
       {
         key: 'spec:bewijs:docs/specs/a.md',
         message:
-          'docs/specs/a.md: naar gebouwd zonder bouwbewijs; zet de status met pnpm docs:status (status: gebouwd # #<PR>; gevalideerd: <sha>)',
+          'docs/specs/a.md: naar gebouwd zonder bouwbewijs; zet de status met pnpm docs:status (status: gebouwd # #<PR>)',
       },
     ]);
   });

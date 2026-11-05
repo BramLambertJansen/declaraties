@@ -1,5 +1,5 @@
 ---
-status: gebouwd # #478; gevalideerd: 07f11046f35617711ddeba1150895ad42d6311b1
+status: gebouwd # #478
 namespace: rolhek-dicht
 sjabloon: mini
 ---
