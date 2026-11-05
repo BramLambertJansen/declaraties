@@ -68,8 +68,10 @@ n.v.t.: geen externe dienst; GitHub lezen zoals nu.
    spec (AC-1 t/m AC-3). Links: vanuit het archief alsof in `docs/specs/`; een doel `docs/specs/<naam>.md` lost vanuit
    `docs/adr/**` en `docs/specs/**` ook op naar het archief; elders het letterlijke pad.
 2. **Levende spec** (AC-7, AC-8). `beslisOvergang`: `gebouwd` → `gebouwd`, zelfde verwijzing, andere digest is `besluit`.
-   Een nieuwe AC: `- **<ns>/AC-n** (nog niet gebouwd)`; regel 6 van `check-docs` slaat alleen die over. In
-   `check-document-status` (tegen main): een id `<ns>/AC-n` (`ns` = namespace, anders de naam) verdwijnt bij geen overgang.
+   Een nieuwe AC: `- **<ns>/AC-n** (nog niet gebouwd)`, alleen op een id dat niet op main staat; regel 6 van `check-docs` slaat
+   alleen die over. De digest telt zonder markeringen: alleen weghalen is geen inhoudswijziging. In `check-document-status`
+   (tegen de stand op main): een id `<ns>/AC-n` (`ns` = namespace, anders de naam) verdwijnt bij geen overgang. Een verhuizing
+   gaat alleen naar `docs/specs/archief/` (`docs/template/specs/` uit `verhuisBron`); een andere rename is rood.
 3. **`docs:status`** schrijft alleen `status: gebouwd # #N`. Open PR N op deze branch, code buiten `docs/`, spec
    goedgekeurd op main of UI-akkoord; geen check-runs. Gemergd: `mergedRefusal`, head uit GitHub.
 4. **Guard.** Zonder SHA: N is deze PR → eigen route zoals nu; anders → gemergde route, head uit GitHub. Met SHA: zoals nu. Al
@@ -93,9 +95,11 @@ n.v.t.: geen externe dienst; GitHub lezen zoals nu.
   een geneste map eronder (bewaakt tegen terugval; nu al groen).
 - **specarchief-en-bouwvorm/AC-7** — Besluit-PR: gebouwde spec blijft `gebouwd` met een nieuwe AC `(nog niet gebouwd)`
   zonder test: groen. Rood: dezelfde AC zonder markering; de markering in een PR met code; `gebouwd # #<deze PR>` met een
-  markering; gebouwde spec naar `goedgekeurd`. De bouw-PR die de markering weghaalt, met test: groen.
+  markering; een markering op een id dat al op main staat; gebouwde spec naar `goedgekeurd`. Groen: een kritieke bouw-PR haalt
+  de markering weg, voegt de test toe en zet `gebouwd # #<deze PR>`.
 - **specarchief-en-bouwvorm/AC-8** — Spec met eigenaarstatus op main, rood: `<ns>/AC-3` weg; naar `voorstel` of `vervallen`
-  zonder `AC-3`; andere namespace; bestand verwijderd. Groen: naar `vervallen` met gelijke inhoud; verhuizing (AC-2).
+  zonder `AC-3`; andere namespace; bestand verwijderd; rename binnen `docs/specs/` of naar `docs/template/specs/`. Groen: naar
+  `vervallen` met gelijke inhoud; verhuizing (AC-2).
 - **specarchief-en-bouwvorm/AC-9** — `docs:status <spec> gebouwd --pr N`, PR N open op de branch met code: schrijft
   `status: gebouwd # #N`, ook als er geen check-runs zijn. Rood en niets geschreven: PR N gesloten of op een andere branch,
   of geen code buiten `docs/` en `CHANGELOG.md`.
@@ -122,6 +126,7 @@ n.v.t.: geen externe dienst; GitHub lezen zoals nu.
 - Code in `rails/hooks/lib/`: `document-state.mjs`, `built-evidence.mjs`, `rolhek.mjs`, `effect.mjs`; in `scripts/kit/`:
   `document-status.mjs`, `check-document-status.mjs`, `check-docs.mjs`, `check-roadmap.mjs`, `gates.mjs` (tekst).
 - `scripts/kit/status-git.mjs` (`mergedEvidence`, als de gemergde route zonder SHA dat vraagt).
+- Spec `compacte-kennisbasis-rails` AC-5: het deel "verhuizing naar `docs/template/specs/`" vervalt (bijwerken in de bouw-PR).
 - Docs: framework R-WERK-07 (levende spec), R-WERK-08 (één vorm; de stap terug naar `voorstel` houdt de AC-id's), R-CI-06
   (`docs/specs/archief/`), R-ROL-08, R-DOC-10 (noemt `docs/template/specs/` als voorbeeld); `docs/dod.md` (twee vormen),
   `docs/specs/_template.md`, `docs/operations/agent-doorloop.md`, `CHANGELOG.md`; de 17 statusregels.
@@ -136,7 +141,7 @@ n.v.t.: geen externe dienst; GitHub lezen zoals nu.
 
 - Unit: AC-1, AC-6, AC-13. Fixture-repo's met de gh-stub van `test/hooks/follow-up-kit.ts`: AC-2, AC-7 t/m AC-12;
   rolhek: AC-3; check-docs: AC-4, AC-5, AC-11.
-- Negatief bewijs: een tijdelijke commit zonder checkcontrole in de gemergde route, met de rode AC-10 als link.
+- Negatief bewijs: tijdelijk geen checkcontrole in de gemergde route, met de rode AC-10 als link.
 - **Vangnet**: (1) spec-vóór-code, AC-dekking en bouwbewijs blijven; AC-id-behoud, markering, archief-guard en
   toetsen van een gewijzigde verwijzing komen erbij; (2) bewijs: AC-10, AC-11 en de tests uit OV-1 (i) met gelijke uitkomst; (3) meting vóór en
   na met `pnpm leespad` en `pnpm meting --trend`; vóór (781fcd6): specs 67, 42 boven 10 KB; na de verhuis-PR verwacht 65 en
@@ -154,8 +159,9 @@ n.v.t.: geen externe dienst; GitHub lezen zoals nu.
   - **(ii) Nieuwe uitkomst:** `test/hooks/authority.test.ts` (`changeStatus` zonder SHA; weigeringen om de SHA vervallen); `test/hooks/mandate-follow-up-status.test.ts` ("schrijft alleen statusregel en vinkje":
     regel zonder SHA, guard met `PR_NUMBER=130`; "de verplichte checks ontbreken": docs:status schrijft nu);
     `test/rails/functional-ui-status.test.ts` ("docs:status en de guard aanvaarden": regel zonder SHA, guard met
-    `PR_NUMBER`; "ontbrekend CI-bewijs blijft rood": docs:status schrijft nu, ADR 0054 punt 1).
-  - **Blijft ongewijzigd:** `test/hooks/follow-up-kit.ts` en elke andere test met een met de hand geschreven SHA-regel (de
-    lezer blijft; ook de naam van de spec-en-bouw-test voor AC-11), de `archief-*`-tests, fixtures, en commentaar met een oud
-    specpad. Wordt een test rood door de AC-id- of verwijderregel, dan is dat een afwijking: eerst apart akkoord.
+    `PR_NUMBER`; "ontbrekend CI-bewijs blijft rood": docs:status schrijft nu, ADR 0054 punt 1);
+    `test/rails/archief-guard.test.ts` (r. 208, "een spec met status %s verhuist byte-gelijk: groen"): voor goedgekeurd,
+    gebouwd en vervallen nu rood, `docs/template/specs/` is geen verhuisdoel meer; voorstel blijft groen.
+  - **Blijft ongewijzigd:** `test/hooks/follow-up-kit.ts` en elke andere test met een met de hand geschreven SHA-regel (ook
+    de naam van de spec-en-bouw-test voor AC-11), de andere `archief-*`-tests, fixtures, en commentaar met een oud specpad. Wordt een test rood door de AC-id- of verwijderregel, dan is dat een afwijking: eerst apart akkoord.
 - **OV-2 ✅ besloten (ADR 0080)** — `docs/specs/archief/`, niet `docs/template/specs/`; omzetten in de bouw-PR (punt 6).
