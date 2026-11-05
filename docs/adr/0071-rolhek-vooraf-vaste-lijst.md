@@ -1,7 +1,7 @@
 # 0071 — Rolhek vooraf alleen voor wat de toets op effect niet ziet
 
 Status: geaccepteerd
-Herzien: 2026-11-04 (#500): punt 2, zelfladende paden: wat code laadt in de sandbox (`denyWrite`), vooraf een leeslijst
+Herzien: 2026-11-04 (#555): punt 2, zelfladende paden: wat code laadt in de sandbox (`denyWrite`), vooraf een leeslijst
 in plaats van schrijfvormen ([0082](0082-zelfladend-sandbox-en-leeslijst.md))
 
 Wijzigt [0066](0066-schrijfgrens-op-effect.md) punt 3 ("de toets vooraf blijft"), de buitenscope "de hoofdsessie als dader"

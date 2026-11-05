@@ -1,7 +1,7 @@
 # 0061 — Dagelijks werk binnen de Claude Code-sandbox
 
 Status: geaccepteerd
-Herzien: 2026-11-04 (#500): punt 3, `git merge origin/main` en fast-forward falen in de sandbox als ze een afgeschermd
+Herzien: 2026-11-04 (#555): punt 3, `git merge origin/main` en fast-forward falen in de sandbox als ze een afgeschermd
 zelfladend pad meenemen ([0082](0082-zelfladend-sandbox-en-leeslijst.md))
 
 Dit is de bedoelde status in een besluitvoorstel. Het besluit geldt pas na merge door de eigenaar op `main`; bouwen
