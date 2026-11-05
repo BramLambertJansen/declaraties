@@ -27,7 +27,7 @@ Wat er is, gemeten op 4 november 2026 in de hoofdcheckout, via `/proc/self/mount
   `packed-refs`, `HEAD`, `index`, `info` en `objects`. `.pnpmfile.cjs` en `.mcp.json` bestaan niet. `settings.local.json`
   bestaat lokaal maar wordt niet gevolgd.
 - Een pad in `denyWrite` dat niet bestaat, maskeert de sandbox met `/dev/null` op een `nodev`-mount, en lezen geeft dan
-  `EACCES`. Zo faalt in de hoofdcheckout elk git-commando in Bash op `.git/commondir`.
+  `EACCES`. Zo faalt in de hoofdcheckout elk git-commando in Bash op `.git/commondir` (leerpunt #553).
 - De afscherming geldt voor de hele sessie en voor elke rol (een subagent krijgt dezelfde mounts), maar alleen voor Bash.
   Hooks draaien buiten de sandbox, net als de `sandbox.excludedCommands`.
 - Git werkt er niet omheen: `git switch` en `git merge --ff-only` breken af op een afgeschermd `settings.json` (review
