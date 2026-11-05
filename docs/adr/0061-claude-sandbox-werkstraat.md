@@ -1,6 +1,8 @@
 # 0061 — Dagelijks werk binnen de Claude Code-sandbox
 
 Status: geaccepteerd
+Herzien: 2026-11-04 (#555): punt 3, `git merge origin/main` en fast-forward falen in de sandbox als ze een afgeschermd
+zelfladend pad meenemen ([0082](0082-zelfladend-sandbox-en-leeslijst.md))
 
 Dit is de bedoelde status in een besluitvoorstel. Het besluit geldt pas na merge door de eigenaar op `main`; bouwen
 volgt in een afzonderlijke PR volgens [0046](0046-werkstraat-en-beslisroute.md). Drempel: A3, agentrechten expliciteren
@@ -34,7 +36,8 @@ dus onvoldoende; de dagelijkse vorm vermijdt upstreamregistratie.
 3. De dagelijkse pushvorm is `git push origin HEAD` vanaf een featurebranch. PR-aanmaak gebruikt expliciet `--head`
    met de werkbranch en `--body-file`. Een push vanaf `main`, main-verwijdering, force, `--all`, `--mirror`,
    hookoverslaan, PR-merge via gh/API en zelfreview blijven verboden. Lokale `git merge origin/main`, fast-forward en
-   bestaande veilige taakbranchopruiming blijven toegestaan. Upstreaminstelling krijgt geen nieuwe automatische toestemming.
+   bestaande veilige taakbranchopruiming blijven toegestaan. Nemen ze een pad mee dat de sandbox afschermt, dan falen
+   ze in de sandbox ([0082](0082-zelfladend-sandbox-en-leeslijst.md)); het herstel staat in spec rolhek-vooraf-krimp. Upstreaminstelling krijgt geen nieuwe automatische toestemming.
 4. Git-metadatawrites in hoofdcheckout en worktree gebruiken uitsluitend Claude's ingebouwde ondersteuning.
    Geen `.git`-allowlist, globale pnpm-opslag of mise-installaties schrijfbaar maken. Alleen als een echte gh-logproef
    cachewrites nodig blijkt te hebben, mag exact `~/.cache/gh` schrijfbaar worden; nooit `~/.config/gh`.
