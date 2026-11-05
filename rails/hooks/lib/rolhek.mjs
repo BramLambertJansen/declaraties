@@ -1725,16 +1725,19 @@ function withoutRepo(args) {
 export function ghForbidden(rawArgs, expanded = []) {
   const args = withoutRepo(rawArgs);
   const [group = '', action = ''] = args;
+  // De PR-actie komt uit `ghCommandWords`, zoals cobra hem vindt, ook na opties (`gh pr --body x review 1`, leerpunt #399).
+  // Op `rawArgs`: `withoutRepo` haalt ook een `-R` weg dat de waarde van een eerdere optie is (`gh pr --body -R review 1`).
+  const [, prAction = ''] = ghCommandWords(rawArgs);
   const api = group === 'api' ? apiCall(args.slice(1)) : null;
   /** @type {string[]} */
   const found = [];
   if (group !== '' && !GH_GROUPS.has(group)) found.push(`gh ${group}: onbekende opdracht (mogelijk een alias), voor elke rol geweigerd`);
   if (group === 'alias' && (action === 'set' || action === 'import')) found.push('gh alias set/import: een alias omzeilt het rolhek');
-  if (group === 'pr' && action === 'review') found.push('gh pr review: de agent keurt nooit zelf goed (AGENTS.md)');
-  if (zetLabel(args)) found.push('een PR-label zet alleen de eigenaar, voor elke rol (R-ROL-08)');
+  if (group === 'pr' && prAction === 'review') found.push('gh pr review: de agent keurt nooit zelf goed (AGENTS.md)');
+  if (zetLabel(rawArgs)) found.push('een PR-label zet alleen de eigenaar, voor elke rol (R-ROL-08)');
   if (api !== null) found.push(...apiUnreadable(api, expanded));
   if (api !== null && apiWritesSelfReview(api)) found.push('gh api: labels, reviews en statussen zet alleen de eigenaar');
-  if ((group === 'pr' && action === 'merge') || (api !== null && apiMerges(api)))
+  if ((group === 'pr' && prAction === 'merge') || (api !== null && apiMerges(api)))
     found.push('mergen (ook auto-merge) doet alleen de eigenaar, voor elke rol (WS-04)');
   return found;
 }
