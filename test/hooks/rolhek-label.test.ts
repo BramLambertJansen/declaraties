@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, test } from 'vitest';
-import { decide, loadConfig } from '../../rails/hooks/lib/rolhek.mjs';
+import { decide, ghForbidden, loadConfig } from '../../rails/hooks/lib/rolhek.mjs';
 
 // compacte-kennisbasis-rails/AC-17 (PR 6b-1, gate-label weg): geen enkele rol zet of haalt een label bij `gh pr create` of
 // `gh pr edit`, ongeacht de labelnaam. Leesfilters (`gh pr list --label x`) en de leerpuntvorm van `gh issue create` blijven.
@@ -65,7 +65,14 @@ describe('compacte-kennisbasis-rails/AC-17: labels op een PR zet geen enkele rol
     'gh issue edit 1 --add-label=bug',
     'gh issue --add-label bug edit 1',
     'gh pr --body x review 1 --approve',
+    'gh pr --body x review 1',
+    'gh pr --body x review 1 --comment',
+    'gh pr --body x review 1 --request-changes',
     'gh pr --body x merge 1',
+    'gh pr -R o/r --body x merge --auto 1',
+    'gh pr --body -R review 1 --comment',
+    'gh pr --body -R merge 1',
+    'gh pr --title -R create -l bug --body b',
   ];
   const omwegGevallen = ROLLEN.flatMap(({ rol, agent }) => OMWEGEN.map((command) => ({ rol, agent, command })));
 
@@ -102,4 +109,26 @@ describe('compacte-kennisbasis-rails/AC-17: labels op een PR zet geen enkele rol
   test('compacte-kennisbasis-rails/AC-17 hoofdsessie: gh pr edit zonder label (titel, body) blijft toegestaan', () => {
     expect(verdict('gh pr edit 1 --title t --body b')).toBe('allow');
   });
+
+  test('compacte-kennisbasis-rails/AC-17 hoofdsessie: leesopdrachten met een optiewaarde review of merge blijven toegestaan (leerpunt #399)', () => {
+    expect(verdict('gh pr view 1 --json title')).toBe('allow');
+    expect(verdict('gh pr list --search review')).toBe('allow');
+    expect(verdict('gh pr view 1 --body review')).toBe('allow');
+  });
+
+  test('compacte-kennisbasis-rails/AC-17 gh pr checks blijft toegestaan voor de reviewer (leerpunt #399)', () => {
+    expect(verdict('gh pr checks 1', 'reviewer')).toBe('allow');
+  });
+
+  test.each([
+    [['pr', '--body', 'x', 'merge', '1'], 'mergen'],
+    [['pr', '--body', '-R', 'merge', '1'], 'mergen'],
+    [['pr', '--body', 'x', 'review', '1'], 'gh pr review'],
+    [['pr', '--body', '-R', 'review', '1', '--comment'], 'gh pr review'],
+  ])(
+    'compacte-kennisbasis-rails/AC-17 ghForbidden leest de pr-actie zoals cobra: %j (leerpunt #399)',
+    (args, melding) => {
+      expect(ghForbidden(args).join(' ')).toContain(melding);
+    },
+  );
 });
