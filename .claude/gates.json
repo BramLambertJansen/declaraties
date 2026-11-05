@@ -86,7 +86,6 @@
     "scripts/kit/agent-merge.mjs":           { "besluit": "besluit-pr" },
     "scripts/kit/pr-merge.mjs":              { "besluit": "besluit-pr" }
   },
-  "onderhoud": { "repository": "BramLambertJansen/template" },
   "merge": "niet-kritiek",
   "agentMerge": {
     "codex": "indien-aanwezig",
