@@ -1,0 +1,39 @@
+-- migrate:up
+-- Resource __naam__ (spec docs/specs/__naam__.md), gemaakt door pnpm new:resource.
+-- Een tabel met een eigenaar (security-review docs/reviews/2026-10-10-tabelpatroon.md): een gebruiker ziet en wijzigt
+-- alleen eigen rijen.
+
+create table public.__tabel__ (
+  id uuid primary key default gen_random_uuid(),
+  owner_id text not null default app.current_user_id() references better_auth."user" (id) on delete cascade,
+  created_at timestamptz not null default now()
+);
+create index __tabel___owner_id_idx on public.__tabel__ (owner_id);
+alter table public.__tabel__ enable row level security;
+alter table public.__tabel__ force row level security;
+
+-- Insert en update alleen op de velden uit de spec, nooit op id, owner_id of created_at (review A1/A2). De velden en hun
+-- grants komen in een nieuwe migratie:
+-- grant insert (<velden>), update (<velden>) on public.__tabel__ to app_authenticated;
+grant select, delete on public.__tabel__ to app_authenticated;
+
+create policy __tabel___select_own on public.__tabel__
+  for select to app_authenticated using (owner_id = (select app.current_user_id()));
+create policy __tabel___insert_own on public.__tabel__
+  for insert to app_authenticated with check (owner_id = (select app.current_user_id()));
+create policy __tabel___update_own on public.__tabel__
+  for update to app_authenticated
+  using (owner_id = (select app.current_user_id())) with check (owner_id = (select app.current_user_id()));
+create policy __tabel___delete_own on public.__tabel__
+  for delete to app_authenticated using (owner_id = (select app.current_user_id()));
+
+-- Bewaarcatalogus (spec achtergrondtaken, OV-A5; invariant in db/tests/invarianten.sql): de tabel verdwijnt met het account.
+-- app.retention staat onder FORCE RLS zonder insert-policy; FORCE gaat alleen binnen deze migratietransactie uit.
+alter table app.retention no force row level security;
+insert into app.retention values (
+  'public.__tabel__', null, null, 'app', 'verdwijnt met het account (owner_id, on delete cascade)'
+);
+alter table app.retention force row level security;
+
+-- migrate:down
+-- Append-only: geen down-migraties (docs/framework.md §10).

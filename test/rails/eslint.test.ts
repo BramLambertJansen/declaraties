@@ -1,0 +1,493 @@
+import { ESLint } from 'eslint';
+import tseslint from 'typescript-eslint';
+import { describe, expect, test } from 'vitest';
+
+// Fixtures voor de rails in eslint.config.js (framework §1.5): elke regel faalt op de overtreding én op bekende
+// omzeilingen, en zwijgt op de plek waar het mag. Zonder type-informatie: de rails zijn puur syntactisch.
+const eslint = new ESLint({
+  cwd: process.cwd(),
+  overrideConfig: [tseslint.configs.disableTypeChecked],
+});
+
+async function railsIn(filePath: string, code: string): Promise<string[]> {
+  const [result] = await eslint.lintText(code, { filePath });
+  const ruleIds = result?.messages.map((message) => message.ruleId ?? 'parse-fout') ?? [];
+  return ruleIds.filter((id) => id.startsWith('rails/') || id === 'parse-fout');
+}
+
+interface Fixture {
+  name: string;
+  file: string;
+  code: string;
+  rule: string | null;
+  // Een tweede rail die op dezelfde code terecht ook meldt (bijv. rails/netwerk-api op globalThis of child_process in api-code).
+  also?: string[];
+}
+
+const fixtures: Fixture[] = [
+  // process.env
+  { name: 'process.env', file: 'src/api/x.ts', code: 'export const a = process.env.X;', rule: 'rails/process-env' },
+  { name: 'bracket', file: 'src/api/x.ts', code: "export const a = process['env'];", rule: 'rails/process-env' },
+  {
+    name: 'alias',
+    file: 'src/api/x.ts',
+    code: 'const p = process; export const a = p.env;',
+    rule: 'rails/process-env',
+  },
+  {
+    name: 'globalThis bracket',
+    file: 'src/api/x.ts',
+    code: "export const a = globalThis['process'];",
+    rule: 'rails/process-env',
+    also: ['rails/netwerk-api'],
+  },
+  {
+    name: 'node:process',
+    file: 'src/api/x.ts',
+    code: "export { env } from 'node:process';",
+    rule: 'rails/process-env',
+  },
+  {
+    name: 'process in core',
+    file: 'src/core/api/x.ts',
+    code: 'export const a = process.env;',
+    rule: 'rails/process-env',
+  },
+  { name: 'env.ts mag', file: 'src/core/api/env.ts', code: 'export const a = process.env.X;', rule: null },
+
+  // import.meta.env
+  {
+    name: 'meta.env',
+    file: 'src/web/x.ts',
+    code: 'export const a = import.meta.env.MODE;',
+    rule: 'rails/import-meta-env',
+  },
+  {
+    name: 'bracket',
+    file: 'src/web/x.ts',
+    code: "export const a = import.meta['env'];",
+    rule: 'rails/import-meta-env',
+  },
+  {
+    name: 'destructuring',
+    file: 'src/web/x.ts',
+    code: 'const { env } = import.meta; export const a = env;',
+    rule: 'rails/import-meta-env',
+  },
+  {
+    name: 'web env.ts mag',
+    file: 'src/core/web/lib/env.ts',
+    code: 'export const a = import.meta.env.MODE;',
+    rule: null,
+  },
+
+  // fetch
+  { name: 'fetch', file: 'src/web/features/x.ts', code: "void fetch('/api/x');", rule: 'rails/fetch' },
+  { name: 'window.fetch', file: 'src/web/x.ts', code: "void window.fetch('/x');", rule: 'rails/fetch' },
+  { name: 'bracket', file: 'src/web/x.ts', code: "void globalThis['fetch']('/x');", rule: 'rails/fetch' },
+  { name: 'alias', file: 'src/web/x.ts', code: "const f = fetch; void f('/x');", rule: 'rails/fetch' },
+  { name: 'XMLHttpRequest', file: 'src/web/x.ts', code: 'export const x = new XMLHttpRequest();', rule: 'rails/fetch' },
+  { name: 'core web', file: 'src/core/web/lib/x.ts', code: "void fetch('/x');", rule: 'rails/fetch' },
+  { name: 'api-client mag', file: 'src/core/web/lib/api-client.ts', code: "void fetch('/x');", rule: null },
+
+  // rauwe elementen
+  { name: '<button>', file: 'src/web/features/x.tsx', code: 'export const x = <button />;', rule: 'rails/elementen' },
+  { name: '<a>', file: 'src/web/routes/x.tsx', code: 'export const x = <a href="/">x</a>;', rule: 'rails/elementen' },
+  { name: '<dialog>', file: 'src/core/web/lib/x.tsx', code: 'export const x = <dialog />;', rule: 'rails/elementen' },
+  {
+    name: 'createElement',
+    file: 'src/web/x.tsx',
+    code: "import { createElement } from 'react'; export const x = createElement('input');",
+    rule: 'rails/elementen',
+  },
+  {
+    name: 'React.createElement',
+    file: 'src/web/x.tsx',
+    code: "import React from 'react'; export const x = React.createElement('select');",
+    rule: 'rails/elementen',
+  },
+  {
+    name: 'jsx-runtime',
+    file: 'src/web/x.tsx',
+    code: "import { jsx } from 'react/jsx-runtime'; export const x = jsx('textarea', {});",
+    rule: 'rails/elementen',
+  },
+  { name: 'ander element mag', file: 'src/web/features/x.tsx', code: 'export const x = <main />;', rule: null },
+  { name: 'component mag', file: 'src/web/features/x.tsx', code: 'export const x = <Button />;', rule: null },
+  { name: 'web/ui mag', file: 'src/web/ui/x.tsx', code: 'export const x = <button />;', rule: null },
+  { name: 'core/ui mag', file: 'src/core/web/ui/x.tsx', code: 'export const x = <input />;', rule: null },
+
+  // SQL: sessielek
+  { name: 'SET ROLE', file: 'src/api/x.ts', code: "export const q = 'SET ROLE admin';", rule: 'rails/sql-sessie' },
+  { name: 'set role klein', file: 'src/api/x.ts', code: 'export const q = `set   role x`;', rule: 'rails/sql-sessie' },
+  {
+    name: 'SET SESSION AUTHORIZATION',
+    file: 'src/api/x.ts',
+    code: "export const q = 'set session authorization x';",
+    rule: 'rails/sql-sessie',
+  },
+  {
+    name: 'set_config false, ook in db',
+    file: 'src/core/api/db/x.ts',
+    code: "export const q = `select set_config('app.user_id', $1, FALSE)`;",
+    rule: 'rails/sql-sessie',
+  },
+  {
+    name: 'SET LOCAL ROLE in db mag',
+    file: 'src/core/api/db/x.ts',
+    code: "export const q = 'SET LOCAL ROLE app_authenticated';",
+    rule: null,
+  },
+  {
+    name: 'set_config true in db mag',
+    file: 'src/core/api/db/x.ts',
+    code: "export const q = `select set_config('app.user_id', $1, true)`;",
+    rule: null,
+  },
+
+  // SQL: instellingen buiten db
+  {
+    name: 'set_config buiten db',
+    file: 'src/api/domain/x.ts',
+    code: "export const q = `select set_config('app.user_id', $1, true)`;",
+    rule: 'rails/sql-instellingen',
+  },
+  {
+    name: 'current_setting buiten db',
+    file: 'src/core/api/auth/x.ts',
+    code: "export const q = 'select current_setting(\\'app.session_strength\\')';",
+    rule: 'rails/sql-instellingen',
+  },
+
+  // hono buiten core
+  { name: 'hono', file: 'src/api/routes/x.ts', code: "import { Hono } from 'hono'; void Hono;", rule: 'rails/hono' },
+  {
+    name: 'subpad',
+    file: 'src/web/x.ts',
+    code: "import { hc } from 'hono/client'; void hc;",
+    rule: 'rails/hono',
+  },
+  { name: 're-export', file: 'src/shared/x.ts', code: "export * from 'hono';", rule: 'rails/hono' },
+  { name: '@hono', file: 'src/api/x.ts', code: "export { serve } from '@hono/node-server';", rule: 'rails/hono' },
+  { name: 'dynamisch', file: 'src/api/x.ts', code: "export const h = import('hono');", rule: 'rails/hono' },
+  { name: 'core mag', file: 'src/core/api/http/x.ts', code: "import { Hono } from 'hono'; void Hono;", rule: null },
+
+  // niet-letterlijke import()
+  {
+    name: 'variabele',
+    file: 'src/web/x.ts',
+    code: 'const p = "./a.ts"; export const m = import(p);',
+    rule: 'rails/import',
+  },
+  {
+    name: 'template',
+    file: 'src/api/x.ts',
+    code: 'const n = "a"; export const m = import(`./${n}.ts`);',
+    rule: 'rails/import',
+  },
+  { name: 'letterlijk mag', file: 'src/web/x.ts', code: "export const m = import('./a.ts');", rule: null },
+  // axe (framework §7): alleen scanAxe, zonder uitzonderingen.
+  {
+    name: 'eigen AxeBuilder in een spec',
+    file: 'e2e/x.spec.ts',
+    code: "import AxeBuilder from '@axe-core/playwright'; export const a = AxeBuilder;",
+    rule: 'rails/axe-import',
+  },
+  {
+    name: 'axe via dynamische import',
+    file: 'e2e/x.spec.ts',
+    code: "export const a = import('@axe-core/playwright');",
+    rule: 'rails/axe-import',
+  },
+  {
+    name: 'axe-core direct',
+    file: 'test/ui/x.test.ts',
+    code: "export { default } from '@axe-core/playwright';",
+    rule: 'rails/axe-import',
+  },
+  {
+    name: 'scanAxe zelf mag AxeBuilder',
+    file: 'e2e/support/axe.ts',
+    code: "import AxeBuilder from '@axe-core/playwright'; export const a = AxeBuilder;",
+    rule: null,
+  },
+  {
+    name: 'disableRules in scanAxe',
+    file: 'e2e/support/axe.ts',
+    code: "declare const b: { disableRules(r: string[]): void }; b.disableRules(['color-contrast']);",
+    rule: 'rails/axe-uitzondering',
+  },
+  {
+    name: 'exclude in scanAxe',
+    file: 'e2e/support/axe.ts',
+    code: "declare const b: { exclude(s: string): void }; b.exclude('#x');",
+    rule: 'rails/axe-uitzondering',
+  },
+  {
+    name: 'omzeiling met bracket-notatie',
+    file: 'e2e/support/axe.ts',
+    code: "declare const b: Record<string, (x: string) => void>; const k = 'exclude'; b[k]?.('#x');",
+    rule: 'rails/axe-scan',
+  },
+  {
+    name: 'bracket met letterlijke string',
+    file: 'e2e/support/axe.ts',
+    code: "declare const b: Record<string, (x: string[]) => void>; b['disableRules']?.(['color-contrast']);",
+    rule: 'rails/axe-uitzondering',
+  },
+  {
+    name: 'destructuring van disableRules',
+    file: 'e2e/support/axe.ts',
+    code: "declare const b: { disableRules(r: string[]): void }; const { disableRules } = b; disableRules(['x']);",
+    rule: 'rails/axe-uitzondering',
+  },
+  {
+    name: 'disableRules via call in een spec',
+    file: 'e2e/x.spec.ts',
+    code: "declare const b: { disableRules(r: string[]): void }; b.disableRules.call(b, ['x']);",
+    rule: 'rails/axe-uitzondering',
+  },
+  {
+    name: 'eigen axeSource',
+    file: 'e2e/support/axe.ts',
+    code: "export const o = { axeSource: 'nep' };",
+    rule: 'rails/axe-uitzondering',
+  },
+  {
+    name: 're-export van AxeBuilder uit scanAxe',
+    file: 'e2e/support/axe.ts',
+    code: "export { default as AxeBuilder } from '@axe-core/playwright';",
+    rule: 'rails/axe-scan',
+  },
+
+  // klassen (framework §7, docs/specs/klassenrail.md): alleen layout-klassen als gewone string in features/ en routes/.
+  // klassenrail/AC-1: typografie- of kleurtoken
+  ...['text-sm', 'text-muted-foreground', 'bg-primary', 'font-medium', 'rounded-md', 'flex text-sm'].map((cls) => ({
+    name: `klassenrail/AC-1: className="${cls}"`,
+    file: 'src/web/features/x.tsx',
+    code: `export const x = <div className="${cls}" />;`,
+    rule: 'rails/klassen',
+  })),
+  // klassenrail/AC-2: omzeiling binnen de string
+  ...['w-[3px]', '!flex', 'dark:flex', 'md:text-lg', 'md:lg:flex'].map((cls) => ({
+    name: `klassenrail/AC-2: className="${cls}"`,
+    file: 'src/web/features/x.tsx',
+    code: `export const x = <div className="${cls}" />;`,
+    rule: 'rails/klassen',
+  })),
+  // klassenrail/AC-3: className die geen stringliteral is, ook met layout-inhoud
+  {
+    name: 'klassenrail/AC-3: template literal',
+    file: 'src/web/features/x.tsx',
+    code: 'export const x = <div className={`flex`} />;',
+    rule: 'rails/klassen',
+  },
+  {
+    name: 'klassenrail/AC-3: cn()-aanroep',
+    file: 'src/web/features/x.tsx',
+    code: "declare const cn: (...c: string[]) => string; export const x = <div className={cn('flex', 'text-sm')} />;",
+    rule: 'rails/klassen',
+  },
+  {
+    name: 'klassenrail/AC-3: variabele',
+    file: 'src/web/features/x.tsx',
+    code: "const c = 'flex'; export const x = <div className={c} />;",
+    rule: 'rails/klassen',
+  },
+  {
+    name: 'klassenrail/AC-3: stringliteral in expressie',
+    file: 'src/web/features/x.tsx',
+    code: "export const x = <div className={'flex'} />;",
+    rule: 'rails/klassen',
+  },
+  // klassenrail/AC-4: className via spread-object
+  {
+    name: 'klassenrail/AC-4: spread-object',
+    file: 'src/web/features/x.tsx',
+    code: "export const x = <div {...{ className: 'flex' }} />;",
+    rule: 'rails/klassen',
+  },
+  // klassenrail/AC-5: inline stijl
+  {
+    name: 'klassenrail/AC-5: leeg style-object in features',
+    file: 'src/web/features/x.tsx',
+    code: 'export const x = <div style={{}} />;',
+    rule: 'rails/klassen',
+  },
+  {
+    name: 'klassenrail/AC-5: style met kleur in routes',
+    file: 'src/web/routes/x.tsx',
+    code: "export const x = <div style={{ color: 'red' }} />;",
+    rule: 'rails/klassen',
+  },
+  // klassenrail/AC-6: routes vallen ook onder de rail
+  {
+    name: 'klassenrail/AC-6: typografie in routes',
+    file: 'src/web/routes/x.tsx',
+    code: 'export const x = <div className="text-sm" />;',
+    rule: 'rails/klassen',
+  },
+  // klassenrail/AC-7: alleen layout-tokens mag
+  ...[
+    '<div className="flex flex-col gap-4" />',
+    '<div className="max-w-sm" />',
+    '<div className="md:flex-row w-1/2" />',
+    '<span className="sr-only" />',
+    '<div className="flex min-w-0 flex-col gap-4 pb-4 -mt-2 mx-auto" />',
+    '<Card className="grid grid-cols-2 gap-x-6" />',
+  ].map((jsx) => ({
+    name: `klassenrail/AC-7: layout mag: ${jsx}`,
+    file: 'src/web/features/x.tsx',
+    code: `export const x = ${jsx};`,
+    rule: null,
+  })),
+  // klassenrail/AC-8: buiten het bereik (recepten en tests) mag het
+  ...['src/web/ui/x.tsx', 'src/core/web/ui/x.tsx', 'src/web/features/x.test.tsx'].map((file) => ({
+    name: 'klassenrail/AC-8: buiten het bereik mag',
+    file,
+    code: 'export const x = <div className="text-sm" style={{}} />;',
+    rule: null,
+  })),
+  // afwezigheid (leerpunt #402): een negatieve regex-assertie bewijst alleen iets als het patroon de vormen in de bron
+  // herkent; dat bewijs levert expectAbsent uit test/support/absence.ts.
+  ...[
+    'expect(x).not.toMatch(/mandat/i);',
+    "expect(x).not['toMatch'](/mandat/i);",
+    "expect(x)['not'].toMatch(/mandat/i);",
+    "expect(x)['not']['toMatch'](/mandat/i);",
+    'expect.soft(x).not.toMatch(/mandat/i);',
+    'expect(x).toEqual(expect.not.stringMatching(/mandat/i));',
+    "import assert from 'node:assert'; assert.doesNotMatch(x, /mandat/i);",
+    "import assert from 'node:assert'; assert['doesNotMatch'](x, /mandat/i);",
+    'const n = expect(x).not; n.toMatch(/mandat/i);',
+    'const { not } = expect(x); not.toMatch(/mandat/i);',
+    'expect(/mandat/i.test(x)).toBe(false);',
+    'expect(/mandat/i.exec(x)).toBeNull();',
+    'expect(x.match(/mandat/i)).toBeNull();',
+    'expect(x.search(/mandat/i)).toBe(-1);',
+    "import assert from 'node:assert'; assert.ok(!/mandat/i.test(x));",
+  ].map((code) => ({
+    name: `afwezigheid/#402: ${code}`,
+    file: 'test/x.test.ts',
+    code: `declare const x: string; ${code}`,
+    rule: 'rails/afwezigheid',
+  })),
+  ...['src/web/x.test.tsx', 'src/core/api/x.test.ts', 'e2e/x.spec.ts', 'test/hooks/kit.ts'].map((file) => ({
+    name: 'afwezigheid/#402: elk testbestand valt eronder',
+    file,
+    code: 'declare const x: string; expect(x).not.toMatch(/mandat/i);',
+    rule: 'rails/afwezigheid',
+  })),
+  ...[
+    'expect(x).toMatch(/mandaat/i);',
+    "expect(x).not.toContain('mandaat');",
+    'expect(x).not.toBe(1);',
+    'expect(x).not.toMatchObject({});',
+    "expectAbsent(x, /manda+te?/i, { recognizes: ['mandaat', 'mandate'] });",
+    'const { not } = { not: 1 }; expect(not).toBe(1);',
+    "expect(x.match('mandaat')).toBeNull();",
+    'const ok = !/mandat/i.test(x); export { ok };',
+    'expect(x.match(/mandat/g)).toHaveLength(1);',
+  ].map((code) => ({
+    name: `afwezigheid/#402: mag: ${code}`,
+    file: 'test/x.test.ts',
+    code: `declare const x: string; ${code}`,
+    rule: null,
+  })),
+  ...['src/api/x.ts', 'test/support/absence.ts'].map((file) => ({
+    name: 'afwezigheid/#402: buiten het bereik mag',
+    file,
+    code: 'declare const x: string; expect(x).not.toMatch(/mandat/i);',
+    rule: null,
+  })), // negatieve-tabel (leerpunt #401): een tabel die per rij `false` eist, bewijst alleen iets als de basis eerst waar is;
+  // dat bewijs levert expectNegativeTable uit test/support/negative-table.ts.
+  ...[
+    "test.each([1, 2])('rij %s', (n) => { expect(ok(n)).toBe(false); });",
+    "it.each([1, 2])('rij %s', (n) => { expect(ok(n)).toBe(false); });",
+    "test.for([1, 2])('rij %s', (n) => { expect(ok(n)).toBe(false); });",
+    "describe.each([1, 2])('rij %s', (n) => { test('t', () => { expect(ok(n)).toBe(false); }); });",
+    "test.each([1, 2])('rij %s', (n) => { expect(ok(n)).toStrictEqual(false); });",
+    "test.each([1, 2])('rij %s', (n) => { expect(ok(n)).toEqual(false); });",
+    "test.each([1, 2])('rij %s', (n) => { expect(ok(n)).toBeFalsy(); });",
+    "test.each([1, 2])('rij %s', (n) => { expect(ok(n)).not.toBe(true); });",
+    "test.skip.each([1, 2])('rij %s', (n) => { expect(ok(n)).toBe(false); });",
+    "test.each([1, 2])('rij %s', (n) => { expect(ok(n)).not.toBeTruthy(); });",
+    "test.each`n\n${1}\n${2}`('rij $n', ({ n }) => { expect(ok(n)).toBe(false); });",
+  ].map((code) => ({
+    name: `negatieve-tabel/#401: ${code}`,
+    file: 'test/x.test.ts',
+    code: `declare function ok(n: number): boolean; ${code}`,
+    rule: 'rails/negatieve-tabel',
+  })),
+  ...['src/web/x.test.tsx', 'e2e/x.spec.ts'].map((file) => ({
+    name: 'negatieve-tabel/#401: elk testbestand valt eronder',
+    file,
+    code: "declare function ok(n: number): boolean; test.each([1])('r', (n) => { expect(ok(n)).toBe(false); });",
+    rule: 'rails/negatieve-tabel',
+  })),
+  ...[
+    "test.each([1, 2])('rij %s', (n) => { expect(ok(n)).toBe(true); });",
+    "test.each([1, 2])('rij %s', (n) => { expect(n).toBe(n); });",
+    "test('los', () => { expect(ok(1)).toBe(false); });",
+    "test('tabel', () => { expectNegativeTable({ base: 1, check: ok, cases: [{ name: 'nul', change: () => 0 }] }); });",
+  ].map((code) => ({
+    name: `negatieve-tabel/#401: mag: ${code}`,
+    file: 'test/x.test.ts',
+    code: `declare function ok(n: number): boolean; ${code}`,
+    rule: null,
+  })),
+  ...['src/api/x.ts', 'test/support/negative-table.ts'].map((file) => ({
+    name: 'negatieve-tabel/#401: buiten het bereik mag',
+    file,
+    code: "declare function ok(n: number): boolean; test.each([1])('r', (n) => { expect(ok(n)).toBe(false); });",
+    rule: null,
+  })),
+  // kooi (ADR 0072, spec kooi AC-5): een shell met een commandotekst alleen via inKooi.
+  ...[
+    "import { spawnSync } from 'node:child_process'; declare const c: string; spawnSync('bash', ['-c', c]);",
+    "import { spawnSync } from 'node:child_process'; declare const c: string; spawnSync('/bin/sh', ['-eu', '-c', c]);",
+    "import { execFileSync } from 'child_process'; declare const c: string; execFileSync('bash', ['-ec', c]);",
+    "import { spawn } from 'node:child_process'; declare const a: string[]; spawn('zsh', a);",
+    "import { execFile } from 'node:child_process'; execFile('git', ['status'], { shell: true });",
+    "import { spawnSync } from 'node:child_process'; spawnSync('ls', [], { shell: '/bin/bash' });",
+    "import { exec } from 'node:child_process'; exec('ls');",
+    "import { execSync as x } from 'child_process'; x('ls');",
+    "import * as cp from 'node:child_process'; cp.spawnSync('ls');",
+    "import cp from 'node:child_process'; cp.spawnSync('ls');",
+    "const cp = await import('node:child_process'); cp.spawnSync('ls');",
+    "const { execSync } = require('child_process'); execSync('ls');",
+    "import { spawnSync as s } from 'node:child_process'; declare const c: string; s('bash', ['-c', c]);",
+    "import { spawn as spawnSync } from 'node:child_process'; spawnSync('ls');",
+    "import { spawnSync } from 'node:child_process'; spawnSync('ls', [], { 'shell': true });",
+    "const cp = await import(`node:child_process`); cp.spawnSync('ls');",
+  ].map((code) => ({ name: `kooi: ${code}`, file: 'test/x.test.ts', code, rule: 'rails/kooi' })),
+  ...['scripts/kit/x.mjs', 'rails/hooks/lib/x.mjs', 'src/api/x.ts', 'e2e/x.spec.ts', 'deploy/x/x.ts', 'x.mjs'].map(
+    (file) => ({
+      name: 'kooi: elk codepad valt eronder',
+      file,
+      code: "import { spawnSync } from 'node:child_process'; declare const c: string; spawnSync('bash', ['-c', c]);",
+      rule: 'rails/kooi',
+      also: file === 'src/api/x.ts' ? ['rails/netwerk-api'] : [],
+    }),
+  ),
+  ...[
+    "import { execFileSync } from 'node:child_process'; execFileSync('git', ['-c', 'user.name=t', 'status']);",
+    "import { spawnSync } from 'node:child_process'; spawnSync('bash', ['scripts/runner.sh', 'ui']);",
+    "import { spawnSync } from 'node:child_process'; spawnSync('ls', [], { shell: false });",
+    "export const m = /a/.exec('a');",
+  ].map((code) => ({ name: `kooi: mag: ${code}`, file: 'test/x.test.ts', code, rule: null })),
+  {
+    name: 'kooi: de kooi zelf mag',
+    file: 'scripts/kit/kooi.mjs',
+    code: "import { spawnSync } from 'node:child_process'; spawnSync('bwrap', ['--', 'bash', '-c', 'x']);",
+    rule: null,
+  },
+];
+
+describe('rails in eslint.config.js', () => {
+  test.each(fixtures)('$rule: $name ($file)', async ({ file, code, rule, also = [] }) => {
+    const rules = await railsIn(file, code);
+
+    expect(rules.toSorted()).toStrictEqual(rule === null ? [] : [rule, ...also].toSorted());
+  });
+});

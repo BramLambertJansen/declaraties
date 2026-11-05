@@ -1,0 +1,7 @@
+{
+  "scripts": {
+    "dev": "vite",
+    "check:migrations": "node x",
+    "gate:fast": "pnpm lint"
+  }
+}

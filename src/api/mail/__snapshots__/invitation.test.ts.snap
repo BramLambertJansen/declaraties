@@ -1,0 +1,14 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`uitnodiging: onderwerp, tekst en HTML met de link 1`] = `
+"Hallo Ada,
+
+Je bent uitgenodigd voor App-template. Stel via deze link je wachtwoord in:
+
+https://app.example.test/uitnodiging?token=t1
+
+De link werkt 7 dagen en één keer. Verwachtte je deze mail niet, dan kun je hem negeren.
+
+-- 
+App-template"
+`;

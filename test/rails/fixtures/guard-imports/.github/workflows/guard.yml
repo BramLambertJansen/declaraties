@@ -1,0 +1,9 @@
+# Mini-guard voor test/rails/guard-imports.test.ts: twee jobs zonder install.
+jobs:
+  schoon:
+    steps:
+      - run: node scripts/kit/schoon.mjs
+  vuil:
+    steps:
+      - name: met optie
+        run: node scripts/kit/vuil.mjs --uitgebreid

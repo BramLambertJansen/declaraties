@@ -1,0 +1,15 @@
+# Build-context van de Dockerfile (ADR 0049): nooit geheimen of lokale staat in de image.
+.env
+.env.*
+.git
+.claude
+node_modules
+dist
+coverage
+playwright-report
+test-results
+blob-report
+.runner-output
+.tanstack
+*.log
+*.tsbuildinfo

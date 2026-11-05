@@ -1,0 +1,25 @@
+# Eén pakket; dit bestand bestaat voor de pnpm-instellingen (supply chain, docs/framework.md §6).
+packages:
+  - "."
+
+# Weiger een afwijkende installatie vóór run/exec; herstel alleen via een expliciete install.
+verifyDepsBeforeRun: error
+
+# Nieuwe versies pas na 7 dagen (in minuten).
+minimumReleaseAge: 10080
+# Weiger een versie die met minder vertrouwen gepubliceerd is dan de vorige.
+trustPolicy: no-downgrade
+# Uitzonderingen per exacte versie, met reden (akkoord eigenaar):
+# - semver@6.3.1 (via @babel/core van @tanstack/router-plugin): de beveiligingspatch (CVE-2022-25883) op de oude 6.x-tak,
+#   gepubliceerd zonder provenance na een 7.x met provenance; geen overname.
+trustPolicyExclude:
+  - semver@6.3.1
+# Install-scripts alleen voor expliciet toegestane pakketten.
+strictDepBuilds: true
+# lefthook: geen postinstall; scripts/bootstrap.sh draait `lefthook install` zelf.
+allowBuilds:
+  lefthook: false
+# node_modules zonder symlinks buiten de repo: de runner mount alleen de repo (ADR 0044).
+enableGlobalVirtualStore: false
+minimumReleaseAgeExclude:
+  - nodemailer@10.1.4

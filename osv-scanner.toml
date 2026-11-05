@@ -1,0 +1,12 @@
+# Uitzonderingen voor osv-scanner (framework §6). Alleen met akkoord van de eigenaar (beschermd pad).
+# Elke uitzondering heeft een reden en een einddatum; daarna wordt de check vanzelf weer rood.
+#
+# [[IgnoredVulns]]
+# id = "GHSA-xxxx-xxxx-xxxx"
+# ignoreUntil = 2026-12-31T00:00:00Z
+# reason = "Alleen bereikbaar via devDependency X in de build, niet in de API of de bundel; fix wacht op upstream Y."
+
+[[IgnoredVulns]]
+id = "GHSA-g3hv-75wg-m249"
+ignoreUntil = 2026-11-30T00:00:00Z
+reason = "minimatch 10.2.6 alleen via devDependencies eslint, @eslint/config-array en @typescript-eslint/typescript-estree (lint), niet in de API of de bundel; fix 11.0.1 is een major, wacht tot upstream die meeneemt. Akkoord eigenaar 2026-10-31."

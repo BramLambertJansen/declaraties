@@ -1,0 +1,43 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": ["config:recommended", "helpers:pinGitHubActionDigests", "docker:pinDigests", ":semanticCommits"],
+  "timezone": "Europe/Amsterdam",
+  "schedule": ["before 7am on monday"],
+  "minimumReleaseAge": "7 days",
+  "internalChecksFilter": "strict",
+  "rangeStrategy": "pin",
+  "labels": ["dependencies"],
+  "packageRules": [
+    {
+      "description": "Niet-majors in één PR per week (framework §6: gegroepeerd)",
+      "matchUpdateTypes": ["minor", "patch", "pin", "digest"],
+      "groupName": "niet-major"
+    },
+    {
+      "description": "Majors los en pas na goedkeuring in het dependency dashboard",
+      "matchUpdateTypes": ["major"],
+      "dependencyDashboardApproval": true
+    },
+    {
+      "description": "TypeScript 7 vraagt een ADR (ADR 0039)",
+      "matchPackageNames": ["typescript"],
+      "allowedVersions": "<7"
+    },
+    {
+      "description": "Node-major en @types/node volgen engines in package.json (ADR 0039)",
+      "matchPackageNames": ["node", "@types/node"],
+      "allowedVersions": "<27"
+    },
+    {
+      "description": "Postgres-major gelijk aan de beheerde database van de app (framework §1.4)",
+      "matchDatasources": ["docker"],
+      "matchPackageNames": ["postgres"],
+      "allowedVersions": "<18"
+    },
+    {
+      "description": "@playwright/test en het Playwright-image altijd samen (compose.yaml, framework §11)",
+      "matchPackageNames": ["@playwright/test", "mcr.microsoft.com/playwright"],
+      "groupName": "playwright"
+    }
+  ]
+}

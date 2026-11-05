@@ -1,0 +1,19 @@
+[
+  "src/core/api/auth/**",
+  "src/core/api/db/**",
+  "db/init/**",
+  "rails/hooks/**",
+  "scripts/kit/check-document-status.mjs",
+  "scripts/kit/lane.mjs",
+  "scripts/kit/functional-ui-status.mjs",
+  "scripts/kit/status-git.mjs",
+  "scripts/kit/github-evidence.mjs",
+  "scripts/kit/diff-guard.mjs",
+  "scripts/kit/pr-verify.mjs",
+  "scripts/kit/check-roadmap.mjs",
+  "scripts/kit/roadmap-item.mjs",
+  "scripts/kit/document-status.mjs",
+  "scripts/kit/gates.mjs",
+  "scripts/kit/agent-merge.mjs",
+  "scripts/kit/pr-merge.mjs"
+]

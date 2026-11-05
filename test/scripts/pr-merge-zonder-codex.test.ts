@@ -1,0 +1,588 @@
+import { describe, expect, test } from 'vitest';
+import {
+  CODEX,
+  CODEX_LOOPT,
+  STEEKPROEF_UIT,
+  STEEKPROEF_VERVIEL,
+  beoordeelMerge,
+  slotRegels,
+  voorwaarden,
+} from '../../scripts/kit/pr-merge.mjs';
+
+// `pnpm pr:merge` met omvanggrens en drieledige Codex-voorwaarde (ADR 0069 herzien, spec agent-merge-zonder-codex AC-3 tot
+// en met AC-5): nagebootste REST-antwoorden. De wereld `goed` is mergebaar zonder Codex-spoor (`indien-aanwezig`).
+const REPO = 'BramLambertJansen/template';
+const HEAD = 'a'.repeat(40);
+const MAIN = 'b'.repeat(40);
+const OUD = 'c'.repeat(40);
+const ACTIONS = 15368;
+const VEREIST = ['gate:fast', 'document-status'];
+const BRANCH = `pulls?head=BramLambertJansen:${encodeURIComponent('claude/x')}&state=all`;
+const REVIEW = { user: { login: 'BramLambertJansen' }, body: `Review ${HEAD}: geen blokkerende bevindingen` };
+const b64 = (waarde: unknown) => Buffer.from(JSON.stringify(waarde)).toString('base64');
+
+type Wereld = Record<string, unknown>;
+
+function check(name: string, sha: string, extra: Record<string, unknown> = {}) {
+  return { id: 1, name, head_sha: sha, status: 'completed', conclusion: 'success', app: { id: ACTIONS }, ...extra };
+}
+
+const samenvatting = (stand: Record<string, unknown>, login = CODEX) => ({
+  user: { login },
+  body: `<!-- codex-pull-request-review-summary -->\n<!-- codex-review-state:v1 ${JSON.stringify({ code_review: stand }).replaceAll('{', '&#123;').replaceAll('}', '&#125;')} -->`,
+});
+// Wat Codex achterlaat als het tegoed op is (#447–#453): een samenvatting `failed` en een limietmelding zonder marker.
+const TEGOED_OP = [
+  samenvatting({ commit_sha: HEAD, has_any_findings: true, has_unresolved_findings: true, status: 'failed' }),
+  { user: { login: CODEX }, body: 'You have reached your Codex usage limits for code reviews.' },
+];
+
+const gatesMet = (agentMerge: Record<string, unknown>) => ({
+  content: b64({
+    merge: 'niet-kritiek',
+    agentMerge: { toegestaan: ['src/**'], kritiek: [], maxBytes: 40000, ...agentMerge },
+  }),
+});
+
+const PULL = {
+  state: 'open',
+  draft: false,
+  base: { ref: 'main' },
+  head: { sha: HEAD, ref: 'claude/x', repo: { full_name: REPO } },
+  additions: 300,
+  deletions: 100,
+};
+const BYTES_ONLEESBAAR = 'omvang van de PR niet leesbaar of agentMerge.maxBytes ontbreekt: geen agent-merge';
+// Een REST-bestand waarvan de patch klopt met `additions` en `deletions` (spec agent-merge-bytegrens AC-4).
+const bestand = (erbij: number, eraf: number) => ({
+  filename: 'src/web/x.ts',
+  status: 'modified',
+  additions: erbij,
+  deletions: eraf,
+  changes: erbij + eraf,
+  patch: ['@@', ...Array.from({ length: eraf }, () => '-a'), ...Array.from({ length: erbij }, () => '+b')].join('\n'),
+});
+
+function goed(): Wereld {
+  return {
+    [`repos/${REPO}/branches/main`]: { commit: { sha: MAIN } },
+    [`repos/${REPO}/contents/.claude/gates.json?ref=${MAIN}`]: gatesMet({ codex: 'indien-aanwezig', maxRegels: 400 }),
+    [`repos/${REPO}/contents/.claude/decisions.json?ref=${MAIN}`]: { content: b64({ requiredChecks: VEREIST }) },
+    [`repos/${REPO}/pulls/7`]: PULL,
+    [`repos/${REPO}/pulls/7/files`]: [bestand(300, 100)],
+    [`repos/${REPO}/compare/${MAIN}...${HEAD}`]: { behind_by: 0 },
+    [`repos/${REPO}/commits/${HEAD}/check-runs`]: {
+      check_runs: [
+        ...VEREIST.map((n) => check(n, HEAD)),
+        check('agent-merge', HEAD, { id: 9, check_suite: { id: 55 } }),
+      ],
+    },
+    [`repos/${REPO}/actions/runs?check_suite_id=55`]: {
+      workflow_runs: [
+        { path: '.github/workflows/guard.yml', event: 'pull_request_target', pull_requests: [{ number: 7 }] },
+      ],
+    },
+    [`repos/${REPO}/commits/${MAIN}/check-runs`]: { check_runs: [check('gate:fast', MAIN)] },
+    [`repos/${REPO}/issues/7/comments`]: [REVIEW],
+    [`repos/${REPO}/issues/7/reactions`]: [],
+    [`repos/${REPO}/pulls/7/reviews`]: [],
+    [`repos/${REPO}/pulls/7/comments`]: [],
+    [`repos/${REPO}/${BRANCH}`]: [{ number: 7, merged_at: null }],
+    [`repos/${REPO}/commits/${HEAD}/check-suites`]: { check_suites: [{ created_at: '2026-11-03T10:00:00Z' }] },
+  };
+}
+
+function api(wereld: Wereld) {
+  return (endpoint: string) => {
+    const sleutel = endpoint.replace(/[?&]per_page=100&page=\d+$/, '');
+    if (!(sleutel in wereld)) throw new Error(`onbekend endpoint ${sleutel}`);
+    const waarde = wereld[sleutel];
+    if (waarde instanceof Error) throw waarde;
+    return waarde;
+  };
+}
+
+function uitslag(aanpassing: (w: Wereld) => void = () => {}) {
+  const wereld = goed();
+  aanpassing(wereld);
+  return beoordeelMerge(api(wereld), { repo: REPO, nummer: 7, head: HEAD });
+}
+
+const redenen = (aanpassing?: (w: Wereld) => void) => uitslag(aanpassing).redenen.join('\n');
+
+const zet =
+  (...paren: [string, unknown][]) =>
+  (w: Wereld) => {
+    for (const [sleutel, waarde] of paren) w[`repos/${REPO}/${sleutel}`] = waarde;
+  };
+
+// Een andere PR (8) van dezelfde branch, met of zonder merge, met Codex-sporen.
+const anderePr = (mergedAt: string | null, spoor: Record<string, unknown>) =>
+  zet(
+    [
+      BRANCH,
+      [
+        { number: 7, merged_at: null },
+        { number: 8, merged_at: mergedAt },
+      ],
+    ],
+    ['issues/8/comments', []],
+    ['issues/8/reactions', []],
+    ['pulls/8/reviews', []],
+    ['pulls/8/comments', []],
+    ...Object.entries(spoor).map(([k, v]): [string, unknown] => [k, v]),
+  );
+
+describe('agent-merge-zonder-codex/AC-3 pr:merge telt de omvang via REST', () => {
+  test('400 regels bij grens 400: geen reden', () => {
+    expect(redenen()).toBe('');
+  });
+
+  test.each([
+    [
+      '401 regels',
+      zet(['pulls/7', { ...PULL, deletions: 101 }], ['pulls/7/files', [bestand(300, 101)]]),
+      'PR te groot voor een agent-merge: 401 regels, grens 400 (agentMerge.maxRegels)',
+    ],
+    [
+      'een bestand zonder patch met changes 3',
+      zet(['pulls/7/files', [{ filename: 'src/web/groot.ts', status: 'modified', changes: 3 }]]),
+      [BYTES_ONLEESBAAR, 'binair bestand in de PR: geen agent-merge (src/web/groot.ts)'],
+    ],
+    [
+      'een binair bestand (changes 0, geen patch)',
+      zet(['pulls/7/files', [{ filename: 'docs/x.png', status: 'added', changes: 0 }]]),
+      [BYTES_ONLEESBAAR, 'binair bestand in de PR: geen agent-merge (docs/x.png)'],
+    ],
+    [
+      'additions onleesbaar',
+      zet(['pulls/7', { ...PULL, additions: undefined }]),
+      ['omvang van de PR niet leesbaar of agentMerge.maxRegels ontbreekt: geen agent-merge', BYTES_ONLEESBAAR],
+    ],
+    [
+      'agentMerge zonder maxRegels',
+      zet([`contents/.claude/gates.json?ref=${MAIN}`, gatesMet({ codex: 'indien-aanwezig' })]),
+      'omvang van de PR niet leesbaar of agentMerge.maxRegels ontbreekt: geen agent-merge',
+    ],
+    [
+      'agentMerge.toegestaan is tekst, maxRegels geldig',
+      zet([`contents/.claude/gates.json?ref=${MAIN}`, gatesMet({ toegestaan: 'src/**', maxRegels: 400 })]),
+      'agentMerge ontbreekt of is onleesbaar in .claude/gates.json',
+    ],
+  ])('%s', (_naam, aanpassing, reden) => {
+    expect(uitslag(aanpassing).redenen).toEqual([reden].flat());
+  });
+
+  test('agentMerge ontbreekt op main: beide redenen', () => {
+    expect(
+      uitslag(zet([`contents/.claude/gates.json?ref=${MAIN}`, { content: b64({ merge: 'niet-kritiek' }) }])).redenen,
+    ).toEqual([
+      'agentMerge ontbreekt of is onleesbaar in .claude/gates.json',
+      'omvang van de PR niet leesbaar of agentMerge.maxRegels ontbreekt: geen agent-merge',
+      BYTES_ONLEESBAAR,
+    ]);
+  });
+
+  test('zuivere hernoeming (renamed, changes 0, geen patch): geen reden', () => {
+    expect(
+      redenen(
+        zet(
+          ['pulls/7', { ...PULL, additions: 0, deletions: 0 }],
+          [
+            'pulls/7/files',
+            [{ filename: 'src/web/nieuw.ts', previous_filename: 'src/web/oud.ts', status: 'renamed', changes: 0 }],
+          ],
+        ),
+      ),
+    ).toBe('');
+  });
+});
+
+describe('agent-merge-zonder-codex/AC-4 Codex-voorwaarde bij indien-aanwezig', () => {
+  test.each([
+    ['geen spoor', () => {}],
+    ['samenvatting failed plus limietmelding (tegoed op)', zet(['issues/7/comments', [REVIEW, ...TEGOED_OP]])],
+    [
+      'spoor alleen op een gemergde PR van dezelfde branch',
+      anderePr('2026-11-02T10:00:00Z', {
+        'issues/8/comments': [samenvatting({ status: 'completed', commit_sha: OUD, has_unresolved_findings: true })],
+      }),
+    ],
+    [
+      'marker completed van een ander account',
+      zet([
+        'issues/7/comments',
+        [REVIEW, samenvatting({ status: 'completed', commit_sha: OUD, has_unresolved_findings: true }, 'iemand')],
+      ]),
+    ],
+  ])('%s → geen Codex-reden, voorwaarde verviel', (_naam, aanpassing) => {
+    const u = uitslag(aanpassing);
+    expect(u.redenen).toEqual([]);
+    expect(u.codex).toBe('verviel');
+  });
+
+  test.each([
+    // Was "geen Codex-reden": spec agent-merge-codex-wachten AC-5 verandert dit gedrag (een 👀 van Codex is een spoor).
+    [
+      'alleen 👀',
+      zet(['issues/7/reactions', [{ user: { login: CODEX }, content: 'eyes', created_at: '2026-11-03T10:01:00Z' }]]),
+      /Codex-review loopt nog op deze PR/,
+    ],
+    [
+      'samenvatting completed op een oudere SHA',
+      zet([
+        'issues/7/comments',
+        [REVIEW, samenvatting({ status: 'completed', commit_sha: OUD, has_unresolved_findings: false })],
+      ]),
+      /niet afgerond beoordeeld/,
+    ],
+    [
+      'samenvatting completed op de head met open punten',
+      zet([
+        'issues/7/comments',
+        [REVIEW, samenvatting({ status: 'completed', commit_sha: HEAD, has_unresolved_findings: true })],
+      ]),
+      /open punten/,
+    ],
+    [
+      '👍 van vóór de push van de head',
+      zet(['issues/7/reactions', [{ user: { login: CODEX }, content: '+1', created_at: '2026-11-03T09:00:00Z' }]]),
+      /niet afgerond beoordeeld/,
+    ],
+    [
+      '👍 van een eerdere ronde, daarna een samenvatting failed op de head',
+      zet(
+        ['issues/7/reactions', [{ user: { login: CODEX }, content: '+1', created_at: '2026-11-03T09:00:00Z' }]],
+        ['issues/7/comments', [REVIEW, ...TEGOED_OP]],
+      ),
+      /open punten/,
+    ],
+    [
+      'alleen een inline-reviewcommentaar',
+      zet(['pulls/7/comments', [{ user: { login: CODEX }, body: 'P1: x' }]]),
+      /niet afgerond beoordeeld/,
+    ],
+    [
+      'alleen een PR-review',
+      zet(['pulls/7/reviews', [{ user: { login: CODEX }, state: 'COMMENTED', commit_id: OUD }]]),
+      /niet afgerond beoordeeld/,
+    ],
+    [
+      'spoor alleen op een PR van dezelfde branch die zonder merge is gesloten',
+      anderePr(null, { 'pulls/8/reviews': [{ user: { login: CODEX }, state: 'COMMENTED', commit_id: OUD }] }),
+      /niet afgerond beoordeeld/,
+    ],
+    [
+      'codex "ja" geldt als true: zonder spoor toch de Codex-voorwaarde',
+      zet([`contents/.claude/gates.json?ref=${MAIN}`, gatesMet({ codex: 'ja', maxRegels: 400 })]),
+      /niet afgerond beoordeeld/,
+    ],
+  ])('%s → Codex-reden', (_naam, aanpassing, reden) => {
+    const u = uitslag(aanpassing);
+    expect(u.redenen.join('\n')).toMatch(reden);
+    expect(u.codex).toBe('voldaan');
+  });
+
+  test('een spoor zonder open punten op de head: voorwaarde voldaan, geen reden', () => {
+    const u = uitslag(
+      zet([
+        'issues/7/comments',
+        [REVIEW, samenvatting({ status: 'completed', commit_sha: HEAD, has_unresolved_findings: false })],
+      ]),
+    );
+    expect(u).toEqual({ redenen: [], codex: 'voldaan' });
+  });
+
+  test.each([
+    ['reviews', 'pulls/7/reviews'],
+    ['inline-commentaar', 'pulls/7/comments'],
+    ["PR's van de branch", BRANCH],
+  ])('lijst met %s geeft HTTP 500: fout, geen merge', (_naam, sleutel) => {
+    expect(() =>
+      voorwaarden(api({ ...goed(), [`repos/${REPO}/${sleutel}`]: new Error('HTTP 500') }), {
+        repo: REPO,
+        nummer: 7,
+        head: HEAD,
+      }),
+    ).toThrow();
+  });
+
+  test('lijst met reviews is geen lijst: fout, geen merge', () => {
+    expect(() => redenen(zet(['pulls/7/reviews', { message: 'Server Error' }]))).toThrow(/geen lijst/);
+  });
+});
+
+describe('agent-merge-zonder-codex/AC-5 steekproefregel na de merge', () => {
+  test.each([
+    ['verviel', 'zonder spoor bij indien-aanwezig', () => {}],
+    [
+      'uit',
+      'codex false',
+      zet([`contents/.claude/gates.json?ref=${MAIN}`, gatesMet({ codex: false, maxRegels: 400 })]),
+    ],
+    [
+      'voldaan',
+      'spoor bij indien-aanwezig',
+      zet([
+        'issues/7/comments',
+        [REVIEW, samenvatting({ status: 'completed', commit_sha: HEAD, has_unresolved_findings: false })],
+      ]),
+    ],
+    [
+      'voldaan',
+      'codex true',
+      (w: Wereld) => {
+        zet([`contents/.claude/gates.json?ref=${MAIN}`, gatesMet({ codex: true, maxRegels: 400 })])(w);
+        zet(['issues/7/reactions', [{ user: { login: CODEX }, content: '+1', created_at: '2026-11-03T10:05:00Z' }]])(w);
+      },
+    ],
+  ])('stand %s bij %s, zonder redenen', (stand, _naam, aanpassing) => {
+    expect(uitslag(aanpassing)).toEqual({ redenen: [], codex: stand });
+  });
+
+  const EERSTE = `PR #7 gemerged op ${HEAD}. Meld PR en SHA in de thread en volg de CI op main (ADR 0069 punt 5).`;
+
+  test.each([
+    ['verviel', [EERSTE, STEEKPROEF_VERVIEL]],
+    ['uit', [EERSTE, STEEKPROEF_UIT]],
+    ['voldaan', [EERSTE]],
+  ] as const)('slotregels bij %s', (stand, verwacht) => {
+    expect(slotRegels(7, HEAD, stand)).toEqual(verwacht);
+  });
+
+  test('de steekproefregels zijn letterlijk die uit de spec', () => {
+    expect(STEEKPROEF_VERVIEL).toBe(
+      'Geen Codex-spoor op deze PR of zijn branch: de Codex-voorwaarde verviel (indien-aanwezig). Meld deze merge als steekproef (ADR 0069 punt 5).',
+    );
+    expect(STEEKPROEF_UIT).toBe(
+      'Geen Codex-voorwaarde (agentMerge.codex: false). Meld deze merge als steekproef (ADR 0069 punt 5).',
+    );
+  });
+});
+
+// Spec agent-merge-codex-wachten: een lopende Codex-review is een spoor en geeft een wachtreden.
+const LOOPT = 'Codex-review loopt nog op deze PR: wacht of laat de eigenaar mergen';
+const oog = (login = CODEX) => ({ user: { login }, content: 'eyes', created_at: '2026-11-03T10:01:00Z' });
+const duim = (login = CODEX) => ({ user: { login }, content: '+1', created_at: '2026-11-03T10:05:00Z' });
+const VRAAG = (rollup: Record<string, number>) => ({
+  id: 101,
+  user: { login: 'BramLambertJansen' },
+  body: '@codex review',
+  reactions: rollup,
+});
+const metModus = (codex: unknown) =>
+  zet([`contents/.claude/gates.json?ref=${MAIN}`, gatesMet({ codex, maxRegels: 400 })]);
+const AFGEROND = samenvatting({ status: 'completed', commit_sha: HEAD, has_unresolved_findings: false });
+
+describe('agent-merge-codex-wachten/AC-1 Codex is bezig', () => {
+  test('de wachtreden is letterlijk die uit de spec', () => {
+    expect(CODEX_LOOPT).toBe(LOOPT);
+  });
+
+  test.each([
+    ['running', { status: 'running' }],
+    ['pending', { status: 'pending' }],
+    ['in_progress op de head', { status: 'in_progress', commit_sha: HEAD }],
+    ['leeg', { status: '' }],
+    ['onbekend', { status: 'iets-nieuws' }],
+  ])('marker met status %s → wachtreden', (_naam, stand) => {
+    const u = uitslag(zet(['issues/7/comments', [REVIEW, samenvatting({ commit_sha: OUD, ...stand })]]));
+    expect(u.redenen).toContain(LOOPT);
+    expect(u.codex).toBe('voldaan');
+  });
+
+  test('marker in_progress, daarna bijgewerkt tot completed op de head: alleen de nieuwste telt', () => {
+    const u = uitslag(
+      zet(['issues/7/comments', [REVIEW, samenvatting({ status: 'in_progress', commit_sha: HEAD }), AFGEROND]]),
+    );
+    expect(u).toEqual({ redenen: [], codex: 'voldaan' });
+  });
+
+  test('een 👀 van Codex op een commentaar zonder rollup wordt niet gelezen (OV-4)', () => {
+    expect(
+      uitslag(
+        zet(
+          ['issues/7/comments', [REVIEW, { id: 101, user: { login: 'x' }, body: '@codex review' }]],
+          ['issues/comments/101/reactions', [oog()]],
+        ),
+      ),
+    ).toEqual({ redenen: [], codex: 'verviel' });
+  });
+
+  test.each([
+    ['zonder code_review', '{"version":1}'],
+    ['met code_review null', '{"code_review":null}'],
+    ['met code_review als tekst', '{"code_review":"running"}'],
+    ['met onleesbare JSON', '{"code_review":'],
+  ])('marker %s telt als bezig → wachtreden (OV-3)', (_naam, json) => {
+    const kapot = { user: { login: CODEX }, body: `<!-- codex-review-state:v1 ${json} -->` };
+    const u = uitslag(zet(['issues/7/comments', [REVIEW, AFGEROND, kapot]]));
+    expect(u.redenen).toContain(LOOPT);
+    expect(u.codex).toBe('voldaan');
+  });
+
+  test('marker running, daarna alleen een limietmelding zonder marker → wachtreden (hangend, faalt dicht)', () => {
+    const u = uitslag(
+      zet(['issues/7/comments', [REVIEW, samenvatting({ status: 'running', commit_sha: HEAD }), TEGOED_OP[1]]]),
+    );
+    expect(u.redenen).toContain(LOOPT);
+  });
+
+  test.each([
+    [
+      'marker running, daarna bijgewerkt tot failed: alleen de nieuwste telt',
+      [REVIEW, samenvatting({ status: 'running', commit_sha: HEAD }), TEGOED_OP[0]],
+    ],
+    ['marker running van een ander account', [REVIEW, samenvatting({ status: 'running' }, 'BramLambertJansen')]],
+  ])('%s → niet bezig: verviel, geen reden', (_naam, comments) => {
+    expect(uitslag(zet(['issues/7/comments', comments]))).toEqual({ redenen: [], codex: 'verviel' });
+  });
+
+  test('commentaar met rollup eyes 1 zonder geldig id: fout, geen merge', () => {
+    expect(() =>
+      redenen(
+        zet(['issues/7/comments', [REVIEW, { user: { login: 'x' }, body: '@codex review', reactions: { eyes: 1 } }]]),
+      ),
+    ).toThrow('zonder geldig id');
+  });
+
+  test('de reactielijst van een commentaar wordt één keer gelezen per beoordeling', () => {
+    const wereld = goed();
+    zet(
+      ['issues/7/comments', [REVIEW, VRAAG({ eyes: 1 })]],
+      ['issues/comments/101/reactions', [oog('BramLambertJansen')]],
+    )(wereld);
+    const lees = api(wereld);
+    let keren = 0;
+    const u = beoordeelMerge(
+      (endpoint: string) => {
+        if (endpoint.includes('issues/comments/101/reactions')) keren += 1;
+        return lees(endpoint);
+      },
+      { repo: REPO, nummer: 7, head: HEAD },
+    );
+    expect(u).toEqual({ redenen: [], codex: 'verviel' });
+    expect(keren).toBe(1);
+  });
+});
+
+describe('agent-merge-codex-wachten/AC-2 een lopende review op een andere PR van de branch is een spoor', () => {
+  test('👀 alleen op een niet-gemergde andere PR: voldaan, reden niet afgerond, geen wachtreden', () => {
+    const u = uitslag(anderePr(null, { 'issues/8/reactions': [oog()] }));
+    expect(u.codex).toBe('voldaan');
+    expect(u.redenen).toEqual(['Codex heeft deze head niet afgerond beoordeeld zonder open punten']);
+  });
+
+  test('marker running alleen op een niet-gemergde andere PR: voldaan, geen wachtreden', () => {
+    const u = uitslag(anderePr(null, { 'issues/8/comments': [samenvatting({ status: 'running', commit_sha: OUD })] }));
+    expect(u.codex).toBe('voldaan');
+    expect(u.redenen).not.toContain(LOOPT);
+  });
+
+  test('👀 alleen op een gemergde PR van de branch: verviel', () => {
+    expect(uitslag(anderePr('2026-11-02T10:00:00Z', { 'issues/8/reactions': [oog()] }))).toEqual({
+      redenen: [],
+      codex: 'verviel',
+    });
+  });
+});
+
+describe('agent-merge-codex-wachten/AC-3 wachtreden bij true en indien-aanwezig, niet bij false', () => {
+  test('codex true, head afgerond zonder open punten, plus 👀 op de PR → alleen de wachtreden', () => {
+    const u = uitslag((w) => {
+      metModus(true)(w);
+      zet(['issues/7/comments', [REVIEW, AFGEROND]], ['issues/7/reactions', [oog()]])(w);
+    });
+    expect(u).toEqual({ redenen: [LOOPT], codex: 'voldaan' });
+  });
+
+  test('codex true, 👍 na ontvangst plus een nieuwe @codex review met 👀 → wachtreden', () => {
+    const u = uitslag((w) => {
+      metModus(true)(w);
+      zet(
+        ['issues/7/reactions', [duim()]],
+        ['issues/7/comments', [REVIEW, VRAAG({ eyes: 1 })]],
+        ['issues/comments/101/reactions', [oog()]],
+      )(w);
+    });
+    expect(u).toEqual({ redenen: [LOOPT], codex: 'voldaan' });
+  });
+
+  test('indien-aanwezig: marker running op de head → wachtreden naast de reden van codexRedenen()', () => {
+    const u = uitslag(zet(['issues/7/comments', [REVIEW, samenvatting({ status: 'running', commit_sha: HEAD })]]));
+    expect(u).toEqual({
+      redenen: ['Codex heeft deze head niet afgerond beoordeeld zonder open punten', LOOPT],
+      codex: 'voldaan',
+    });
+  });
+
+  test('codex false met 👀 → stand uit, geen reden', () => {
+    const u = uitslag((w) => {
+      metModus(false)(w);
+      zet(['issues/7/reactions', [oog()]])(w);
+    });
+    expect(u).toEqual({ redenen: [], codex: 'uit' });
+  });
+});
+
+describe('agent-merge-codex-wachten/AC-4 bij tegoed op verandert niets', () => {
+  test.each([
+    ['#447–#453: marker failed plus limietmelding, geen reactie', [REVIEW, ...TEGOED_OP]],
+    ['#460: alleen een limietmelding', [REVIEW, TEGOED_OP[1]]],
+  ])('%s → verviel, geen reden, steekproefregel', (_naam, comments) => {
+    const u = uitslag(zet(['issues/7/comments', comments]));
+    expect(u).toEqual({ redenen: [], codex: 'verviel' });
+    expect(slotRegels(7, HEAD, u.codex)).toContain(STEEKPROEF_VERVIEL);
+  });
+});
+
+describe('agent-merge-codex-wachten/AC-5 tabel via beoordeelMerge()', () => {
+  test.each([
+    ['alleen 👀 op de PR', zet(['issues/7/reactions', [oog()]])],
+    [
+      'marker in_progress op een oudere SHA',
+      zet(['issues/7/comments', [REVIEW, samenvatting({ status: 'in_progress', commit_sha: OUD })]]),
+    ],
+    [
+      'marker zonder status',
+      zet(['issues/7/comments', [REVIEW, samenvatting({ commit_sha: HEAD, has_unresolved_findings: false })]]),
+    ],
+    [
+      '👀 van Codex op het commentaar @codex review',
+      zet(['issues/7/comments', [REVIEW, VRAAG({ eyes: 1 })]], ['issues/comments/101/reactions', [oog()]]),
+    ],
+  ])('%s → wachtreden, voldaan', (_naam, aanpassing) => {
+    const u = uitslag(aanpassing);
+    expect(u.redenen).toContain(LOOPT);
+    expect(u.codex).toBe('voldaan');
+  });
+
+  test.each([
+    ['👀 van een ander account op de PR', zet(['issues/7/reactions', [oog('BramLambertJansen')]])],
+    [
+      'reactions.eyes 1 maar alleen 👀 van een ander account',
+      zet(
+        ['issues/7/comments', [REVIEW, VRAAG({ eyes: 1 })]],
+        ['issues/comments/101/reactions', [oog('BramLambertJansen')]],
+      ),
+    ],
+    ['👍 van Codex op het commentaar @codex review', zet(['issues/7/comments', [REVIEW, VRAAG({ '+1': 1, eyes: 0 })]])],
+    [
+      'rollup eyes 1 maar in de reactielijst alleen een 👍 van Codex',
+      zet(['issues/7/comments', [REVIEW, VRAAG({ eyes: 1 })]], ['issues/comments/101/reactions', [duim()]]),
+    ],
+  ])('%s → verviel, geen reden', (_naam, aanpassing) => {
+    expect(uitslag(aanpassing)).toEqual({ redenen: [], codex: 'verviel' });
+  });
+
+  test('reactielijst van een commentaar geeft HTTP 500: fout, geen merge', () => {
+    expect(() =>
+      redenen(
+        zet(
+          ['issues/7/comments', [REVIEW, VRAAG({ eyes: 1 })]],
+          ['issues/comments/101/reactions', new Error('HTTP 500')],
+        ),
+      ),
+    ).toThrow('HTTP 500');
+  });
+});

@@ -1,0 +1,34 @@
+/* Laag 1: primitief palet (OKLCH, framework §7). Nooit direct gebruiken: alleen via de semantische laag. */
+:root {
+  --p-white: oklch(1 0 0);
+  --p-black: oklch(0 0 0);
+
+  --p-zinc-50: oklch(0.985 0 0);
+  --p-zinc-100: oklch(0.967 0.001 286.375);
+  --p-zinc-200: oklch(0.92 0.004 286.32);
+  --p-zinc-300: oklch(0.871 0.006 286.286);
+  --p-zinc-400: oklch(0.705 0.015 286.067);
+  --p-zinc-500: oklch(0.552 0.016 285.938);
+  --p-zinc-600: oklch(0.442 0.017 285.786);
+  --p-zinc-700: oklch(0.37 0.013 285.805);
+  --p-zinc-800: oklch(0.274 0.006 286.033);
+  --p-zinc-900: oklch(0.21 0.006 285.885);
+  --p-zinc-950: oklch(0.141 0.005 285.823);
+
+  --p-blue-300: oklch(0.809 0.105 251.813);
+  --p-blue-400: oklch(0.707 0.165 254.624);
+  --p-blue-500: oklch(0.623 0.214 259.815);
+  --p-blue-600: oklch(0.546 0.245 262.881);
+  --p-blue-700: oklch(0.488 0.243 264.376);
+
+  --p-red-300: oklch(0.808 0.114 19.571);
+  --p-red-400: oklch(0.704 0.191 22.216);
+  --p-red-600: oklch(0.577 0.245 27.325);
+  --p-red-700: oklch(0.505 0.213 27.518);
+
+  --p-green-300: oklch(0.871 0.15 154.449);
+  --p-green-700: oklch(0.527 0.154 150.069);
+
+  --p-amber-300: oklch(0.879 0.169 91.605);
+  --p-amber-700: oklch(0.555 0.163 48.998);
+}
