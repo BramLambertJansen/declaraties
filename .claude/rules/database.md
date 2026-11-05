@@ -28,7 +28,7 @@ Letterlijk uit `docs/framework.md`; bij verschil wint het regelboek.
 - **R-CODE-05** Branded IDs via zod `.brand()`; kolom `id` of `*_id` krijgt brand via FK of `db/ids.json` (of `null` met reden); types per resource apart geëxporteerd (fw)
 - **R-DB-03** `withUser(actor, tx => …)` enige ingang: één transactie per request (GET read only), controleert `current_user = session_user`, zet rol, `app.user_id`, `app.session_strength`, `app.request_id` (server-`requestId`) met `set_config(…, true)` (0042, 0051)
 - **R-DB-15** `app.audit_log` append-only, RLS geforceerd, regel in dezelfde transactie, details alleen ID's en enums, termijn minstens 1 jaar, lezen alleen admin met MFA. Bekend gat: faalt route-commit na uitnodigen, dan account zonder rol en zonder auditregel (0051)
-- **R-LAAG-06** `src/core/api/db` exporteert alleen `withUser()`, `pingDatabase()` (readiness) en `closeDatabase()` (stoppen) alleen vanuit `src/api/server.ts`, `createAuditFn()` uit audit.ts (enig bestand naast index, testing, types; alleen `app.audit` in `tx`), `testing.ts` (alleen tests) (0042)
+- **R-LAAG-06** `src/core/api/db` exporteert alleen `withUser()`, `pingDatabase()` (readiness) en `closeDatabase()` (stoppen) alleen vanuit `src/api/server.ts`, `createAuditFn()` uit audit.ts en `readIntegrationSwitch()` uit integration-switch.ts (enige bestanden naast index, testing, types; alleen `app.audit` in `tx`, resp. alleen de schakelaar lezen), `testing.ts` (alleen tests) (0042)
 
 Hoe (geen norm):
 

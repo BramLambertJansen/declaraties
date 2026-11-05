@@ -15,7 +15,9 @@ import { execFileSync } from 'node:child_process';
 import { appendFileSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { globMatch } from '../../rails/hooks/lib/rolhek.mjs';
+import { afgeleid } from '../../rails/hooks/lib/padtabel.mjs';
 import { agentMergeOordeel, leesMergeConfig, patchBytes } from './agent-merge.mjs';
+import { leerpuntMergeRedenen } from './leerpunt.mjs';
 
 // Een review die de stand bepaalt; COMMENTED en PENDING laten de vorige beslissing staan.
 const BESLISSEND = new Set(['APPROVED', 'CHANGES_REQUESTED', 'DISMISSED']);
@@ -28,10 +30,10 @@ const TEST_GEWIJZIGD = new Set(['M', 'D', 'R', 'T']);
  * @typedef {{ user: string, state: string, commitId: string, submittedAt: string }} Review
  * @typedef {{ wijzigingen: Wijziging[], json: Record<string, { voor: string | null, na: string | null }>,
  *   reviews: Review[], auteur: string, headSha: string, src?: Record<string, { voor: string | null, na: string | null }>,
- *   regels?: number, binair?: string[], bytes?: number | undefined }} Pr
+ *   regels?: number, binair?: string[], bytes?: number | undefined, body?: string }} Pr
  *   `src`: elk geraakt bestand onder src/ (ook verwijderd), alleen voor het agent-merge-oordeel; `regels` en `binair` uit
  *   `parseNumstat`, `bytes` uit `leesBytes`, ook alleen voor dat oordeel (spec agent-merge-zonder-codex AC-2, agent-merge-bytegrens
- *   AC-3)
+ *   AC-3); `body`: de PR-beschrijving, voor de leerpuntreden (ADR 0078 punt 2)
  * @typedef {{ gates: string[], tests: string[], json: string[] }} Geraakt
  * @typedef {{ migraties: string[], permissies: string[], dependencies: string[], routes: string[] }} Risico
  * @typedef {{ uitslag: 'groen' | 'overgang' | 'rood', redenen: string[], geraakt: Geraakt }} Uitslag
@@ -116,7 +118,8 @@ export function leesConfig(tekst) {
   if (typeof json !== 'object' || json === null || Array.isArray(json))
     throw new Error('.claude/gates.json: jsonGates is geen object');
   return {
-    gates: lijst('gates'),
+    // Spec padtabel (ADR 0079): de gates komen uit de padtabel of de oude vorm; beide vormen tegelijk gooit (faalt dicht).
+    gates: afgeleid(ruw).gates,
     testpaden: lijst('testpaden'),
     goedkeurders: lijst('goedkeurders'),
     jsonGates: Object.fromEntries(
@@ -677,18 +680,20 @@ async function leesPr(config) {
     commitId: tekst(veld(review, 'commit_id')),
     submittedAt: tekst(veld(review, 'submitted_at')),
   }));
-  return { wijzigingen, json, reviews, auteur: env('AUTHOR'), headSha: head, src, ...omvang };
+  const body = tekst(veld(veld(JSON.parse(readFileSync(env('GITHUB_EVENT_PATH'), 'utf8')), 'pull_request'), 'body'));
+  return { wijzigingen, json, reviews, auteur: env('AUTHOR'), headSha: head, src, body, ...omvang };
 }
 
 /**
  * Oordeel agent-merge (ADR 0069, spec agent-merge-niet-kritiek AC-1) uit dezelfde invoer als de diff-guard; een goedkeuring
  * telt niet mee. Omvang uit `pr.regels`, `pr.binair` en `pr.bytes` (spec agent-merge-zonder-codex AC-2, agent-merge-bytegrens
  * AC-3). Ontbreekt `agentMerge.maxRegels` of `agentMerge.maxBytes`, dan meldt het oordeel "agentMerge ontbreekt of is onleesbaar" (leesAgentMerge geeft null), niet de
- * omvangreden; die verschijnt hier alleen als de telling ontbreekt.
+ * omvangreden; die verschijnt hier alleen als de telling ontbreekt. Een leerpunt met `geen test` maakt het oordeel `nee`
+ * (ADR 0078 punt 2); `pnpm pr:merge` leest de beschrijving bij het mergen opnieuw.
  * @param {Pr} pr @param {Oordeel} oordeel @param {string} configTekst
  */
 export function agentMerge(pr, oordeel, configTekst) {
-  return agentMergeOordeel(
+  const uitslag = agentMergeOordeel(
     {
       wijzigingen: pr.wijzigingen,
       json: { ...pr.src, ...pr.json },
@@ -700,6 +705,9 @@ export function agentMerge(pr, oordeel, configTekst) {
     },
     leesMergeConfig(configTekst),
   );
+  const leerpunt = leerpuntMergeRedenen(pr.body ?? '').map((reden) => `${reden}: de eigenaar merget`);
+  if (leerpunt.length === 0) return uitslag;
+  return { oordeel: 'nee', redenen: [...uitslag.redenen, ...leerpunt] };
 }
 
 /** @param {ReturnType<typeof agentMerge>} uitslag */

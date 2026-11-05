@@ -6,6 +6,12 @@ Hier staan wijzigingen die van belang zijn bij het gebruiken of bijwerken van de
 
 ### Toegevoegd
 
+- Agentlaag voor koppelingen (ST-15, spec koppeling-agentlaag): skill `nieuwe-koppeling` (indelen op zes kenmerken, stoppen
+  bij een waarde zonder bouwsteen), sectie `koppelingen` in `node scripts/kit/feiten.mjs` (register van de app en per kenmerk
+  welke waarden gebouwd zijn), kop "Koppeling" in het spec-template en een hoofdstuk in het gouden pad. Core:
+  `integrationTraitCatalog()` en `integrations.defs`; het register bevriest kenmerken nu diep. Wat verandert voor een app: een
+  nieuwe spec krijgt de kop "Koppeling" (zonder externe dienst "n.v.t. — reden"); verder niets te doen.
+
 - Voorwaardelijk geregistreerde tests tellen als skip (leerpunt #410, spec voorwaardelijke-tests): krijgt een bestaand
   testbestand meer tests binnen `if`/`else`/`switch`/`catch`, na een vroege `return`/`throw`, na `&&`/`||`/`??` of een
   ternary, of `test` als waarde (`ok ? test : test.skip`), dan geeft `testChangeRisk` `skip` (rolhek en
@@ -298,6 +304,27 @@ Hier staan wijzigingen die van belang zijn bij het gebruiken of bijwerken van de
 - Uitgewerkte roadmaptaken voor de verdere ontwikkeling van de starter.
 
 ### Gewijzigd
+
+- Specarchief en één vorm voor `gebouwd` (ADR 0080, spec specarchief-en-bouwvorm): een vervallen spec verhuist byte-gelijk
+  naar `docs/specs/archief/` (onwijzigbaar, zoals het ADR-archief; rolhek, toets op effect en `check-document-status`); links
+  lossen op zoals bij ADR's en een naam uit het archief komt niet terug (`check-docs`). Een gebouwde spec blijft levend: een
+  besluit-PR voegt een AC toe als `- **<ns>/AC-n** (nog niet gebouwd)` en de bouw-PR haalt de markering weg; een AC-id van een
+  spec met eigenaarstatus verdwijnt niet, en zo'n spec verlaat `docs/specs/` alleen via `vervallen` naar het archief.
+  `gebouwd` heeft één vorm, `gebouwd # #<PR>`: `pnpm docs:status` schrijft die ook na de merge (de guard haalt de head bij
+  GitHub) en voor een open PR zonder check-runs. Wat verandert voor een app: `check-docs` weigert een statusregel met
+  `; gevalideerd: <sha>` in `docs/specs/`; haal dat deel weg (één regel per spec, zonder GitHub-aanroep groen).
+
+- Eén padtabel (ADR 0079, spec padtabel): `.claude/gates.json` beschrijft per glob in `paden` het schrijfniveau (`gate`,
+  `voorReview`, `altijdVragen`) en het besluit (`agent`, `eigenaar`, `besluit-pr`); per kolom wint de strengste passende rij.
+  Rolhek, diff-guard, lane, agent-merge, `pnpm pr:merge` en check-docs leiden er de oude lijsten uit af
+  (`rails/hooks/lib/padtabel.mjs`); `KRITIEK` in `scripts/kit/lane.mjs` vervalt. `node scripts/kit/feiten.mjs pad <pad>` toont
+  het niveau met de globs die het leveren. check-docs eist samenhang (altijdVragen ⇒ besluit-pr, schrijven ≥ gate ⇒ niet
+  agent), geen dubbele, `!`- of lege rij en een vloer (`.github/**`, `.claude/hooks/**`, `.claude/settings.json`,
+  `.claude/gates.json`, `.claude/decisions.json`, `package.json`, `pnpm-lock.yaml`: altijdVragen en besluit-pr).
+  `.claude/decisions.json` houdt alleen `version` en `requiredChecks`. Wat verandert voor een app: zet bij de template-merge
+  `gates`, `voorReview`, `altijdVragen`, `agentMerge.toegestaan` en `agentMerge.kritiek` om naar rijen in `paden` (de oude
+  vorm is rood in check-docs, hooks en scripts lezen hem nog), voeg CODEOWNERS-regels toe voor de vloerpaden die nu eigen
+  gates zijn, en haal de records uit `decisions.json`.
 
 - CI draait `gate:fast`, `check:new-resource` en `gate:slow (ui:check)` in delen naast elkaar (ADR 0076, spec
   `ci-in-delen`): de snelle suite in `checks`, `test-1` en `test-2`, de e2e-suite in twee helften. Samenvattende jobs houden

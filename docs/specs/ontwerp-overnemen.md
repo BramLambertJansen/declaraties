@@ -1,5 +1,5 @@
 ---
-status: gebouwd # #358; gevalideerd: a7c8f229aff1d1e8d91d2f8f199427e63a9cb909
+status: gebouwd # #358
 namespace: ontwerp-overnemen
 ---
 

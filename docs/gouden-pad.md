@@ -63,6 +63,8 @@ Toets de foutvolgorde aan de bestaande kit, na de algemene HTTP-middleware: sess
 ontbrekende rol, permissie, MFA, handler en outputvalidatie. Bronnen: `routeHandler` in
 `src/core/api/http/create-app.ts`, `createWithUser` in `src/core/api/db/with-user.ts` en `check` in
 `src/core/shared/can.ts`. Een nieuwe voor-stap mag die zichtbare foutvolgorde niet stilzwijgend veranderen.
+Een route met partnerstap (`definePartnerRoute`) volgt de volgorde van spec partnerstap, bron
+`src/core/api/http/partner-route.ts`: bestaan en eigenaar van een resource uit de input toetst `load`, dus vóór de aanroep.
 
 Specificeer bij een voor-stap welke validatie eraan voorafgaat, welke externe aanroep zij doet en wanneer haar fout
 zichtbaar wordt. Een fout van de externe dienst mag `FORBIDDEN` of `MFA_REQUIRED` niet vervangen. Beschrijf zo nodig
@@ -96,6 +98,19 @@ expliciet kitmechanisme vast in de spec en controleer of de kit het al ondersteu
 niet in twee transacties (`src/core/api/http/route-effects.ts`). Een fout na commit draait gecommitteerde data niet terug.
 Een partner aanroepen kan daarom niet vanuit de handler of `afterCommit`: de uitgaande client (`src/core/api/outbound`) weigert
 een aanroep in de `withUser` van een route of via `guardWithUser`, en in `afterCommit` (R-CODE-12, spec [uitgaande-client](specs/uitgaande-client.md)).
+
+## Koppeling met een externe dienst
+
+Een koppeling volgt de skill `nieuwe-koppeling`: eerst indelen op zes kenmerken en toetsen aan
+`node scripts/kit/feiten.mjs koppelingen` (een waarde zonder bouwsteen: stoppen en melden), dan een app-ADR (0100+) dat de
+partner noemt en een spec met de paragraaf "Koppeling". De bouwstenen:
+
+- Register en schakelaar: [koppelingsregister](specs/koppelingsregister.md); aan en uit met `pnpm integration:switch`.
+- Uitgaande client met time-out, herhalen en schemacontrole: [uitgaande-client](specs/uitgaande-client.md).
+- Geheimen in env met `secret()`: [geheimen-in-env](specs/geheimen-in-env.md).
+- Lintregels tegen netwerk en geheimen buiten de client: [netwerk-en-geheim-rails](specs/netwerk-en-geheim-rails.md).
+- Partnerstap in de route (`definePartnerRoute`, `rateLimit: 'duur'`): [partnerstap](specs/partnerstap.md).
+- Vaste vorm per koppeling met contracttest (`describeContract`) en check: [koppelingsvorm](specs/koppelingsvorm.md).
 
 ## Stappen
 

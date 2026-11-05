@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, test } from 'vitest';
 import { decide, loadConfig } from '../../rails/hooks/lib/rolhek.mjs';
+import { OUDE_GATES_TEKST } from '../rails/padtabel-kit';
 
 // ADR 0046 punt 28 (stap 7): het rolhek vraagt (hoofdsessie ask, developer deny) alleen nog op paden in `voorReview`
 // (.claude/gates.json). Op de andere gate-paden is de schrijfactie toegestaan, met een melding "beschermd pad ... noem het
@@ -186,7 +187,8 @@ describe('andere rollen: schrijfrecht ongewijzigd', () => {
 
 // Review N1: zonder sleutel `voorReview` telt elke gate als voorReview (faalt dicht); een niet-lijst is een configfout.
 describe('voorReview ontbreekt of is ongeldig', () => {
-  const raw: unknown = JSON.parse(readFileSync('.claude/gates.json', 'utf8'));
+  // Alleen de oude vorm (30cc352) kent een ontbrekende voorReview; in de padtabel is een lege lijst leeg (ADR 0079).
+  const raw: unknown = JSON.parse(OUDE_GATES_TEKST);
   const zonder = Object.fromEntries(
     Object.entries(typeof raw === 'object' && raw !== null ? raw : {}).filter(([k]) => k !== 'voorReview'),
   );

@@ -6,6 +6,9 @@ Herzien: 2026-10-30 (#385): het label `gate-wijziging` en het taakmandaat verval
 geschrapt in punt 5, 7, 10, 15, 17 en 18.
 Herzien: 2026-11-03 (#472): punt 3, het rolhek valt ook dicht bij timeout en crash (`onFailure: "block"`), Gevolgen;
 verscherpt de bewaking; uitwerking in [spec](../specs/rolhek-dicht-bij-storing.md).
+Herzien: 2026-11-04 (#535): gewijzigd door [0079](0079-een-padtabel.md) punt 1, 7 en 9, de lijsten in `.claude/gates.json`
+worden de padtabel `paden`, de terugval bij een ontbrekende `voorReview` geldt alleen nog voor de oude vorm, en `ask` volgt
+de afgeleide `altijdVragen`
 
 Vervangt [0011](0011-railwerk.md), [0017](0017-diff-guard.md), [0031](0031-guard-en-pr-verify-bruikbaarder.md),
 [0032](0032-developer-volgt-hoofdsessie-buiten-voorreview.md), [0033](0033-onderhoudsmodus-voor-templatewerk.md) en

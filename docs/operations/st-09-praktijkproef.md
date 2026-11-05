@@ -136,8 +136,8 @@ met het commando uit "Nulmeting van leerpunten". De standaardlimiet van `gh issu
 Bewaar ook het eindpeilmoment en de uitvoer. Selecteer issues met nummer groter dan N, aangemaakt na het startpeilmoment
 en met bronbewijs uit deze proef; bevindingen uit gelijktijdige andere apps tellen niet mee.
 
-Rapporteer binnen die selectie het totaal, het aantal opgepakte leerpunten (met een roadmap-item dat het issue als
-aanleiding heeft) en het aantal herhalingen (met `eerder:`). Vergelijk deze drie tellingen met de nulmeting 0 nieuwe
+Rapporteer binnen die selectie het totaal, het aantal opgepakte leerpunten (gesloten met sluitbewijs of als achterhaald,
+[ADR 0078](../adr/0078-leerlus-met-bewijs.md) punt 6; een label `leerpunt-zonder-bewijs` telt niet als opgepakt) en het aantal herhalingen (met `eerder:`). Vergelijk deze drie tellingen met de nulmeting 0 nieuwe
 proefbevindingen. Een gesloten issue blijft meetellen; een herhaling mag naar een issue van vóór de grens verwijzen,
 maar alleen het nieuwe issue telt als herhaling. Vermeld N, start- en eindpeilmoment en de geselecteerde issuenummers,
 zodat de selectie controleerbaar is. Het totale aantal leerpunten in de repository mag apart als context staan en is

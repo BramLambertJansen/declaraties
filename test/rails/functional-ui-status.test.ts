@@ -154,20 +154,24 @@ describe('ADR 0056: bouwbewijs zonder vooraf gemergde UI-spec', () => {
 
     expect(result.stderr).toBe('');
     expect(result.status).toBe(0);
-    expect(read(fixture.root, SPEC)).toContain(`status: gebouwd # #${String(PR)}; gevalideerd: ${source}`);
-    const checked = draaiChecker(fixture, commit(fixture.root, 'docs: bouwbewijs'));
+    // GEWIJZIGD (specarchief-en-bouwvorm, ADR 0080 punt 5, OV-1): de regel zonder SHA; de guard toetst haar met PR_NUMBER.
+    expect(read(fixture.root, SPEC)).toContain(`status: gebouwd # #${String(PR)}\n`);
+    expect(git(fixture.root, ['rev-parse', 'HEAD'])).toBe(source);
+    const checked = draaiChecker(fixture, commit(fixture.root, 'docs: bouwbewijs'), { PR_NUMBER: String(PR) });
     expect(checked.status).toBe(0);
     expect(checked.stdout).toContain('functionele UI');
     expect(checked.stdout).toContain(UI_TEST);
   });
 
-  test('ontbrekend CI-bewijs blijft rood en wijzigt de spec niet', () => {
+  // GEWIJZIGD (specarchief-en-bouwvorm/AC-9, ADR 0080 punt 5 en ADR 0054 punt 1, OV-1): voor een open PR leest docs:status
+  // geen check-runs meer; de ruleset eist ze bij de merge. Zonder CI-bewijs schrijft docs:status nu.
+  test('ontbrekend CI-bewijs: docs:status schrijft gebouwd # #<PR> voor de open PR', () => {
     const fixture = uiFeature();
     commit(fixture.root);
     const result = draaiDocsStatus(fixture.root, [SPEC, 'gebouwd', '--pr', String(PR)], { STUB_CHECKS: 'geen' });
 
-    expect(result.status).toBe(1);
-    expect(read(fixture.root, SPEC)).toBe(MINI);
+    expect(result.status).toBe(0);
+    expect(read(fixture.root, SPEC)).toBe(MINI.replace(/^status: .*$/m, `status: gebouwd # #${String(PR)}`));
   });
 
   test('groene checks geven geen bouwrecht aan een gemengde UI/auth-PR', () => {

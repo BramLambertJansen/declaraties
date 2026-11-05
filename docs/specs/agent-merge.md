@@ -1,5 +1,5 @@
 ---
-status: vervallen # vervangen door ADR 0069 en spec agent-merge-niet-kritiek; voorstel | goedgekeurd | gebouwd | vervallen — alleen de eigenaar zet goedgekeurd; gebouwd: # #<PR>; gevalideerd: <sha> (pnpm docs:status)
+status: vervallen # vervangen door ADR 0069 en spec agent-merge-niet-kritiek; voorstel | goedgekeurd | gebouwd | vervallen — alleen de eigenaar zet goedgekeurd; gebouwd: # #<PR> (pnpm docs:status)
 namespace: agent-merge
 ---
 

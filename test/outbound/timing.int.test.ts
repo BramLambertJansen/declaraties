@@ -1,7 +1,8 @@
 import { afterEach, describe, expect, test } from 'vitest';
 import { z } from 'zod';
 import { AppError } from '../../src/core/api/errors.ts';
-import { createOutboundClient, type OutboundConfig } from '../../src/core/api/outbound/index.ts';
+import { createOutboundClient } from '../../src/core/api/outbound/create.ts';
+import type { OutboundConfig } from '../../src/core/api/outbound/index.ts';
 import { startFakePartner, type FakePartner, type FakeRoutes } from '../../src/core/api/outbound/testing.ts';
 
 // Spec uitgaande-client, de AC's met echte wachttijden (AC-1, AC-2, het time-outdeel van AC-4, AC-5). Echte fetch tegen de

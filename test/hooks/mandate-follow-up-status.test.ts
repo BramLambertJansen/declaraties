@@ -137,16 +137,15 @@ describe('AC-8: één stap voor status en vinkje', () => {
         `${S1}: gebouwd; bewijs gecontroleerd, alleen de statusregel en het vinkje van het item gewijzigd\n`,
       );
       expect(git(root, ['diff', '--name-only']).split('\n').sort()).toStrictEqual([ROADMAP, S1]);
-      expect(read(root, S1)).toBe(
-        voor.spec.replace('status: goedgekeurd', `status: gebouwd # #130; gevalideerd: ${sha}`),
-      );
+      // GEWIJZIGD (specarchief-en-bouwvorm, ADR 0080 punt 5, OV-1): de regel zonder SHA; de guard toetst haar met PR_NUMBER.
+      expect(read(root, S1)).toBe(voor.spec.replace('status: goedgekeurd', 'status: gebouwd # #130'));
       expect(read(root, ROADMAP)).toBe(
         voor.roadmap.replace(roadmap.find((r) => r.startsWith(`- [ ] Taak voor \`${S1}\``)) ?? '', verwacht),
       );
 
       const head = commit(root, 'docs: administratie');
       expect(await statusOnly(root, sha, head)).toBe(true);
-      const uitvoerCi = draaiChecker(fixture, head);
+      const uitvoerCi = draaiChecker(fixture, head, { PR_NUMBER: '130' });
       expect(uitvoerCi.stderr).toBe('');
       expect(uitvoerCi.status).toBe(0);
       expect(await roadmapSleutels(root)).toStrictEqual([]);
@@ -213,13 +212,14 @@ describe('AC-9: weigeren zonder iets te schrijven', () => {
     });
   });
 
-  test('de verplichte checks ontbreken: de bestaande controle blijft gelden', () => {
-    weigert({
-      root: docsRepo().root,
-      args: GEBOUWD_ARGS,
-      melding: 'Gebouwd vereist de juiste geopende PR',
-      extra: { STUB_CHECKS: 'geen' },
-    });
+  // GEWIJZIGD (specarchief-en-bouwvorm/AC-9, ADR 0080 punt 5, OV-1): voor een open PR leest docs:status geen check-runs
+  // meer; de ruleset eist ze bij de merge. Zonder checks schrijft docs:status nu.
+  test('de verplichte checks ontbreken: docs:status schrijft gebouwd # #130 (geen check-runs voor een open PR)', () => {
+    const { root } = docsRepo();
+    const uitvoer = draaiDocsStatus(root, GEBOUWD_ARGS, { STUB_CHECKS: 'geen' });
+    expect(uitvoer.stderr).toBe('');
+    expect(uitvoer.status).toBe(0);
+    expect(read(root, S1)).toMatch(/^status: gebouwd # #130$/m);
   });
 
   test('--roadmap zonder --pr', () => {

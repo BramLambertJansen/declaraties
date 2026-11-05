@@ -1,5 +1,5 @@
 ---
-status: gebouwd # #353; gevalideerd: 6891fef31db1c09e735a799ba448fec531cd5e7a
+status: gebouwd # #353
 namespace: semantische-tokens
 ---
 

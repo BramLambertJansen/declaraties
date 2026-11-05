@@ -1,5 +1,5 @@
 ---
-status: voorstel # voorstel | goedgekeurd | gebouwd | vervallen — de architect zet de status in het voorstel, de merge door de eigenaar is het besluit (ADR 0046); gebouwd: # #<deze PR> in de PR met de implementatie (ADR 0062), of # #<PR>; gevalideerd: <sha> (pnpm docs:status)
+status: voorstel # voorstel | goedgekeurd | gebouwd | vervallen — de architect zet de status in het voorstel, de merge door de eigenaar is het besluit (ADR 0046); gebouwd: # #<PR>, de eigen PR met de implementatie (ADR 0062) of daarna de gemergde bouw-PR (pnpm docs:status, ADR 0080)
 namespace: <resource>
 ---
 
@@ -23,6 +23,15 @@ Geen kop weglaten; "n.v.t. — reden" mag. Ontbreekt een antwoord, dan vraagt de
 Bij routes: beschrijf per padparameter de vorm, het contractschema, de foutcode en validatie vóór een externe aanroep.
 Leg de foutvolgorde en eventuele voor-stappen vast, met gecombineerde foutgevallen als acceptatiecriteria;
 zie "Padparameters en foutvolgorde" in `docs/gouden-pad.md`. Zonder routes: "n.v.t. — reden".
+
+## Koppeling
+
+Zonder externe dienst: "n.v.t. — reden". Anders volgens de skill `nieuwe-koppeling` en het app-ADR (0100+) dat de partner noemt.
+Indeling: machtiging, richting, ritme, gevoeligheid, kosten en quota, bron van waarheid; elke waarde gebouwd volgens
+`node scripts/kit/feiten.mjs koppelingen`. Per aanroep:
+
+| Methode | Padsjabloon | Time-out | Herhaalbaar | Schema | Foutcode |
+|---|---|---|---|---|---|
 
 ## Kopieer de vorm van
 

@@ -2,7 +2,8 @@ import { gzipSync } from 'node:zlib';
 import { afterEach, describe, expect, test, vi } from 'vitest';
 import { z } from 'zod';
 import { AppError } from '../errors.ts';
-import { createOutboundClient, OutboundUsageError, type OutboundConfig } from './index.ts';
+import { createOutboundClient } from './create.ts';
+import { OutboundUsageError, type OutboundConfig } from './index.ts';
 import { startFakePartner, type FakePartner, type FakeRoutes } from './testing.ts';
 
 // Spec uitgaande-client, unitdeel: de AC's zonder echte wachttijd, de spionnen op `cancel` van de body, de

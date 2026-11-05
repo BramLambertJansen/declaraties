@@ -3,8 +3,8 @@ import { z } from 'zod';
 import { beginTestDb, createPool, type TestDb, type TestUser } from '../../src/core/api/db/testing.ts';
 import { AppError } from '../../src/core/api/errors.ts';
 import { createApp } from '../../src/core/api/http/create-app.ts';
+import { createOutboundClient } from '../../src/core/api/outbound/create.ts';
 import {
-  createOutboundClient,
   guardWithUser,
   OutboundForbiddenError,
   type OutboundClient,

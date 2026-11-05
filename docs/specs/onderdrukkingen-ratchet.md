@@ -1,5 +1,5 @@
 ---
-status: gebouwd # #459; gevalideerd: 32513532dc72c4a301e0454bb9117991d4ac5043
+status: gebouwd # #459
 namespace: onderdrukkingen-ratchet
 ---
 

@@ -62,7 +62,8 @@ function normalizeHost(host: string): string | null {
 // Exacte hostnamen: geen schema, poort, pad, userinfo of `*`; daarna genormaliseerd.
 const NOT_A_HOSTNAME = /[*/@?#\\]|:\d*$/;
 
-function allowedHosts(hosts: readonly string[]): ReadonlySet<string> {
+// Ook gebruikt door registerIntegrations (spec koppelingsregister): de hosts staan in het register.
+export function allowedHosts(hosts: readonly string[]): ReadonlySet<string> {
   if (hosts.length === 0) fail('hosts is leeg');
   return new Set(
     hosts.map((host) => {

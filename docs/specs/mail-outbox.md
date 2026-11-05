@@ -1,5 +1,5 @@
 ---
-status: voorstel # voorstel | goedgekeurd | gebouwd | vervallen — alleen de eigenaar zet goedgekeurd; gebouwd: # #<PR>; gevalideerd: <sha> (pnpm docs:status)
+status: voorstel # voorstel | goedgekeurd | gebouwd | vervallen — alleen de eigenaar zet goedgekeurd; gebouwd: # #<PR> (pnpm docs:status)
 namespace: outbox
 model: opus
 modelreden: nieuwe security definer-functies en een gewijzigde security definer-view app.accounts (ADR 0046 punt 18), gelijktijdigheid met lease en for update skip locked (punt 18), en de uitnodigingsflow in src/core/api/auth (punt 18)

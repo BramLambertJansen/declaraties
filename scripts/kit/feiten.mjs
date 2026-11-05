@@ -1,7 +1,8 @@
 // Live feiten (framework §8, ADR 0045): elke rol begint hiermee, niet met wat in proza staat.
-// Gebruik: node scripts/kit/feiten.mjs [gates|adr|specs|migraties|routes|permissies|foutcodes|componenten|tokens|fase] [--alle] [--json]
+// Gebruik: node scripts/kit/feiten.mjs [gates|adr|specs|migraties|routes|permissies|foutcodes|koppelingen|componenten|tokens|fase] [--alle] [--json]
 //          node scripts/kit/feiten.mjs hoofdstuk <n>: de tekst vóór de eerste `## `-kop van docs/framework.md plus
 //          hoofdstuk <n> (bij 8 ook 8a, 8b…; zoals `pnpm leespad` telt); onbekend: foutmelding en exit 1 (ADR 0065).
+//          node scripts/kit/feiten.mjs pad <pad>: schrijfniveau en besluit uit de padtabel, met de globs die ze leveren (ADR 0079).
 // Zonder sectie alles; elke rol vraagt in stap 1 van zijn agentbestand alleen wat hij nodig heeft (.claude/agents/*.md).
 // `specs`, `adr` en `fase` tonen standaard een begrensde lijst met een telregel; `--alle` toont alles (meting-stuurt/AC-5).
 // De secties staan in feiten-secties.mjs, weergave en filters in feiten-tekst.mjs; dit bestand is alleen de CLI.
@@ -43,6 +44,28 @@ async function hoofdstuk(n) {
 }
 
 if (process.argv[2] === 'hoofdstuk') await hoofdstuk(process.argv[3]);
+
+/** Drukt het niveau van één pad uit de padtabel af (ADR 0079 punt 7, spec padtabel AC-13) en stopt. @param {string | undefined} rel */
+async function padRegel(rel) {
+  if (rel === undefined || rel === '') {
+    console.error('Gebruik: node scripts/kit/feiten.mjs pad <pad>');
+    process.exit(1);
+  }
+  const { padNiveau } = await import('../../rails/hooks/lib/padtabel.mjs');
+  /** @type {ReturnType<typeof padNiveau>} */
+  let niveau;
+  try {
+    niveau = padNiveau(rel, JSON.parse(readFileSync('.claude/gates.json', 'utf8')));
+  } catch (fout) {
+    console.error(`.claude/gates.json: ${fout instanceof Error ? fout.message : String(fout)}`);
+    process.exit(1);
+  }
+  const regel = `${rel}: schrijven ${niveau.schrijven} (${niveau.bronnen.schrijven.join(', ')}), besluit ${niveau.besluit} (${niveau.bronnen.besluit.join(', ')})\n`;
+  await new Promise((klaar) => process.stdout.write(regel, klaar));
+  process.exit(0);
+}
+
+if (process.argv[2] === 'pad') await padRegel(process.argv[3]);
 
 const { toText } = await import('./feiten-tekst.mjs');
 const { codeSecties, gereserveerdeAdrNummers, lezerSecties, plain, VOLGORDE, werkmap } =

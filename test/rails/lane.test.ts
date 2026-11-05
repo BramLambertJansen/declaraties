@@ -5,6 +5,7 @@ import { describe, expect, test } from 'vitest';
 import { loadConfig } from '../../rails/hooks/lib/rolhek.mjs';
 import { laneVan, migratieOvertreding } from '../../scripts/kit/lane.mjs';
 import { plan } from '../../scripts/kit/new-resource.mjs';
+import { OUDE_GATES_TEKST } from './padtabel-kit';
 
 // ADR 0046 punt 15: lane-herkenning. `laneVan({ changes, besluiten, mini, config })` is puur.
 //   changes   — de name-status-wijzigingen van de PR ({ status: 'A' | 'M' | 'D' | 'R' | 'C', pad, van? })
@@ -141,9 +142,8 @@ describe('feature-lane: negatief (moet de strenge route geven)', () => {
   // GEWIJZIGD (spec-en-bouw/AC-3, ADR 0062): voorReview begrenst de feature-lane niet meer; dicht blijven de kritieke paden
   // (altijdVragen en de vaste lijst), ook als voorReview ontbreekt.
   test('een ontbrekende voorReview houdt de kritieke paden dicht (spec-en-bouw/AC-3)', () => {
-    const zonder = loadConfig(
-      JSON.stringify({ ...JSON.parse(readFileSync('.claude/gates.json', 'utf8')), voorReview: undefined }),
-    );
+    // Alleen de oude vorm (30cc352) kent een ontbrekende voorReview; in de padtabel is een lege lijst leeg (ADR 0079).
+    const zonder = loadConfig(JSON.stringify({ ...JSON.parse(OUDE_GATES_TEKST), voorReview: undefined }));
     for (const pad of ['scripts/kit/lane.mjs', '.github/workflows/guard.yml', 'package.json']) {
       const invoer = { changes: [A(SPEC), M('docs/dod.md'), M(pad)], besluiten: [SPEC], mini: true, config: zonder };
       const resultaat = laneVan(invoer);

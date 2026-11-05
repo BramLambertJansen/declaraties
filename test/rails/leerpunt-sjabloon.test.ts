@@ -1,5 +1,6 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { describe, expect, test } from 'vitest';
+import { expectAbsent } from '../support/absence.ts';
 
 // Spec leerlus (docs/specs/leerlus.md), ADR 0059: het issue form `leerpunt`, de CLI-koppen in de skill `opleveren`
 // en de reviewermelding houden dezelfde velden, labels en soorten.
@@ -61,6 +62,8 @@ const SOORTEN = [
   'Tokenefficiëntie',
 ];
 const LADDER = ['Type', 'Check', 'Gouden pad of generator', 'Skill', 'Padregel', 'AGENTS.md'];
+// Spec leerlus-herzien AC-1 (ADR 0081): de plek voor schrappen of vereenvoudigen staat vóór de zes treden.
+const PLEKKEN = ['Schrappen of vereenvoudigen', ...LADDER];
 
 // Volgorde, type, label en uitleg letterlijk uit "Hergebruik en UX" van de spec.
 const VELDEN = [
@@ -90,6 +93,14 @@ const VELDEN = [
     required: true,
   },
   { id: 'ladder', type: 'dropdown', label: 'Voorstel voor de plek', description: null, required: true },
+  {
+    id: 'onderbouwing',
+    type: 'textarea',
+    label: 'Onderbouwing',
+    description:
+      'Alleen bij Schrappen of vereenvoudigen, dan verplicht. Drie regels - Meting: nu en verwacht, elk een getal of onbekend met reden, en de bron. Overname: welk risico het stuk dekt en wat dat daarna dekt, of waarom het weg is. Terugval: signaal dat het fout was en hoe terug. Geen appcode, appdata of geheimen.',
+    required: false,
+  },
   {
     id: 'template_sha',
     type: 'input',
@@ -201,15 +212,15 @@ describe('leerpunt-sjabloon: velden en opmaak', () => {
     expect(form.top.get('labels')).toBe('[leerpunt]');
   });
 
-  test('leerlus/AC-1: precies de zeven velden, in volgorde, met type, label en verplichting', () => {
+  test('leerlus/AC-1: precies de acht velden (leerlus-herzien/AC-1), in volgorde, met type, label en verplichting', () => {
     expect(form.fields.map(({ id, type, label, required }) => ({ id, type, label, required }))).toStrictEqual(
       VELDEN.map(({ id, type, label, required }) => ({ id, type, label, required })),
     );
   });
 
-  test('leerlus/AC-1: soort heeft exact de negen opties en ladder de zes, in volgorde', () => {
+  test('leerlus/AC-1: soort heeft exact de negen opties en ladder de plek plus de zes treden, in volgorde', () => {
     expect(byId('soort')?.options).toStrictEqual(SOORTEN);
-    expect(byId('ladder')?.options).toStrictEqual(LADDER);
+    expect(byId('ladder')?.options).toStrictEqual(PLEKKEN);
     const zonderOpties = form.fields.filter((field) => field.type !== 'dropdown').map((field) => field.options);
     expect(zonderOpties.every((options) => options.length === 0)).toBe(true);
   });
@@ -222,7 +233,7 @@ describe('leerpunt-sjabloon: velden en opmaak', () => {
 });
 
 describe('leerpunt-sjabloon: geen appdata', () => {
-  test("leerlus/AC-2: buiten de zeven veld-id's geen invoerveld, geen bijlage- of logtype", () => {
+  test("leerlus/AC-2: buiten de acht veld-id's geen invoerveld, geen bijlage- of logtype", () => {
     expect(existsSync(TEMPLATE), `${TEMPLATE} ontbreekt`).toBe(true);
     const ids = form.fields.map((field) => field.id);
     expect(ids.filter((id) => !VELDEN.some((veld) => veld.id === id))).toStrictEqual([]);
@@ -238,6 +249,7 @@ describe('leerpunt-sjabloon: geen appdata', () => {
     expect(form.top.get('description')).toContain('geen appcode, appdata of geheimen');
     expect(byId('bron')?.description).toContain('Geen appdata, logs of schermafbeeldingen.');
     expect(byId('reproductie')?.description).toContain('zonder appcode of appdata');
+    expect(byId('onderbouwing')?.description).toContain('Geen appcode, appdata of geheimen.');
   });
 });
 
@@ -270,5 +282,27 @@ describe('leerpunt-sjabloon: gelijk aan skill en reviewer', () => {
     const start = spans.indexOf(opties[0] ?? '');
     expect(start, 'reviewer.md noemt de eerste soort niet als backtick-span').toBeGreaterThanOrEqual(0);
     expect(spans.slice(start, start + opties.length)).toStrictEqual(opties);
+  });
+});
+
+describe('leerlus-bewijs/AC-9 en AC-10 voorsortering, meting en status', () => {
+  const VOORSORTEREN = 'docs/operations/leerpunten-voorsorteren.md';
+
+  test('leerlus-bewijs/AC-9: de voorsortering staat in de repo, zonder uitbreidingsstop, met de twee labels als eigen bak', () => {
+    const tekst = read(VOORSORTEREN);
+    expect(tekst).toMatch(/^## Prompt$/m);
+    expectAbsent(tekst, /uitbreiding(s)?stop/i, {
+      recognizes: ['uitbreidingsstop', 'Uitbreidingstop', 'UITBREIDINGSSTOP'],
+    });
+    const bak = tekst.split('\n').find((regel) => regel.includes('**Sjabloon of bewijs ontbreekt**')) ?? '';
+    expect(bak).toContain('`leerpunt-onvolledig`');
+    expect(tekst).toContain('`leerpunt-zonder-bewijs`');
+  });
+
+  test('leerlus-bewijs/AC-10: spec leerlus is gebouwd en het protocol telt opgepakt met sluitbewijs of achterhaald', () => {
+    // De spec noemt #312; document-status eist het nummer van de bouw-PR (ADR 0062), dus #538.
+    expect(read('docs/specs/leerlus.md')).toMatch(/^status: gebouwd # #538$/m);
+    const protocol = read('docs/operations/st-09-praktijkproef.md').replace(/\s+/g, ' ');
+    expect(protocol).toMatch(/opgepakte leerpunten \(gesloten met sluitbewijs of als achterhaald/);
   });
 });

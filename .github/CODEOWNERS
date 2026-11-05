@@ -1,6 +1,7 @@
-# Beschermde paden — dezelfde lijst als docs/framework.md §10 (bron: gates + jsonGates in .claude/gates.json, ADR 0045). De Edit-regels
-# in "ask" van .claude/settings.json zijn de deelverzameling altijdVragen (ADR 0045 punt 9), plus ask op de commando's buiten de sandbox.
-# check-docs bewaakt beide spiegelingen. Vervang de handle per app (liever een team).
+# Beschermde paden — dezelfde lijst als docs/framework.md §10 (bron: de padtabel `paden` in .claude/gates.json, ADR 0079): de
+# afgeleide gates (schrijven ≥ gate) plus jsonGates. De Edit-regels in "ask" van .claude/settings.json zijn de afgeleide
+# altijdVragen (ADR 0045 punt 9), plus ask op de commando's buiten de sandbox. check-docs bewaakt beide spiegelingen.
+# Vervang de handle per app (liever een team).
 /AGENTS.md                @bramlambertjansen
 /CLAUDE.md                @bramlambertjansen
 /docs/framework.md        @bramlambertjansen
@@ -12,6 +13,10 @@
 /docs/specs/              @bramlambertjansen
 /.github/                 @bramlambertjansen
 /.claude/                 @bramlambertjansen
+/.claude/hooks/           @bramlambertjansen
+/.claude/settings.json    @bramlambertjansen
+/.claude/gates.json       @bramlambertjansen
+/.claude/decisions.json   @bramlambertjansen
 /scripts/                 @bramlambertjansen
 /rails/                   @bramlambertjansen
 /db/init/                 @bramlambertjansen

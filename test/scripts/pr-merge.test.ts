@@ -343,3 +343,18 @@ describe('agent-merge-niet-kritiek/AC-3 pr:merge', () => {
     expect(() => nummerUit(args)).toThrow(/Gebruik: pnpm pr:merge <nummer>/);
   });
 });
+
+describe('leerlus-bewijs/AC-4 pr:merge leest de sectie Leerpunt bij het mergen', () => {
+  const PULL = goed()[`repos/${REPO}/pulls/7`];
+  const metBody = (body: string) => zet('pulls/7', { ...Object(PULL), body });
+
+  test('leerlus-bewijs/AC-4: bewijs met testpad: geen reden', () => {
+    expect(redenen(metBody('## Leerpunt\n\n- #9: trede Check; bewijs test/scripts/x.test.ts'))).toBe('');
+  });
+
+  test('leerlus-bewijs/AC-4: beschrijving na het oordeel gewijzigd naar geen test: weigering', () => {
+    expect(redenen(metBody('## Leerpunt\n\n- #9: trede Skill; bewijs geen test: alleen skilltekst'))).toMatch(
+      /leerpunt zonder test: de eigenaar merget/,
+    );
+  });
+});

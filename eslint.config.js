@@ -169,7 +169,7 @@ const railConfigs = [
       'src/core/api/mail/smtp.ts',
       'src/core/api/http/serve.ts',
     ],
-    "Netwerk vanuit api- en shared-code alleen via de uitgaande client: gebruik createOutboundClient uit '#core/api/outbound' " +
+    "Netwerk vanuit api- en shared-code alleen via de uitgaande client: gebruik integrations.client(…) uit het register in '#core/api/integrations' " +
       '(R-CODE-12, ADR 0077). Geen node:http(s), net, tls, undici, nodemailer, child_process, worker_threads, vm, ' +
       'node:module, data:-import, eval, globale fetch/WebSocket of globalThis.',
     NETWERK_SELECTORS,

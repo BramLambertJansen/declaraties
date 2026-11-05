@@ -72,7 +72,10 @@ test('app:init verwerkt alle actuele templatebestanden en bewaart de overige con
   expect(owners).toContain('@example/beheer');
   const gates: unknown = JSON.parse(readFileSync(path.join(dir, '.claude/gates.json'), 'utf8'));
   expect(gates).not.toHaveProperty('onderhoud');
-  expect(gates).toHaveProperty('gates');
+  // In de app-kopie van check:new-resource komt de invoer uit de laatste templatecommit die package.json wijzigde; die kan
+  // nog de oude vorm hebben (ADR 0079 punt 5: beide vormen blijven leesbaar). app:init bewaart de vorm van de invoer.
+  const vorm = /"paden"\s*:/.test(inputs['.claude/gates.json'] ?? '') ? 'paden' : 'gates';
+  expect(gates).toHaveProperty(vorm);
   expect(gates).toHaveProperty('schrijfrecht');
 });
 

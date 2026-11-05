@@ -1,5 +1,5 @@
 ---
-status: goedgekeurd # voorstel | goedgekeurd | gebouwd | vervallen — de merge door de eigenaar is het besluit (ADR 0046); gebouwd: # #<PR>; gevalideerd: <sha> (pnpm docs:status)
+status: goedgekeurd # voorstel | goedgekeurd | gebouwd | vervallen — de merge door de eigenaar is het besluit (ADR 0046); gebouwd: # #<PR> (pnpm docs:status)
 namespace: files
 ---
 

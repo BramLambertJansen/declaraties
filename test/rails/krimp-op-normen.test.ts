@@ -3,6 +3,7 @@ import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'nod
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, test } from 'vitest';
+import { afgeleid } from '../../rails/hooks/lib/padtabel.mjs';
 import { docsKrimp, docsMeldingen } from '../../scripts/kit/check-docs.mjs';
 import { definities, leesLijst, normMeldingen, normViolations } from '../../scripts/kit/normen.mjs';
 
@@ -175,9 +176,10 @@ describe('krimp-op-normen/AC-4: de vorm van de lijst, en hij krimpt nooit', () =
   test('krimp-op-normen/AC-4 docs/normen-vervallen.md bestaat, is geldig en beschermd', () => {
     const tekst = readFileSync('docs/normen-vervallen.md', 'utf8');
     expect(leesLijst(tekst).fouten).toStrictEqual([]);
-    const gates = readFileSync('.claude/gates.json', 'utf8');
-    expect(gates.split('"voorReview"')[0]).toContain('"docs/normen-vervallen.md"');
-    expect(gates.split('"voorReview"')[1]).toContain('"docs/normen-vervallen.md"');
+    // De lijsten komen uit de padtabel (ADR 0079): het pad staat in de afgeleide gates en voorReview.
+    const lijsten = afgeleid(JSON.parse(readFileSync('.claude/gates.json', 'utf8')));
+    expect(lijsten.gates).toContain('docs/normen-vervallen.md');
+    expect(lijsten.voorReview).toContain('docs/normen-vervallen.md');
     expect(readFileSync('.github/CODEOWNERS', 'utf8')).toMatch(/^\/docs\/normen-vervallen\.md\s/m);
   });
 });

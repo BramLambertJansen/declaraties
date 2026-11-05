@@ -1,5 +1,5 @@
 ---
-status: gebouwd # #297; gevalideerd: 014a072fa62b5fef667cdd9c2ed9559e9e585c89
+status: gebouwd # #297
 namespace: latere-serverveldfouten
 sjabloon: mini
 scope: functionele-ui

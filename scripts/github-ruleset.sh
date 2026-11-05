@@ -30,7 +30,8 @@ esac
 # Job-namen zoals ze op een PR staan. De diff-guard (guard.yml) is tot de GitHub App geen verplichte check (ADR 0045);
 # check-core (guard.yml, ADR 0040) wel: in een app bewaakt hij src/core, in de template is hij altijd groen.
 # document-status (guard.yml) ook: hij toetst lane en `gebouwd # #<PR>` in de PR zelf (ADR 0062 punt 4).
-checks=(gate:fast gate:slow secrets image check:new-resource check-core document-status osv-scanner)
+# leerpunt-bewijs (leerpunt-bewijs.yml, ADR 0078): sluitbewijs voor een PR die een leerpunt sluit; anders meteen groen.
+checks=(gate:fast gate:slow secrets image check:new-resource check-core document-status leerpunt-bewijs osv-scanner)
 $codeql && checks+=("codeql (actions)" "codeql (javascript-typescript)")
 
 # 15368 = GitHub Actions: een status van een andere bron telt niet (anders is hij te vervalsen).

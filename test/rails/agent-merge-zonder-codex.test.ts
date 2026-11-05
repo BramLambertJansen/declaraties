@@ -25,10 +25,16 @@ function oordeel(wijzigingen: Wijziging[], omvang: { regels?: number; binair?: s
   return agentMerge(p, beoordeel(p, guardConfig), tekst);
 }
 
+// In de nieuwe vorm (padtabel, ADR 0079) staan `toegestaan` en `kritiek` niet in het blok van de echte tekst: ze komen uit `paden`.
+const zonderLijsten = (blok: unknown): Record<string, unknown> =>
+  typeof blok === 'object' && blok !== null
+    ? Object.fromEntries(Object.entries(blok).filter(([sleutel]) => sleutel !== 'toegestaan' && sleutel !== 'kritiek'))
+    : {};
+
 const metGrens = (maxRegels: number) => {
   const ruw: unknown = JSON.parse(TEKST);
-  const blok = leesAgentMerge(ruw);
-  return JSON.stringify(Object.assign({}, ruw, { agentMerge: { ...blok, maxRegels } }));
+  const blok: unknown = typeof ruw === 'object' && ruw !== null ? Reflect.get(ruw, 'agentMerge') : undefined;
+  return JSON.stringify(Object.assign({}, ruw, { agentMerge: { ...zonderLijsten(blok), maxRegels } }));
 };
 
 describe('agent-merge-zonder-codex/AC-1 leesAgentMerge: codex en maxRegels', () => {
@@ -61,7 +67,7 @@ describe('agent-merge-zonder-codex/AC-1 leesAgentMerge: codex en maxRegels', () 
 
   test('zonder maxRegels is het oordeel nee met de bestaande reden (geen omvangreden in de diff-guard)', () => {
     const ruw: unknown = JSON.parse(TEKST);
-    const zonder = JSON.stringify(Object.assign({}, ruw, { agentMerge: { ...BLOK, codex: true } }));
+    const zonder = JSON.stringify(Object.assign({}, ruw, { agentMerge: { ...zonderLijsten(BLOK), codex: true } }));
     expect(oordeel([{ status: 'M', pad: 'src/web/x.ts' }], { regels: 1, binair: [] }, zonder)).toEqual({
       oordeel: 'nee',
       redenen: ['agentMerge ontbreekt of is onleesbaar in .claude/gates.json'],
@@ -172,7 +178,7 @@ describe('agent-merge-zonder-codex/AC-2 oordeel op omvang en binaire bestanden',
 describe('agent-merge-zonder-codex/AC-6 check-docs toetst de vorm van codex en maxRegels', () => {
   const aangepast = (blok: Record<string, unknown>) => {
     const ruw: unknown = JSON.parse(TEKST);
-    return JSON.stringify(Object.assign({}, ruw, { agentMerge: blok }));
+    return JSON.stringify(Object.assign({}, ruw, { agentMerge: zonderLijsten(blok) }));
   };
   const sleutels = (blok: Record<string, unknown>) => agentMergeViolations([], aangepast(blok)).map((v) => v.key);
 

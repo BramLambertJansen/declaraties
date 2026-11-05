@@ -3,20 +3,22 @@
 // met echte payloads kan bewijzen. De stdin/stdout-kant staat in rails/hooks/rolhek.mjs.
 import path from 'node:path';
 import { gitSubcommand, parseCommands, programName, splitCommand, writeTargets } from './shell.mjs';
-import { A4_MELDING, beslisOvergang, builtReference, documentInfo, documentKind, isArchief, isHerschrijving } from './document-state.mjs';
+import { A4_MELDING, archiefBron, beslisOvergang, builtReference, documentInfo, documentKind, isArchief, isHerschrijving } from './document-state.mjs';
 import { canRecordStatus, TEMPLATE_REPOSITORY } from './task-authority.mjs';
 import { automaticRunner } from './runner-authority.mjs';
 import { isCoreUiSource, testChangeRisk } from './functional-ui.mjs';
 import { staleBranchStart } from './verse-main.mjs';
 import { zelfladend } from './zelfladend.mjs';
+import { afgeleid, globMatch } from './padtabel.mjs';
 
 /**
  * @typedef {{ gates: string[], testpaden: string[], jsonGates: Record<string, string[]>, gegenereerd: string[],
  *   migraties: string[], schrijfrecht: Record<string, string[]>, mcpLezen: string[], voorReview?: string[] | undefined,
- *   altijdVragen?: string[] | undefined, zelfladend?: string[] | undefined, onderhoud?: { repository: string } | undefined,
+ *   altijdVragen?: string[] | undefined, kritiek?: string[] | undefined, zelfladend?: string[] | undefined, onderhoud?: { repository: string } | undefined,
  *   rolhekEffectHoofdsessie?: 'uit' | 'schaduw' | 'aan', generatoren?: string[] | undefined }} Config
  * `rolhekEffectHoofdsessie` (spec rolhek-vooraf-krimp AC-4, AC-7): ontbreekt → `uit`. `generatoren`: commando's die exact zo een
  * pad onder `gegenereerd` mogen schrijven.
+ * De lijsten komen uit `afgeleid` (rails/hooks/lib/padtabel.mjs, ADR 0079); alleen in de oude vorm kunnen ze ontbreken:
  * `voorReview` ontbreekt → elke gate telt als voorReview (faalt dicht). `altijdVragen` ontbreekt → in onderhoud blijft elk
  * voorReview-pad een gate (faalt dicht). `onderhoud`: de repository waarin de onderhoudsmodus geldt (ADR 0045 punt 8).
  * @typedef {{ root: string, cwd: string, config: Config, read: (rel: string) => string | null,
@@ -57,16 +59,19 @@ export function loadConfig(text) {
       throw new Error(`.claude/gates.json: ${key} is geen object`);
     return Object.fromEntries(Object.entries(found).map(([name, items]) => [name, Array.isArray(items) ? items.map(String) : []]));
   };
+  // Spec padtabel (ADR 0079): gates, voorReview, altijdVragen en kritiek komen uit de padtabel (of de oude vorm); beide vormen gooit.
+  const lijsten = afgeleid(raw);
   return {
-    gates: list('gates'),
+    gates: lijsten.gates,
     testpaden: list('testpaden'),
     gegenereerd: list('gegenereerd'),
     migraties: list('migraties'),
     mcpLezen: list('mcpLezen'),
     jsonGates: record('jsonGates'),
     schrijfrecht: record('schrijfrecht'),
-    voorReview: optionalList('voorReview'),
-    altijdVragen: optionalList('altijdVragen'),
+    voorReview: lijsten.voorReview,
+    altijdVragen: lijsten.altijdVragen,
+    kritiek: lijsten.kritiek,
     zelfladend: optionalList('zelfladend'),
     onderhoud: onderhoudVan(value('onderhoud')),
     rolhekEffectHoofdsessie: effectModus(value('rolhekEffectHoofdsessie')),
@@ -138,8 +143,8 @@ export function decideChange({ rel, change, agentType }, ctx) {
     decision.deny.push(gitMapMelding(rel));
     return decision;
   }
-  // Het archief verandert via Bash alleen door een verhuizing met dezelfde naam en inhoud (spec rolhek-vooraf-krimp AC-5).
-  if (rel.startsWith('docs/adr/archief/') && change.verhuizing !== true) {
+  // Het archief verandert via Bash alleen door een verhuizing met dezelfde naam en inhoud (spec rolhek-vooraf-krimp AC-5, ADR 0080).
+  if (/^docs\/(?:adr|specs)\/archief\//.test(rel) && change.verhuizing !== true) {
     decision.deny.push(`${rel}: ${ARCHIEF_MELDING}`);
     return decision;
   }
@@ -359,7 +364,8 @@ function decideFile({ rel, change, role }, ctx, decision) {
   // Een gearchiveerd ADR wijzigt en verdwijnt voor geen enkele rol, ook niet in een besluit-PR (framework §10).
   const a4Toegestaan = beslisrol && !isArchief(rel) &&
     (isHerschrijving(rel, basis, change.after) || adrMetEigenaarstatusWeg(rel, basis, change));
-  if (!a4Toegestaan && (['a4', 'herzien'].includes(overgang?.uitslag ?? '') || adrMetEigenaarstatusWeg(rel, basis, change))) {
+  const archiefWeg = isArchief(rel) && change.kind === 'delete';
+  if (!a4Toegestaan && (['a4', 'herzien'].includes(overgang?.uitslag ?? '') || archiefWeg || adrMetEigenaarstatusWeg(rel, basis, change))) {
     decision.deny.push(`${rel}: ${A4_MELDING}`);
     return;
   }
@@ -547,27 +553,7 @@ export function jsonKeysChanged(keys, before, after) {
   return old === null || next === null || old !== next;
 }
 
-/**
- * Glob met `*` (binnen één map), `**` (over mappen) en `?`.
- * @param {string} glob
- * @param {string} rel
- */
-export function globMatch(glob, rel) {
-  let pattern = '';
-  for (let index = 0; index < glob.length; index += 1) {
-    const char = glob[index] ?? '';
-    if (glob.startsWith('**/', index)) {
-      pattern += '(?:.*/)?';
-      index += 2;
-    } else if (glob.startsWith('**', index)) {
-      pattern += '.*';
-      index += 1;
-    } else if (char === '*') pattern += '[^/]*';
-    else if (char === '?') pattern += '[^/]';
-    else pattern += char.replace(/[.+^${}()|[\]\\]/g, '\\$&');
-  }
-  return new RegExp(`^${pattern}$`).test(rel);
-}
+export { globMatch } from './padtabel.mjs';
 
 // ---------- Bash ----------
 
@@ -770,12 +756,13 @@ function bashTarget({ file, kind, role }, ctx, decision) {
   decideFile({ rel: target, change: { kind, after: null }, role }, ctx, decision);
 }
 
-const ARCHIEF_MELDING = 'het ADR-archief is onwijzigbaar; via Bash alleen `git mv docs/adr/<naam> docs/adr/archief/` met dezelfde naam (framework §10, R-CI-06)';
+const ARCHIEF_MELDING = 'het archief is onwijzigbaar; via Bash alleen `git mv docs/adr/<naam> docs/adr/archief/` of `git mv docs/specs/<naam> docs/specs/archief/` met dezelfde naam (framework §10, R-CI-06)';
 const VERPLAATSERS = new Set(['cp', 'mv', 'install', 'ln']);
 
 /**
- * Een Bash-schrijfactie op een gearchiveerd ADR (ook een nieuw bestand of een map als doel) is voor elke rol verboden; de enige
- * uitzondering is `git mv` van één ADR naar een nog niet bestaand `archief/`-pad met dezelfde naam (PR 5, ADR 0053), en
+ * Een Bash-schrijfactie op een gearchiveerd ADR of gearchiveerde spec (ook een nieuw bestand of een map als doel) is voor elke rol
+ * verboden; de enige uitzondering is `git mv` van één document naar een nog niet bestaand `archief/`-pad met dezelfde naam
+ * (PR 5, ADR 0053, ADR 0080), en
  * alleen voor het doel van `git mv` zelf, nooit voor een redirect. Inhoud en status toetst CI.
  * @param {readonly string[]} argv
  * @param {{ writes: readonly string[], redirects: number }} targets `redirects`: zoveel eerste `writes` zijn redirect-doelen.
@@ -794,9 +781,9 @@ function archiefViaBash(argv, { writes, redirects }, ctx) {
     // Ook `cp -t map`/`--target-directory=map`: het doel staat dan niet tussen de operanden.
     const isMap = eigen && sources.length > 0 && (file.endsWith('/') || ctx.isDir(rel));
     const doelen = isMap ? sources.map((source) => `${rel}/${path.basename(source)}`) : [rel];
-    return doelen.filter(isArchief).flatMap((doel) => {
+    return doelen.filter((doel) => /^docs\/(?:adr|specs)\/archief\//.test(doel)).flatMap((doel) => {
       const verplaatsing = eigen && gitMv && sources.length === 1 && ctx.read(doel) === null &&
-        relative(ctx, sources[0] ?? '') === `docs/adr/${path.basename(doel)}`;
+        relative(ctx, sources[0] ?? '') === archiefBron(doel);
       return verplaatsing ? [] : [`${doel}: ${ARCHIEF_MELDING}`];
     });
   });

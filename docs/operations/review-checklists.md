@@ -6,7 +6,7 @@ De reviewer bepaalt de klasse(n) van de diff en loopt alleen die lijsten af. Elk
 
 - Doe één volledige review met alle klassen van de diff; daarna alleen `git diff <vorige-sha>..HEAD` op de fixes. De hoofdsessie geeft de vorige `## Bevindingen` mee; de delta toetst elke bevinding en loopt ook de lijsten van de klassen die de fixes openen.
 - Raakt een fix een nieuw bestand, een beschermd pad of een rail (`rails/**`, `scripts/kit/**`, `test/rails/**`), dan volgt opnieuw een volledige review van dat deel, evenals als de vorige sha geen voorouder van HEAD is (rebase, merge van main). Lees de aanroepers van een gewijzigde export.
-- Kritiek werk (R-WERK-05): spec eerst in een besluit-PR; een statusovergang naast een kritiek pad (`KRITIEK` in `scripts/kit/lane.mjs`, `altijdVragen`) geeft `document-status` rood.
+- Kritiek werk (R-WERK-05): spec eerst in een besluit-PR; een statusovergang naast een kritiek pad (padtabel: `besluit-pr`, `altijdVragen`) geeft `document-status` rood.
 
 ## Rolhek en hooks
 

@@ -19,11 +19,11 @@ Botst een regel met de opdracht: stop en vraag, omzeil of verzwak niets (R-WERK-
 **Lagen**
 - `src/core` is template: een app wijzigt het niet maar registreert uitbreidingen; core importeert nooit app-code (R-LAAG-01, R-LAAG-02, R-ARCH-01).
 - `src/web`: data alleen via `src/web/lib/api.ts`; geen databasedriver, ORM, provider-SDK of import uit `src/api`, ook geen types (R-LAAG-03). `shared` importeert niets uit `web` of `api` (R-LAAG-04).
-- Databaseverbindingen alleen in `src/core/api/db` en `src/core/api/auth` (R-LAAG-05); `src/core/api/db` exporteert alleen `withUser()`, `pingDatabase()`, `closeDatabase()`, `createAuditFn()` (alleen `app.audit` in de `tx`, geen pool), `testing.ts` (R-LAAG-06).
+- Databaseverbindingen alleen in `src/core/api/db` en `src/core/api/auth` (R-LAAG-05); `src/core/api/db` exporteert alleen `withUser()`, `pingDatabase()`, `closeDatabase()`, `createAuditFn()` (alleen `app.audit` in de `tx`, geen pool), `readIntegrationSwitch()`, `testing.ts` (R-LAAG-06).
 - `process.env` alleen in `src/core/api/env.ts`, `import.meta.env` alleen in `src/core/web/lib/env.ts`, `MIGRATOR_DATABASE_URL` alleen in `scripts/`; `VITE_` alleen publiek (R-LAAG-08).
 
 **API**
-- Route alleen via `defineRoute({ method, path, input, output, permission, handler })`, input `.strict()`; nieuwe permissie in `src/shared/permissions.ts` met een test per verboden rol (R-WERK-09, R-CODE-03, R-TEST-03).
+- Route alleen via `defineRoute({ method, path, input, output, permission, handler })` of `definePartnerRoute`, input `.strict()`; nieuwe permissie in `src/shared/permissions.ts` met een test per verboden rol (R-WERK-09, R-CODE-03, R-TEST-03).
 - Handler gebruikt `ctx.actor`; zoek de gebruiker niet zelf op, vang geen Postgres-fouten af (R-DB-04). Fout naar buiten alleen `{ code, requestId }`, nooit stacktrace of SQL (R-SEC-02).
 
 **Database**
@@ -48,18 +48,18 @@ Botst een regel met de opdracht: stop en vraag, omzeil of verzwak niets (R-WERK-
 
 **Repo en grenzen**
 - Geen gegenereerde bestanden of `.env*` bewerken; `.env.example` is beschermd (R-REPO-03, R-SEC-05).
-- Beschermde paden (framework §10): eigenaarakkoord; developer: `voorReview`-pad geweigerd, in onderhoudsmodus buiten `altijdVragen` met melding (R-REPO-03). Functionele UI in de template: mini-spec, code, tests, gebruiksdocs in één PR zonder voorafgaand besluit, beperkte fixes zonder mini-spec; niet voor auth, overige core, dependencies, agentinstructies, bewaking (R-WERK-18, R-UIT-04, R-WERK-03). In een app is core dicht (R-ARCH-07).
+- Beschermde paden (framework §10): eigenaarakkoord; niveau per pad: `node scripts/kit/feiten.mjs pad <pad>`; developer: `voorReview` geweigerd, in onderhoudsmodus buiten `altijdVragen` met melding (R-REPO-03). Functionele UI in de template: mini-spec, code, tests, gebruiksdocs in één PR zonder voorafgaand besluit, beperkte fixes zonder mini-spec; niet voor auth, overige core, dependencies, agentinstructies, bewaking (R-WERK-18, R-UIT-04, R-WERK-03). In een app is core dicht (R-ARCH-07).
 - Status zet architect of hoofdsessie in het voorstel, de eigenaarmerge is het besluit; `gebouwd` in de bouw-PR of via `pnpm docs:status` (R-WERK-08). Alleen de eigenaar merget, behalve niet-kritiek werk met oordeel `agent-merge: ja`: dat merget de hoofdsessie via `pnpm pr:merge`, meldt PR en SHA en volgt de CI op `main` (R-REPO-01). Geen nieuwe dependency zonder akkoord (R-SEC-06).
 - Nooit pushen naar `main` of `--no-verify`, mergen alleen via `pnpm pr:merge`; één onderwerp per PR, conventional commits (R-REPO-05). Geen zelfreview, PR-label of check-status (R-WERK-17, R-ROL-08, R-ROL-12).
 - Een commando dat buiten zijn werkmap kan wissen of overschrijven en dat je niet letterlijk zelf schreef (corpusrij, fragment, gegenereerd), of een destructief experiment: alleen in de kooi (`node scripts/kit/kooi.mjs`, `inKooi`); een werkmap is geen grens, ook buiten de repo en in de cloud (R-TOOL-03).
-- Geen `docker` of runneroverride; runnerchecks zelf draaien of CI-bewijs ophalen (`pnpm pr:verify`, `docs/operations/agent-doorloop.md`) (R-TOOL-02, R-RUNNER-03). Externe diensten via hun CLI (`gh`); MCP alleen read-only, versie gepind (R-SEC-09, R-ROL-12).
+- Geen `docker` of runneroverride; runnerchecks zelf draaien of CI-bewijs ophalen (`pnpm pr:verify`, `docs/operations/agent-doorloop.md`) (R-TOOL-02, R-RUNNER-03). Externe diensten via hun CLI (`gh`); MCP alleen read-only, versie gepind, behalve een leerpunt-issue in de cloud (ADR 0078) (R-SEC-09, R-ROL-12).
 
 ## Werkafspraken
 
 - Commando's voor de gebruiker, bij setup en later: genummerde stappen (terminal, werkmap, verwachte uitkomst, bekende waarden ingevuld), achtereen in één kopieerbaar blok; splits alleen bij interactie, controle of een andere terminal; niet in lopende tekst, geen prompttekens (R-WERK-21).
 - Ontbreekt een beslissing: vraag, geen aanname (R-WERK-20). Vraag meteen via de vraagprompt (concreet, korte opties, gebundeld, niet verstopt in uitleg of voortgangstekst); zonder vraagtool: meld dat kort en stel de vraag apart; geen bevestiging voor toegestaan werk (R-WERK-21).
 - Gedrag, API, configuratie of conventies gewijzigd: doc mee in dezelfde PR, kort met `bestand:regel` (R-WERK-15).
-- Nieuwe feature/pagina/interactie, migratie, route of permissie: architect en spec, na spec-review bouwen in dezelfde PR; passende spec hergebruiken; kritiek werk eerst besluit-PR (R-WERK-07, R-WERK-05).
+- Nieuwe feature/pagina/interactie, migratie, route of permissie: architect en spec, na spec-review bouwen in dezelfde PR; passende spec hergebruiken; kritiek werk (padtabel: `besluit-pr` of `altijdVragen`) eerst besluit-PR (R-WERK-07, R-WERK-05).
 - Route licht of volledig, nooit zelfreview: framework §8 (R-WERK-03, R-WERK-04). Volg `docs/dod.md` fasebewust; lever alleen op met geslaagde uitslag van bestaande checks (of eigenaarakkoord), meld wat nog niet bestaat (R-WERK-22).
 - UI-tekst Nederlands; code, commits, branches Engels (R-CODE-10). Roadmap-item, rail of ADR alleen met aanleiding (framework §1), anders vraag de eigenaar (R-PRINC-08).
 - Begin met taakrelevante feiten (`node scripts/kit/feiten.mjs gates specs fase`; `componenten` alleen bij UI); het regelboek per geraakt hoofdstuk: `feiten.mjs hoofdstuk <n>` (R-WERK-01, R-DOC-05).

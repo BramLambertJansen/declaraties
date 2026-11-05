@@ -198,7 +198,7 @@ broncommit, repository en geopende PR gebonden. Een gewijzigde implementatie na 
 - **Overige feature-lane (de standaard, ADR 0062):** een of meer specs met een eigenaarstatus (nieuw, volledig of mini, of nieuwe
   inhoud van een goedgekeurde spec) samen met code, tests en docs. Alles mag meewijzigen (ook `CHANGELOG.md`, de roadmap, `scripts/`,
   `rails/`, overige `src/core`, agentinstructies en gegenereerde bestanden zoals het schema-snapshot) behalve een ADR, een kritiek pad
-  (`kritiekPad` in `scripts/kit/lane.mjs`: `src/core/api/auth`, `src/core/api/db`, `db/init`, `altijdVragen`, `rails/hooks/**` en de besluit-, status- en mergescripts),
+  (`kritiekPad` in `scripts/kit/lane.mjs`: `besluit-pr` of `altijdVragen` in de padtabel, onder meer `src/core/api/auth`, `src/core/api/db`, `db/init`, `rails/hooks/**`, elk ADR en de besluit-, status- en mergescripts),
   een verwijderde bestaande test en een gewijzigde of verwijderde migratie. Een gewijzigde bestaande JS/TS-test staat met reden in de PR en mag geen gevallen weghalen of skippen; een gewijzigde pgTAP-test valt erbuiten.
   De eerste commit die een besluitspec raakt, staat vóór de eerste commit met een bestand buiten `docs/` (spec-review vóór het bouwen).
   Een PR bevat hoogstens één nieuwe migratie. Die maakt precies één owner-tabel in `public` volgens `pnpm new:resource`:
@@ -404,38 +404,30 @@ SHA: `document-status` accepteert de vorm alleen met het eigen PR-nummer en code
 merge de verplichte checks op de head. Een `git merge origin/main` of een fix erna mag gewoon; de checks draaien opnieuw.
 `check-docs` eist voor elk AC-id een getagde test.
 
-**Implementatie al gemerged** (spec `docs/specs/gebouwd-na-merge.md`): zet de status in een eigen status-PR vanaf een
-verse branch van main. `docs:status` ziet aan GitHub dat PR n gemerged is en schrijft `gebouwd # #<n>; gevalideerd: <head van PR n>`.
-Het eist dat PR n naar `main` is gemerged en dat de mergecommit in main zit (via de merge-base van de branch), dat de spec daarin ongewijzigd op `goedgekeurd` stond, dat de verplichte
+**Implementatie al gemerged** (spec `docs/specs/gebouwd-na-merge.md`, ADR 0080): zet de status in een eigen status-PR vanaf een
+verse branch van main. `docs:status` ziet aan GitHub dat PR n gemerged is en schrijft `gebouwd # #<n>`; de guard haalt de head
+van PR n bij GitHub. Het eist dat PR n naar `main` is gemerged en dat de mergecommit in main zit (via de merge-base van de branch), dat de spec daarin ongewijzigd op `goedgekeurd` stond, dat de verplichte
 checks (uit `.claude/decisions.json` in main vlak vóór de merge) groen waren op de head van PR n, en dat PR n een pad buiten
 `docs/` wijzigde dat de spec tussen backticks noemt. De status-PR wijzigt alleen statusregels en eventueel het eigen
-roadmapvinkje; `git merge origin/main` erna mag. Een spec met `scope: functionele-ui` kan deze route alleen als ze op main al `goedgekeurd` is; het UI-akkoord uit de bouw-PR telt hier niet. Faalt het, dan noemt de melding de voorwaarde ("Gebouwd na de merge vereist …").
-
-```sh
-pnpm docs:status docs/specs/voorbeeld.md gebouwd --pr 123
-```
-
-**Implementatie in een open PR, met SHA** (de oudere route; voor nieuw werk geldt `gebouwd` in dezelfde PR). Bij afgeronde
-implementatie en groene verplichte checks registreert de agent:
+roadmapvinkje; de guard aanvaardt dat als de latere diff uitsluitend statusregels en het vinkje van de eigen taak wijzigt, en `git merge origin/main` erna mag. Een spec met `scope: functionele-ui` kan deze route alleen als ze op main al `goedgekeurd` is; het UI-akkoord uit de bouw-PR telt hier niet. Faalt het, dan noemt de melding de voorwaarde ("Gebouwd na de merge vereist …").
 
 ```sh
 pnpm docs:status docs/specs/voorbeeld.md gebouwd --pr 123 --roadmap
 ```
 
-Schrijft alleen de statusregel met PR en gevalideerde bron-SHA, en met `--roadmap` het vinkje van het item dat de spec noemt. Commit en push de administratie, controleer CI opnieuw.
-De guard mag de groene broncommit gebruiken als de latere diff uitsluitend statusregels en het vinkje van de eigen taak wijzigt. Inhoud, code, tests
-of configuratie wijzigen vraagt nieuw bouwbewijs. Gebouwd vereist geen merge. ADR's hebben geen gebouwd-status:
-implementatiebewijs hoort bij hun gekoppelde spec.
+Schrijft alleen de statusregel `status: gebouwd # #<n>`, en met `--roadmap` het vinkje van het item dat de spec noemt. Voor een open PR schrijft `docs:status` dezelfde regel zonder check-runs te lezen, als PR n open is op deze branch en code buiten `docs/` heeft; anders: "Gebouwd vereist de juiste geopende PR op deze branch en code buiten docs/".
+`check:roadmap` eist een roadmapwijziging in dezelfde PR zodra de spectekst `ST-<n>` of "roadmap stuk <n>" noemt; noemt het item het specpad niet tussen backticks, dan kan `--roadmap` het niet afvinken en komt de roadmapwijziging in de bouw-PR.
 
-Volgorde voor die vorm (leerpunt #314, anders kost het extra CI-rondes of merget de PR zonder `gebouwd`):
+**Oude vorm met SHA** (`gebouwd # #<n>; gevalideerd: <sha>`, ADR 0080 punt 6): de guard toetst haar nog zoals vroeger, maar
+`check-docs` weigert haar in `docs/specs/`. Omzetten is één regel: alleen `; gevalideerd: <sha>` weghalen; bij gelijke inhoud
+is dat zonder GitHub-aanroep groen. ADR's hebben geen gebouwd-status: implementatiebewijs hoort bij hun gekoppelde spec.
 
-1. `check:roadmap` eist een roadmapwijziging in dezelfde PR zodra de spectekst `ST-<n>` of "roadmap stuk <n>" noemt (bijvoorbeeld ST-09). Gebruik daarvoor `--roadmap`: het vinkje landt dan in de statuscommit. Zet het niet ook in de implementatie: `--roadmap` faalt als het item al is afgevinkt. Noemt het item het specpad niet tussen backticks, dan kan `--roadmap` het niet afvinken; dan komt de roadmapwijziging in de implementatie.
-2. Wacht op groen op HEAD (`pnpm pr:verify <n> --watch`).
-3. Draai `pnpm docs:status … gebouwd --pr <n> --roadmap`, commit en push dat als laatste commit. Noemt de spectekst geen `ST-<n>` of "roadmap stuk <n>", dan laat je `--roadmap` weg. Daarna mag alleen nog de statusregel (en het vinkje) wijzigen; elke andere commit erna maakt `document-status` rood, ook `git merge origin/main`.
-4. Pas na groen op die statuscommit mag de eigenaar de PR mergen of auto-merge aanzetten. Is de PR toch zonder `gebouwd` gemerged, gebruik dan de route "Implementatie al gemerged" hierboven.
-5. Landt er toch een commit na de statuscommit (ook `git merge origin/main`), dan is `document-status` rood. Wacht op groen voor de andere checks op de nieuwe HEAD en draai stap 3 opnieuw, zonder `--roadmap` als het item al is afgevinkt. Lukt dat niet, stop en vraag de eigenaar.
+**Levende spec** (ADR 0080 punt 3 en 4): een wijziging aan een bestaand mechanisme werkt de spec van dat mechanisme bij. Een
+gebouwde spec blijft in een besluit-PR `gebouwd`; elke nieuwe AC krijgt `- **<ns>/AC-n** (nog niet gebouwd)`, alleen op een id
+dat niet op main staat. De bouw-PR haalt de markering weg en zet `gebouwd # #<deze PR>`. Een AC-id verdwijnt nooit; een
+vervallen spec verhuist met `git mv docs/specs/<naam> docs/specs/archief/` in een PR met alleen `docs/`.
 
-Zonder `gh`-authenticatie kan `docs:status … --pr` het bouwbewijs niet ophalen. De statusregel met SHA met de hand zetten is geen alternatief: de volgorde hierboven blijft gelden en `document-status` valideert hem tegen de PR. Meld het en laat de eigenaar of een sessie met `gh`-auth stap 3 draaien.
+Zonder `gh`-authenticatie kan `docs:status … --pr` PR n niet ophalen. Meld het en laat de eigenaar of een sessie met `gh`-auth het draaien.
 
 `vervallen` of `vervangen door NNNN` schrijft de architect of hoofdsessie in een besluit-PR; de merge door de eigenaar beslist.
 

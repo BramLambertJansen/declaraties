@@ -1,5 +1,5 @@
 ---
-status: gebouwd # #349; gevalideerd: 2b856a0b0ed9a573528a2a594869b8edd693e21c
+status: gebouwd # #349
 namespace: klassenrail
 sjabloon: mini
 ---

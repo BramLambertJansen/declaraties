@@ -1,5 +1,5 @@
 ---
-status: gebouwd # #347; gevalideerd: f12e8a5e0620ff5a8582077f87e2fdf7fa59fd2c
+status: gebouwd # #347
 namespace: typografie-en-layout
 sjabloon: mini
 scope: functionele-ui

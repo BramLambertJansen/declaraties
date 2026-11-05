@@ -23,10 +23,16 @@ function repo(gates: Record<string, unknown>): string {
   return root;
 }
 
-test('gelijk: geen overtredingen', async () => {
+// GEWIJZIGD (spec padtabel AC-11, OV-1 ii): de fixtures staan in de oude vorm; check-docs meldt die erbij (ADR 0079 punt 6).
+const OUDE_VORM = {
+  key: 'docs:paden:oude-vorm',
+  message: '.claude/gates.json: oude vorm zonder paden; zet de lijsten om naar paden (ADR 0079)',
+};
+
+test('gelijk: geen overtredingen, behalve de oude vorm', async () => {
   const root = repo({ gates: ['src/core/**', '**/*.test.*'], jsonGates: { 'package.json': ['scripts'] } });
 
-  expect(await docsViolations(root)).toStrictEqual([]);
+  expect(await docsViolations(root)).toStrictEqual([OUDE_VORM]);
 });
 
 test('een gate die CODEOWNERS mist, en een CODEOWNERS-regel die geen gate is', async () => {
@@ -35,5 +41,6 @@ test('een gate die CODEOWNERS mist, en een CODEOWNERS-regel die geen gate is', a
   expect((await docsViolations(root)).map((violation) => violation.key)).toStrictEqual([
     'docs:spiegel:codeowners-gates:deploy/**',
     'docs:spiegel:gates:**/*.test.*',
+    OUDE_VORM.key,
   ]);
 });

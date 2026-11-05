@@ -3,6 +3,7 @@ import { describe, expect, test } from 'vitest';
 import { agentMergeOordeel, leesMergeConfig, leesModus } from '../../scripts/kit/agent-merge.mjs';
 import { agentMerge, beoordeel, leesConfig, srcTeLezen } from '../../scripts/kit/diff-guard.mjs';
 import { agentMergeViolations } from '../../scripts/kit/check-docs.mjs';
+import { OUDE_GATES_TEKST } from './padtabel-kit';
 
 // Oordeel agent-merge (ADR 0069 punt 1, spec agent-merge-niet-kritiek AC-1) tegen de echte .claude/gates.json: een toegestane
 // lijst, de rest dicht. Elke negatieve regel faalt op een oordeel dat alleen de gates kent.
@@ -191,8 +192,9 @@ describe('agent-merge-niet-kritiek/AC-1 configuratie faalt dicht', () => {
 });
 
 describe('agent-merge-niet-kritiek/AC-5 check-docs toetst modus en de effectieve lijst', () => {
+  // De oude lijsten bestaan alleen nog in de oude vorm (30cc352, padtabel-kit); check-docs toetst die via `afgeleid` (ADR 0079).
   const aangepast = (veranderingen: Record<string, unknown>) => {
-    const ruw: unknown = JSON.parse(TEKST);
+    const ruw: unknown = JSON.parse(OUDE_GATES_TEKST);
     return JSON.stringify(Object.assign({}, ruw, veranderingen));
   };
 

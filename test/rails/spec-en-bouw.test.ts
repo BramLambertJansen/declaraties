@@ -1,5 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { afterEach, describe, expect, test } from 'vitest';
+import { afgeleid } from '../../rails/hooks/lib/padtabel.mjs';
 import { loadConfig } from '../../rails/hooks/lib/rolhek.mjs';
 import {
   BRANCH,
@@ -132,12 +133,11 @@ async function lane(changes: Wijziging[], besluiten: string[] = [SPEC]): Promise
   return { lane: uitslag.lane, reden: String(uitslag.reden) };
 }
 
-/** Een voorbeeldpad per glob uit `altijdVragen` (`**` en `*` ingevuld). */
+/** Een voorbeeldpad per glob uit de afgeleide `altijdVragen` (padtabel, ADR 0079; `**` en `*` ingevuld). */
 function altijdVragen(): string[] {
-  if (typeof gates !== 'object' || gates === null || !('altijdVragen' in gates) || !Array.isArray(gates.altijdVragen))
-    throw new Error('gates.json zonder altijdVragen');
-  const lijst: unknown[] = gates.altijdVragen;
-  return lijst.map((glob) => String(glob).replaceAll('**', 'voorbeeld/x.mjs').replaceAll('*', 'x'));
+  const lijst = afgeleid(gates).altijdVragen;
+  if (lijst === undefined) throw new Error('gates.json zonder altijdVragen');
+  return lijst.map((glob) => glob.replaceAll('**', 'voorbeeld/x.mjs').replaceAll('*', 'x'));
 }
 
 const KRITIEK = [

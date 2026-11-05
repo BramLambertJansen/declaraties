@@ -4,16 +4,49 @@ import { createHash } from 'node:crypto';
 const SPEC_STATES = new Set(['voorstel', 'goedgekeurd', 'gebouwd', 'vervallen']);
 const ADR_STATES = new Set(['voorgesteld', 'geaccepteerd', 'vervallen']);
 
-/** Een spec in `docs/specs/` of `docs/template/specs/`, een ADR in `docs/adr/` of `docs/adr/archief/` (framework §10). @param {string} file */
+/**
+ * Een spec in `docs/specs/`, `docs/specs/archief/` of `docs/template/specs/`, een ADR in `docs/adr/` of `docs/adr/archief/`
+ * (framework §10, ADR 0080). @param {string} file
+ */
 export function documentKind(file) {
-  if (/^docs\/(?:template\/)?specs\/[a-z0-9]+(?:-[a-z0-9]+)*\.md$/.test(file)) return 'spec';
+  if (/^docs\/(?:template\/specs|specs(?:\/archief)?)\/[a-z0-9]+(?:-[a-z0-9]+)*\.md$/.test(file)) return 'spec';
   if (/^docs\/adr\/(?:archief\/)?\d{4}-[a-z0-9]+(?:-[a-z0-9]+)*\.md$/.test(file)) return 'adr';
   return null;
 }
 
-/** Een gearchiveerd ADR: wijzigt en verdwijnt nooit, ook niet met een record (framework §10). @param {string} file */
+const ARCHIEVEN = [['docs/adr/archief/', 'docs/adr/'], ['docs/specs/archief/', 'docs/specs/']];
+
+/** Een gearchiveerd ADR of gearchiveerde spec: wijzigt en verdwijnt nooit, ook niet met een record (framework §10, ADR 0080). @param {string} file */
 export function isArchief(file) {
-  return documentKind(file) === 'adr' && file.startsWith('docs/adr/archief/');
+  return documentKind(file) !== null && ARCHIEVEN.some(([archief]) => file.startsWith(archief ?? ''));
+}
+
+/** De map waaruit een archiefpad verhuist (`docs/adr/` of `docs/specs/`), of null voor een pad buiten het archief. @param {string} file */
+export function archiefBron(file) {
+  if (!isArchief(file)) return null;
+  const [archief = '', map = ''] = ARCHIEVEN.find(([prefix]) => file.startsWith(prefix ?? '')) ?? [];
+  return `${map}${file.slice(archief.length)}`;
+}
+
+/** De markering van een AC die nog gebouwd moet worden in een gebouwde spec (ADR 0080 punt 4). */
+export const MARKERING = ' (nog niet gebouwd)';
+const AC_REGEL = /^- \*\*([a-z0-9][\w.-]*\/AC-\d+)\*\*( \(nog niet gebouwd\))?/gm;
+
+/**
+ * De AC-id's die een spec definieert (`- **<ns>/AC-n**`), met of zonder markering (ADR 0080).
+ * @param {string} text @returns {{ alle: Set<string>, gemarkeerd: Set<string> }}
+ */
+export function acIds(text) {
+  const regels = [...text.replaceAll('\r\n', '\n').matchAll(AC_REGEL)];
+  return {
+    alle: new Set(regels.map((match) => match[1] ?? '')),
+    gemarkeerd: new Set(regels.filter((match) => match[2] !== undefined).map((match) => match[1] ?? '')),
+  };
+}
+
+/** De namespace van een spec, anders de bestandsnaam. @param {string} file @param {string} text */
+export function specNamespace(file, text) {
+  return /^namespace:\s*(\S+)\s*$/m.exec(text)?.[1] ?? file.replace(/^.*\//, '').replace(/\.md$/, '');
 }
 
 /** @param {string} kind @param {string} status */
@@ -55,15 +88,19 @@ export function documentInfo(file, text) {
   const status = statusValue(kind, lines[index] ?? '');
   if (status === null) return null;
   lines.splice(index, 1);
-  const canonical = lines.join('\n');
+  // De markering telt niet mee: alleen weghalen is geen inhoudswijziging (ADR 0080 punt 4).
+  const tekst = lines.join('\n');
+  const canonical = kind !== 'spec' ? tekst : tekst.replaceAll(AC_REGEL, (regel, _id, markering) =>
+    markering === undefined ? regel : regel.slice(0, -MARKERING.length));
   const digest = createHash('sha256').update(canonical).digest('hex');
   return { kind, status, digest, canonical };
 }
 
 /**
+ * Schrijft de statusregel; `gebouwd` alleen als `gebouwd # #<PR>` (ADR 0080 punt 5).
  * @param {string} file
  * @param {string} text
- * @param {{ status: string, pr?: number, validatedSha?: string }} target
+ * @param {{ status: string, pr?: number }} target
  */
 export function changeStatus(file, text, target) {
   const info = documentInfo(file, text);
@@ -71,9 +108,8 @@ export function changeStatus(file, text, target) {
   const label = info.kind === 'spec' ? 'status:' : 'Status:';
   let line = `${label} ${target.status}`;
   if (target.status === 'gebouwd') {
-    if (!Number.isSafeInteger(target.pr) || (target.pr ?? 0) <= 0 || !/^[0-9a-f]{40}$/.test(target.validatedSha ?? ''))
-      throw new Error('Gebouwd vereist een PR-nummer en een gevalideerde commit-SHA');
-    line += ` # #${String(target.pr)}; gevalideerd: ${target.validatedSha ?? ''}`;
+    if (!Number.isSafeInteger(target.pr) || (target.pr ?? 0) <= 0) throw new Error('Gebouwd vereist een PR-nummer');
+    line += ` # #${String(target.pr)}`;
   }
   const pattern = info.kind === 'spec' ? /^status:[^\r\n]*$/m : /^Status:[^\r\n]*$/m;
   return text.replace(pattern, () => line);
@@ -175,10 +211,27 @@ export function beslisOvergang(file, voor, na) {
     (nieuwInfo === null || oud.digest !== nieuwInfo.digest || nieuwInfo.status === 'voorgesteld'))
     return uit('a4');
   if (nieuwInfo === null || (voor !== null && oud === null)) return uit('geweigerd');
+  if (oud?.status === 'gebouwd' && nieuwInfo.status === 'gebouwd') return uit(gebouwdBlijft(voor ?? '', na, oud.digest === nieuwInfo.digest));
   if (VOORSTEL.has(nieuwInfo.status) || (oud?.status === nieuwInfo.status && oud.digest === nieuwInfo.digest)) return uit('vrij');
   if (nieuwInfo.status === 'gebouwd') return uit('gebouwd');
   if (oud === null || VOORSTEL.has(oud.status)) return uit('besluit', true);
   return toegestaanZonderRecord(oud.status, nieuwInfo.status, nieuwInfo.kind) ? uit('besluit') : uit('geweigerd');
+}
+
+/**
+ * Een gebouwde spec blijft gebouwd (ADR 0080 punt 4 en 6): dezelfde verwijzing met nieuwe inhoud is een besluit; alleen de SHA
+ * weghalen bij gelijke inhoud is vrij; elke andere verwijzing is nieuw bouwbewijs.
+ * @param {string} voor @param {string} na @param {boolean} zelfdeInhoud @returns {'vrij' | 'besluit' | 'gebouwd'}
+ */
+function gebouwdBlijft(voor, na, zelfdeInhoud) {
+  const oud = builtReference(voor);
+  const nieuw = builtReference(na);
+  // Een weggehaalde markering vraagt nieuw bouwbewijs: `gebouwd # #<deze PR>` (ADR 0080 punt 4).
+  const gemarkeerd = acIds(na).gemarkeerd;
+  if ([...acIds(voor).gemarkeerd].some((id) => !gemarkeerd.has(id))) return 'gebouwd';
+  if (oud === null || nieuw === null || oud.pr !== nieuw.pr) return 'gebouwd';
+  if (oud.sha === nieuw.sha) return zelfdeInhoud ? 'vrij' : 'besluit';
+  return zelfdeInhoud && nieuw.sha === undefined ? 'vrij' : 'gebouwd';
 }
 
 /** ADR geaccepteerd → vervangen/vervallen; spec goedgekeurd/gebouwd → vervallen; inhoud van een goedgekeurde spec. @param {string} van @param {string} naar @param {string} kind */
@@ -189,8 +242,8 @@ function toegestaanZonderRecord(van, naar, kind) {
 }
 
 /**
- * `gebouwd # #<PR>; gevalideerd: <sha>` (bouwbewijs, ADR 0046 punt 10) of `gebouwd # #<PR>` zonder SHA: alleen geldig in de PR
- * met de implementatie zelf, wat `check-document-status` toetst (ADR 0062 punt 4).
+ * `gebouwd # #<PR>` (ADR 0080 punt 5): in de PR met de implementatie zelf of daarna de gemergde bouw-PR, wat
+ * `check-document-status` toetst. De oude vorm `gebouwd # #<PR>; gevalideerd: <sha>` wordt nog gelezen (apps, geschiedenis).
  * @param {string} text @returns {{ pr: number, sha?: string } | null}
  */
 export function builtReference(text) {

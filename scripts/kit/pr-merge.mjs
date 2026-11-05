@@ -20,6 +20,7 @@ import {
   teGrootBytes,
 } from './agent-merge.mjs';
 import { parseCheckRun } from './github-evidence.mjs';
+import { leerpuntMergeRedenen } from './leerpunt.mjs';
 import { checkProgress, verifyEffect } from './pr-verify.mjs';
 
 export const CODEX = 'chatgpt-codex-connector[bot]';
@@ -377,7 +378,8 @@ export function codexVoorwaarde(api, { repo, nummer, head, pull, comments, codex
 /**
  * Alle voorwaarden uit ADR 0069 punt 3 plus de stand van de Codex-voorwaarde; geen redenen betekent mergen. Is `agentMerge`
  * op main onleesbaar (AC-3), dan één reden per fout (`agentMergeFouten`): de omvangreden `OMVANG_ONLEESBAAR` bij een
- * ongeldige `maxRegels`, `BYTES_ONLEESBAAR` bij een ongeldige `maxBytes`, "agentMerge ontbreekt of is onleesbaar" bij een ontbrekend blok of een ongeldige lijst.
+ * ongeldige `maxRegels`, `BYTES_ONLEESBAAR` bij een ongeldige `maxBytes`, "agentMerge ontbreekt of is onleesbaar" bij een ontbrekend blok of een ongeldige lijst,
+ * en de fout van de padtabellezer bij `paden` naast de oude lijsten (spec padtabel AC-5): nooit een crash, nooit een merge.
  * @param {Api} api @param {{ repo: string, nummer: number, head: string }} doel
  * @returns {{ redenen: string[], codex: 'voldaan' | 'verviel' | 'uit' | null }}
  */
@@ -409,6 +411,9 @@ export function beoordeelMerge(api, { repo, nummer, head }) {
     }),
     ...reviewRedenen(comments, head),
     ...codex.redenen,
+    // Leest de beschrijving op het moment van mergen: een later gewijzigd bewijs glipt zo niet langs de eigenaar, ook
+    // als het oordeel van de diff-guard (die niet op `edited` draait) nog `ja` was (ADR 0078 punt 1, leerlus-bewijs AC-4).
+    ...leerpuntMergeRedenen(tekst(veld(pull, 'body'))).map((reden) => `${reden}: de eigenaar merget`),
   ];
   return { redenen, codex: codex.stand };
 }

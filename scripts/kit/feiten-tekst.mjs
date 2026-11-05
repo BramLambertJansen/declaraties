@@ -401,3 +401,42 @@ export function tokensTekst(groepen) {
     ]),
   );
 }
+
+// Koppelingen (spec koppeling-agentlaag): het register van de app en per kenmerk welke waarden een bouwsteen hebben. De
+// catalogus komt uit core (integrationTraitCatalog), dus geen tweede lijst hier.
+
+const REGISTER = 'src/api/integrations/index.ts';
+const KENMERKEN = /** @type {const} */ (['auth', 'direction', 'cadence', 'sensitivity', 'cost', 'source']);
+
+/** @param {readonly string[]} values */
+const opsomming = (values) => (values.length === 0 ? '(geen)' : values.join(', '));
+
+/**
+ * @param {readonly import('../../src/core/api/integrations/index.ts').IntegrationDef[]} defs
+ * @param {readonly import('../../src/core/api/integrations/index.ts').IntegrationTraitInfo[]} catalogus
+ * @returns {{ json: { register: string, geregistreerd: { naam: string, hosts: string[], kenmerken: import('../../src/core/api/integrations/index.ts').IntegrationTraits }[], kenmerken: { kenmerk: string, lijst: boolean, gebouwd: string[], ontbreekt: string[] }[] }, kop: string, inhoud: { geregistreerd: string[], kenmerken: string[] } }}
+ */
+export function koppelingenOverzicht(defs, catalogus) {
+  const kenmerken = catalogus.map((info) => ({
+    kenmerk: info.trait,
+    lijst: info.list,
+    gebouwd: info.values.filter(({ built }) => built).map(({ value }) => value),
+    ontbreekt: info.values.filter(({ built }) => !built).map(({ value }) => value),
+  }));
+  const geregistreerd = defs.map((def) => ({ naam: def.name, hosts: [...def.hosts], kenmerken: def.traits }));
+  const waarde = (/** @type {string | readonly string[]} */ v) => (typeof v === 'string' ? v : v.join('|'));
+  return {
+    json: { register: REGISTER, geregistreerd, kenmerken },
+    kop: `register ${REGISTER}; ontbreekt = geen bouwsteen: stop, skill nieuwe-koppeling`,
+    inhoud: {
+      geregistreerd: geregistreerd.map(
+        ({ naam, hosts, kenmerken: k }) =>
+          `${naam} · hosts: ${hosts.join(', ')} · ${KENMERKEN.map((key) => `${key}=${waarde(k[key])}`).join(' ')}`,
+      ),
+      kenmerken: kenmerken.map(
+        ({ kenmerk, lijst, gebouwd, ontbreekt }) =>
+          `${kenmerk}${lijst ? ' (lijst)' : ''} · gebouwd: ${opsomming(gebouwd)} · ontbreekt: ${opsomming(ontbreekt)}`,
+      ),
+    },
+  };
+}

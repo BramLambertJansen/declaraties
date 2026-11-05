@@ -28,7 +28,7 @@ function run(section: string) {
   });
 }
 
-test.each(['gates', 'adr', 'specs', 'migraties', 'routes', 'permissies', 'foutcodes', 'fase'])(
+test.each(['gates', 'adr', 'specs', 'migraties', 'routes', 'permissies', 'foutcodes', 'koppelingen', 'fase'])(
   '%s laadt geen UI-catalogus of TypeScript-compiler',
   (section) => {
     const result = run(section);

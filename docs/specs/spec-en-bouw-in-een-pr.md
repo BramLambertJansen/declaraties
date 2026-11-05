@@ -1,5 +1,5 @@
 ---
-status: gebouwd # #377; gevalideerd: 8c9a14e96537cdc10640d0b12afe7d48b611b6c0
+status: gebouwd # #377
 namespace: spec-en-bouw
 ---
 

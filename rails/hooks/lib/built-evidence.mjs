@@ -1,5 +1,5 @@
 // Gebouwd betekent: implementatie gecontroleerd en aangeboden in een PR. Het is geen release of nieuw mandaat.
-import { builtReference, documentInfo } from './document-state.mjs';
+import { MARKERING, acIds, builtReference, documentInfo } from './document-state.mjs';
 import { canRecordStatus, TEMPLATE_REPOSITORY } from './task-authority.mjs';
 import { isFunctionalUiSpec } from './functional-ui.mjs';
 
@@ -40,8 +40,9 @@ export function checkedCommit(checks, required) {
 }
 
 /**
- * Zonder bouwbewijs het bezwaar als voorwaarde ("vereist …"), anders null. Een gemergde PR gaat via de mergecommit, een open PR
- * via de lokale HEAD op de PR-branch (ADR 0046 punt 10, ADR 0062 punt 4, spec gebouwd-na-merge).
+ * Zonder bouwbewijs het bezwaar als voorwaarde ("vereist …"), anders null. Een gemergde PR gaat via de mergecommit, met de head
+ * uit GitHub als er geen SHA in de regel staat (ADR 0080 punt 5); een open PR met SHA via de lokale HEAD op de PR-branch
+ * (ADR 0046 punt 10, ADR 0062 punt 4, spec gebouwd-na-merge). Een open PR zonder SHA: `openRefusal`.
  * @param {{ file: string, text: string }} document
  * @param {BuiltEvidence} evidence
  * @param {import('./task-authority.mjs').Authority} authority
@@ -50,20 +51,50 @@ export function checkedCommit(checks, required) {
 export function builtRefusal(document, evidence, authority) {
   const info = documentInfo(document.file, document.text);
   const reference = builtReference(document.text);
-  if (info?.kind !== 'spec' || info.status !== 'gebouwd' || reference?.sha === undefined) return ALGEMEEN;
+  if (info?.kind !== 'spec' || info.status !== 'gebouwd' || reference === null) return ALGEMEEN;
   const { pr } = evidence;
   if (!/^[0-9a-f]{40}$/.test(pr.headSha) || pr.number !== reference.pr || pr.repository !== authority.repository) return ALGEMEEN;
   if (!approvedBefore(document, evidence, authority)) return ALGEMEEN;
-  if (pr.merged) return mergedRefusal({ digest: info.digest, file: document.file, sha: reference.sha }, evidence);
-  if (!/^[0-9a-f]{40}$/.test(evidence.headSha) || pr.state !== 'open' || pr.branch !== authority.branch ||
-    pr.headSha !== evidence.headSha) return ALGEMEEN;
+  if (pr.merged) return mergedRefusal({ digest: info.digest, file: document.file, sha: reference.sha ?? pr.headSha }, evidence);
+  if (reference.sha === undefined || !/^[0-9a-f]{40}$/.test(evidence.headSha) || pr.state !== 'open' ||
+    pr.branch !== authority.branch || pr.headSha !== evidence.headSha) return ALGEMEEN;
   const groen = evidence.ancestor && evidence.onlyStatuses &&
     checkedCommit(evidence.checks, { names: authority.registry.requiredChecks, sha: reference.sha });
   return groen ? null : ALGEMEEN;
 }
 
+/**
+ * `docs:status` voor een open PR (ADR 0080 punt 5, Werking 3): `gebouwd # #N` met PR N open op deze branch, code buiten
+ * `docs/` en een spec die goedgekeurd op main stond (of UI-akkoord had); geen check-runs, die eist de ruleset bij de merge.
+ * @param {{ file: string, text: string }} document
+ * @param {{ pr: PullRequest, code: boolean, uiApproval?: string | null }} evidence
+ * @param {import('./task-authority.mjs').Authority} authority
+ * @returns {boolean} true als het geweigerd wordt
+ */
+export function openRefusal(document, evidence, authority) {
+  const info = documentInfo(document.file, document.text);
+  const reference = builtReference(document.text);
+  const { pr } = evidence;
+  if (info?.kind !== 'spec' || info.status !== 'gebouwd' || reference?.sha !== undefined || reference === null) return true;
+  if (pr.number !== reference.pr || pr.repository !== authority.repository || pr.state !== 'open' || pr.merged ||
+    pr.branch !== authority.branch || !evidence.code) return true;
+  return !approvedBefore(document, { uiApproval: evidence.uiApproval }, authority) && !gebouwdOpMain(document, authority);
+}
+
+/**
+ * Vervolgbouw van een levende spec (ADR 0080 punt 4): de spec staat al `gebouwd` op main met dezelfde inhoud (de digest telt
+ * zonder markering), dus de bouw-PR die alleen de markering weghaalt mag `gebouwd # #<deze PR>` schrijven.
+ * @param {{ file: string, text: string }} document @param {import('./task-authority.mjs').Authority} authority
+ */
+function gebouwdOpMain(document, authority) {
+  if (!authority.safe(document.file)) return false;
+  const trusted = documentInfo(document.file, authority.trusted(document.file) ?? '');
+  return trusted?.kind === 'spec' && trusted.status === 'gebouwd' &&
+    trusted.digest === documentInfo(document.file, document.text)?.digest;
+}
+
 /** De spec stond goedgekeurd op main of in een besluit (of had UI-akkoord) vóór `gebouwd`. */
-/** @param {{ file: string, text: string }} document @param {BuiltEvidence} evidence @param {import('./task-authority.mjs').Authority} authority */
+/** @param {{ file: string, text: string }} document @param {{ uiApproval?: string | null | undefined }} evidence @param {import('./task-authority.mjs').Authority} authority */
 function approvedBefore(document, evidence, authority) {
   const approved = document.text.replace(/^status:[^\r\n]*$/m, 'status: goedgekeurd');
   const ui = authority.repository === TEMPLATE_REPOSITORY && authority.safe(document.file) &&
@@ -72,7 +103,7 @@ function approvedBefore(document, evidence, authority) {
 }
 
 /**
- * Gemergde route: de gevalideerde SHA is de PR-head; de mergecommit zit in HEAD, draagt de ongewijzigde goedgekeurde spec en een
+ * Gemergde route: de gevalideerde SHA (of zonder SHA in de regel de head uit GitHub) is de PR-head; de mergecommit zit in HEAD, draagt de ongewijzigde goedgekeurde spec en een
  * door de spec genoemd pad buiten docs/, en de verplichte checks uit main vlak vóór de merge waren groen op de PR-head.
  * @param {{ digest: string, file: string, sha: string }} spec @param {BuiltEvidence} evidence
  */
@@ -86,6 +117,8 @@ function mergedRefusal(spec, evidence) {
   const bijMerge = documentInfo(spec.file, merged.specAtMerge ?? '');
   if (bijMerge?.kind !== 'spec' || bijMerge.status !== 'goedgekeurd' || bijMerge.digest !== spec.digest)
     return 'de spec ongewijzigd en goedgekeurd in de mergecommit';
+  if (acIds(merged.specAtMerge ?? '').gemarkeerd.size > 0)
+    return `de spec zonder AC${MARKERING} in de mergecommit (ADR 0080)`;
   const names = merged.requiredChecks ?? [];
   if (!checkedCommit(evidence.checks, { names, sha: pr.headSha }))
     return `alle verplichte GitHub Actions-checks groen op de head van PR #${n}`;

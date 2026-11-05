@@ -28,4 +28,16 @@ describe('createQueryClient', () => {
     expect(shouldRetry(1, new TypeError('Failed to fetch'))).toBe(true);
     expect(shouldRetry(2, new TypeError('Failed to fetch'))).toBe(false);
   });
+
+  test('partnerstap/AC-13: een UPSTREAM_*-fout wordt niet herhaald; INTERNAL_ERROR en een netwerkfout wel', () => {
+    const upstream = [
+      new ApiError('UPSTREAM_INVALID', 502),
+      new ApiError('UPSTREAM_UNAVAILABLE', 503),
+      new ApiError('UPSTREAM_TIMEOUT', 504),
+    ];
+
+    expect(upstream.map((error) => shouldRetry(0, error))).toStrictEqual([false, false, false]);
+    expect(shouldRetry(0, new ApiError('INTERNAL_ERROR', 500))).toBe(true);
+    expect(shouldRetry(0, new TypeError('Failed to fetch'))).toBe(true);
+  });
 });

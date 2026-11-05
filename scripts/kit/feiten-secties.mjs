@@ -1,13 +1,14 @@
 // De secties van scripts/kit/feiten.mjs, zonder CLI. `specs`, `adr` en `fase` zijn pure functies over een lezer
-// (meting-stuurt/AC-5): feiten.mjs leest de werkmap, `pnpm leespad` ook de basis via `git show`. De secties uit code (gates,
-// migraties, routes, permissies, foutcodes, componenten, tokens) lezen altijd de werkmap; TypeScript en de catalogus laden pas
-// bij hun eigen sectie (test/scripts/feiten-lazy.test.ts).
+// (meting-stuurt/AC-5): feiten.mjs leest de werkmap, `pnpm leespad` ook de basis via `git show`. De secties uit code
+// (gates, migraties, routes, permissies, foutcodes, koppelingen, componenten, tokens) lezen altijd de werkmap; TypeScript en
+// de catalogus laden pas bij hun eigen sectie (test/scripts/feiten-lazy.test.ts).
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { gates } from './gates.mjs';
 import {
   adrOverzicht,
   componentenTekst,
   faseOverzicht,
+  koppelingenOverzicht,
   specsOverzicht,
   tokenOverzicht,
   tokensTekst,
@@ -181,6 +182,12 @@ export const codeSecties = {
   routes: plain(routes),
   permissies: plain(permissies),
   foutcodes: plain(foutcodes),
+  // Register van de app en de kenmerkcatalogus uit core (spec koppeling-agentlaag); beide bijwerkingvrij.
+  koppelingen: async () => {
+    const { integrations } = await import('../../src/api/integrations/index.ts');
+    const { integrationTraitCatalog } = await import('../../src/core/api/integrations/index.ts');
+    return koppelingenOverzicht(integrations.defs, integrationTraitCatalog());
+  },
   componenten: async () => {
     const { componenten } = await import('./catalogus.mjs');
     const lijst = componenten();
@@ -209,6 +216,7 @@ export const VOLGORDE = [
   'routes',
   'permissies',
   'foutcodes',
+  'koppelingen',
   'componenten',
   'tokens',
   'fase',

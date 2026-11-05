@@ -83,7 +83,12 @@ test('`ask` en `voorReview` lopen uit elkaar (tests en specs staan niet in `ask`
     }),
   });
 
-  expect(await keys(root)).toStrictEqual(['docs:spiegel:ask:scripts/**', 'docs:spiegel:voorreview:src/core/**']);
+  // GEWIJZIGD (spec padtabel AC-11, OV-1 ii): de fixture staat in de oude vorm; check-docs meldt die erbij (ADR 0079 punt 6).
+  expect(await keys(root)).toStrictEqual([
+    'docs:spiegel:ask:scripts/**',
+    'docs:spiegel:voorreview:src/core/**',
+    'docs:paden:oude-vorm',
+  ]);
 });
 
 test('twee ADR-bestanden met hetzelfde nummer', async () => {

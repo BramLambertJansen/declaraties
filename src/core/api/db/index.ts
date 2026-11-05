@@ -20,4 +20,7 @@ export async function closeDatabase(): Promise<void> {
   await Promise.all([pool.end(), ping.end()]);
 }
 
+// De schakelaar van een koppeling (spec koppelingsregister); het register leest hem via readSwitch.
+export { readIntegrationSwitch } from './integration-switch.ts';
+
 export type { Actor, SessionStrength, Tx, WithUserOptions } from './with-user.ts';

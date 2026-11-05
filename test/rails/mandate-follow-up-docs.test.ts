@@ -11,10 +11,11 @@ const GATES_MODULE = ['../../scripts/kit', 'gates.mjs'].join('/');
 
 // GEWIJZIGD (compacte-kennisbasis-rails/AC-10, eigenaarbesluit 2026-10-30, ADR 0053 en 0063): een ADR dat naar `docs/adr/archief/`
 // verhuist (byte-gelijk) staat niet meer op zijn oude pad; een ADR-pad valt terug op het archief.
+// GEWIJZIGD (specarchief-en-bouwvorm, ADR 0080, OV-1): zo ook een spec die naar `docs/specs/archief/` verhuist.
 function leesPad(bestand: string): string {
   const pad = path.join(ROOT, bestand);
-  const archief = path.join(ROOT, bestand.replace(/^docs\/adr\//, 'docs/adr/archief/'));
-  return bestand.startsWith('docs/adr/') && !existsSync(pad) && existsSync(archief) ? archief : pad;
+  const archief = path.join(ROOT, bestand.replace(/^docs\/(adr|specs)\//, 'docs/$1/archief/'));
+  return /^docs\/(?:adr|specs)\//.test(bestand) && !existsSync(pad) && existsSync(archief) ? archief : pad;
 }
 
 function tekstVan(bestand: string): string {
@@ -38,15 +39,16 @@ const FRAMEWORK =
   'Binnen een taakmandaat mag `docs/roadmap.md` alleen het vinkje van het item van de taak meewijzigen; de precieze regel staat in `docs/dod.md`.';
 
 // GEWIJZIGD (spec-en-bouw/AC-8, ADR 0062): het statuscommentaar noemt beide vormen van `gebouwd`.
+// GEWIJZIGD (specarchief-en-bouwvorm, ADR 0080 punt 5, OV-1): er is één vorm, zonder SHA; zo ook GATE en DOORLOOP_ZIN.
 const TEMPLATE =
-  'gebouwd: # #<deze PR> in de PR met de implementatie (ADR 0062), of # #<PR>; gevalideerd: <sha> (pnpm docs:status)';
+  'gebouwd: # #<PR>, de eigen PR met de implementatie (ADR 0062) of daarna de gemergde bouw-PR (pnpm docs:status, ADR 0080)';
 
 const GATE =
-  'een nieuw of gewijzigd [x] in docs/roadmap.md verwijst naar bewijs (testpad, checknaam of PR-nummer) en een spec die naar gebouwd gaat heeft status: gebouwd # #<PR>; gevalideerd: <sha>, t.o.v. origin/main (framework §8); heeft docs/roadmap.md een kop ## Nu, dan gelden ook de structuurregels: vereiste koppen, hooguit 3 open items onder Nu, terug als: bij geparkeerd, geen gedateerd statusproza en aanleiding: bij een nieuw open item (ADR 0046)';
+  'een nieuw of gewijzigd [x] in docs/roadmap.md verwijst naar bewijs (testpad, checknaam of PR-nummer) en een spec die naar gebouwd gaat heeft status: gebouwd # #<PR>, t.o.v. origin/main (framework §8); heeft docs/roadmap.md een kop ## Nu, dan gelden ook de structuurregels: vereiste koppen, hooguit 3 open items onder Nu, terug als: bij geparkeerd, geen gedateerd statusproza en aanleiding: bij een nieuw open item (ADR 0046)';
 
 const DOORLOOP_VOORBEELD = 'pnpm docs:status docs/specs/voorbeeld.md gebouwd --pr 123 --roadmap';
 const DOORLOOP_ZIN =
-  'Schrijft alleen de statusregel met PR en gevalideerde bron-SHA, en met `--roadmap` het vinkje van het item dat de spec noemt.';
+  'Schrijft alleen de statusregel `status: gebouwd # #<n>`, en met `--roadmap` het vinkje van het item dat de spec noemt.';
 const DOORLOOP_REGEL81 = 'als de latere diff uitsluitend statusregels en het vinkje van de eigen taak wijzigt';
 
 const NOTITIE = `Deels vervallen door [taakmandaat-vervolg](taakmandaat-vervolg.md) (B2): roadmap/AC-10 voor zover vrij commentaar achter \`status: gebouwd\` als bewijs telt, en de route "vink het roadmap-item af" als vervanging van statusbewijs. De enige vorm is nu \`status: gebouwd # #<PR>; gevalideerd: <sha>\`.`;

@@ -143,8 +143,8 @@ function itemMeldingen(item, kader) {
 }
 
 /**
- * Bewijsvorm voor een spec naar gebouwd: `status: gebouwd # #<PR>; gevalideerd: <sha>`, of `status: gebouwd # #<PR>` in de PR met
- * de implementatie (ADR 0062; `check-document-status` toetst het PR-nummer),
+ * Bewijsvorm voor een spec naar gebouwd: `status: gebouwd # #<PR>` (ADR 0080; `check-document-status` toetst het PR-nummer en
+ * het bewijs); de oude vorm met `; gevalideerd: <sha>` telt nog,
  * gelezen met dezelfde code als `check-document-status` (`documentInfo` en `builtReference`).
  * @param {string} bestand
  * @param {string} spec
@@ -171,7 +171,7 @@ function specMeldingen({ basis, head }) {
       if (!heeftBouwbewijs(bestand, tekst))
         meldingen.push({
           key: `spec:bewijs:${bestand}`,
-          message: `${bestand}: naar gebouwd zonder bouwbewijs; zet de status met pnpm docs:status (status: gebouwd # #<PR>; gevalideerd: <sha>)`,
+          message: `${bestand}: naar gebouwd zonder bouwbewijs; zet de status met pnpm docs:status (status: gebouwd # #<PR>)`,
         });
       const verwijzing = VERWIJZING.exec(tekst)?.[0];
       if (verwijzing !== undefined && !roadmapGewijzigd)

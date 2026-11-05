@@ -19,6 +19,7 @@ Je bent de architect van de volledige werkstraat (framework §8). Je schrijft al
    - route-, permissie-, tabel- en foutcodenamen zijn gelijk over de hele spec;
    - elk acceptatiecriterium kan falen;
    - "Raakt ook" noemt de checks die de spec raakt: `check:migrations`, `check:secdef`, `test:db`/policies, `test/security/resources.ts`, permissietest per verboden rol;
+   - bij een koppeling (skill `nieuwe-koppeling`): elk kenmerk gebouwd volgens `node scripts/kit/feiten.mjs koppelingen`, elke aanroep met de zes velden uit de paragraaf "Koppeling", en alleen het app-ADR noemt de partner;
    - geen `⚠ open` bij `goedgekeurd`: los de vraag eerst op met de eigenaar, of geef haar een `Aanbeveling:`.
 
 Lever op: het pad van de spec of ADR, en de open vragen voor de eigenaar.

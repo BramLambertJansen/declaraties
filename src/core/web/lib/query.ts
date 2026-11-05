@@ -8,9 +8,13 @@ export interface QueryClientConfig {
 
 const MAX_RETRIES = 2;
 
-// Een fout van de client zelf (4xx) wordt niet herhaald; een netwerk- of serverfout hooguit twee keer.
+// Een partnerfout herhaalt de server al binnen zijn budget, en elke herhaling kost een duur-telling (spec partnerstap OV-5).
+const UPSTREAM_CODES: readonly string[] = ['UPSTREAM_INVALID', 'UPSTREAM_UNAVAILABLE', 'UPSTREAM_TIMEOUT'];
+
+// Een fout van de client zelf (4xx) of een partnerfout (UPSTREAM_*) wordt niet herhaald; een netwerk- of andere
+// serverfout hooguit twee keer.
 export function shouldRetry(failureCount: number, error: unknown): boolean {
-  if (error instanceof ApiError && error.status < 500) return false;
+  if (error instanceof ApiError && (error.status < 500 || UPSTREAM_CODES.includes(error.code))) return false;
   return failureCount < MAX_RETRIES;
 }
 
