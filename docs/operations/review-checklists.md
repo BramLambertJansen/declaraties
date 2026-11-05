@@ -1,6 +1,6 @@
 # Review-checklists per risicoklasse
 
-De reviewer bepaalt de klasse(n) van de diff en loopt alleen die lijsten af. Elke regel is een patroon dat eerder doorgleed; een nummer verwijst naar het leerpunt, zonder nummer naar de PR- of Codex-review. Een nieuw patroon komt hier als regel, via een leerpunt.
+De reviewer bepaalt de klasse(n) van de diff en loopt alleen die lijsten af. Elke regel is een patroon dat eerder doorgleed; een nummer verwijst naar het leerpunt, zonder nummer naar de PR- of Codex-review. Een nieuw patroon komt hier als regel, via een leerpunt; geldt het voor elke klasse, dan staat het in `docs/dod.md`.
 
 ## Werkwijze
 
