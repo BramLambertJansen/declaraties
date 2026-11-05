@@ -103,6 +103,17 @@ describe('ci-in-delen/AC-3 en AC-4: lokaal en bij een onbekend deel', () => {
     expect(r.stderr).toContain(`✗ ${naam}: onbekend deel onbekend; kies checks, test-1 of test-2`);
     expect(r.stdout).toBe('');
   });
+
+  test('ci-in-delen/AC-4 scripts/kit/gate-fast.mjs --deel onbekend: ook bij weinig geheugen exitcode ≠ 0, de melding en lege stdout', () => {
+    const r = spawnSync(process.execPath, ['scripts/kit/gate-fast.mjs', '--deel', 'onbekend'], {
+      cwd: ROOT,
+      encoding: 'utf8',
+      env: { ...process.env, GATE_WEINIG_GEHEUGEN: '1' },
+    });
+    expect(r.status).not.toBe(0);
+    expect(r.stderr).toContain('✗ gate:fast: onbekend deel onbekend; kies checks, test-1 of test-2');
+    expect(r.stdout).toBe('');
+  });
 });
 
 describe('ci-in-delen/AC-5 t/m AC-7: ci.yml', () => {
